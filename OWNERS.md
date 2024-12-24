@@ -23,5 +23,6 @@ Please refer to our [MAINTAINERS.md](MAINTAINERS.md).
 | [zhouhaibing089](https://github.com/zhouhaibing089) | Haibing Zhou  |   zhouhaibing089@gmail.com   |     eBay      |
 |   [chenchaobing](https://github.com/chenchaobing)   | Chaobing Chen |     chenchaobing@126.com     |     Meitu     |
 |       [bigerous](https://github.com/bigerous)       |   Dajun Cui   | cuidajun.cdj@alibaba-inc.com | Alibaba Group |
+|      [garen wen](https://github.com/garenwen)       |   Garen Wen   |     wenmxiang@gmail.com      |  Baidu Group  |
 
 <!-- markdownlint-restore -->
