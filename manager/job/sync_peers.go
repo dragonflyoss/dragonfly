@@ -39,7 +39,8 @@ import (
 	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
-// SyncPeers is an interface for sync peers.
+// SyncPeers is an interface for sync peers. It is only supported in Rust client,
+// refer to https://github.com/dragonflyoss/client.
 type SyncPeers interface {
 	// CreateSyncPeers creates sync peers job, and merge the sync peer results with the data
 	// in the peer table in the database. It is a synchronous operation, and it will returns
@@ -195,6 +196,13 @@ func (s *syncPeers) mergePeers(ctx context.Context, scheduler models.Scheduler, 
 	// Convert sync peer results from slice to map.
 	syncPeers := make(map[string]*resource.Host, len(results))
 	for _, result := range results {
+		// Skip the sync peer that does not belong to the scheduler cluster,
+		// it is only supported in Rust client. The golang client lacks the
+		// SchedulerClusterID field.
+		if result.SchedulerClusterID == 0 {
+			continue
+		}
+
 		syncPeers[result.ID] = result
 	}
 
