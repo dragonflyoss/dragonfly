@@ -12,8 +12,9 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.9.2
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/bits-and-blooms/bitset v1.20.0
-	github.com/casbin/casbin/v2 v2.81.0
+	github.com/casbin/casbin/v2 v2.103.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colinmarc/hdfs/v2 v2.3.0
 	github.com/containerd/containerd v1.6.26
 	github.com/deckarep/golang-set/v2 v2.6.0
@@ -126,12 +127,12 @@ require (
 	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874 // indirect
 	github.com/bytedance/sonic v1.12.4 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
-	github.com/casbin/govaluate v1.1.0 // indirect
+	github.com/casbin/govaluate v1.3.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
