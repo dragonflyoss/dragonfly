@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	caches "github.com/go-gorm/caches/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
@@ -61,6 +62,21 @@ func New(cfg *config.Config) (*Database, error) {
 		}
 	default:
 		return nil, fmt.Errorf("invalid database type %s", cfg.Database.Type)
+	}
+
+	// Add cache for reducing database load.
+	cacher, err := newCacher()
+	if err != nil {
+		logger.Errorf("new cacher: %s", err.Error())
+		return nil, err
+	}
+
+	if err := db.Use(&caches.Caches{Conf: &caches.Config{
+		Easer:  true,
+		Cacher: cacher,
+	}}); err != nil {
+		logger.Errorf("use cache: %s", err.Error())
+		return nil, err
 	}
 
 	rdb, err := pkgredis.NewRedis(&redis.UniversalOptions{

@@ -22,6 +22,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.4.0
+	github.com/elastic/go-freelru v0.16.0
 	github.com/gaius-qi/ping v1.0.0
 	github.com/gammazero/deque v1.0.0
 	github.com/gin-contrib/gzip v1.0.1
@@ -29,6 +30,7 @@ require (
 	github.com/gin-contrib/zap v1.1.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-echarts/statsview v0.3.4
+	github.com/go-gorm/caches/v4 v4.0.5
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/go-redis/cache/v9 v9.0.0
@@ -94,7 +96,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/driver/postgres v1.4.8
-	gorm.io/gorm v1.24.6
+	gorm.io/gorm v1.25.0
 	gorm.io/plugin/soft_delete v1.2.1
 	k8s.io/component-base v0.31.2
 	moul.io/zapgorm2 v1.3.0

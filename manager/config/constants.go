@@ -75,7 +75,7 @@ const (
 	DefaultLFUCacheTTL = 3 * time.Minute
 
 	// DefaultLFUCacheSize is default size for lfu cache.
-	DefaultLFUCacheSize = 50 * 1000
+	DefaultLFUCacheSize = 30 * 1000
 )
 
 const (
@@ -88,10 +88,10 @@ const (
 
 const (
 	// DefaultJobGCInterval is the default interval for gc job.
-	DefaultJobGCInterval = 6 * time.Hour
+	DefaultJobGCInterval = 3 * time.Hour
 
 	// DefaultJobGCTTL is the default ttl for job.
-	DefaultJobGCTTL = 12 * time.Hour
+	DefaultJobGCTTL = 6 * time.Hour
 
 	// DefaultJobGCBatchSize is the default batch size for operating on the database in gc job.
 	DefaultJobGCBatchSize = 5000
