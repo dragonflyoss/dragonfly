@@ -1,11 +1,17 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v2.2.0"></a>
+## [v2.2.0] - 2024-12-31
 ### Chore
 - update client version to 0.2.0
-- update console version to 0.1.43 ([#3732](https://github.com/dragonflyoss/dragonfly/issues/3732))
 - update console version to v0.1.42 ([#3729](https://github.com/dragonflyoss/dragonfly/issues/3729))
+- update console version to 0.1.43 ([#3732](https://github.com/dragonflyoss/dragonfly/issues/3732))
 - **deps:** bump github.com/mennanov/limiters from 1.9.0 to 1.11.0 ([#3723](https://github.com/dragonflyoss/dragonfly/issues/3723))
+- **deps:** bump k8s.io/component-base from 0.31.2 to 0.32.0 ([#3737](https://github.com/dragonflyoss/dragonfly/issues/3737))
+- **deps:** bump github.com/onsi/gomega from 1.36.1 to 1.36.2 ([#3740](https://github.com/dragonflyoss/dragonfly/issues/3740))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin from 0.57.0 to 0.58.0 ([#3736](https://github.com/dragonflyoss/dragonfly/issues/3736))
 - **deps:** bump github.com/bits-and-blooms/bitset from 1.19.1 to 1.20.0 ([#3724](https://github.com/dragonflyoss/dragonfly/issues/3724))
 - **deps:** bump github.com/onsi/ginkgo/v2 from 2.22.0 to 2.22.1 ([#3726](https://github.com/dragonflyoss/dragonfly/issues/3726))
 - **deps:** bump google.golang.org/protobuf from 1.35.2 to 1.36.1 ([#3725](https://github.com/dragonflyoss/dragonfly/issues/3725))
@@ -9483,7 +9489,8 @@
 - idgen add digest ([#243](https://github.com/dragonflyoss/dragonfly/issues/243))
 
 
-[Unreleased]: https://github.com/dragonflyoss/dragonfly/compare/v2.1.67...HEAD
+[Unreleased]: https://github.com/dragonflyoss/dragonfly/compare/v2.2.0...HEAD
+[v2.2.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.1.67...v2.2.0
 [v2.1.67]: https://github.com/dragonflyoss/dragonfly/compare/v2.1.66...v2.1.67
 [v2.1.66]: https://github.com/dragonflyoss/dragonfly/compare/v2.1.65...v2.1.66
 [v2.1.65]: https://github.com/dragonflyoss/dragonfly/compare/v2.1.64...v2.1.65
