@@ -19,7 +19,7 @@ env:
   KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
   DRAGONFLY_CHARTS_CONFIG_PATH: test/testdata/charts/config-v2.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
-  DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/file-server.yaml
+  DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/dufs.yaml
 
 jobs:
   compatibility_e2e_tests:
@@ -71,7 +71,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.12.0
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.1
           mkdir -p /tmp/artifact
 
       - name: Setup buildx
@@ -136,8 +136,9 @@ jobs:
       - name: Setup dragonfly
         run: |
           helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system --set ${{ matrix.chart-name }}.image.tag=${{ matrix.image-tag }} --set ${{ matrix.chart-name }}.image.repository=dragonflyoss/${{ matrix.image }} -f ${{ env.DRAGONFLY_CHARTS_CONFIG_PATH }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
-          kubectl wait po file-server-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
+          kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
         run: |

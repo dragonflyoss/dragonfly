@@ -31,7 +31,23 @@ import (
 )
 
 var _ = Describe("Preheat with Manager", func() {
-	Context("/bin/md5sum file", func() {
+	Context("1MiB file", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("preheat files should be ok", Label("preheat", "file"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -41,7 +57,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  util.GetFileURL("/bin/md5sum"),
+					URL:  testFile.GetDownloadURL(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -60,11 +76,6 @@ var _ = Describe("Preheat with Manager", func() {
 			done := waitForDone(job, managerPod)
 			Expect(done).Should(BeTrue())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "b0a5cfd4ccf5310803675f742dedc435a64e9a5f539f48fedbef6c30aac18b7c",
-				Sha256: "80f1d8cd843a98b23b30e90e7e43a14e05935351f354d678bc465f7be66ef3dd",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -72,13 +83,29 @@ var _ = Describe("Preheat with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
+			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 	})
 
-	Context("/bin/toe file", func() {
+	Context("10MiB file", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("preheat files should be ok", Label("preheat", "file"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -88,7 +115,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  util.GetFileURL("/bin/toe"),
+					URL:  testFile.GetDownloadURL(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -107,11 +134,6 @@ var _ = Describe("Preheat with Manager", func() {
 			done := waitForDone(job, managerPod)
 			Expect(done).Should(BeTrue())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "802e3df5384438deaed066ca445489f6e314ebb6a2d4728d020e75a08d281942",
-				Sha256: "4c7f0f298ab3350859f90664d706b8ccaa95072f1f1f3dd74f559642e5483cd5",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -119,13 +141,29 @@ var _ = Describe("Preheat with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
+			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 	})
 
-	Context("/bin/jq file", func() {
+	Context("100MiB file", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize100MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("preheat files should be ok", Label("preheat", "file"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -135,7 +173,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  util.GetFileURL("/bin/jq"),
+					URL:  testFile.GetDownloadURL(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -154,11 +192,6 @@ var _ = Describe("Preheat with Manager", func() {
 			done := waitForDone(job, managerPod)
 			Expect(done).Should(BeTrue())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "4f1de4716ec6d1ca56daf1f5dd2520a8f6a826d90474f596cdf99a5c88fef982",
-				Sha256: "5a963cbdd08df27651e9c9d006567267ebb3c80f7b8fc0f218ade5771df2998b",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -166,9 +199,9 @@ var _ = Describe("Preheat with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
+			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 	})
 

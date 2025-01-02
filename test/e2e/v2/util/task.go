@@ -99,3 +99,46 @@ func CalculateSha256ByOutput(pods []*PodExec, output string) (string, error) {
 
 	return sha256sum, nil
 }
+
+// taskID represents the config of the task id.
+type taskID struct {
+	// url is the url of the download task.
+	url string
+	// tag is the tag of the download task.
+	tag string
+	// appliccation is the application of the download task.
+	application string
+	// filteredQueryParams is the filtered query params of the download task.
+	filteredQueryParams []string
+}
+
+// TaskIDOption is the type of the options of the task id.
+type TaskIDOption func(*taskID)
+
+// WithTaskIDURL sets the url of the download task.
+func WithTaskIDURL(url string) TaskIDOption {
+	return func(o *taskID) {
+		o.url = url
+	}
+}
+
+// WithTaskIDTag sets the tag of the download task.
+func WithTaskIDTag(tag string) TaskIDOption {
+	return func(o *taskID) {
+		o.tag = tag
+	}
+}
+
+// WithTaskIDApplication sets the application of the download task.
+func WithTaskIDApplication(application string) TaskIDOption {
+	return func(o *taskID) {
+		o.application = application
+	}
+}
+
+// WithTaskIDFilteredQueryParams sets the filtered query params of the download task.
+func WithTaskIDFilteredQueryParams(filteredQueryParams []string) TaskIDOption {
+	return func(o *taskID) {
+		o.filteredQueryParams = filteredQueryParams
+	}
+}
