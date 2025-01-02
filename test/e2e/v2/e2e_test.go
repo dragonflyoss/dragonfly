@@ -30,6 +30,9 @@ import (
 	"d7y.io/dragonfly/v2/test/e2e/v2/util"
 )
 
+// fs is the global file server.
+var fs *util.FileServer
+
 var _ = AfterSuite(func() {
 	for _, server := range util.Servers {
 		for i := 0; i < server.Replicas; i++ {
@@ -80,9 +83,19 @@ var _ = AfterSuite(func() {
 			fmt.Printf("------------------------------ Get %s-%d Artifact Finished ------------------------------\n", server.Name, i)
 		}
 	}
+
+	// Clean up file server if exists.
+	if fs != nil {
+		fs.CleanAll()
+	}
 })
 
 var _ = BeforeSuite(func() {
+	var err error
+	fs, err = util.NewFileServer()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(fs).NotTo(BeNil())
+
 	rawGitCommit, err := util.GitCommand("rev-parse", "--short", "HEAD").CombinedOutput()
 	Expect(err).NotTo(HaveOccurred())
 	gitCommit := strings.Fields(string(rawGitCommit))[0]
