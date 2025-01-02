@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
-permissions:  
+permissions:
   contents: read
 
 env:
@@ -19,6 +19,7 @@ env:
   KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
   DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/file-server.yaml
+  DRAGONFLY_FILE_SERVER_V2_PATH: test/testdata/k8s/file-server-v2.yaml
 
 jobs:
   e2e_tests:
@@ -124,6 +125,7 @@ jobs:
         run: |
           helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
+          kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_V2_PATH }}
           kubectl wait po file-server-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
