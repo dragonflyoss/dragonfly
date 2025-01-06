@@ -17,7 +17,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colinmarc/hdfs/v2 v2.3.0
 	github.com/containerd/containerd v1.6.26
-	github.com/deckarep/golang-set/v2 v2.6.0
+	github.com/deckarep/golang-set/v2 v2.7.0
 	github.com/distribution/distribution/v3 v3.0.0-20220620080156-3e4f8a0ab147
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v27.3.1+incompatible
