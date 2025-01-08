@@ -39,11 +39,11 @@ jobs:
             chart-name: scheduler
           - module: client
             image: client
-            image-tag: v0.1.125
+            image-tag: v0.2.4
             chart-name: client
           - module: seed-client
             image: client
-            image-tag: v0.1.125
+            image-tag: v0.2.4
             chart-name: seed-client
 
     steps:

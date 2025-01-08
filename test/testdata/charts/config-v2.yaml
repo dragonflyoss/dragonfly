@@ -98,7 +98,7 @@ seedClient:
     scheduler:
       announceInterval: 1s
     log:
-      level: info
+      level: debug
     proxy:
       prefetch: true
       registryMirror:
@@ -157,7 +157,7 @@ client:
     scheduler:
       announceInterval: 1s
     log:
-      level: info 
+      level: debug
     proxy:
       prefetch: false
       registryMirror:

@@ -172,7 +172,7 @@ var _ = Describe("Preheat with Manager", func() {
 		})
 	})
 
-	Context("busybox:v1.35.0 image", func() {
+	Context("ghcr.io/dragonflyoss/busybox:v1.35.0 image", func() {
 		It("preheat image should be ok", Label("preheat", "image"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -182,7 +182,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "image",
-					URL:  "https://index.docker.io/v2/dragonflyoss/busybox/manifests/1.35.0",
+					URL:  "https://ghcr.io/v2/dragonflyoss/busybox/manifests/1.35.0",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -201,11 +201,11 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "b6922209dc9616f8736a860e93c3cd7288a4e801517f88eec3df514606d18cdf",
+					ID:     "50f91088cd60a49bf565396c1f7ba1f8b9d32c9f1541d2e06b085c780030805a",
 					Sha256: "a711f05d33845e2e9deffcfcc5adf082d7c6e97e3e3a881d193d9aae38f092a8",
 				},
 				{
-					ID:     "c0dfae864ae65c285676063eb148d0a0064d5c6c39367fee0bcc1f3700c39c31",
+					ID:     "a048c8c66a652030fba31514735ff51288c54f72f878e363948303ded065e199",
 					Sha256: "f643e116a03d9604c344edb345d7592c48cc00f2a4848aaf773411f4fb30d2f5",
 				},
 			}
@@ -225,7 +225,7 @@ var _ = Describe("Preheat with Manager", func() {
 		})
 	})
 
-	Context("dragonflyoss/scheduler:v2.1.0 image", func() {
+	Context("ghcr.io/dragonflyoss/scheduler:v2.1.0 image", func() {
 		It("preheat image for linux/amd64 platform should be ok", Label("preheat", "image"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -235,7 +235,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type:     "image",
-					URL:      "https://index.docker.io/v2/dragonflyoss/scheduler/manifests/v2.1.0",
+					URL:      "https://ghcr.io/v2/dragonflyoss/scheduler/manifests/v2.1.0",
 					Platform: "linux/amd64",
 				},
 			})
@@ -255,23 +255,19 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "c8ca6a17354d3a79397eef26803e5af84d00a3fd64b0f823922086a31ebdee18",
+					ID:     "1a2cf94649557d3e978f355bcc8eaffadd4c8d41e334fc93adc3ea49488d1200",
 					Sha256: "f1f1039835051ecc04909f939530e86a20f02d2ce5ad7a81c0fa3616f7303944",
 				},
 				{
-					ID:     "b8de5865e2ebf537279683adfbdb5f858b0c7212e5744a1df233086496c245d7",
-					Sha256: "c1d6d1b2d5a367259e6e51a7f4d1ccd66a28cc9940d6599d8a8ea9544dd4b4a8",
-				},
-				{
-					ID:     "e4bf0d4b551afda56f9627c81ee02ab4360865d37c7dd43586e37f26f4386806",
+					ID:     "ba71de48fb521ec52a4dff60106af10512eb21a40b8fd1756467af19592e6a74",
 					Sha256: "871ab018db94b4ae7b137764837bc4504393a60656ba187189e985cd809064f7",
 				},
 				{
-					ID:     "7da0721fd078dd46a63298747ffde8fcbe12b53378f282c9def693615ac7993e",
+					ID:     "3cf396cec1d067374714655cf98f5e505626d1b6cdec094b1469b3c98569e3d1",
 					Sha256: "f1a1d290795d904815786e41d39a41dc1af5de68a9e9020baba8bd83b32d8f95",
 				},
 				{
-					ID:     "3639c8c5712e77acd3751142c83150c0a12284a54fa41224a1c7acc0e343020d",
+					ID:     "b04072342af19c13fcda146a71727edd03442d9851ca185d297f53442ba12a22",
 					Sha256: "f1ffc4b5459e82dc8e7ddd1d1a2ec469e85a1f076090c22851a1f2ce6f71e1a6",
 				},
 			}
@@ -299,7 +295,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type:     "image",
-					URL:      "https://index.docker.io/v2/dragonflyoss/scheduler/manifests/v2.1.0",
+					URL:      "https://ghcr.io/v2/dragonflyoss/scheduler/manifests/v2.2.0",
 					Platform: "linux/arm64",
 				},
 			})
@@ -319,24 +315,24 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "9869dbb01ac214e90e4ae667e42d50210c2ff1e63292d73b14f0a7a2226c0320",
-					Sha256: "a0d7a8f11f7e25ca59f0bf470187dd9aa27e7ca951cf67a53c750deea5d3b076",
+					ID:     "d83d909b2ec5660323a4225149fb87886f9897cf6098ffcb108a77ac252facaf",
+					Sha256: "9986a736f7d3d24bb01b0a560fa0f19c4b57e56c646e1f998941529d28710e6b",
 				},
 				{
-					ID:     "ab049caee13f77d91568d954a5d32f5d2354497cab098887a8a663656daa9840",
-					Sha256: "a880266d3b77f75696023df2da1ef66c3c565e0f70596242395c9e68de955c7c",
+					ID:     "0eb92ed9ea3561063efceaf414e2a5431410d5ba76523bb2e0a4793fdf9a38b1",
+					Sha256: "f7307687fd72fb79eadd7f38f8cb9675b76480e32365a5d282a06f788944e9f2",
 				},
 				{
-					ID:     "e4bf0d4b551afda56f9627c81ee02ab4360865d37c7dd43586e37f26f4386806",
-					Sha256: "871ab018db94b4ae7b137764837bc4504393a60656ba187189e985cd809064f7",
+					ID:     "45e6cddeb6d117e61312e3913779b88e3ac8c37f8df2f0814bf2d8cda6f784d7",
+					Sha256: "fc5951fb196d09e569f4592b50e3a71ad01d11da229b8a500fea278eba0170c5",
 				},
 				{
-					ID:     "a26e1ac8b70926f45766fcf886f23a833793c39c62237bcda9ffeb158131c0d6",
-					Sha256: "9b5952218d7711195c6c6fbddbef2780507d20851ca68845d180397d1348f0d8",
+					ID:     "e1ab22f7ff59940064e2ffde854fe3e0fcd23267268ff382696875c49844c985",
+					Sha256: "c7c72808bf776cd122bdaf4630a4a35ea319603d6a3b6cbffddd4c7fd6d2d269",
 				},
 				{
-					ID:     "7376f665077e91cd0dc410c00242ab88775e3eae19eca4b7b3a29ded14fc3754",
-					Sha256: "889f4c960ac4ff70774e9c4cfa64efc4823ade0702d0f96c20ff0054ffbbe504",
+					ID:     "56ee9d6d3bcac9e6543073e175ba2a0ee5d37c27d6e1a7daabeea44b7fbdd4a4",
+					Sha256: "edbf1aa1d62d9c17605c1ee2d9dff43489bc0f8ae056367734386c35bfae226a",
 				},
 			}
 
