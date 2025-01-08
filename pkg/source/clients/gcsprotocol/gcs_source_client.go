@@ -52,6 +52,7 @@ func Builder(optionYaml []byte) (source.ResourceClient, source.RequestAdapter, [
 
 // gcsSourceClient is an implementation of the interface of source.ResourceClient.
 type gcsSourceClient struct {
+	httpClient *http.Client
 }
 
 func (s *gcsSourceClient) adaptor(request *source.Request) *source.Request {
@@ -64,7 +65,14 @@ func (s *gcsSourceClient) adaptor(request *source.Request) *source.Request {
 }
 
 func (s *gcsSourceClient) newGCSClient(request *source.Request) (*storage.Client, error) {
-	return storage.NewClient(request.Context(), option.WithCredentialsJSON([]byte(request.Header.Get(gcsCredentialsJSON))))
+	opts := []option.ClientOption{
+		option.WithScopes(storage.ScopeReadOnly),
+		option.WithCredentialsJSON([]byte(request.Header.Get(gcsCredentialsJSON))),
+	}
+	if s.httpClient != nil {
+		opts = append(opts, option.WithHTTPClient(s.httpClient))
+	}
+	return storage.NewClient(request.Context(), opts...)
 }
 
 // GetContentLength get length of resource content
