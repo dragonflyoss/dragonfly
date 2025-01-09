@@ -17,13 +17,14 @@
 package gcsprotocol
 
 import (
+	"io"
+	"net/url"
+	"testing"
+
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/go-http-utils/headers"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/url"
-	"testing"
 
 	"d7y.io/dragonfly/v2/pkg/source"
 )
