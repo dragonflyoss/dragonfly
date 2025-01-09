@@ -17,6 +17,7 @@
 package gcsprotocol
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -36,7 +37,7 @@ const GCSScheme = "gcs"
 
 const (
 	// GCS credentials json
-	gcsCredentialsJSON = "gcsCredentialsJSON"
+	gcsCredentialsJSONBase64 = "gcsCredentialsJSONBase64"
 )
 
 var _ source.ResourceClient = (*gcsSourceClient)(nil)
@@ -65,9 +66,13 @@ func (s *gcsSourceClient) adaptor(request *source.Request) *source.Request {
 }
 
 func (s *gcsSourceClient) newGCSClient(request *source.Request) (*storage.Client, error) {
+	gcsCredentialsJSON, err := base64.StdEncoding.DecodeString(request.Header.Get(gcsCredentialsJSONBase64))
+	if err != nil {
+		return nil, err
+	}
 	opts := []option.ClientOption{
 		option.WithScopes(storage.ScopeReadOnly),
-		option.WithCredentialsJSON([]byte(request.Header.Get(gcsCredentialsJSON))),
+		option.WithCredentialsJSON(gcsCredentialsJSON),
 	}
 	if s.httpClient != nil {
 		opts = append(opts, option.WithHTTPClient(s.httpClient))
