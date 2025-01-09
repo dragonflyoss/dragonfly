@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -219,8 +218,7 @@ func (s *gcsSourceClient) List(request *source.Request) (urls []source.URLEntry,
 
 		url := *request.URL
 		url.Path = attrs.Name
-		_, name := filepath.Split(url.Path)
-		urls = append(urls, source.URLEntry{URL: &url, Name: name, IsDir: false})
+		urls = append(urls, source.URLEntry{URL: &url, Name: url.Path, IsDir: false})
 	}
 
 	return urls, nil
