@@ -137,11 +137,14 @@ func (s *gcsSourceClient) Download(request *source.Request) (*source.Response, e
 	}
 
 	rangeHeader := request.Header.Get(headers.Range)
+	bucket := request.URL.Host
+	object := strings.TrimPrefix(request.URL.Path, "/")
+
 	if rangeHeader == "" {
-		reader, err = client.Bucket(request.URL.Host).Object(request.URL.Path).NewReader(request.Context())
+		reader, err = client.Bucket(bucket).Object(object).NewReader(request.Context())
 	} else {
 		var objAttrs *storage.ObjectAttrs
-		objAttrs, err = client.Bucket(request.URL.Host).Object(request.URL.Path).Attrs(request.Context())
+		objAttrs, err = client.Bucket(bucket).Object(object).Attrs(request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +158,7 @@ func (s *gcsSourceClient) Download(request *source.Request) (*source.Response, e
 			return nil, err
 		}
 
-		reader, err = client.Bucket(request.URL.Host).Object(request.URL.Path).
+		reader, err = client.Bucket(bucket).Object(object).
 			NewRangeReader(request.Context(), rgs[0].Start, rgs[0].Length)
 	}
 
@@ -187,7 +190,10 @@ func (s *gcsSourceClient) GetLastModified(request *source.Request) (int64, error
 	if err != nil {
 		return -1, err
 	}
-	objectAttrs, err := client.Bucket(request.URL.Host).Object(request.URL.Path).Attrs(request.Context())
+
+	bucket := request.URL.Host
+	object := strings.TrimPrefix(request.URL.Path, "/")
+	objectAttrs, err := client.Bucket(bucket).Object(object).Attrs(request.Context())
 	if err != nil {
 		return -1, err
 	}
