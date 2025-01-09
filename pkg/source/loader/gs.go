@@ -17,5 +17,5 @@
 package loader
 
 import (
-	_ "d7y.io/dragonfly/v2/pkg/source/clients/gcsprotocol" // Register gcs client
+	_ "d7y.io/dragonfly/v2/pkg/source/clients/gsprotocol" // Register gcs client
 )

@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package gcsprotocol
+package gsprotocol
 
 import (
+	"io"
+	"net/url"
+	"testing"
+
 	"cloud.google.com/go/storage"
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/go-http-utils/headers"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/url"
-	"testing"
 
 	"d7y.io/dragonfly/v2/pkg/source"
 )
@@ -40,7 +41,7 @@ func TestGetContentLength(t *testing.T) {
 			name: "normal file",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -62,7 +63,7 @@ func TestGetContentLength(t *testing.T) {
 			name: "normal file with range",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -86,7 +87,7 @@ func TestGetContentLength(t *testing.T) {
 			name: "file not found",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -128,7 +129,7 @@ func TestGetContentLength(t *testing.T) {
 
 			server, err := fakestorage.NewServerWithOptions(opts)
 			assert.Nil(t, err)
-			client := &gcsSourceClient{}
+			client := &gsSourceClient{}
 			client.httpClient = server.HTTPClient()
 			defer server.Stop()
 
@@ -151,7 +152,7 @@ func TestDownload(t *testing.T) {
 			name: "normal file",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -173,7 +174,7 @@ func TestDownload(t *testing.T) {
 			name: "normal file with range",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -197,7 +198,7 @@ func TestDownload(t *testing.T) {
 			name: "file not found",
 			request: &source.Request{
 				URL: &url.URL{
-					Scheme: "gcs",
+					Scheme: "gs",
 					Opaque: "",
 					User:   nil,
 					Host:   "fake-bucket",
@@ -238,7 +239,7 @@ func TestDownload(t *testing.T) {
 
 			server, err := fakestorage.NewServerWithOptions(opts)
 			assert.Nil(t, err)
-			client := &gcsSourceClient{}
+			client := &gsSourceClient{}
 			client.httpClient = server.HTTPClient()
 			defer server.Stop()
 

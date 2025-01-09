@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package gcsprotocol
+package gsprotocol
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -32,30 +32,30 @@ import (
 	"d7y.io/dragonfly/v2/pkg/source"
 )
 
-const GCSScheme = "gcs"
+const GSScheme = "gs"
 
 const (
-	// GCS credentials json
-	gcsCredentialsJSON = "gcsCredentialsJSON"
+	// GS credentials json
+	gsCredentialsJSONBase64 = "gsCredentialsJSONBase64"
 )
 
-var _ source.ResourceClient = (*gcsSourceClient)(nil)
+var _ source.ResourceClient = (*gsSourceClient)(nil)
 
 func init() {
-	source.RegisterBuilder(GCSScheme, source.NewPlainResourceClientBuilder(Builder))
+	source.RegisterBuilder(GSScheme, source.NewPlainResourceClientBuilder(Builder))
 }
 
 func Builder(optionYaml []byte) (source.ResourceClient, source.RequestAdapter, []source.Hook, error) {
-	client := &gcsSourceClient{}
+	client := &gsSourceClient{}
 	return client, client.adaptor, nil, nil
 }
 
-// gcsSourceClient is an implementation of the interface of source.ResourceClient.
-type gcsSourceClient struct {
+// gsSourceClient is an implementation of the interface of source.ResourceClient.
+type gsSourceClient struct {
 	httpClient *http.Client
 }
 
-func (s *gcsSourceClient) adaptor(request *source.Request) *source.Request {
+func (s *gsSourceClient) adaptor(request *source.Request) *source.Request {
 	clonedRequest := request.Clone(request.Context())
 	if request.Header.Get(source.Range) != "" {
 		clonedRequest.Header.Set(headers.Range, fmt.Sprintf("bytes=%s", request.Header.Get(source.Range)))
@@ -64,10 +64,14 @@ func (s *gcsSourceClient) adaptor(request *source.Request) *source.Request {
 	return clonedRequest
 }
 
-func (s *gcsSourceClient) newGCSClient(request *source.Request) (*storage.Client, error) {
+func (s *gsSourceClient) newGSClient(request *source.Request) (*storage.Client, error) {
+	gsCredentialsJSON, err := base64.StdEncoding.DecodeString(request.Header.Get(gsCredentialsJSONBase64))
+	if err != nil {
+		return nil, err
+	}
 	opts := []option.ClientOption{
 		option.WithScopes(storage.ScopeReadOnly),
-		option.WithCredentialsJSON([]byte(request.Header.Get(gcsCredentialsJSON))),
+		option.WithCredentialsJSON(gsCredentialsJSON),
 	}
 	if s.httpClient != nil {
 		opts = append(opts, option.WithHTTPClient(s.httpClient))
@@ -77,8 +81,8 @@ func (s *gcsSourceClient) newGCSClient(request *source.Request) (*storage.Client
 
 // GetContentLength get length of resource content
 // return source.UnknownSourceFileLen if response status is not StatusOK and StatusPartialContent
-func (s *gcsSourceClient) GetContentLength(request *source.Request) (int64, error) {
-	client, err := s.newGCSClient(request)
+func (s *gsSourceClient) GetContentLength(request *source.Request) (int64, error) {
+	client, err := s.newGSClient(request)
 	if err != nil {
 		return -1, err
 	}
@@ -108,36 +112,39 @@ func (s *gcsSourceClient) GetContentLength(request *source.Request) (int64, erro
 
 // IsSupportRange checks if resource supports breakpoint continuation
 // return false if response status is not StatusPartialContent
-func (s *gcsSourceClient) IsSupportRange(request *source.Request) (bool, error) {
+func (s *gsSourceClient) IsSupportRange(request *source.Request) (bool, error) {
 	return true, nil
 }
 
 // IsExpired checks if a resource received or stored is the same.
 // return false and non-nil err to prevent the source from exploding if
 // fails to get the result, it is considered that the source has not expired
-func (s *gcsSourceClient) IsExpired(request *source.Request, info *source.ExpireInfo) (bool, error) {
+func (s *gsSourceClient) IsExpired(request *source.Request, info *source.ExpireInfo) (bool, error) {
 	return false, fmt.Errorf("not implemented") // TODO: Implement
 }
 
 // Download downloads from source
-func (s *gcsSourceClient) Download(request *source.Request) (*source.Response, error) {
+func (s *gsSourceClient) Download(request *source.Request) (*source.Response, error) {
 	var (
 		err    error
 		client *storage.Client
 		reader *storage.Reader
 	)
 
-	client, err = s.newGCSClient(request)
+	client, err = s.newGSClient(request)
 	if err != nil {
 		return nil, err
 	}
 
 	rangeHeader := request.Header.Get(headers.Range)
+	bucket := request.URL.Host
+	object := strings.TrimPrefix(request.URL.Path, "/")
+
 	if rangeHeader == "" {
-		reader, err = client.Bucket(request.URL.Host).Object(request.URL.Path).NewReader(request.Context())
+		reader, err = client.Bucket(bucket).Object(object).NewReader(request.Context())
 	} else {
 		var objAttrs *storage.ObjectAttrs
-		objAttrs, err = client.Bucket(request.URL.Host).Object(request.URL.Path).Attrs(request.Context())
+		objAttrs, err = client.Bucket(bucket).Object(object).Attrs(request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +158,7 @@ func (s *gcsSourceClient) Download(request *source.Request) (*source.Response, e
 			return nil, err
 		}
 
-		reader, err = client.Bucket(request.URL.Host).Object(request.URL.Path).
+		reader, err = client.Bucket(bucket).Object(object).
 			NewRangeReader(request.Context(), rgs[0].Start, rgs[0].Length)
 	}
 
@@ -178,22 +185,25 @@ func (s *gcsSourceClient) Download(request *source.Request) (*source.Response, e
 }
 
 // GetLastModified gets last modified timestamp milliseconds of resource
-func (s *gcsSourceClient) GetLastModified(request *source.Request) (int64, error) {
-	client, err := s.newGCSClient(request)
+func (s *gsSourceClient) GetLastModified(request *source.Request) (int64, error) {
+	client, err := s.newGSClient(request)
 	if err != nil {
 		return -1, err
 	}
-	objectAttrs, err := client.Bucket(request.URL.Host).Object(request.URL.Path).Attrs(request.Context())
+
+	bucket := request.URL.Host
+	object := strings.TrimPrefix(request.URL.Path, "/")
+	objectAttrs, err := client.Bucket(bucket).Object(object).Attrs(request.Context())
 	if err != nil {
 		return -1, err
 	}
 	return objectAttrs.Updated.UnixMilli(), nil
 }
 
-func (s *gcsSourceClient) List(request *source.Request) (urls []source.URLEntry, err error) {
-	client, err := s.newGCSClient(request)
+func (s *gsSourceClient) List(request *source.Request) (urls []source.URLEntry, err error) {
+	client, err := s.newGSClient(request)
 	if err != nil {
-		return nil, fmt.Errorf("get gcs client: %w", err)
+		return nil, fmt.Errorf("get gs client: %w", err)
 	}
 
 	// list all files
@@ -214,8 +224,7 @@ func (s *gcsSourceClient) List(request *source.Request) (urls []source.URLEntry,
 
 		url := *request.URL
 		url.Path = attrs.Name
-		_, name := filepath.Split(url.Path)
-		urls = append(urls, source.URLEntry{URL: &url, Name: name, IsDir: false})
+		urls = append(urls, source.URLEntry{URL: &url, Name: url.Path, IsDir: false})
 	}
 
 	return urls, nil
