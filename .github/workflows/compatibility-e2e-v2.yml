@@ -33,18 +33,22 @@ jobs:
             image: manager
             image-tag: v2.1.65
             chart-name: manager
+            skip: "Rate Limit"
           - module: scheduler
             image: scheduler
             image-tag: v2.1.65
             chart-name: scheduler
+            skip: "Rate Limit"
           - module: client
             image: client
             image-tag: v0.2.4
             chart-name: client
+            skip: "Rate Limit"
           - module: seed-client
             image: client
             image-tag: v0.2.4
             chart-name: seed-client
+            skip: "Rate Limit"
 
     steps:
       - name: Free Disk Space (Ubuntu)

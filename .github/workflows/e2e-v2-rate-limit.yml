@@ -1,4 +1,4 @@
-name: E2E Test(API v2 - Rust Client)
+name: E2E Test With Rate Limit(API v2 - Rust Client)
 
 on:
   push:
@@ -30,9 +30,8 @@ jobs:
           - "normal"
         include:
           - module: normal
-            charts-config: test/testdata/charts/config-v2.yaml
-            # rate limit will be tested in another job
-            skip: "Rate Limit"
+            charts-config: test/testdata/charts/config-v2-rate-limit.yaml
+            focus: "Rate Limit"
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -130,7 +129,7 @@ jobs:
 
       - name: Run E2E test
         run: |
-          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --skip=${{ matrix.skip }} test/e2e/v2
+          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --focus=${{ matrix.focus }} test/e2e/v2
           cat coverprofile.out >> coverage.txt
 
       - name: Move cache
