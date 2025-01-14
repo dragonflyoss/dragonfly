@@ -181,7 +181,7 @@ jobs:
           flags: ${{ matrix }}-compatibility-e2etests
 
       - name: Upload Logs
-        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
         if: always()
         with:
           name: ${{ matrix.module }}-compatibility-e2e-tests-logs
