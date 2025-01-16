@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dragonfly-e2e
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dufs
+  namespace: dragonfly-e2e
+spec:
+  selector:
+    app: dragonfly
+    component: dufs
+  type: ClusterIP
+  ports:
+  - name: server
+    port: 80
+    protocol: TCP
+    targetPort: 5000
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dufs
+  namespace: dragonfly-e2e
+spec:
+  serviceName: dufs
+  selector:
+    matchLabels:
+      app: dragonfly
+      component: dufs
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: dufs
+    spec:
+      containers:
+      - name: dufs
+        image: sigoden/dufs:v0.43.0
+        command: ["dufs"]
+        args:
+        - "/data"
+        - "-A"
+        - "-b"
+        - "0.0.0.0"
+        - "-p"
+        - "5000"
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        hostPath:
+          path: /tmp/artifact/dufs

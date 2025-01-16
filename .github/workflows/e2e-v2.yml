@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
-permissions:  
+permissions:
   contents: read
 
 env:
@@ -18,7 +18,7 @@ env:
   CONTAINERD_VERSION: v1.5.2
   KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
-  DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/file-server.yaml
+  DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/dufs.yaml
 
 jobs:
   e2e_tests:
@@ -31,7 +31,8 @@ jobs:
         include:
           - module: normal
             charts-config: test/testdata/charts/config-v2.yaml
-            skip: ""
+            # rate limit will be tested in another job
+            skip: "Rate Limit"
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -58,7 +59,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@v2.12.0
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.1
           mkdir -p /tmp/artifact
 
       - name: Setup buildx
@@ -85,7 +86,7 @@ jobs:
           docker tag dragonflyoss/dfinit:$CLIENT_TAG dragonflyoss/dfinit:latest
 
       - name: Build Scheduler Image
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc
         with:
           context: .
           file: build/images/scheduler/Dockerfile
@@ -96,7 +97,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build Manager Image
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc
         with:
           context: .
           file: build/images/manager/Dockerfile
@@ -123,8 +124,9 @@ jobs:
       - name: Setup dragonfly
         run: |
           helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
-          kubectl wait po file-server-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
+          kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
         run: |
@@ -144,7 +146,7 @@ jobs:
           flags: e2etests
 
       - name: Upload Logs
-        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
         if: always()
         with:
           name: ${{ matrix.module }}-e2e-tests-logs

@@ -93,6 +93,8 @@ seedClient:
     hostPath:
       path: /tmp/artifact
   config:
+    download:
+      rateLimit: 1MiB
     dynconfig:
       refreshInterval: 1s
     scheduler:
@@ -101,6 +103,7 @@ seedClient:
       level: debug
     proxy:
       prefetch: true
+      prefetchRateLimit: 1MiB
       registryMirror:
         addr: https://index.docker.io
       rules:
@@ -152,6 +155,8 @@ client:
               serverAddr: https://ghcr.io
               capabilities: ["pull", "resolve"]
   config:
+    download:
+      rateLimit: 1MiB
     dynconfig:
       refreshInterval: 1s
     scheduler:
