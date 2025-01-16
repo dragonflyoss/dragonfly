@@ -22,8 +22,18 @@ import (
 
 	"github.com/looplab/fsm"
 
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/digest"
+)
+
+const (
+	// Tiny file size is 128 bytes.
+	TinyFileSize = 128
+
+	// Empty file size is 0 bytes.
+	EmptyFileSize = 0
 )
 
 const (
@@ -136,4 +146,29 @@ func NewTask(id, tag, application, state string, persistentReplicaCount uint64, 
 	t.FSM.SetState(state)
 
 	return t
+}
+
+// SizeScope return task size scope type.
+func (t *Task) SizeScope() commonv2.SizeScope {
+	if t.ContentLength < 0 {
+		return commonv2.SizeScope_UNKNOW
+	}
+
+	if t.TotalPieceCount < 0 {
+		return commonv2.SizeScope_UNKNOW
+	}
+
+	if t.ContentLength == EmptyFileSize {
+		return commonv2.SizeScope_EMPTY
+	}
+
+	if t.ContentLength <= TinyFileSize {
+		return commonv2.SizeScope_TINY
+	}
+
+	if t.TotalPieceCount == 1 {
+		return commonv2.SizeScope_SMALL
+	}
+
+	return commonv2.SizeScope_NORMAL
 }

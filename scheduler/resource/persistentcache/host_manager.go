@@ -106,27 +106,10 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
-	concurrentUploadLimit, err := strconv.ParseInt(rawHost["concurrent_upload_limit"], 10, 32)
+	// Set cpu fields from raw host.
+	schedulerClusterID, err := strconv.ParseUint(rawHost["scheduler_cluster_id"], 10, 64)
 	if err != nil {
-		log.Errorf("parsing concurrent upload limit failed: %v", err)
-		return nil, false
-	}
-
-	concurrentUploadCount, err := strconv.ParseInt(rawHost["concurrent_upload_count"], 10, 32)
-	if err != nil {
-		log.Errorf("parsing concurrent upload count failed: %v", err)
-		return nil, false
-	}
-
-	uploadCount, err := strconv.ParseInt(rawHost["upload_count"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing upload count failed: %v", err)
-		return nil, false
-	}
-
-	uploadFailedCount, err := strconv.ParseInt(rawHost["upload_failed_count"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing upload failed count failed: %v", err)
+		log.Errorf("parsing scheduler cluster id failed: %v", err)
 		return nil, false
 	}
 
@@ -446,9 +429,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		rawHost["kernel_version"],
 		int32(port),
 		int32(downloadPort),
-		int32(concurrentUploadCount),
-		uploadCount,
-		uploadFailedCount,
+		uint64(schedulerClusterID),
 		diableShared,
 		pkgtypes.ParseHostType(rawHost["type"]),
 		cpu,
@@ -460,7 +441,6 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		createdAt,
 		updatedAt,
 		logger.WithHost(rawHost["id"], rawHost["hostname"], rawHost["ip"]),
-		WithConcurrentUploadLimit(int32(concurrentUploadLimit)),
 	), true
 }
 
@@ -522,11 +502,8 @@ func (h *hostManager) Store(ctx context.Context, host *Host) error {
 		"build_git_commit", host.Build.GitCommit,
 		"build_go_version", host.Build.GoVersion,
 		"build_platform", host.Build.Platform,
+		"scheduler_cluster_id", host.SchedulerClusterID,
 		"announce_interval", host.AnnounceInterval,
-		"concurrent_upload_limit", host.ConcurrentUploadLimit,
-		"concurrent_upload_count", host.ConcurrentUploadCount,
-		"upload_count", host.UploadCount,
-		"upload_failed_count", host.UploadFailedCount,
 		"created_at", host.CreatedAt.Format(time.RFC3339),
 		"updated_at", host.UpdatedAt.Format(time.RFC3339)).Result()
 

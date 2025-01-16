@@ -22,7 +22,8 @@ import (
 	"github.com/montanaflynn/stats"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
 const (
@@ -60,10 +61,16 @@ const (
 // Evaluator is an interface that evaluates the parents.
 type Evaluator interface {
 	// EvaluateParents sort parents by evaluating multiple feature scores.
-	EvaluateParents(parents []*resource.Peer, child *resource.Peer, taskPieceCount int32) []*resource.Peer
+	EvaluateParents(parents []*standard.Peer, child *standard.Peer, taskPieceCount int32) []*standard.Peer
 
-	// IsBadNode determine if peer is a failed node.
-	IsBadNode(peer *resource.Peer) bool
+	// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+	IsBadParent(peer *standard.Peer) bool
+
+	// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
+	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount int32) []*persistentcache.Peer
+
+	// IsBadParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool
 }
 
 // evaluator is an implementation of Evaluator.
@@ -84,11 +91,11 @@ func New(algorithm string, pluginDir string) Evaluator {
 	return newEvaluatorBase()
 }
 
-// IsBadNode determine if peer is a failed node.
-func (e *evaluator) IsBadNode(peer *resource.Peer) bool {
-	if peer.FSM.Is(resource.PeerStateFailed) || peer.FSM.Is(resource.PeerStateLeave) || peer.FSM.Is(resource.PeerStatePending) ||
-		peer.FSM.Is(resource.PeerStateReceivedTiny) || peer.FSM.Is(resource.PeerStateReceivedSmall) ||
-		peer.FSM.Is(resource.PeerStateReceivedNormal) || peer.FSM.Is(resource.PeerStateReceivedEmpty) {
+// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
+	if peer.FSM.Is(standard.PeerStateFailed) || peer.FSM.Is(standard.PeerStateLeave) || peer.FSM.Is(standard.PeerStatePending) ||
+		peer.FSM.Is(standard.PeerStateReceivedTiny) || peer.FSM.Is(standard.PeerStateReceivedSmall) ||
+		peer.FSM.Is(standard.PeerStateReceivedNormal) || peer.FSM.Is(standard.PeerStateReceivedEmpty) {
 		peer.Log.Debugf("peer is bad node because peer status is %s", peer.FSM.Current())
 		return true
 	}
@@ -108,17 +115,28 @@ func (e *evaluator) IsBadNode(peer *resource.Peer) bool {
 	// Download costs does not meet the normal distribution,
 	// if the last cost is twenty times more than mean, it is bad node.
 	if len < normalDistributionLen {
-		isBadNode := big.NewFloat(lastCost).Cmp(big.NewFloat(mean*20)) > 0
-		logger.Debugf("peer %s mean is %.2f and it is bad node: %t", peer.ID, mean, isBadNode)
-		return isBadNode
+		isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean*20)) > 0
+		logger.Debugf("peer %s mean is %.2f and it is bad node: %t", peer.ID, mean, isBadParent)
+		return isBadParent
 	}
 
 	// Download costs satisfies the normal distribution,
 	// last cost falling outside of three-sigma effect need to be adjusted parent,
 	// refer to https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule.
 	stdev, _ := stats.StandardDeviation(costs[:len-1]) // nolint: errcheck
-	isBadNode := big.NewFloat(lastCost).Cmp(big.NewFloat(mean+3*stdev)) > 0
+	isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean+3*stdev)) > 0
 	logger.Debugf("peer %s meet the normal distribution, costs mean is %.2f and standard deviation is %.2f, peer is bad node: %t",
-		peer.ID, mean, stdev, isBadNode)
-	return isBadNode
+		peer.ID, mean, stdev, isBadParent)
+	return isBadParent
+}
+
+// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
+	if peer.FSM.Is(persistentcache.PeerStatePending) || peer.FSM.Is(persistentcache.PeerStateUploading) || peer.FSM.Is(persistentcache.PeerStateReceivedEmpty) ||
+		peer.FSM.Is(persistentcache.PeerStateReceivedNormal) || peer.FSM.Is(persistentcache.PeerStateFailed) {
+		peer.Log.Debugf("persistent cache peer is bad node because peer status is %s", peer.FSM.Current())
+		return true
+	}
+
+	return false
 }

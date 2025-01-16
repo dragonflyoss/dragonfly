@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"os"
 
-	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling/evaluator"
 )
 
@@ -31,14 +32,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	candidateParents := e.EvaluateParents([]*resource.Peer{&resource.Peer{}}, &resource.Peer{}, int32(0))
+	candidateParents := e.EvaluateParents([]*standard.Peer{&standard.Peer{}}, &standard.Peer{}, int32(0))
 	if len(candidateParents) != 1 {
-		fmt.Println("Evaluate failed")
+		fmt.Println("EvaluateParents failed")
 		os.Exit(1)
 	}
 
-	if ok := e.IsBadNode(&resource.Peer{}); !ok {
-		fmt.Println("IsBadNode failed")
+	if ok := e.IsBadParent(&standard.Peer{}); !ok {
+		fmt.Println("IsBadParent failed")
+		os.Exit(1)
+	}
+
+	candidatePersistentCacheParents := e.EvaluatePersistentCacheParents([]*persistentcache.Peer{&persistentcache.Peer{}}, &persistentcache.Peer{}, int32(0))
+	if len(candidatePersistentCacheParents) != 1 {
+		fmt.Println("EvaluatePersistentCacheParents failed")
+		os.Exit(1)
+	}
+
+	if ok := e.IsBadPersistentCacheParent(&persistentcache.Peer{}); !ok {
+		fmt.Println("IsBadPersistentCacheParent failed")
 		os.Exit(1)
 	}
 }

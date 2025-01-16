@@ -33,8 +33,11 @@ const (
 	// Peer is uploading resources for p2p cluster.
 	PeerStateUploading = "Uploading"
 
-	// Peer successfully registered and perpared to download.
-	PeerStateReceived = "Received"
+	// Peer successfully registered as empty scope size.
+	PeerStateReceivedEmpty = "ReceivedEmpty"
+
+	// Peer successfully registered as normal scope size.
+	PeerStateReceivedNormal = "ReceivedNormal"
 
 	// Peer is downloading resources from peer.
 	PeerStateRunning = "Running"
@@ -48,10 +51,13 @@ const (
 
 const (
 	// Peer is uploding.
-	PeerEventUpload = "Uploda"
+	PeerEventUpload = "Upload"
 
-	// Peer is registered and perpared to download.
-	PeerEventRegister = "Register"
+	// Peer is registered as empty scope size.
+	PeerEventRegisterEmpty = "RegisterEmpty"
+
+	// Peer is registered as normal scope size.
+	PeerEventRegisterNormal = "RegisterNormal"
 
 	// Peer is downloading.
 	PeerEventDownload = "Download"
@@ -119,8 +125,9 @@ func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, b
 		PeerStatePending,
 		fsm.Events{
 			fsm.EventDesc{Name: PeerEventUpload, Src: []string{PeerStatePending, PeerStateFailed}, Dst: PeerStateUploading},
-			fsm.EventDesc{Name: PeerEventRegister, Src: []string{PeerStatePending, PeerStateFailed}, Dst: PeerStateReceived},
-			fsm.EventDesc{Name: PeerEventDownload, Src: []string{PeerStateReceived}, Dst: PeerStateRunning},
+			fsm.EventDesc{Name: PeerEventRegisterEmpty, Src: []string{PeerStatePending, PeerStateFailed}, Dst: PeerStateReceivedEmpty},
+			fsm.EventDesc{Name: PeerEventRegisterNormal, Src: []string{PeerStatePending, PeerStateFailed}, Dst: PeerStateReceivedNormal},
+			fsm.EventDesc{Name: PeerEventDownload, Src: []string{PeerStateReceivedEmpty, PeerStateReceivedNormal}, Dst: PeerStateRunning},
 			fsm.EventDesc{Name: PeerEventSucceeded, Src: []string{PeerStateUploading, PeerStateRunning}, Dst: PeerStateSucceeded},
 			fsm.EventDesc{Name: PeerEventFailed, Src: []string{PeerStateUploading, PeerStateRunning}, Dst: PeerStateFailed},
 		},
@@ -128,7 +135,10 @@ func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, b
 			PeerEventUpload: func(ctx context.Context, e *fsm.Event) {
 				p.Log.Infof("peer state is %s", e.FSM.Current())
 			},
-			PeerEventRegister: func(ctx context.Context, e *fsm.Event) {
+			PeerEventRegisterEmpty: func(ctx context.Context, e *fsm.Event) {
+				p.Log.Infof("peer state is %s", e.FSM.Current())
+			},
+			PeerEventRegisterNormal: func(ctx context.Context, e *fsm.Event) {
 				p.Log.Infof("peer state is %s", e.FSM.Current())
 			},
 			PeerEventDownload: func(ctx context.Context, e *fsm.Event) {

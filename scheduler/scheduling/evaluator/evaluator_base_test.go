@@ -391,7 +391,7 @@ func TestEvaluatorBase_evaluate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEvaluatorBase()
 			tc.mock(tc.parent, tc.child)
-			tc.expect(t, e.(*evaluatorBase).evaluate(tc.parent, tc.child, tc.totalPieceCount))
+			tc.expect(t, e.(*evaluatorBase).evaluateParents(tc.parent, tc.child, tc.totalPieceCount))
 		})
 	}
 }
@@ -511,7 +511,7 @@ func TestEvaluatorBase_calculatePieceScore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEvaluatorBase()
 			tc.mock(tc.parent, tc.child)
-			tc.expect(t, e.(*evaluatorBase).calculatePieceScore(tc.parent, tc.child, tc.totalPieceCount))
+			tc.expect(t, e.(*evaluatorBase).calculatePieceScore(tc.parent.FinishedPieces.Count(), tc.child.FinishedPieces.Count(), tc.totalPieceCount))
 		})
 	}
 }
@@ -566,7 +566,7 @@ func TestEvaluatorBase_calculatehostUploadSuccessScore(t *testing.T) {
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, host)
 			e := newEvaluatorBase()
 			tc.mock(host)
-			tc.expect(t, e.(*evaluatorBase).calculateParentHostUploadSuccessScore(mockPeer))
+			tc.expect(t, e.(*evaluatorBase).calculateParentHostUploadSuccessScore(mockPeer.Host.UploadCount.Load(), mockPeer.Host.UploadFailedCount.Load()))
 		})
 	}
 }
@@ -874,7 +874,7 @@ func TestEvaluatorBase_calculateMultiElementAffinityScore(t *testing.T) {
 	}
 }
 
-func TestEvaluatorBase_IsBadNode(t *testing.T) {
+func TestEvaluatorBase_IsBadParent(t *testing.T) {
 	mockHost := resource.NewHost(
 		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
@@ -885,7 +885,7 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 		peer            *resource.Peer
 		totalPieceCount int32
 		mock            func(peer *resource.Peer)
-		expect          func(t *testing.T, isBadNode bool)
+		expect          func(t *testing.T, isBadParent bool)
 	}{
 		{
 			name:            "peer state is PeerStateFailed",
@@ -894,9 +894,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStateFailed)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -906,9 +906,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStateLeave)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -918,9 +918,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStatePending)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -930,9 +930,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStateReceivedTiny)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -942,9 +942,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStateReceivedSmall)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -954,9 +954,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 			mock: func(peer *resource.Peer) {
 				peer.FSM.SetState(resource.PeerStateReceivedNormal)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -968,9 +968,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 				peer.AppendPieceCost(10)
 				peer.AppendPieceCost(201)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -982,9 +982,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 				peer.AppendPieceCost(10)
 				peer.AppendPieceCost(200)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.False(isBadNode)
+				assert.False(isBadParent)
 			},
 		},
 		{
@@ -998,9 +998,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 				}
 				peer.AppendPieceCost(50)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.True(isBadNode)
+				assert.True(isBadParent)
 			},
 		},
 		{
@@ -1014,9 +1014,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 				}
 				peer.AppendPieceCost(18)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.False(isBadNode)
+				assert.False(isBadParent)
 			},
 		},
 		{
@@ -1030,9 +1030,9 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 				}
 				peer.AppendPieceCost(0)
 			},
-			expect: func(t *testing.T, isBadNode bool) {
+			expect: func(t *testing.T, isBadParent bool) {
 				assert := assert.New(t)
-				assert.False(isBadNode)
+				assert.False(isBadParent)
 			},
 		},
 	}
@@ -1041,7 +1041,7 @@ func TestEvaluatorBase_IsBadNode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEvaluatorBase()
 			tc.mock(tc.peer)
-			tc.expect(t, e.IsBadNode(tc.peer))
+			tc.expect(t, e.IsBadParent(tc.peer))
 		})
 	}
 }

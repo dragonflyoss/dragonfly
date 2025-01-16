@@ -21,18 +21,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/types"
-	"d7y.io/dragonfly/v2/scheduler/config"
 )
-
-// HostOption is a functional option for configuring the persistent cache host.
-type HostOption func(h *Host)
-
-// WithConcurrentUploadLimit sets persistent cache host's ConcurrentUploadLimit.
-func WithConcurrentUploadLimit(limit int32) HostOption {
-	return func(h *Host) {
-		h.ConcurrentUploadLimit = limit
-	}
-}
 
 // Host contains content for host.
 type Host struct {
@@ -88,20 +77,11 @@ type Host struct {
 	// Build information.
 	Build Build
 
+	// SchedulerClusterID is the scheduler cluster id matched by scopes.
+	SchedulerClusterID uint64
+
 	// AnnounceInterval is the interval between host announces to scheduler.
 	AnnounceInterval time.Duration
-
-	// ConcurrentUploadLimit is concurrent upload limit count.
-	ConcurrentUploadLimit int32
-
-	// ConcurrentUploadCount is concurrent upload count.
-	ConcurrentUploadCount int32
-
-	// UploadCount is total upload count.
-	UploadCount int64
-
-	// UploadFailedCount is upload failed count.
-	UploadFailedCount int64
 
 	// CreatedAt is host create time.
 	CreatedAt time.Time
@@ -265,47 +245,32 @@ type Disk struct {
 
 // New host instance.
 func NewHost(
-	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort, concurrentUploadCount int32,
-	UploadCount, UploadFailedCount int64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
-	build Build, announceInterval time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith, options ...HostOption,
+	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort int32,
+	schedulerClusterId uint64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
+	build Build, announceInterval time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith,
 ) *Host {
-	// Calculate default of the concurrent upload limit by host type.
-	concurrentUploadLimit := config.DefaultSeedPeerConcurrentUploadLimit
-	if typ == types.HostTypeNormal {
-		concurrentUploadLimit = config.DefaultPeerConcurrentUploadLimit
+	return &Host{
+		ID:                 id,
+		Type:               types.HostType(typ),
+		Hostname:           hostname,
+		IP:                 ip,
+		Port:               port,
+		DownloadPort:       downloadPort,
+		DisableShared:      disableShared,
+		OS:                 os,
+		Platform:           platform,
+		PlatformFamily:     platformFamily,
+		PlatformVersion:    platformVersion,
+		KernelVersion:      kernelVersion,
+		CPU:                cpu,
+		Memory:             memory,
+		Network:            network,
+		Disk:               disk,
+		Build:              build,
+		SchedulerClusterID: schedulerClusterId,
+		AnnounceInterval:   announceInterval,
+		CreatedAt:          createdAt,
+		UpdatedAt:          updatedAt,
+		Log:                logger.WithHost(id, hostname, ip),
 	}
-
-	h := &Host{
-		ID:                    id,
-		Type:                  types.HostType(typ),
-		Hostname:              hostname,
-		IP:                    ip,
-		Port:                  port,
-		DownloadPort:          downloadPort,
-		DisableShared:         disableShared,
-		OS:                    os,
-		Platform:              platform,
-		PlatformFamily:        platformFamily,
-		PlatformVersion:       platformVersion,
-		KernelVersion:         kernelVersion,
-		CPU:                   cpu,
-		Memory:                memory,
-		Network:               network,
-		Disk:                  disk,
-		Build:                 build,
-		AnnounceInterval:      announceInterval,
-		ConcurrentUploadLimit: int32(concurrentUploadLimit),
-		ConcurrentUploadCount: concurrentUploadCount,
-		UploadCount:           UploadCount,
-		UploadFailedCount:     UploadFailedCount,
-		CreatedAt:             createdAt,
-		UpdatedAt:             updatedAt,
-		Log:                   logger.WithHost(id, hostname, ip),
-	}
-
-	for _, opt := range options {
-		opt(h)
-	}
-
-	return h
 }

@@ -22,7 +22,8 @@ import (
 
 	"d7y.io/dragonfly/v2/pkg/math"
 	"d7y.io/dragonfly/v2/pkg/types"
-	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
 const (
@@ -56,66 +57,85 @@ func newEvaluatorBase() Evaluator {
 }
 
 // EvaluateParents sort parents by evaluating multiple feature scores.
-func (e *evaluatorBase) EvaluateParents(parents []*resource.Peer, child *resource.Peer, totalPieceCount int32) []*resource.Peer {
+func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standard.Peer, totalPieceCount int32) []*standard.Peer {
 	sort.Slice(
 		parents,
 		func(i, j int) bool {
-			return e.evaluate(parents[i], child, totalPieceCount) > e.evaluate(parents[j], child, totalPieceCount)
+			return e.evaluateParents(parents[i], child, totalPieceCount) > e.evaluateParents(parents[j], child, totalPieceCount)
 		},
 	)
 
 	return parents
 }
 
-// The larger the value, the higher the priority.
-func (e *evaluatorBase) evaluate(parent *resource.Peer, child *resource.Peer, totalPieceCount int32) float64 {
+// evaluateParents sort parents by evaluating multiple feature scores.
+func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.Peer, totalPieceCount int32) float64 {
 	parentLocation := parent.Host.Network.Location
 	parentIDC := parent.Host.Network.IDC
 	childLocation := child.Host.Network.Location
 	childIDC := child.Host.Network.IDC
 
-	return finishedPieceWeight*e.calculatePieceScore(parent, child, totalPieceCount) +
-		parentHostUploadSuccessWeight*e.calculateParentHostUploadSuccessScore(parent) +
+	return finishedPieceWeight*e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount) +
+		parentHostUploadSuccessWeight*e.calculateParentHostUploadSuccessScore(parent.Host.UploadCount.Load(), parent.Host.UploadFailedCount.Load()) +
 		freeUploadWeight*e.calculateFreeUploadScore(parent.Host) +
 		hostTypeWeight*e.calculateHostTypeScore(parent) +
 		idcAffinityWeight*e.calculateIDCAffinityScore(parentIDC, childIDC) +
 		locationAffinityWeight*e.calculateMultiElementAffinityScore(parentLocation, childLocation)
 }
 
+// EvaluateParents sort parents by evaluating multiple feature scores.
+func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, totalPieceCount int32) []*persistentcache.Peer {
+	sort.Slice(
+		parents,
+		func(i, j int) bool {
+			return e.evaluatePersistentCacheParents(parents[i], child, totalPieceCount) > e.evaluatePersistentCacheParents(parents[j], child, totalPieceCount)
+		},
+	)
+
+	return parents
+}
+
+// evaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
+func (e *evaluatorBase) evaluatePersistentCacheParents(parent *persistentcache.Peer, child *persistentcache.Peer, totalPieceCount int32) float64 {
+	parentLocation := parent.Host.Network.Location
+	parentIDC := parent.Host.Network.IDC
+	childLocation := child.Host.Network.Location
+	childIDC := child.Host.Network.IDC
+
+	return finishedPieceWeight*e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount) +
+		idcAffinityWeight*e.calculateIDCAffinityScore(parentIDC, childIDC) +
+		locationAffinityWeight*e.calculateMultiElementAffinityScore(parentLocation, childLocation)
+}
+
 // calculatePieceScore 0.0~unlimited larger and better.
-func (e *evaluatorBase) calculatePieceScore(parent *resource.Peer, child *resource.Peer, totalPieceCount int32) float64 {
+func (e *evaluatorBase) calculatePieceScore(parentFinishedPieceCount uint, childFinishedPieceCount uint, totalPieceCount int32) float64 {
 	// If the total piece is determined, normalize the number of
 	// pieces downloaded by the parent node.
 	if totalPieceCount > 0 {
-		finishedPieceCount := parent.FinishedPieces.Count()
-		return float64(finishedPieceCount) / float64(totalPieceCount)
+		return float64(parentFinishedPieceCount) / float64(totalPieceCount)
 	}
 
 	// Use the difference between the parent node and the child node to
 	// download the piece to roughly represent the piece score.
-	parentFinishedPieceCount := parent.FinishedPieces.Count()
-	childFinishedPieceCount := child.FinishedPieces.Count()
 	return float64(parentFinishedPieceCount) - float64(childFinishedPieceCount)
 }
 
 // calculateParentHostUploadSuccessScore 0.0~unlimited larger and better.
-func (e *evaluatorBase) calculateParentHostUploadSuccessScore(peer *resource.Peer) float64 {
-	uploadCount := peer.Host.UploadCount.Load()
-	uploadFailedCount := peer.Host.UploadFailedCount.Load()
-	if uploadCount < uploadFailedCount {
+func (e *evaluatorBase) calculateParentHostUploadSuccessScore(parentUploadCount int64, parentUploadFailedCount int64) float64 {
+	if parentUploadCount < parentUploadFailedCount {
 		return minScore
 	}
 
 	// Host has not been scheduled, then it is scheduled first.
-	if uploadCount == 0 && uploadFailedCount == 0 {
+	if parentUploadCount == 0 && parentUploadFailedCount == 0 {
 		return maxScore
 	}
 
-	return float64(uploadCount-uploadFailedCount) / float64(uploadCount)
+	return float64(parentUploadCount-parentUploadFailedCount) / float64(parentUploadCount)
 }
 
 // calculateFreeUploadScore 0.0~1.0 larger and better.
-func (e *evaluatorBase) calculateFreeUploadScore(host *resource.Host) float64 {
+func (e *evaluatorBase) calculateFreeUploadScore(host *standard.Host) float64 {
 	ConcurrentUploadLimit := host.ConcurrentUploadLimit.Load()
 	freeUploadCount := host.FreeUploadCount()
 	if ConcurrentUploadLimit > 0 && freeUploadCount > 0 {
@@ -126,13 +146,13 @@ func (e *evaluatorBase) calculateFreeUploadScore(host *resource.Host) float64 {
 }
 
 // calculateHostTypeScore 0.0~1.0 larger and better.
-func (e *evaluatorBase) calculateHostTypeScore(peer *resource.Peer) float64 {
+func (e *evaluatorBase) calculateHostTypeScore(peer *standard.Peer) float64 {
 	// When the task is downloaded for the first time,
 	// peer will be scheduled to seed peer first,
 	// otherwise it will be scheduled to dfdaemon first.
 	if peer.Host.Type != types.HostTypeNormal {
-		if peer.FSM.Is(resource.PeerStateReceivedNormal) ||
-			peer.FSM.Is(resource.PeerStateRunning) {
+		if peer.FSM.Is(standard.PeerStateReceivedNormal) ||
+			peer.FSM.Is(standard.PeerStateRunning) {
 			return maxScore
 		}
 
