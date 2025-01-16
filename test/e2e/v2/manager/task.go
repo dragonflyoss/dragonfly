@@ -31,7 +31,23 @@ import (
 )
 
 var _ = Describe("GetTask and DeleteTask with Manager", func() {
-	Context("/bin/cat file", Label("getTask", "deleteTask", "file"), func() {
+	Context("1MiB file", Label("getTask", "deleteTask", "file"), func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("getTask and deleteTask should be ok", func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -41,7 +57,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  util.GetFileURL("/bin/cat"),
+					URL:  testFile.GetDownloadURL(),
 				},
 				SchedulerClusterIDs: []uint{1},
 			})
@@ -61,11 +77,6 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			done := waitForDone(job, managerPod)
 			Expect(done).Should(BeTrue())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "5588094e5a40f0d324052e044884a0910de8467428deebccb8c6fb560b131c28",
-				Sha256: "df954abca766aceddd79dd20429e4f222019018667446626d3a641d3c47c50fc",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -73,14 +84,14 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
+			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
 			req, err = structure.StructToMap(types.CreateGetTaskJobRequest{
 				Type: internaljob.GetTaskJob,
 				Args: types.GetTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -102,7 +113,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			req, err = structure.StructToMap(types.CreateDeleteTaskJobRequest{
 				Type: internaljob.DeleteTaskJob,
 				Args: types.DeleteTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -121,12 +132,28 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			Expect(done).Should(BeTrue())
 			Expect(validateTaskResponse(job)).To(BeTrue())
 
-			exist := util.CheckFilesExist(seedClientPods, fileMetadata.ID)
+			exist := util.CheckFilesExist(seedClientPods, testFile.GetTaskID())
 			Expect(exist).Should(BeFalse())
 		})
 	})
 
-	Context("/bin/pwd file", Label("getTask", "deleteTask", "file"), func() {
+	Context("10MiB file", Label("getTask", "deleteTask", "file"), func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("getTask and deleteTask should be ok", func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
@@ -136,7 +163,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  util.GetFileURL("/bin/pwd"),
+					URL:  testFile.GetDownloadURL(),
 				},
 				SchedulerClusterIDs: []uint{1},
 			})
@@ -156,11 +183,6 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			done := waitForDone(job, managerPod)
 			Expect(done).Should(BeTrue())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "feab7bc71cfa2618a2fe4cf593b562d59b4e8cb87e8ec249a1b951f44c78f2b6",
-				Sha256: "5286873505a9671e077f346cdfb89d5a6c99985fe3f11a972f30fedf9029bae0",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -168,14 +190,14 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
+			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
 			req, err = structure.StructToMap(types.CreateGetTaskJobRequest{
 				Type: internaljob.GetTaskJob,
 				Args: types.GetTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -197,7 +219,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			req, err = structure.StructToMap(types.CreateDeleteTaskJobRequest{
 				Type: internaljob.DeleteTaskJob,
 				Args: types.DeleteTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -216,22 +238,33 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			Expect(done).Should(BeTrue())
 			Expect(validateTaskResponse(job)).To(BeTrue())
 
-			exist := util.CheckFilesExist(seedClientPods, fileMetadata.ID)
+			exist := util.CheckFilesExist(seedClientPods, testFile.GetTaskID())
 			Expect(exist).Should(BeFalse())
 		})
 	})
 
-	Context("/bin/time file", Label("getTask", "deleteTask", "file"), func() {
+	Context("100MiB file", Label("getTask", "deleteTask", "file"), func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize100MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("getTask and deleteTask should be failed", func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			fileMetadata := util.FileMetadata{
-				ID:     "d7704dffb62c1925c56c2ad4e04ba16daf266432eed43a59336e8bd6e71fab92",
-				Sha256: "7301b9b4c51a8f4d26c1af0da250f03a49ec8a8141033123e79196ad18f6c81b",
-			}
-
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := 0; i < 3; i++ {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -239,13 +272,13 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			exist := util.CheckFilesExist(seedClientPods, fileMetadata.ID)
+			exist := util.CheckFilesExist(seedClientPods, testFile.GetTaskID())
 			Expect(exist).Should(BeFalse())
 
 			req, err := structure.StructToMap(types.CreateGetTaskJobRequest{
 				Type: internaljob.GetTaskJob,
 				Args: types.GetTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -267,7 +300,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			req, err = structure.StructToMap(types.CreateDeleteTaskJobRequest{
 				Type: internaljob.DeleteTaskJob,
 				Args: types.DeleteTaskArgs{
-					TaskID: fileMetadata.ID,
+					TaskID: testFile.GetTaskID(),
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())

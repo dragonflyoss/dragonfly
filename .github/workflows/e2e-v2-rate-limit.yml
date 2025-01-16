@@ -1,4 +1,4 @@
-name: Compatibility E2E Test(API v2 - Rust Client)
+name: E2E Test With Rate Limit(API v2 - Rust Client)
 
 on:
   push:
@@ -17,38 +17,21 @@ env:
   KIND_VERSION: v0.12.0
   CONTAINERD_VERSION: v1.5.2
   KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
-  DRAGONFLY_CHARTS_CONFIG_PATH: test/testdata/charts/config-v2.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
   DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/dufs.yaml
 
 jobs:
-  compatibility_e2e_tests:
+  e2e_tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       matrix:
-        module: ["manager", "scheduler", "client", "seed-client"]
+        module:
+          - "normal"
         include:
-          - module: manager
-            image: manager
-            image-tag: v2.1.65
-            chart-name: manager
-            skip: "Rate Limit"
-          - module: scheduler
-            image: scheduler
-            image-tag: v2.1.65
-            chart-name: scheduler
-            skip: "Rate Limit"
-          - module: client
-            image: client
-            image-tag: v0.2.4
-            chart-name: client
-            skip: "Rate Limit"
-          - module: seed-client
-            image: client
-            image-tag: v0.2.4
-            chart-name: seed-client
-            skip: "Rate Limit"
+          - module: normal
+            charts-config: test/testdata/charts/config-v2-rate-limit.yaml
+            focus: "Rate Limit"
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -139,14 +122,14 @@ jobs:
 
       - name: Setup dragonfly
         run: |
-          helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system --set ${{ matrix.chart-name }}.image.tag=${{ matrix.image-tag }} --set ${{ matrix.chart-name }}.image.repository=dragonflyoss/${{ matrix.image }} -f ${{ env.DRAGONFLY_CHARTS_CONFIG_PATH }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
           mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
           kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
         run: |
-          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --skip=${{ matrix.skip }} test/e2e/v2
+          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --focus=${{ matrix.focus }} test/e2e/v2
           cat coverprofile.out >> coverage.txt
 
       - name: Move cache

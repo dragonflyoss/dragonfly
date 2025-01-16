@@ -80,9 +80,19 @@ var _ = AfterSuite(func() {
 			fmt.Printf("------------------------------ Get %s-%d Artifact Finished ------------------------------\n", server.Name, i)
 		}
 	}
+
+	// Clean up file server.
+	if err := util.GetFileServer().Purge(); err != nil {
+		fmt.Printf("failed to purge the e2e file server: %v\n", err)
+	}
+
 })
 
 var _ = BeforeSuite(func() {
+	fs, err := util.NewFileServer()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(fs).NotTo(BeNil())
+
 	rawGitCommit, err := util.GitCommand("rev-parse", "--short", "HEAD").CombinedOutput()
 	Expect(err).NotTo(HaveOccurred())
 	gitCommit := strings.Fields(string(rawGitCommit))[0]
