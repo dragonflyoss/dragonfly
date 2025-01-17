@@ -1602,7 +1602,6 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			defer ctl.Finish()
 			scheduling := schedulingmocks.NewMockScheduling(ctl)
 			resource := standard.NewMockResource(ctl)
-			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 
 			hostManager := standard.NewMockHostManager(ctl)
@@ -1611,7 +1610,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
 			mockPeer := standard.NewPeer(mockSeedPeerID, mockTask, host)
-			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, dynconfig)
+			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, nil, scheduling, dynconfig)
 
 			tc.mock(host, mockPeer, hostManager, resource.EXPECT(), hostManager.EXPECT())
 			tc.expect(t, mockPeer, svc.DeleteHost(context.Background(), &schedulerv2.DeleteHostRequest{HostId: mockHostID}))

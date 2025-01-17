@@ -25,7 +25,6 @@ import (
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/pkg/digest"
 )
 
 const (
@@ -71,9 +70,6 @@ type Task struct {
 	// when the task is deleted by the user.
 	PersistentReplicaCount uint64
 
-	// Digest of the persistent cache task content, for example md5:xxx or sha256:yyy.
-	Digest *digest.Digest
-
 	// Tag is used to distinguish different persistent cache tasks.
 	Tag string
 
@@ -107,17 +103,16 @@ type Task struct {
 
 // New persistent cache task instance.
 func NewTask(id, tag, application, state string, persistentReplicaCount uint64, pieceLength int32,
-	contentLength int64, totalPieceCount int32, digest *digest.Digest, ttl time.Duration, createdAt, updatedAt time.Time,
+	contentLength int64, totalPieceCount int32, ttl time.Duration, createdAt, updatedAt time.Time,
 	log *logger.SugaredLoggerOnWith) *Task {
 	t := &Task{
 		ID:                     id,
 		PersistentReplicaCount: persistentReplicaCount,
-		Digest:                 digest,
 		Tag:                    tag,
 		Application:            application,
 		ContentLength:          contentLength,
 		TotalPieceCount:        totalPieceCount,
-		TTL:                    time.Hour * 24,
+		TTL:                    ttl,
 		CreatedAt:              createdAt,
 		UpdatedAt:              updatedAt,
 		Log:                    logger.WithTaskID(id),

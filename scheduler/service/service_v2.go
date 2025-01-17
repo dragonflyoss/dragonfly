@@ -975,6 +975,19 @@ func (v *V2) DeleteHost(ctx context.Context, req *schedulerv2.DeleteHostRequest)
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(req.GetHostId())
+
+	// Handle the persistent cache host for deletion.
+	if v.persistentCacheResource != nil {
+		if err := v.persistentCacheResource.PeerManager().DeleteAllByHostID(ctx, req.GetHostId()); err != nil {
+			log.Errorf("delete persistent cache peers failed: %s", err)
+		}
+
+		if err := v.persistentCacheResource.HostManager().Delete(ctx, req.GetHostId()); err != nil {
+			log.Errorf("delete persistent cache host failed: %s", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1747,7 +1760,6 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 					PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
 					CurrentPersistentReplicaCount: uint64(currentPersistentReplicaCount),
 					CurrentReplicaCount:           uint64(currentReplicaCount),
-					Digest:                        parent.Task.Digest.String(),
 					Tag:                           &parent.Task.Tag,
 					Application:                   &parent.Task.Application,
 					PieceLength:                   uint64(parent.Task.PieceLength),
@@ -1830,6 +1842,7 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 				CreatedAt: timestamppb.New(parent.CreatedAt),
 				UpdatedAt: timestamppb.New(parent.UpdatedAt),
 			})
+
 		}
 
 		// Update metadata of the persistent cache task.
@@ -1941,7 +1954,6 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 				PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
 				CurrentPersistentReplicaCount: uint64(currentPersistentReplicaCount),
 				CurrentReplicaCount:           uint64(currentReplicaCount),
-				Digest:                        parent.Task.Digest.String(),
 				Tag:                           &parent.Task.Tag,
 				Application:                   &parent.Task.Application,
 				PieceLength:                   uint64(parent.Task.PieceLength),
@@ -2201,7 +2213,6 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 			PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
 			CurrentPersistentReplicaCount: uint64(currentPersistentReplicaCount),
 			CurrentReplicaCount:           uint64(currentReplicaCount),
-			Digest:                        peer.Task.Digest.String(),
 			Tag:                           &peer.Task.Tag,
 			Application:                   &peer.Task.Application,
 			PieceLength:                   uint64(peer.Task.PieceLength),
@@ -2321,14 +2332,8 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 		return status.Errorf(codes.FailedPrecondition, "persistent cache task %s is %s cannot upload", task.ID, task.FSM.Current())
 	}
 
-	digest, err := digest.Parse(req.GetDigest())
-	if err != nil {
-		log.Errorf("parse digest %s error %s", req.GetDigest(), err)
-		return status.Errorf(codes.InvalidArgument, err.Error())
-	}
-
 	task = persistentcache.NewTask(req.GetTaskId(), req.GetTag(), req.GetApplication(), persistentcache.TaskStatePending, req.GetPersistentReplicaCount(),
-		int32(req.GetPieceLength()), int64(req.GetContentLength()), int32(req.GetPieceCount()), digest, req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
+		int32(req.GetPieceLength()), int64(req.GetContentLength()), int32(req.GetPieceCount()), req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
 
 	if err := task.FSM.Event(ctx, persistentcache.TaskEventUpload); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
@@ -2341,13 +2346,12 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 	}
 
 	// Handle peer with task started request, new peer and store it.
-	peer, loaded := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId())
-	if loaded {
+	if peer, loaded := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId()); loaded {
 		log.Error("persistent cache peer already exists")
 		return status.Errorf(codes.AlreadyExists, "persistent cache peer %s already exists", peer.ID)
 	}
 
-	peer = persistentcache.NewPeer(req.GetPeerId(), persistentcache.PeerStatePending, true, bitset.New(uint(req.GetPieceCount())), nil, task, host, 0, time.Now(), time.Now(), log)
+	peer := persistentcache.NewPeer(req.GetPeerId(), persistentcache.PeerStatePending, true, bitset.New(uint(req.GetPieceCount())), nil, task, host, 0, time.Now(), time.Now(), log)
 
 	if err := peer.FSM.Event(ctx, persistentcache.PeerEventUpload); err != nil {
 		log.Errorf("peer fsm event failed: %s", err.Error())
@@ -2420,7 +2424,6 @@ func (v *V2) UploadPersistentCacheTaskFinished(ctx context.Context, req *schedul
 		PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
 		CurrentPersistentReplicaCount: uint64(currentPersistentReplicaCount),
 		CurrentReplicaCount:           uint64(currentReplicaCount),
-		Digest:                        peer.Task.Digest.String(),
 		Tag:                           &peer.Task.Tag,
 		Application:                   &peer.Task.Application,
 		PieceLength:                   uint64(peer.Task.PieceLength),
@@ -2502,7 +2505,6 @@ func (v *V2) StatPersistentCacheTask(ctx context.Context, req *schedulerv2.StatP
 		PersistentReplicaCount:        task.PersistentReplicaCount,
 		CurrentPersistentReplicaCount: uint64(currentPersistentReplicaCount),
 		CurrentReplicaCount:           uint64(currentReplicaCount),
-		Digest:                        task.Digest.String(),
 		Tag:                           &task.Tag,
 		Application:                   &task.Application,
 		PieceLength:                   uint64(task.PieceLength),

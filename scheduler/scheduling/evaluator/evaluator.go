@@ -69,7 +69,7 @@ type Evaluator interface {
 	// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
 	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount int32) []*persistentcache.Peer
 
-	// IsBadParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+	// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
 	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool
 }
 
@@ -130,7 +130,7 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	return isBadParent
 }
 
-// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
 func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
 	if peer.FSM.Is(persistentcache.PeerStatePending) || peer.FSM.Is(persistentcache.PeerStateUploading) || peer.FSM.Is(persistentcache.PeerStateReceivedEmpty) ||
 		peer.FSM.Is(persistentcache.PeerStateReceivedNormal) || peer.FSM.Is(persistentcache.PeerStateFailed) {

@@ -22,20 +22,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
 	redis "github.com/redis/go-redis/v9"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
-	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -191,7 +186,7 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 			"block_parents", blockParents,
 			"task_id", peer.Task.ID,
 			"host_id", peer.Host.ID,
-			"ttl", peer.Cost,
+			"cost", peer.Cost,
 			"created_at", peer.CreatedAt.Format(time.RFC3339),
 			"updated_at", peer.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
 			peer.Log.Errorf("store peer failed: %v", err)
@@ -358,18 +353,6 @@ func (p *peerManager) DeleteAllByTaskID(ctx context.Context, taskID string) erro
 	}
 
 	for _, peer := range peers {
-		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.Port)
-		client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, grpc.WithTransportCredentials(p.transportCredentials))
-		if err != nil {
-			log.Errorf("get dfdaemon client failed: %v", err)
-			continue
-		}
-
-		if err := client.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: taskID}); err != nil {
-			log.Errorf("delete task %s failed", taskID)
-			continue
-		}
-
 		if err := p.Delete(ctx, peer.ID); err != nil {
 			log.Errorf("delete peer %s failed", peer.ID)
 			continue
@@ -412,18 +395,6 @@ func (p *peerManager) DeleteAllByHostID(ctx context.Context, hostID string) erro
 	}
 
 	for _, peer := range peers {
-		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.Port)
-		client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, grpc.WithTransportCredentials(p.transportCredentials))
-		if err != nil {
-			log.Errorf("get dfdaemon client failed: %v", err)
-			continue
-		}
-
-		if err := client.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID}); err != nil {
-			log.Errorf("delete task %s failed", peer.Task.ID)
-			continue
-		}
-
 		if err := p.Delete(ctx, peer.ID); err != nil {
 			log.Errorf("delete peer %s failed", peer.ID)
 			continue

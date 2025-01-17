@@ -83,7 +83,7 @@ func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.P
 		locationAffinityWeight*e.calculateMultiElementAffinityScore(parentLocation, childLocation)
 }
 
-// EvaluateParents sort parents by evaluating multiple feature scores.
+// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
 func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, totalPieceCount int32) []*persistentcache.Peer {
 	sort.Slice(
 		parents,

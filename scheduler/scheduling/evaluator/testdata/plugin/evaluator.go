@@ -38,7 +38,7 @@ func (e *evaluator) EvaluatePersistentCacheParents(parents []*persistentcache.Pe
 	return []*persistentcache.Peer{&persistentcache.Peer{}}
 }
 
-// IsBadParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
 func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
 	return true
 }
