@@ -126,13 +126,18 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				return err
 			}
 		case *schedulerv2.AnnouncePeerRequest_ReschedulePeerRequest:
-			rescheduleRequest := announcePeerRequest.ReschedulePeerRequest
-
-			log.Infof("receive RescheduleRequest description: %s", rescheduleRequest.GetDescription())
-			if err := v.handleRescheduleRequest(ctx, req.GetPeerId(), rescheduleRequest.GetCandidateParents()); err != nil {
+			reschedulePeerRequest := announcePeerRequest.ReschedulePeerRequest
+			log.Infof("receive ReschedulePeerRequestescription: %s", reschedulePeerRequest.GetDescription())
+			if err := v.handleReschedulePeerRequest(ctx, req.GetPeerId(), reschedulePeerRequest.GetCandidateParents()); err != nil {
 				log.Error(err)
 				return err
 			}
+		case *schedulerv2.AnnouncePeerRequest_ReschedulePeerFailedRequest:
+			reschedulePeerFailedRequest := announcePeerRequest.ReschedulePeerFailedRequest
+			log.Infof("receive ReschedulePeerFailedRequest description: %s", reschedulePeerFailedRequest.GetDescription())
+
+			// If the task is reschedule failed, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerFinishedRequest:
 			downloadPeerFinishedRequest := announcePeerRequest.DownloadPeerFinishedRequest
 			log.Infof("receive DownloadPeerFinishedRequest, content length: %d, piece count: %d", downloadPeerFinishedRequest.GetContentLength(), downloadPeerFinishedRequest.GetPieceCount())
@@ -141,6 +146,9 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 				return err
 			}
+
+			// If the task is succeeded, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerBackToSourceFinishedRequest:
 			downloadPeerBackToSourceFinishedRequest := announcePeerRequest.DownloadPeerBackToSourceFinishedRequest
 			log.Infof("receive DownloadPeerBackToSourceFinishedRequest, content length: %d, piece count: %d", downloadPeerBackToSourceFinishedRequest.GetContentLength(), downloadPeerBackToSourceFinishedRequest.GetPieceCount())
@@ -149,6 +157,9 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 				return err
 			}
+
+			// If the task is back-to-source succeeded, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerFailedRequest:
 			log.Infof("receive DownloadPeerFailedRequest, description: %s", announcePeerRequest.DownloadPeerFailedRequest.GetDescription())
 			// Notice: Handler uses context.Background() to avoid stream cancel by dfdameon.
@@ -163,6 +174,9 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 				return err
 			}
+
+			// If the task is back-to-source failed, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPieceFinishedRequest:
 			piece := announcePeerRequest.DownloadPieceFinishedRequest.Piece
 			log.Infof("receive DownloadPieceFinishedRequest, piece number: %d, piece length: %d, traffic type: %s, cost: %s, parent id: %s", piece.GetNumber(), piece.GetLength(), piece.GetTrafficType(), piece.GetCost().AsDuration().String(), piece.GetParentId())
@@ -1068,7 +1082,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 		}
 
 		if err := peer.FSM.Event(ctx, standard.PeerEventRegisterEmpty); err != nil {
-			return status.Errorf(codes.Internal, err.Error())
+			return status.Error(codes.Internal, err.Error())
 		}
 
 		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
@@ -1157,8 +1171,8 @@ func (v *V2) handleDownloadPeerBackToSourceStartedRequest(ctx context.Context, p
 	return nil
 }
 
-// handleRescheduleRequest handles RescheduleRequest of AnnouncePeerRequest.
-func (v *V2) handleRescheduleRequest(_ context.Context, peerID string, candidateParents []*commonv2.Peer) error {
+// handleReschedulePeerRequest handles ReschedulePeerRequest of AnnouncePeerRequest.
+func (v *V2) handleReschedulePeerRequest(_ context.Context, peerID string, candidateParents []*commonv2.Peer) error {
 	peer, loaded := v.resource.PeerManager().Load(peerID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
@@ -1304,7 +1318,7 @@ func (v *V2) handleDownloadPieceFinishedRequest(peerID string, req *schedulerv2.
 	if len(req.Piece.GetDigest()) > 0 {
 		d, err := digest.Parse(req.Piece.GetDigest())
 		if err != nil {
-			return status.Errorf(codes.InvalidArgument, err.Error())
+			return status.Error(codes.InvalidArgument, err.Error())
 		}
 
 		piece.Digest = d
@@ -1367,7 +1381,7 @@ func (v *V2) handleDownloadPieceBackToSourceFinishedRequest(_ context.Context, p
 	if len(req.Piece.GetDigest()) > 0 {
 		d, err := digest.Parse(req.Piece.GetDigest())
 		if err != nil {
-			return status.Errorf(codes.InvalidArgument, err.Error())
+			return status.Error(codes.InvalidArgument, err.Error())
 		}
 
 		piece.Digest = d
@@ -1619,18 +1633,26 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 			}
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_ReschedulePersistentCachePeerRequest:
 			reschedulePersistentCachePeerRequest := announcePersistentCachePeerRequest.ReschedulePersistentCachePeerRequest
-
 			log.Info("receive ReschedulePersistentCachePeerRequest")
 			if err := v.handleReschedulePersistentCachePeerRequest(ctx, stream, req.GetTaskId(), req.GetPeerId(), reschedulePersistentCachePeerRequest); err != nil {
 				log.Error(err)
 				return err
 			}
+		case *schedulerv2.AnnouncePersistentCachePeerRequest_ReschedulePersistentCachePeerFailedRequest:
+			reschedulePersistentCachePeerFailedRequest := announcePersistentCachePeerRequest.ReschedulePersistentCachePeerFailedRequest
+			log.Infof("receive ReschedulePeerFailedRequest description: %s", reschedulePersistentCachePeerFailedRequest.GetDescription())
+
+			// If the task is reschedule failed, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPersistentCachePeerFinishedRequest:
 			log.Info("receive DownloadPersistentCachePeerFinishedRequest")
 			if err := v.handleDownloadPersistentCachePeerFinishedRequest(ctx, req.GetPeerId()); err != nil {
 				log.Error(err)
 				return err
 			}
+
+			// If the task is succeeded, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPersistentCachePeerFailedRequest:
 			log.Info("receive DownloadPersistentCachePeerFailedRequest")
 			if err := v.handleDownloadPersistentCachePeerFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -2183,6 +2205,8 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 	}
 
 	log := logger.WithPeer(req.HostId, req.TaskId, req.PeerId)
+	log.Info("stat persistent cache peer")
+
 	peer, loaded := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId())
 	if !loaded {
 		log.Errorf("persistent cache peer %s not found", req.GetPeerId())
@@ -2192,13 +2216,13 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 	currentPersistentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current persistent replica count failed %s", err.Error())
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err.Error())
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &commonv2.PersistentCachePeer{
@@ -2302,9 +2326,11 @@ func (v *V2) DeletePersistentCachePeer(ctx context.Context, req *schedulerv2.Del
 	}
 
 	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("delete persistent cache peer")
+
 	if err := v.persistentCacheResource.PeerManager().Delete(ctx, req.GetPeerId()); err != nil {
 		log.Errorf("delete persistent cache peer %s error %s", req.GetPeerId(), err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	// TODO(gaius) Implement copy replica to the other peers.
@@ -2319,6 +2345,8 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 	}
 
 	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent cache task started")
+
 	host, loaded := v.persistentCacheResource.HostManager().Load(ctx, req.GetHostId())
 	if !loaded {
 		log.Error("host not found")
@@ -2337,12 +2365,12 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 
 	if err := task.FSM.Event(ctx, persistentcache.TaskEventUpload); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err := v.persistentCacheResource.TaskManager().Store(ctx, task); err != nil {
 		log.Errorf("store persistent cache task %s error %s", task.ID, err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	// Handle peer with task started request, new peer and store it.
@@ -2355,12 +2383,12 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 
 	if err := peer.FSM.Event(ctx, persistentcache.PeerEventUpload); err != nil {
 		log.Errorf("peer fsm event failed: %s", err.Error())
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err := v.persistentCacheResource.PeerManager().Store(ctx, peer); err != nil {
 		log.Errorf("store persistent cache peer %s error %s", peer.ID, err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
@@ -2373,6 +2401,8 @@ func (v *V2) UploadPersistentCacheTaskFinished(ctx context.Context, req *schedul
 	}
 
 	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent cache task finished")
+
 	// Handle peer with task finished request, load peer and update it.
 	peer, loaded := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId())
 	if !loaded {
@@ -2383,38 +2413,38 @@ func (v *V2) UploadPersistentCacheTaskFinished(ctx context.Context, req *schedul
 	peer.FinishedPieces.SetAll()
 	if err := peer.FSM.Event(ctx, persistentcache.PeerEventSucceeded); err != nil {
 		log.Errorf("peer fsm event failed: %s", err.Error())
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	peer.Cost = time.Since(peer.CreatedAt)
 	peer.UpdatedAt = time.Now()
 
 	if err := v.persistentCacheResource.PeerManager().Store(ctx, peer); err != nil {
 		log.Errorf("store persistent cache peer %s error %s", peer.ID, err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Handle task with peer finished request, load task and update it.
 	if err := peer.Task.FSM.Event(ctx, persistentcache.TaskEventSucceeded); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	peer.Task.UpdatedAt = time.Now()
 
 	if err := v.persistentCacheResource.TaskManager().Store(ctx, peer.Task); err != nil {
 		log.Errorf("store persistent cache task %s error %s", peer.Task.ID, err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	currentPersistentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current persistent replica count failed %s", err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// TODO(gaius) Implement copy multiple replicas to the other peers.
@@ -2442,6 +2472,8 @@ func (v *V2) UploadPersistentCacheTaskFailed(ctx context.Context, req *scheduler
 	}
 
 	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent cache task failed")
+
 	// Handle peer with task failed request, load peer and update it.
 	peer, loaded := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId())
 	if !loaded {
@@ -2451,25 +2483,25 @@ func (v *V2) UploadPersistentCacheTaskFailed(ctx context.Context, req *scheduler
 
 	if err := peer.FSM.Event(ctx, persistentcache.PeerEventFailed); err != nil {
 		log.Errorf("peer fsm event failed: %s", err.Error())
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 	peer.UpdatedAt = time.Now()
 
 	if err := v.persistentCacheResource.PeerManager().Store(ctx, peer); err != nil {
 		log.Errorf("store persistent cache peer %s error %s", peer.ID, err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	// Handle task with peer failed request, load task and update it.
 	if err := peer.Task.FSM.Event(ctx, persistentcache.TaskEventSucceeded); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 	peer.Task.UpdatedAt = time.Now()
 
 	if err := v.persistentCacheResource.TaskManager().Store(ctx, peer.Task); err != nil {
 		log.Errorf("store persistent cache task %s error %s", peer.Task.ID, err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
@@ -2482,6 +2514,8 @@ func (v *V2) StatPersistentCacheTask(ctx context.Context, req *schedulerv2.StatP
 	}
 
 	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
+	log.Info("stat persistent cache task")
+
 	task, loaded := v.persistentCacheResource.TaskManager().Load(ctx, req.GetTaskId())
 	if !loaded {
 		log.Errorf("persistent cache task %s not found", req.GetTaskId())
@@ -2491,13 +2525,13 @@ func (v *V2) StatPersistentCacheTask(ctx context.Context, req *schedulerv2.StatP
 	currentPersistentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, task.ID)
 	if err != nil {
 		log.Errorf("load current persistent replica count failed %s", err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err)
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &commonv2.PersistentCacheTask{
@@ -2523,13 +2557,15 @@ func (v *V2) DeletePersistentCacheTask(ctx context.Context, req *schedulerv2.Del
 	}
 
 	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
+	log.Info("delete persistent cache task")
+
 	if err := v.persistentCacheResource.PeerManager().DeleteAllByTaskID(ctx, req.GetTaskId()); err != nil {
 		log.Errorf("delete persistent cache peers by task %s error %s", req.GetTaskId(), err)
 	}
 
 	if err := v.persistentCacheResource.TaskManager().Delete(ctx, req.GetTaskId()); err != nil {
 		log.Errorf("delete persistent cache task %s error %s", req.GetTaskId(), err)
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
