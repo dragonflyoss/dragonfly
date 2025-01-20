@@ -2329,7 +2329,7 @@ func (v *V2) UploadPersistentCacheTaskStarted(ctx context.Context, req *schedule
 	task, loaded := v.persistentCacheResource.TaskManager().Load(ctx, req.GetTaskId())
 	if loaded && !task.FSM.Can(persistentcache.TaskEventUpload) {
 		log.Errorf("persistent cache task %s is %s cannot upload", task.ID, task.FSM.Current())
-		return status.Errorf(codes.FailedPrecondition, "persistent cache task %s is %s cannot upload", task.ID, task.FSM.Current())
+		return status.Errorf(codes.AlreadyExists, "persistent cache task %s is %s cannot upload", task.ID, task.FSM.Current())
 	}
 
 	task = persistentcache.NewTask(req.GetTaskId(), req.GetTag(), req.GetApplication(), persistentcache.TaskStatePending, req.GetPersistentReplicaCount(),
