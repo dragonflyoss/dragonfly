@@ -3,7 +3,7 @@ module d7y.io/dragonfly/v2
 go 1.23.0
 
 require (
-	cloud.google.com/go/storage v1.49.0
+	cloud.google.com/go/storage v1.50.0
 	d7y.io/api/v2 v2.1.10
 	github.com/MysteriousPotato/go-lockable v1.0.0
 	github.com/RichardKnop/machinery v1.10.8
@@ -151,8 +151,7 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 // indirect
-	github.com/envoyproxy/go-control-plane/envoy v1.32.2 // indirect
-	github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 // indirect
+	github.com/envoyproxy/go-control-plane/envoy v1.32.3 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
