@@ -132,17 +132,10 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 				return err
 			}
-		case *schedulerv2.AnnouncePeerRequest_ReschedulePeerFailedRequest:
-			reschedulePeerFailedRequest := announcePeerRequest.ReschedulePeerFailedRequest
-			log.Infof("receive ReschedulePeerFailedRequest description: %s", reschedulePeerFailedRequest.GetDescription())
-
-			// If the task is reschedule failed, return nil directly and close the stream.
-			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerFinishedRequest:
 			downloadPeerFinishedRequest := announcePeerRequest.DownloadPeerFinishedRequest
 			log.Infof("receive DownloadPeerFinishedRequest, content length: %d, piece count: %d", downloadPeerFinishedRequest.GetContentLength(), downloadPeerFinishedRequest.GetPieceCount())
-			// Notice: Handler uses context.Background() to avoid stream cancel by dfdameon.
-			if err := v.handleDownloadPeerFinishedRequest(context.Background(), req.GetPeerId()); err != nil {
+			if err := v.handleDownloadPeerFinishedRequest(ctx, req.GetPeerId()); err != nil {
 				log.Error(err)
 				return err
 			}
@@ -152,8 +145,7 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerBackToSourceFinishedRequest:
 			downloadPeerBackToSourceFinishedRequest := announcePeerRequest.DownloadPeerBackToSourceFinishedRequest
 			log.Infof("receive DownloadPeerBackToSourceFinishedRequest, content length: %d, piece count: %d", downloadPeerBackToSourceFinishedRequest.GetContentLength(), downloadPeerBackToSourceFinishedRequest.GetPieceCount())
-			// Notice: Handler uses context.Background() to avoid stream cancel by dfdameon.
-			if err := v.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), req.GetPeerId(), downloadPeerBackToSourceFinishedRequest); err != nil {
+			if err := v.handleDownloadPeerBackToSourceFinishedRequest(ctx, req.GetPeerId(), downloadPeerBackToSourceFinishedRequest); err != nil {
 				log.Error(err)
 				return err
 			}
@@ -167,10 +159,12 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 				return err
 			}
+
+			// If the task is failed, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerBackToSourceFailedRequest:
 			log.Infof("receive DownloadPeerBackToSourceFailedRequest, description: %s", announcePeerRequest.DownloadPeerBackToSourceFailedRequest.GetDescription())
-			// Notice: Handler uses context.Background() to avoid stream cancel by dfdameon.
-			if err := v.handleDownloadPeerBackToSourceFailedRequest(context.Background(), req.GetPeerId()); err != nil {
+			if err := v.handleDownloadPeerBackToSourceFailedRequest(ctx, req.GetPeerId()); err != nil {
 				log.Error(err)
 				return err
 			}
@@ -1638,12 +1632,6 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 				log.Error(err)
 				return err
 			}
-		case *schedulerv2.AnnouncePersistentCachePeerRequest_ReschedulePersistentCachePeerFailedRequest:
-			reschedulePersistentCachePeerFailedRequest := announcePersistentCachePeerRequest.ReschedulePersistentCachePeerFailedRequest
-			log.Infof("receive ReschedulePeerFailedRequest description: %s", reschedulePersistentCachePeerFailedRequest.GetDescription())
-
-			// If the task is reschedule failed, return nil directly and close the stream.
-			return nil
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPersistentCachePeerFinishedRequest:
 			log.Info("receive DownloadPersistentCachePeerFinishedRequest")
 			if err := v.handleDownloadPersistentCachePeerFinishedRequest(ctx, req.GetPeerId()); err != nil {
@@ -1659,6 +1647,9 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 				log.Error(err)
 				return err
 			}
+
+			// If the task is failed, return nil directly and close the stream.
+			return nil
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPieceFinishedRequest:
 			downloadPieceFinishedRequest := announcePersistentCachePeerRequest.DownloadPieceFinishedRequest
 

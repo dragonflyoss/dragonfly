@@ -2122,7 +2122,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
+				assert.ErrorIs(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
 			},
 		},
 		{
@@ -2136,7 +2136,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Error(codes.FailedPrecondition, "foo"))
+				assert.ErrorIs(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Error(codes.FailedPrecondition, "foo"))
 			},
 		},
 		{
@@ -2150,7 +2150,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.NoError(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}))
+				assert.NoError(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}))
 			},
 		},
 	}
