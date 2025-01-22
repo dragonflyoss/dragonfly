@@ -51,6 +51,9 @@ type PeerManager interface {
 	// LoadAllByTaskID returns all peers by task id.
 	LoadAllByTaskID(context.Context, string) ([]*Peer, error)
 
+	// LoadPersistentAllByTaskID returns all persistent peers by task id.
+	LoadPersistentAllByTaskID(context.Context, string) ([]*Peer, error)
+
 	// DeleteAllByTaskID deletes all peers by task id.
 	DeleteAllByTaskID(context.Context, string) error
 
@@ -242,7 +245,7 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 func (p *peerManager) Delete(ctx context.Context, peerID string) error {
 	log := logger.WithPeerID(peerID)
 	if _, err := p.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		rawPeer, err := p.rdb.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
+		rawPeer, err := pipe.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
 		if err != nil {
 			return errors.New("getting peer failed from redis")
 		}
@@ -324,6 +327,29 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Peer, error) {
 	log := logger.WithTaskID(taskID)
 	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	if err != nil {
+		log.Error("get peer ids failed")
+		return nil, err
+	}
+
+	peers := make([]*Peer, 0, len(peerIDs))
+	for _, peerID := range peerIDs {
+		peer, loaded := p.Load(ctx, peerID)
+		if !loaded {
+			log.Errorf("load peer %s failed", peerID)
+			continue
+		}
+
+		peers = append(peers, peer)
+	}
+
+	return peers, nil
+}
+
+// LoadPersistentAllByTaskID returns all persistent cache peers by task id.
+func (p *peerManager) LoadPersistentAllByTaskID(ctx context.Context, taskID string) ([]*Peer, error) {
+	log := logger.WithTaskID(taskID)
+	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
 	if err != nil {
 		log.Error("get peer ids failed")
 		return nil, err

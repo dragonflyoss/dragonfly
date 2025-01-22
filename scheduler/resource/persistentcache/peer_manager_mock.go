@@ -142,6 +142,21 @@ func (mr *MockPeerManagerMockRecorder) LoadAllByTaskID(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllByTaskID", reflect.TypeOf((*MockPeerManager)(nil).LoadAllByTaskID), arg0, arg1)
 }
 
+// LoadPersistentAllByTaskID mocks base method.
+func (m *MockPeerManager) LoadPersistentAllByTaskID(arg0 context.Context, arg1 string) ([]*Peer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadPersistentAllByTaskID", arg0, arg1)
+	ret0, _ := ret[0].([]*Peer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadPersistentAllByTaskID indicates an expected call of LoadPersistentAllByTaskID.
+func (mr *MockPeerManagerMockRecorder) LoadPersistentAllByTaskID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadPersistentAllByTaskID", reflect.TypeOf((*MockPeerManager)(nil).LoadPersistentAllByTaskID), arg0, arg1)
+}
+
 // Store mocks base method.
 func (m *MockPeerManager) Store(arg0 context.Context, arg1 *Peer) error {
 	m.ctrl.T.Helper()

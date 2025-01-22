@@ -77,13 +77,13 @@ type Task struct {
 	Application string
 
 	// Persistet cache task piece length.
-	PieceLength int32
+	PieceLength uint64
 
 	// ContentLength is persistent cache task total content length.
-	ContentLength int64
+	ContentLength uint64
 
 	// TotalPieceCount is total piece count.
-	TotalPieceCount int32
+	TotalPieceCount uint32
 
 	// Persistent cache task state machine.
 	FSM *fsm.FSM
@@ -102,8 +102,8 @@ type Task struct {
 }
 
 // New persistent cache task instance.
-func NewTask(id, tag, application, state string, persistentReplicaCount uint64, pieceLength int32,
-	contentLength int64, totalPieceCount int32, ttl time.Duration, createdAt, updatedAt time.Time,
+func NewTask(id, tag, application, state string, persistentReplicaCount, pieceLength, contentLength uint64,
+	totalPieceCount uint32, ttl time.Duration, createdAt, updatedAt time.Time,
 	log *logger.SugaredLoggerOnWith) *Task {
 	t := &Task{
 		ID:                     id,

@@ -88,19 +88,19 @@ func (mr *MockSchedulingMockRecorder) FindParentAndCandidateParents(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindParentAndCandidateParents", reflect.TypeOf((*MockScheduling)(nil).FindParentAndCandidateParents), arg0, arg1, arg2)
 }
 
-// FindReplicatePersistentCacheParents mocks base method.
-func (m *MockScheduling) FindReplicatePersistentCacheParents(arg0 context.Context, arg1 *persistentcache.Task, arg2 set.SafeSet[string]) ([]*persistentcache.Peer, bool) {
+// FindReplicatePersistentCacheHosts mocks base method.
+func (m *MockScheduling) FindReplicatePersistentCacheHosts(arg0 context.Context, arg1 *persistentcache.Task, arg2 set.SafeSet[string]) ([]*persistentcache.Host, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindReplicatePersistentCacheParents", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*persistentcache.Peer)
+	ret := m.ctrl.Call(m, "FindReplicatePersistentCacheHosts", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*persistentcache.Host)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
-// FindReplicatePersistentCacheParents indicates an expected call of FindReplicatePersistentCacheParents.
-func (mr *MockSchedulingMockRecorder) FindReplicatePersistentCacheParents(arg0, arg1, arg2 any) *gomock.Call {
+// FindReplicatePersistentCacheHosts indicates an expected call of FindReplicatePersistentCacheHosts.
+func (mr *MockSchedulingMockRecorder) FindReplicatePersistentCacheHosts(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicatePersistentCacheParents", reflect.TypeOf((*MockScheduling)(nil).FindReplicatePersistentCacheParents), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicatePersistentCacheHosts", reflect.TypeOf((*MockScheduling)(nil).FindReplicatePersistentCacheHosts), arg0, arg1, arg2)
 }
 
 // FindSuccessParent mocks base method.

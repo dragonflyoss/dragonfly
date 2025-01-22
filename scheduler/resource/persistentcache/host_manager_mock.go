@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	set "d7y.io/dragonfly/v2/pkg/container/set"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -82,6 +83,21 @@ func (m *MockHostManager) LoadAll(arg0 context.Context) ([]*Host, error) {
 func (mr *MockHostManagerMockRecorder) LoadAll(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAll", reflect.TypeOf((*MockHostManager)(nil).LoadAll), arg0)
+}
+
+// LoadRandom mocks base method.
+func (m *MockHostManager) LoadRandom(arg0 context.Context, arg1 int, arg2 set.SafeSet[string]) ([]*Host, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadRandom", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*Host)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadRandom indicates an expected call of LoadRandom.
+func (mr *MockHostManagerMockRecorder) LoadRandom(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadRandom", reflect.TypeOf((*MockHostManager)(nil).LoadRandom), arg0, arg1, arg2)
 }
 
 // RunGC mocks base method.

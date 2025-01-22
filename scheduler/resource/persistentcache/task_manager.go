@@ -36,10 +36,10 @@ type TaskManager interface {
 	Load(context.Context, string) (*Task, bool)
 
 	// LoadCorrentReplicaCount returns current replica count of the persistent cache task.
-	LoadCorrentReplicaCount(context.Context, string) (int64, error)
+	LoadCorrentReplicaCount(context.Context, string) (uint64, error)
 
 	// LoadCurrentPersistentReplicaCount returns current persistent replica count of the persistent cache task.
-	LoadCurrentPersistentReplicaCount(context.Context, string) (int64, error)
+	LoadCurrentPersistentReplicaCount(context.Context, string) (uint64, error)
 
 	// Store sets persistent cache task.
 	Store(context.Context, *Task) error
@@ -85,19 +85,19 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 		return nil, false
 	}
 
-	pieceLength, err := strconv.ParseInt(rawTask["piece_length"], 10, 32)
+	pieceLength, err := strconv.ParseUint(rawTask["piece_length"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing piece length failed: %v", err)
 		return nil, false
 	}
 
-	contentLength, err := strconv.ParseInt(rawTask["content_length"], 10, 64)
+	contentLength, err := strconv.ParseUint(rawTask["content_length"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing content length failed: %v", err)
 		return nil, false
 	}
 
-	totalPieceCount, err := strconv.ParseInt(rawTask["total_piece_count"], 10, 32)
+	totalPieceCount, err := strconv.ParseUint(rawTask["total_piece_count"], 10, 32)
 	if err != nil {
 		log.Errorf("parsing total piece count failed: %v", err)
 		return nil, false
@@ -128,9 +128,9 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 		rawTask["application"],
 		rawTask["state"],
 		persistentReplicaCount,
-		int32(pieceLength),
+		pieceLength,
 		contentLength,
-		int32(totalPieceCount),
+		uint32(totalPieceCount),
 		time.Duration(ttl),
 		createdAt,
 		updatedAt,
@@ -139,13 +139,15 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 }
 
 // LoadCorrentReplicaCount returns current replica count of the persistent cache task.
-func (t *taskManager) LoadCorrentReplicaCount(ctx context.Context, taskID string) (int64, error) {
-	return t.rdb.SCard(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+func (t *taskManager) LoadCorrentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
+	count, err := t.rdb.SCard(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	return uint64(count), err
 }
 
 // LoadCurrentPersistentReplicaCount returns current persistent replica count of the persistent cache task.
-func (t *taskManager) LoadCurrentPersistentReplicaCount(ctx context.Context, taskID string) (int64, error) {
-	return t.rdb.SCard(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+func (t *taskManager) LoadCurrentPersistentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
+	count, err := t.rdb.SCard(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	return uint64(count), err
 }
 
 // Store sets persistent cache task.

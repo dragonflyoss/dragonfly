@@ -176,7 +176,7 @@ func TestEvaluatorBase_EvaluateParents(t *testing.T) {
 		name            string
 		parents         []*resource.Peer
 		child           *resource.Peer
-		totalPieceCount int32
+		totalPieceCount uint32
 		mock            func(parent []*resource.Peer, child *resource.Peer)
 		expect          func(t *testing.T, parents []*resource.Peer)
 	}{
@@ -340,7 +340,7 @@ func TestEvaluatorBase_evaluate(t *testing.T) {
 		name            string
 		parent          *resource.Peer
 		child           *resource.Peer
-		totalPieceCount int32
+		totalPieceCount uint32
 		mock            func(parent *resource.Peer, child *resource.Peer)
 		expect          func(t *testing.T, score float64)
 	}{
@@ -406,7 +406,7 @@ func TestEvaluatorBase_calculatePieceScore(t *testing.T) {
 		name            string
 		parent          *resource.Peer
 		child           *resource.Peer
-		totalPieceCount int32
+		totalPieceCount uint32
 		mock            func(parent *resource.Peer, child *resource.Peer)
 		expect          func(t *testing.T, score float64)
 	}{

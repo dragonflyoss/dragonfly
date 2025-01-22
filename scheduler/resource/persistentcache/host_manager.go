@@ -20,12 +20,14 @@ package persistentcache
 
 import (
 	"context"
+	"math/rand"
 	"strconv"
 	"time"
 
 	redis "github.com/redis/go-redis/v9"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/pkg/container/set"
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
@@ -50,6 +52,9 @@ type HostManager interface {
 
 	// LoadAll returns all hosts.
 	LoadAll(context.Context) ([]*Host, error)
+
+	// LoadRandom loads host randomly through the set of redis.
+	LoadRandom(context.Context, int, set.SafeSet[string]) ([]*Host, error)
 
 	// RunGC runs garbage collection.
 	RunGC() error
@@ -446,74 +451,102 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 
 // Store sets host.
 func (h *hostManager) Store(ctx context.Context, host *Host) error {
-	_, err := h.rdb.HSet(ctx,
-		pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID),
-		"id", host.ID,
-		"type", host.Type.Name(),
-		"hostname", host.Hostname,
-		"ip", host.IP,
-		"port", host.Port,
-		"download_port", host.DownloadPort,
-		"disable_shared", host.DisableShared,
-		"os", host.OS,
-		"platform", host.Platform,
-		"platform_family", host.PlatformFamily,
-		"platform_version", host.PlatformVersion,
-		"kernel_version", host.KernelVersion,
-		"cpu_logical_count", host.CPU.LogicalCount,
-		"cpu_physical_count", host.CPU.PhysicalCount,
-		"cpu_percent", host.CPU.Percent,
-		"cpu_processe_percent", host.CPU.ProcessPercent,
-		"cpu_times_user", host.CPU.Times.User,
-		"cpu_times_system", host.CPU.Times.System,
-		"cpu_times_idle", host.CPU.Times.Idle,
-		"cpu_times_nice", host.CPU.Times.Nice,
-		"cpu_times_iowait", host.CPU.Times.Iowait,
-		"cpu_times_irq", host.CPU.Times.Irq,
-		"cpu_times_softirq", host.CPU.Times.Softirq,
-		"cpu_times_steal", host.CPU.Times.Steal,
-		"cpu_times_guest", host.CPU.Times.Guest,
-		"cpu_times_guest_nice", host.CPU.Times.GuestNice,
-		"memory_total", host.Memory.Total,
-		"memory_available", host.Memory.Available,
-		"memory_used", host.Memory.Used,
-		"memory_used_percent", host.Memory.UsedPercent,
-		"memory_processe_used_percent", host.Memory.ProcessUsedPercent,
-		"memory_free", host.Memory.Free,
-		"network_tcp_connection_count", host.Network.TCPConnectionCount,
-		"network_upload_tcp_connection_count", host.Network.UploadTCPConnectionCount,
-		"network_location", host.Network.Location,
-		"network_idc", host.Network.IDC,
-		"network_download_rate", host.Network.DownloadRate,
-		"network_download_rate_limit", host.Network.DownloadRateLimit,
-		"network_upload_rate", host.Network.UploadRate,
-		"network_upload_rate_limit", host.Network.UploadRateLimit,
-		"disk_total", host.Disk.Total,
-		"disk_free", host.Disk.Free,
-		"disk_used", host.Disk.Used,
-		"disk_used_percent", host.Disk.UsedPercent,
-		"disk_inodes_total", host.Disk.InodesTotal,
-		"disk_inodes_used", host.Disk.InodesUsed,
-		"disk_inodes_free", host.Disk.InodesFree,
-		"disk_inodes_used_percent", host.Disk.InodesUsedPercent,
-		"disk_write_bandwidth", host.Disk.WriteBandwidth,
-		"disk_read_bandwidth", host.Disk.ReadBandwidth,
-		"build_git_version", host.Build.GitVersion,
-		"build_git_commit", host.Build.GitCommit,
-		"build_go_version", host.Build.GoVersion,
-		"build_platform", host.Build.Platform,
-		"scheduler_cluster_id", host.SchedulerClusterID,
-		"announce_interval", host.AnnounceInterval,
-		"created_at", host.CreatedAt.Format(time.RFC3339),
-		"updated_at", host.UpdatedAt.Format(time.RFC3339)).Result()
+	if _, err := h.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		if _, err := pipe.HSet(ctx,
+			pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID),
+			"id", host.ID,
+			"type", host.Type.Name(),
+			"hostname", host.Hostname,
+			"ip", host.IP,
+			"port", host.Port,
+			"download_port", host.DownloadPort,
+			"disable_shared", host.DisableShared,
+			"os", host.OS,
+			"platform", host.Platform,
+			"platform_family", host.PlatformFamily,
+			"platform_version", host.PlatformVersion,
+			"kernel_version", host.KernelVersion,
+			"cpu_logical_count", host.CPU.LogicalCount,
+			"cpu_physical_count", host.CPU.PhysicalCount,
+			"cpu_percent", host.CPU.Percent,
+			"cpu_processe_percent", host.CPU.ProcessPercent,
+			"cpu_times_user", host.CPU.Times.User,
+			"cpu_times_system", host.CPU.Times.System,
+			"cpu_times_idle", host.CPU.Times.Idle,
+			"cpu_times_nice", host.CPU.Times.Nice,
+			"cpu_times_iowait", host.CPU.Times.Iowait,
+			"cpu_times_irq", host.CPU.Times.Irq,
+			"cpu_times_softirq", host.CPU.Times.Softirq,
+			"cpu_times_steal", host.CPU.Times.Steal,
+			"cpu_times_guest", host.CPU.Times.Guest,
+			"cpu_times_guest_nice", host.CPU.Times.GuestNice,
+			"memory_total", host.Memory.Total,
+			"memory_available", host.Memory.Available,
+			"memory_used", host.Memory.Used,
+			"memory_used_percent", host.Memory.UsedPercent,
+			"memory_processe_used_percent", host.Memory.ProcessUsedPercent,
+			"memory_free", host.Memory.Free,
+			"network_tcp_connection_count", host.Network.TCPConnectionCount,
+			"network_upload_tcp_connection_count", host.Network.UploadTCPConnectionCount,
+			"network_location", host.Network.Location,
+			"network_idc", host.Network.IDC,
+			"network_download_rate", host.Network.DownloadRate,
+			"network_download_rate_limit", host.Network.DownloadRateLimit,
+			"network_upload_rate", host.Network.UploadRate,
+			"network_upload_rate_limit", host.Network.UploadRateLimit,
+			"disk_total", host.Disk.Total,
+			"disk_free", host.Disk.Free,
+			"disk_used", host.Disk.Used,
+			"disk_used_percent", host.Disk.UsedPercent,
+			"disk_inodes_total", host.Disk.InodesTotal,
+			"disk_inodes_used", host.Disk.InodesUsed,
+			"disk_inodes_free", host.Disk.InodesFree,
+			"disk_inodes_used_percent", host.Disk.InodesUsedPercent,
+			"disk_write_bandwidth", host.Disk.WriteBandwidth,
+			"disk_read_bandwidth", host.Disk.ReadBandwidth,
+			"build_git_version", host.Build.GitVersion,
+			"build_git_commit", host.Build.GitCommit,
+			"build_go_version", host.Build.GoVersion,
+			"build_platform", host.Build.Platform,
+			"scheduler_cluster_id", host.SchedulerClusterID,
+			"announce_interval", host.AnnounceInterval,
+			"created_at", host.CreatedAt.Format(time.RFC3339),
+			"updated_at", host.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
+			return err
+		}
 
-	return err
+		if _, err := pipe.SAdd(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), host.ID).Result(); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		host.Log.Errorf("store host failed: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // Delete deletes host by a key.
 func (h *hostManager) Delete(ctx context.Context, hostID string) error {
-	_, err := h.rdb.Del(ctx, pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result()
-	return err
+	log := logger.WithHostID(hostID)
+	if _, err := h.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		if _, err := pipe.Del(ctx, pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result(); err != nil {
+			return err
+		}
+
+		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), hostID).Result(); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		log.Errorf("store host failed: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // LoadAll returns all hosts.
@@ -529,7 +562,7 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 			err      error
 		)
 
-		hostKeys, cursor, err = h.rdb.Scan(ctx, cursor, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), 10).Result()
+		hostKeys, cursor, err = h.rdb.SScan(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), cursor, "*", 10).Result()
 		if err != nil {
 			logger.Error("scan hosts failed")
 			return nil, err
@@ -548,6 +581,41 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 		if cursor == 0 {
 			break
 		}
+	}
+
+	return hosts, nil
+}
+
+// LoadRandom loads host randomly through the set of redis.
+func (h *hostManager) LoadRandom(ctx context.Context, n int, blocklist set.SafeSet[string]) ([]*Host, error) {
+	hostKeys, err := h.rdb.SMembers(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)).Result()
+	if err != nil {
+		logger.Error("smembers hosts failed")
+		return nil, err
+	}
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Shuffle(len(hostKeys), func(i, j int) {
+		hostKeys[i], hostKeys[j] = hostKeys[j], hostKeys[i]
+	})
+
+	hosts := make([]*Host, 0, n)
+	for _, hostKey := range hostKeys {
+		if len(hosts) >= n {
+			break
+		}
+
+		if blocklist.Contains(hostKey) {
+			continue
+		}
+
+		host, loaded := h.Load(ctx, hostKey)
+		if !loaded {
+			logger.WithHostID(hostKey).Error("load host failed")
+			continue
+		}
+
+		hosts = append(hosts, host)
 	}
 
 	return hosts, nil
