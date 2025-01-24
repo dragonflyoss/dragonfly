@@ -194,7 +194,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	}
 
 	// Initialize scheduling.
-	scheduling := scheduling.New(&cfg.Scheduler, dynconfig, d.PluginDir())
+	scheduling := scheduling.New(&cfg.Scheduler, s.persistentCacheResource, dynconfig, d.PluginDir())
 
 	// Initialize server options of scheduler grpc server.
 	schedulerServerOptions := []grpc.ServerOption{}

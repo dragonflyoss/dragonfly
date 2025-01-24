@@ -152,24 +152,25 @@ var (
 	mockInterval = durationpb.New(5 * time.Minute).AsDuration()
 
 	mockRawPersistentCacheHost = persistentcache.Host{
-		ID:              mockHostID,
-		Type:            pkgtypes.HostTypeNormal,
-		Hostname:        "foo",
-		IP:              "127.0.0.1",
-		Port:            8003,
-		DownloadPort:    8001,
-		OS:              "darwin",
-		Platform:        "darwin",
-		PlatformFamily:  "Standalone Workstation",
-		PlatformVersion: "11.1",
-		KernelVersion:   "20.2.0",
-		CPU:             mockPersistentCacheCPU,
-		Memory:          mockPersistentCacheMemory,
-		Network:         mockPersistentCacheNetwork,
-		Disk:            mockPersistentCacheDisk,
-		Build:           mockPersistentCacheBuild,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		ID:                 mockHostID,
+		Type:               pkgtypes.HostTypeNormal,
+		Hostname:           "foo",
+		IP:                 "127.0.0.1",
+		Port:               8003,
+		DownloadPort:       8001,
+		OS:                 "darwin",
+		Platform:           "darwin",
+		PlatformFamily:     "Standalone Workstation",
+		PlatformVersion:    "11.1",
+		KernelVersion:      "20.2.0",
+		CPU:                mockPersistentCacheCPU,
+		Memory:             mockPersistentCacheMemory,
+		Network:            mockPersistentCacheNetwork,
+		Disk:               mockPersistentCacheDisk,
+		Build:              mockPersistentCacheBuild,
+		SchedulerClusterID: 1,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 
 	mockPersistentCacheCPU = persistentcache.CPU{
@@ -727,10 +728,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(10))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -869,10 +866,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(200))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -981,10 +974,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(10))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -1119,10 +1108,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(200))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -1287,10 +1272,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(10))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -1399,10 +1380,6 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.EqualValues(host.Disk, mockPersistentCacheDisk)
 						assert.EqualValues(host.Build, mockPersistentCacheBuild)
 						assert.EqualValues(host.AnnounceInterval, mockPersistentCacheInterval)
-						assert.Equal(host.ConcurrentUploadLimit, int32(200))
-						assert.Equal(host.ConcurrentUploadCount, int32(0))
-						assert.Equal(host.UploadCount, int64(0))
-						assert.Equal(host.UploadFailedCount, int64(0))
 						assert.NotEqual(host.CreatedAt.Nanosecond(), 0)
 						assert.NotEqual(host.UpdatedAt.Nanosecond(), 0)
 						assert.NotNil(host.Log)
@@ -1432,8 +1409,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 			persistentCacheHost := persistentcache.NewHost(
 				mockRawPersistentCacheHost.ID, mockRawPersistentCacheHost.Hostname, mockRawPersistentCacheHost.IP,
 				mockRawPersistentCacheHost.OS, mockRawPersistentCacheHost.Platform, mockRawPersistentCacheHost.PlatformFamily, mockRawPersistentCacheHost.PlatformVersion, mockRawPersistentCacheHost.KernelVersion,
-				mockRawPersistentCacheHost.Port, mockRawPersistentCacheHost.DownloadPort, mockRawPersistentCacheHost.ConcurrentUploadCount,
-				mockRawPersistentCacheHost.UploadCount, mockRawPersistentCacheHost.UploadFailedCount, mockRawPersistentCacheHost.DisableShared, pkgtypes.HostType(mockRawPersistentCacheHost.Type),
+				mockRawPersistentCacheHost.Port, mockRawPersistentCacheHost.DownloadPort, mockRawPersistentCacheHost.SchedulerClusterID, mockRawPersistentCacheHost.DisableShared, pkgtypes.HostType(mockRawPersistentCacheHost.Type),
 				mockRawPersistentCacheHost.CPU, mockRawPersistentCacheHost.Memory, mockRawPersistentCacheHost.Network, mockRawPersistentCacheHost.Disk,
 				mockRawPersistentCacheHost.Build, mockRawPersistentCacheHost.AnnounceInterval, mockRawPersistentCacheHost.CreatedAt, mockRawPersistentCacheHost.UpdatedAt, mockRawHost.Log)
 
@@ -1626,7 +1602,6 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			defer ctl.Finish()
 			scheduling := schedulingmocks.NewMockScheduling(ctl)
 			resource := standard.NewMockResource(ctl)
-			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 
 			hostManager := standard.NewMockHostManager(ctl)
@@ -1635,7 +1610,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
 			mockPeer := standard.NewPeer(mockSeedPeerID, mockTask, host)
-			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, dynconfig)
+			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, nil, scheduling, dynconfig)
 
 			tc.mock(host, mockPeer, hostManager, resource.EXPECT(), hostManager.EXPECT())
 			tc.expect(t, mockPeer, svc.DeleteHost(context.Background(), &schedulerv2.DeleteHostRequest{HostId: mockHostID}))
@@ -2147,7 +2122,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
+				assert.ErrorIs(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
 			},
 		},
 		{
@@ -2161,7 +2136,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Error(codes.FailedPrecondition, "foo"))
+				assert.ErrorIs(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}), status.Error(codes.FailedPrecondition, "foo"))
 			},
 		},
 		{
@@ -2175,7 +2150,7 @@ func TestServiceV2_handleRescheduleRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.NoError(svc.handleRescheduleRequest(context.Background(), peer.ID, []*commonv2.Peer{}))
+				assert.NoError(svc.handleReschedulePeerRequest(context.Background(), peer.ID, []*commonv2.Peer{}))
 			},
 		},
 	}

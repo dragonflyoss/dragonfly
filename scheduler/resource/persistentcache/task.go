@@ -22,8 +22,17 @@ import (
 
 	"github.com/looplab/fsm"
 
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/pkg/digest"
+)
+
+const (
+	// Tiny file size is 128 bytes.
+	TinyFileSize = 128
+
+	// Empty file size is 0 bytes.
+	EmptyFileSize = 0
 )
 
 const (
@@ -61,9 +70,6 @@ type Task struct {
 	// when the task is deleted by the user.
 	PersistentReplicaCount uint64
 
-	// Digest of the persistent cache task content, for example md5:xxx or sha256:yyy.
-	Digest *digest.Digest
-
 	// Tag is used to distinguish different persistent cache tasks.
 	Tag string
 
@@ -97,17 +103,17 @@ type Task struct {
 
 // New persistent cache task instance.
 func NewTask(id, tag, application, state string, persistentReplicaCount uint64, pieceLength int32,
-	contentLength int64, totalPieceCount int32, digest *digest.Digest, ttl time.Duration, createdAt, updatedAt time.Time,
+	contentLength int64, totalPieceCount int32, ttl time.Duration, createdAt, updatedAt time.Time,
 	log *logger.SugaredLoggerOnWith) *Task {
 	t := &Task{
 		ID:                     id,
 		PersistentReplicaCount: persistentReplicaCount,
-		Digest:                 digest,
 		Tag:                    tag,
 		Application:            application,
+		PieceLength:            pieceLength,
 		ContentLength:          contentLength,
 		TotalPieceCount:        totalPieceCount,
-		TTL:                    time.Hour * 24,
+		TTL:                    ttl,
 		CreatedAt:              createdAt,
 		UpdatedAt:              updatedAt,
 		Log:                    logger.WithTaskID(id),
@@ -136,4 +142,29 @@ func NewTask(id, tag, application, state string, persistentReplicaCount uint64, 
 	t.FSM.SetState(state)
 
 	return t
+}
+
+// SizeScope return task size scope type.
+func (t *Task) SizeScope() commonv2.SizeScope {
+	if t.ContentLength < 0 {
+		return commonv2.SizeScope_UNKNOW
+	}
+
+	if t.TotalPieceCount < 0 {
+		return commonv2.SizeScope_UNKNOW
+	}
+
+	if t.ContentLength == EmptyFileSize {
+		return commonv2.SizeScope_EMPTY
+	}
+
+	if t.ContentLength <= TinyFileSize {
+		return commonv2.SizeScope_TINY
+	}
+
+	if t.TotalPieceCount == 1 {
+		return commonv2.SizeScope_SMALL
+	}
+
+	return commonv2.SizeScope_NORMAL
 }

@@ -401,6 +401,62 @@ var (
 		Help:      "Counter of the number of failed of the delete cache task.",
 	})
 
+	RegisterPersistentCachePeerCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "register_persistent_cache_peer_total",
+		Help:      "Counter of the number of the register persistent cache peer.",
+	}, []string{"host_type"})
+
+	RegisterPersistentCachePeerFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "register_persistent_cache_peer_failure_total",
+		Help:      "Counter of the number of failed of the register persistent cache peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePeerStartedCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_peer_started_total",
+		Help:      "Counter of the number of the download persistent cache peer started.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePeerStartedFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_peer_started_failure_total",
+		Help:      "Counter of the number of failed of the download persistent cache peer started.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePeerCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_peer_finished_total",
+		Help:      "Counter of the number of the download persistent cache peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePeerFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_peer_finished_failure_total",
+		Help:      "Counter of the number of failed of the download persistent cache peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePieceCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_piece_finished_total",
+		Help:      "Counter of the number of the download persistent cache piece.",
+	}, []string{"host_type"})
+
+	DownloadPersistentCachePieceFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_cache_piece_finished_failure_total",
+		Help:      "Counter of the number of failed of the download persistent cache piece.",
+	}, []string{"host_type"})
+
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,

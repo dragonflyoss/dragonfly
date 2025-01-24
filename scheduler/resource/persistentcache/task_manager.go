@@ -26,7 +26,6 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/pkg/digest"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
@@ -123,13 +122,6 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 		return nil, false
 	}
 
-	// Set digest from raw task.
-	digest, err := digest.Parse(rawTask["digest"])
-	if err != nil {
-		log.Errorf("parsing digest failed: %v", err)
-		return nil, false
-	}
-
 	return NewTask(
 		rawTask["id"],
 		rawTask["tag"],
@@ -139,7 +131,6 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 		int32(pieceLength),
 		contentLength,
 		int32(totalPieceCount),
-		digest,
 		time.Duration(ttl),
 		createdAt,
 		updatedAt,
@@ -164,7 +155,6 @@ func (t *taskManager) Store(ctx context.Context, task *Task) error {
 			pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID),
 			"id", task.ID,
 			"persistent_replica_count", task.PersistentReplicaCount,
-			"digest", task.Digest.String(),
 			"tag", task.Tag,
 			"application", task.Application,
 			"piece_length", task.PieceLength,
