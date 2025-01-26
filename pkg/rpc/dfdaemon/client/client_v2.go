@@ -140,6 +140,9 @@ type V2 interface {
 	// DownloadPersistentCacheTask downloads persistent cache task from p2p network.
 	DownloadPersistentCacheTask(context.Context, *dfdaemonv2.DownloadPersistentCacheTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error)
 
+	// UpdatePersistentCacheTask updates persistent cache task information.
+	UpdatePersistentCacheTask(context.Context, *dfdaemonv2.UpdatePersistentCacheTaskRequest, ...grpc.CallOption) error
+
 	// StatPersistentCacheTask stats persistent cache task information.
 	StatPersistentCacheTask(context.Context, *dfdaemonv2.StatPersistentCacheTaskRequest, ...grpc.CallOption) (*commonv2.PersistentCacheTask, error)
 
@@ -210,6 +213,15 @@ func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, 
 // DownloadPersistentCacheTask downloads persistent cache task from p2p network.
 func (v *v2) DownloadPersistentCacheTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error) {
 	return v.DfdaemonUploadClient.DownloadPersistentCacheTask(ctx, req, opts...)
+}
+
+// UpdatePersistentCacheTask updates persistent cache task information.
+func (v *v2) UpdatePersistentCacheTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	_, err := v.DfdaemonUploadClient.UpdatePersistentCacheTask(ctx, req, opts...)
+	return err
 }
 
 // StatPersistentCacheTask stats persistent cache task information.

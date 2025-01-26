@@ -214,7 +214,7 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 			return err
 		}
 
-		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), ttl).Result(); err != nil {
+		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), ttl).Result(); err != nil {
 			peer.Log.Errorf("set task joint-set ttl failed: %v", err)
 			return err
 		}
@@ -226,7 +226,7 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 				return err
 			}
 
-			if _, err := pipe.Expire(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), ttl).Result(); err != nil {
+			if _, err := pipe.Expire(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), ttl).Result(); err != nil {
 				peer.Log.Errorf("set task joint-set ttl failed: %v", err)
 				return err
 			}
@@ -235,6 +235,11 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 		// Store the joint-set with host.
 		if _, err := pipe.SAdd(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), peer.ID).Result(); err != nil {
 			peer.Log.Errorf("add peer id to host joint-set failed: %v", err)
+			return err
+		}
+
+		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), ttl).Result(); err != nil {
+			peer.Log.Errorf("set task joint-set ttl failed: %v", err)
 			return err
 		}
 
@@ -251,8 +256,8 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 func (p *peerManager) Delete(ctx context.Context, peerID string) error {
 	log := logger.WithPeerID(peerID)
 	if _, err := p.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		rawPeer, err := pipe.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
-		if err != nil {
+		peer, found := p.Load(ctx, peerID)
+		if !found {
 			return errors.New("getting peer failed from redis")
 		}
 
@@ -261,24 +266,18 @@ func (p *peerManager) Delete(ctx context.Context, peerID string) error {
 			return err
 		}
 
-		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, rawPeer["task_id"]), peerID).Result(); err != nil {
+		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peerID).Result(); err != nil {
 			log.Errorf("delete peer id from task joint-set failed: %v", err)
 			return err
 		}
 
-		persistent, err := strconv.ParseBool(rawPeer["persistent"])
-		if err != nil {
-			log.Errorf("parsing persistent failed: %v", err)
-			return err
-		}
-
-		if persistent {
-			if _, err := pipe.SRem(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, rawPeer["task_id"]), peerID).Result(); err != nil {
+		if peer.Persistent {
+			if _, err := pipe.SRem(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peerID).Result(); err != nil {
 				log.Errorf("delete persistent peer id from task joint-set failed: %v", err)
 			}
 		}
 
-		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, rawPeer["host_id"]), peerID).Result(); err != nil {
+		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), peerID).Result(); err != nil {
 			log.Errorf("delete peer id from host joint-set failed: %v", err)
 			return err
 		}

@@ -110,6 +110,7 @@ func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, b
 	cost time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith) *Peer {
 	p := &Peer{
 		ID:             id,
+		Persistent:     persistent,
 		FinishedPieces: finishedPieces,
 		Task:           task,
 		Host:           host,

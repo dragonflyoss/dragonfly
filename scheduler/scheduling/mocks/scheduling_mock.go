@@ -89,12 +89,13 @@ func (mr *MockSchedulingMockRecorder) FindParentAndCandidateParents(arg0, arg1, 
 }
 
 // FindReplicatePersistentCacheHosts mocks base method.
-func (m *MockScheduling) FindReplicatePersistentCacheHosts(arg0 context.Context, arg1 *persistentcache.Task, arg2 set.SafeSet[string]) ([]*persistentcache.Host, bool) {
+func (m *MockScheduling) FindReplicatePersistentCacheHosts(arg0 context.Context, arg1 *persistentcache.Task, arg2 set.SafeSet[string]) ([]*persistentcache.Peer, []*persistentcache.Host, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindReplicatePersistentCacheHosts", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*persistentcache.Host)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret0, _ := ret[0].([]*persistentcache.Peer)
+	ret1, _ := ret[1].([]*persistentcache.Host)
+	ret2, _ := ret[2].(bool)
+	return ret0, ret1, ret2
 }
 
 // FindReplicatePersistentCacheHosts indicates an expected call of FindReplicatePersistentCacheHosts.

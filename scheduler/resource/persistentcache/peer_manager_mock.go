@@ -142,6 +142,36 @@ func (mr *MockPeerManagerMockRecorder) LoadAllByTaskID(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllByTaskID", reflect.TypeOf((*MockPeerManager)(nil).LoadAllByTaskID), arg0, arg1)
 }
 
+// LoadAllIDsByHostID mocks base method.
+func (m *MockPeerManager) LoadAllIDsByHostID(arg0 context.Context, arg1 string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadAllIDsByHostID", arg0, arg1)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadAllIDsByHostID indicates an expected call of LoadAllIDsByHostID.
+func (mr *MockPeerManagerMockRecorder) LoadAllIDsByHostID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllIDsByHostID", reflect.TypeOf((*MockPeerManager)(nil).LoadAllIDsByHostID), arg0, arg1)
+}
+
+// LoadAllIDsByTaskID mocks base method.
+func (m *MockPeerManager) LoadAllIDsByTaskID(arg0 context.Context, arg1 string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadAllIDsByTaskID", arg0, arg1)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadAllIDsByTaskID indicates an expected call of LoadAllIDsByTaskID.
+func (mr *MockPeerManagerMockRecorder) LoadAllIDsByTaskID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllIDsByTaskID", reflect.TypeOf((*MockPeerManager)(nil).LoadAllIDsByTaskID), arg0, arg1)
+}
+
 // LoadPersistentAllByTaskID mocks base method.
 func (m *MockPeerManager) LoadPersistentAllByTaskID(arg0 context.Context, arg1 string) ([]*Peer, error) {
 	m.ctrl.T.Helper()
