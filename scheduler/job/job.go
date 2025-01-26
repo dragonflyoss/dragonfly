@@ -275,13 +275,13 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 			port     = seedPeer.Port
 		)
 
-		target := fmt.Sprintf("%s:%d", ip, port)
+		addr := fmt.Sprintf("%s:%d", ip, port)
 		log := logger.WithHost(idgen.HostIDV2(ip, hostname, true), hostname, ip)
 
 		eg.Go(func() error {
 			log.Info("preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, target, dialOptions...)
+			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
@@ -416,13 +416,13 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 			port     = peer.Port
 		)
 
-		target := fmt.Sprintf("%s:%d", ip, port)
+		addr := fmt.Sprintf("%s:%d", ip, port)
 		log := logger.WithHost(peer.ID, hostname, ip)
 
 		eg.Go(func() error {
 			log.Info("preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, target, dialOptions...)
+			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{

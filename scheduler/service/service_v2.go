@@ -2322,15 +2322,28 @@ func (v *V2) DeletePersistentCachePeer(ctx context.Context, req *schedulerv2.Del
 	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
 	log.Info("delete persistent cache peer")
 
-	task, founded := v.persistentCacheResource.TaskManager().Load(ctx, req.GetTaskId())
-	if !founded {
-		log.Errorf("persistent cache task %s not found", req.GetTaskId())
-		return status.Errorf(codes.NotFound, "persistent cache task %s not found", req.GetTaskId())
+	peer, found := v.persistentCacheResource.PeerManager().Load(ctx, req.GetPeerId())
+	if !found {
+		log.Errorf("persistent cache peer %s not found", req.GetPeerId())
+		return status.Errorf(codes.NotFound, "persistent cache peer %s not found", req.GetPeerId())
 	}
 
 	if err := v.persistentCacheResource.PeerManager().Delete(ctx, req.GetPeerId()); err != nil {
 		log.Errorf("delete persistent cache peer %s error %s", req.GetPeerId(), err)
 		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Delete the persistent cache task from the peer, if delete failed, skip it.
+	addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+	if err != nil {
+		peer.Log.Errorf("get dfdaemon client failed %s", err)
+		return err
+	}
+
+	if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID}); err != nil {
+		peer.Log.Errorf("delete persistent cache task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
 	}
 
 	// Select the remote peer to copy the replica and trigger the download task with asynchronous.
@@ -2340,7 +2353,7 @@ func (v *V2) DeletePersistentCachePeer(ctx context.Context, req *schedulerv2.Del
 		if err := v.replicatePersistentCacheTask(ctx, task, blocklist); err != nil {
 			log.Errorf("replicate persistent cache task failed %s", err)
 		}
-	}(context.Background(), task, blocklist)
+	}(context.Background(), peer.Task, blocklist)
 
 	return nil
 }
@@ -2630,10 +2643,35 @@ func (v *V2) DeletePersistentCacheTask(ctx context.Context, req *schedulerv2.Del
 	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
 	log.Info("delete persistent cache task")
 
-	if err := v.persistentCacheResource.PeerManager().DeleteAllByTaskID(ctx, req.GetTaskId()); err != nil {
-		log.Errorf("delete persistent cache peers by task %s error %s", req.GetTaskId(), err)
+	// Delete the persistent cache peers in the redis and peer.
+	peers, err := v.persistentCacheResource.PeerManager().LoadAllByTaskID(ctx, req.GetTaskId())
+	if err != nil {
+		log.Errorf("load persistent cache peers by task %s error %s", req.GetTaskId(), err)
+		return status.Error(codes.Internal, err.Error())
 	}
 
+	for _, peer := range peers {
+		if err := v.persistentCacheResource.PeerManager().Delete(ctx, peer.ID); err != nil {
+			log.Errorf("delete persistent cache peer %s error %s", peer.ID, err)
+			continue
+		}
+
+		// Delete the persistent cache task from the peer, if delete failed, skip it.
+		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+		dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+		if err != nil {
+			peer.Log.Errorf("get dfdaemon client failed %s", err)
+			continue
+		}
+
+		if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID}); err != nil {
+			peer.Log.Errorf("delete persistent cache task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
+			continue
+		}
+	}
+
+	// Delete the persistent cache task in the redis.
 	if err := v.persistentCacheResource.TaskManager().Delete(ctx, req.GetTaskId()); err != nil {
 		log.Errorf("delete persistent cache task %s error %s", req.GetTaskId(), err)
 		return status.Error(codes.Internal, err.Error())

@@ -51,6 +51,9 @@ type PeerManager interface {
 	// LoadAllByTaskID returns all peers by task id.
 	LoadAllByTaskID(context.Context, string) ([]*Peer, error)
 
+	// LoadAllIDsByTaskID returns all peer ids by task id.
+	LoadAllIDsByTaskID(context.Context, string) ([]string, error)
+
 	// LoadPersistentAllByTaskID returns all persistent peers by task id.
 	LoadPersistentAllByTaskID(context.Context, string) ([]*Peer, error)
 
@@ -59,6 +62,9 @@ type PeerManager interface {
 
 	// LoadAllByHostID returns all peers by host id.
 	LoadAllByHostID(context.Context, string) ([]*Peer, error)
+
+	// LoadAllIDsByHostID returns all peer ids by host id.
+	LoadAllIDsByHostID(context.Context, string) ([]string, error)
 
 	// DeleteAllByHostID deletes all peers by host id.
 	DeleteAllByHostID(context.Context, string) error
@@ -301,7 +307,7 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 
 		peerKeys, cursor, err = p.rdb.Scan(ctx, cursor, pkgredis.MakePersistentCachePeersInScheduler(p.config.Manager.SchedulerClusterID), 10).Result()
 		if err != nil {
-			logger.Error("scan tasks failed")
+			logger.Errorf("scan tasks failed: %v", err)
 			return nil, err
 		}
 
@@ -328,7 +334,7 @@ func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Pe
 	log := logger.WithTaskID(taskID)
 	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
 	if err != nil {
-		log.Error("get peer ids failed")
+		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
 	}
 
@@ -336,7 +342,7 @@ func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Pe
 	for _, peerID := range peerIDs {
 		peer, loaded := p.Load(ctx, peerID)
 		if !loaded {
-			log.Errorf("load peer %s failed", peerID)
+			log.Errorf("load peer %s failed: %v", peerID, err)
 			continue
 		}
 
@@ -346,12 +352,24 @@ func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Pe
 	return peers, nil
 }
 
+// LoadAllIDsByTaskID returns all peer ids by task id.
+func (p *peerManager) LoadAllIDsByTaskID(ctx context.Context, taskID string) ([]string, error) {
+	log := logger.WithTaskID(taskID)
+	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	if err != nil {
+		log.Errorf("get peer ids failed: %v", err)
+		return nil, err
+	}
+
+	return peerIDs, nil
+}
+
 // LoadPersistentAllByTaskID returns all persistent cache peers by task id.
 func (p *peerManager) LoadPersistentAllByTaskID(ctx context.Context, taskID string) ([]*Peer, error) {
 	log := logger.WithTaskID(taskID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
 	if err != nil {
-		log.Error("get peer ids failed")
+		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
 	}
 
@@ -359,7 +377,7 @@ func (p *peerManager) LoadPersistentAllByTaskID(ctx context.Context, taskID stri
 	for _, peerID := range peerIDs {
 		peer, loaded := p.Load(ctx, peerID)
 		if !loaded {
-			log.Errorf("load peer %s failed", peerID)
+			log.Errorf("load peer %s failed: %v", peerID, err)
 			continue
 		}
 
@@ -372,15 +390,15 @@ func (p *peerManager) LoadPersistentAllByTaskID(ctx context.Context, taskID stri
 // DeleteAllByTaskID deletes all persistent cache peers by task id.
 func (p *peerManager) DeleteAllByTaskID(ctx context.Context, taskID string) error {
 	log := logger.WithTaskID(taskID)
-	peers, err := p.LoadAllByTaskID(ctx, taskID)
+	ids, err := p.LoadAllIDsByTaskID(ctx, taskID)
 	if err != nil {
-		log.Error("load peers failed")
+		log.Errorf("load peers failed: %v", err)
 		return err
 	}
 
-	for _, peer := range peers {
-		if err := p.Delete(ctx, peer.ID); err != nil {
-			log.Errorf("delete peer %s failed", peer.ID)
+	for _, id := range ids {
+		if err := p.Delete(ctx, id); err != nil {
+			log.Errorf("delete peer %s failed: %v", id, err)
 			continue
 		}
 	}
@@ -393,7 +411,7 @@ func (p *peerManager) LoadAllByHostID(ctx context.Context, hostID string) ([]*Pe
 	log := logger.WithHostID(hostID)
 	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, hostID)).Result()
 	if err != nil {
-		log.Error("get peer ids failed")
+		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
 	}
 
@@ -401,7 +419,7 @@ func (p *peerManager) LoadAllByHostID(ctx context.Context, hostID string) ([]*Pe
 	for _, peerID := range peerIDs {
 		peer, loaded := p.Load(ctx, peerID)
 		if !loaded {
-			log.Errorf("load peer %s failed", peerID)
+			log.Errorf("load peer %s failed: %v", peerID, err)
 			continue
 		}
 
@@ -411,18 +429,30 @@ func (p *peerManager) LoadAllByHostID(ctx context.Context, hostID string) ([]*Pe
 	return peers, nil
 }
 
+// LoadAllIDsByHostID returns all persistent cache peers by host id.
+func (p *peerManager) LoadAllIDsByHostID(ctx context.Context, hostID string) ([]string, error) {
+	log := logger.WithHostID(hostID)
+	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, hostID)).Result()
+	if err != nil {
+		log.Errorf("get peer ids failed: %v", err)
+		return nil, err
+	}
+
+	return peerIDs, nil
+}
+
 // DeleteAllByHostID deletes all persistent cache peers by host id.
 func (p *peerManager) DeleteAllByHostID(ctx context.Context, hostID string) error {
 	log := logger.WithTaskID(hostID)
-	peers, err := p.LoadAllByHostID(ctx, hostID)
+	ids, err := p.LoadAllIDsByHostID(ctx, hostID)
 	if err != nil {
-		log.Error("load peers failed")
+		log.Errorf("load peers failed: %v", err)
 		return err
 	}
 
-	for _, peer := range peers {
-		if err := p.Delete(ctx, peer.ID); err != nil {
-			log.Errorf("delete peer %s failed", peer.ID)
+	for _, id := range ids {
+		if err := p.Delete(ctx, id); err != nil {
+			log.Errorf("delete peer %s failed: %v", id, err)
 			continue
 		}
 	}
