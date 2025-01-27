@@ -4,6 +4,7 @@
 
 [![GitHub release](https://img.shields.io/github/release/dragonflyoss/dragonfly.svg)](https://github.com/dragonflyoss/dragonfly/releases)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/dragonfly)](https://artifacthub.io/packages/search?repo=dragonfly)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dragonflyoss/dragonfly/badge)](https://scorecard.dev/viewer/?uri=github.com/dragonflyoss/dragonfly)
 [![CI](https://github.com/dragonflyoss/dragonfly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dragonflyoss/dragonfly/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dragonflyoss/dragonfly?style=flat-square)](https://goreportcard.com/report/github.com/dragonflyoss/dragonfly)
 [![Discussions](https://img.shields.io/badge/discussions-on%20github-blue?style=flat-square)](https://github.com/dragonflyoss/dragonfly/discussions)
