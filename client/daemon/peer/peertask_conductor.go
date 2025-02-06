@@ -173,7 +173,8 @@ type TaskOption struct {
 	GRPCCredentials credentials.TransportCredentials
 	GRPCDialTimeout time.Duration
 	// WatchdogTimeout > 0 indicates to start watch dog for every single peer task
-	WatchdogTimeout time.Duration
+	WatchdogTimeout    time.Duration
+	CancelIdlePeerTask bool
 }
 
 func (ptm *peerTaskManager) newPeerTaskConductor(
@@ -183,9 +184,12 @@ func (ptm *peerTaskManager) newPeerTaskConductor(
 	parent *peerTaskConductor,
 	rg *nethttp.Range,
 	seed bool) *peerTaskConductor {
-	// use a new context with span info
-	ctx = trace.ContextWithSpan(context.Background(), trace.SpanFromContext(ctx))
-	ctx, span := tracer.Start(ctx, config.SpanPeerTask, trace.WithSpanKind(trace.SpanKindClient))
+	var span trace.Span
+	if !ptm.TaskOption.CancelIdlePeerTask {
+		// use a new context to avoid cancel idle peer task
+		ctx = trace.ContextWithSpan(context.Background(), trace.SpanFromContext(ctx))
+	}
+	ctx, span = tracer.Start(ctx, config.SpanPeerTask, trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(config.AttributePeerHost.String(ptm.PeerHost.Id))
 	span.SetAttributes(semconv.NetHostIPKey.String(ptm.PeerHost.Ip))
 	span.SetAttributes(config.AttributePeerID.String(request.PeerId))
