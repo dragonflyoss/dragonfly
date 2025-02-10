@@ -67,7 +67,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a
+        uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
