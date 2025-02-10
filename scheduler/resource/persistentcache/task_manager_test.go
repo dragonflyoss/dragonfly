@@ -127,7 +127,7 @@ func TestTaskManager_Load(t *testing.T) {
 					"id":                       "goodtask",
 					"tag":                      "tag_value",
 					"application":              "app_value",
-					"state":                    "Succeeded",
+					"state":                    TaskStateSucceeded,
 					"persistent_replica_count": "2",
 					"piece_length":             "1024",
 					"content_length":           "2048",
@@ -148,9 +148,8 @@ func TestTaskManager_Load(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock)
-			}
+			tt.mockRedis(mock)
+
 			tm := &taskManager{
 				config: &config.Config{
 					Manager: config.ManagerConfig{
@@ -320,9 +319,8 @@ func TestTaskManager_Store(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock, tt.args.task)
-			}
+			tt.mockRedis(mock, tt.args.task)
+
 			tm := &taskManager{
 				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
 				rdb:    rdb,
@@ -373,9 +371,8 @@ func TestTaskManager_LoadCorrentReplicaCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock)
-			}
+			tt.mockRedis(mock)
+
 			tm := &taskManager{
 				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
 				rdb:    rdb,
@@ -428,9 +425,8 @@ func TestTaskManager_LoadCurrentPersistentReplicaCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock)
-			}
+			tt.mockRedis(mock)
+
 			tm := &taskManager{
 				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
 				rdb:    rdb,
@@ -480,9 +476,8 @@ func TestTaskManager_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock)
-			}
+			tt.mockRedis(mock)
+
 			tm := &taskManager{
 				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
 				rdb:    rdb,
@@ -527,7 +522,7 @@ func TestTaskManager_LoadAll(t *testing.T) {
 					"id":                       "task1",
 					"tag":                      "tag_value",
 					"application":              "app_value",
-					"state":                    "Succeeded",
+					"state":                    TaskStateSucceeded,
 					"persistent_replica_count": "2",
 					"piece_length":             "1024",
 					"content_length":           "2048",
@@ -547,9 +542,8 @@ func TestTaskManager_LoadAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
-			if tt.mockRedis != nil {
-				tt.mockRedis(mock)
-			}
+			tt.mockRedis(mock)
+
 			tm := &taskManager{
 				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
 				rdb:    rdb,
