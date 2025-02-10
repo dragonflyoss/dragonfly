@@ -509,7 +509,7 @@ func (h *hostManager) Store(ctx context.Context, host *Host) error {
 			"build_go_version", host.Build.GoVersion,
 			"build_platform", host.Build.Platform,
 			"scheduler_cluster_id", host.SchedulerClusterID,
-			"announce_interval", host.AnnounceInterval,
+			"announce_interval", host.AnnounceInterval.Nanoseconds(),
 			"created_at", host.CreatedAt.Format(time.RFC3339),
 			"updated_at", host.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
 			return err

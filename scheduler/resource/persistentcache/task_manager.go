@@ -163,7 +163,7 @@ func (t *taskManager) Store(ctx context.Context, task *Task) error {
 			"content_length", task.ContentLength,
 			"total_piece_count", task.TotalPieceCount,
 			"state", task.FSM.Current(),
-			"ttl", task.TTL,
+			"ttl", task.TTL.Nanoseconds(),
 			"created_at", task.CreatedAt.Format(time.RFC3339),
 			"updated_at", task.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
 			task.Log.Errorf("store task failed: %v", err)

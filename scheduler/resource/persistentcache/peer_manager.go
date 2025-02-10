@@ -195,7 +195,7 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 			"block_parents", blockParents,
 			"task_id", peer.Task.ID,
 			"host_id", peer.Host.ID,
-			"cost", peer.Cost,
+			"cost", peer.Cost.Nanoseconds(),
 			"created_at", peer.CreatedAt.Format(time.RFC3339),
 			"updated_at", peer.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
 			peer.Log.Errorf("store peer failed: %v", err)
