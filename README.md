@@ -84,7 +84,3 @@ Please refer to our [Code of Conduct][codeconduct].
 [codeconduct]: CODE_OF_CONDUCT.md
 [d7y.io]: https://d7y.io/
 [dingtalk]: docs/images/community/dingtalk-group.jpeg
-
-## License
-
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdragonflyoss%2FDragonfly2.svg?type=large&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdragonflyoss%2FDragonfly2?ref=badge_large&issueType=license)
