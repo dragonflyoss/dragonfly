@@ -111,7 +111,7 @@ builds:
 
 archives:
   - name_template: "dragonfly-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    format: tar.gz
+    formats: ["tar.gz"]
     files:
       - LICENSE
       - README.md
