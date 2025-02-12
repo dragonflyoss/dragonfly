@@ -41,12 +41,12 @@ jobs:
             skip: "Rate Limit"
           - module: client
             image: client
-            image-tag: v0.2.8
+            image-tag: v0.2.11
             chart-name: client
             skip: "Rate Limit"
           - module: seed-client
             image: client
-            image-tag: v0.2.8
+            image-tag: v0.2.11
             chart-name: seed-client
             skip: "Rate Limit"
 
