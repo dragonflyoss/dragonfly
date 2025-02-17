@@ -33,6 +33,7 @@ type PreheatRequest struct {
 	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
 	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
 	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
+	LoadToCache         bool              `json:"load_to_cache" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.

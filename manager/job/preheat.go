@@ -136,6 +136,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 				CertificateChain:    p.certificateChain,
 				InsecureSkipVerify:  p.insecureSkipVerify,
 				Timeout:             json.Timeout,
+				LoadToCache:         json.LoadToCache,
 			},
 		}
 	default:

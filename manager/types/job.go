@@ -137,6 +137,9 @@ type PreheatArgs struct {
 
 	// Timeout is the timeout for preheating, default is 30 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
+
+	// LoadToCache is the flag for preheating content in cache storage.
+	LoadToCache bool `json:"load_to_cache" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
