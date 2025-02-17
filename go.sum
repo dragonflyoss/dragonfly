@@ -63,8 +63,8 @@ cloud.google.com/go/storage v1.50.0 h1:3TbVkzTooBvnZsk7WaAQfOsNrdoM8QHusXA1cpk6Q
 cloud.google.com/go/storage v1.50.0/go.mod h1:l7XeiD//vx5lfqE3RavfmU9yvk5Pp0Zhcv482poyafY=
 cloud.google.com/go/trace v1.11.2 h1:4ZmaBdL8Ng/ajrgKqY5jfvzqMXbrDcBsUGXOT9aqTtI=
 cloud.google.com/go/trace v1.11.2/go.mod h1:bn7OwXd4pd5rFuAnTrzBuoZ4ax2XQeG3qNgYmfCy0Io=
-d7y.io/api/v2 v2.1.25 h1:Y5CuOJqLc4FtiQRklpcPn7QJqyZkg9QuZKCqanGa1zc=
-d7y.io/api/v2 v2.1.25/go.mod h1:RFsSiRgEBfMrSHlrZWbkJ3xil8fnbbGSj0UMwbUUC5I=
+d7y.io/api/v2 v2.1.27 h1:bEiAnNNs944DrV1rZP4m1BR9vh8KkBKLwlyVv+kOQoQ=
+d7y.io/api/v2 v2.1.27/go.mod h1:RFsSiRgEBfMrSHlrZWbkJ3xil8fnbbGSj0UMwbUUC5I=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.0.0/go.mod h1:uGG2W01BaETf0Ozp+QxxKJdMBNRWPdstHG0Fmdwn1/U=
