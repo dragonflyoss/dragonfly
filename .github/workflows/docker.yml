@@ -107,6 +107,19 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
+      - name: Run Trivy vulnerability scanner in tarball mode
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
+        with:
+          image-ref: dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0
+        with:
+          sarif_file: 'trivy-results.sarif'
+
       - name: Sign container image
         run: |
             cosign sign -y --key env://COSIGN_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
