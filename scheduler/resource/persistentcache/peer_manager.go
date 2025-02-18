@@ -172,6 +172,7 @@ func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 
 // Store sets persistent cache peer.
 func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
+	// Marshal finished pieces and block parents.
 	finishedPieces, err := peer.FinishedPieces.MarshalBinary()
 	if err != nil {
 		peer.Log.Errorf("marshal finished pieces failed: %v", err)
@@ -184,67 +185,93 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 		return err
 	}
 
-	if _, err := p.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		// Store peer information and set expiration.
-		if _, err := pipe.HSet(ctx,
-			pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peer.ID),
-			"id", peer.ID,
-			"persistent", peer.Persistent,
-			"finished_pieces", finishedPieces,
-			"state", peer.FSM.Current(),
-			"block_parents", blockParents,
-			"task_id", peer.Task.ID,
-			"host_id", peer.Host.ID,
-			"cost", peer.Cost.Nanoseconds(),
-			"created_at", peer.CreatedAt.Format(time.RFC3339),
-			"updated_at", peer.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
-			peer.Log.Errorf("store peer failed: %v", err)
-			return err
-		}
+	// Calculate remaining TTL in seconds.
+	ttl := peer.Task.TTL - time.Since(peer.Task.CreatedAt)
+	remainingTTLSeconds := int64(ttl.Seconds())
 
-		ttl := peer.Task.TTL - time.Since(peer.Task.CreatedAt)
-		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peer.ID), ttl).Result(); err != nil {
-			peer.Log.Errorf("set peer ttl failed: %v", err)
-			return err
-		}
+	// Define the Lua script as a string.
+	const storePeerScript = `
+-- Extract keys
+local peer_key = KEYS[1]  -- Key for the peer hash
+local task_peers_key = KEYS[2]  -- Key for the task joint-set
+local persistent_task_peers_key = KEYS[3]  -- Key for the persistent task joint-set
+local host_peers_key = KEYS[4]  -- Key for the host joint-set
 
-		// Store the joint-set with task and set expiration.
-		if _, err := pipe.SAdd(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peer.ID).Result(); err != nil {
-			peer.Log.Errorf("add peer id to task joint-set failed: %v", err)
-			return err
-		}
+-- Extract arguments
+local peer_id = ARGV[1]
+local persistent = tonumber(ARGV[2])
+local finished_pieces = ARGV[3]
+local state = ARGV[4]
+local block_parents = ARGV[5]
+local task_id = ARGV[6]
+local host_id = ARGV[7]
+local cost = ARGV[8]
+local created_at = ARGV[9]
+local updated_at = ARGV[10]
+local ttl_seconds = tonumber(ARGV[11])
 
-		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), ttl).Result(); err != nil {
-			peer.Log.Errorf("set task joint-set ttl failed: %v", err)
-			return err
-		}
+-- Store peer information
+redis.call("HSET", peer_key,
+    "id", peer_id,
+    "persistent", persistent,
+    "finished_pieces", finished_pieces,
+    "state", state,
+    "block_parents", block_parents,
+    "task_id", task_id,
+    "host_id", host_id,
+    "cost", cost,
+    "created_at", created_at,
+    "updated_at", updated_at)
 
-		// Store the joint-set with task for persistent peer and set expiration.
-		if peer.Persistent {
-			if _, err := pipe.SAdd(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peer.ID).Result(); err != nil {
-				peer.Log.Errorf("add persistent peer id to task joint-set failed: %v", err)
-				return err
-			}
+-- Set expiration for the peer key
+redis.call("EXPIRE", peer_key, ttl_seconds)
 
-			if _, err := pipe.Expire(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), ttl).Result(); err != nil {
-				peer.Log.Errorf("set task joint-set ttl failed: %v", err)
-				return err
-			}
-		}
+-- Add peer ID to the task joint-set
+redis.call("SADD", task_peers_key, peer_id)
+redis.call("EXPIRE", task_peers_key, ttl_seconds)
 
-		// Store the joint-set with host.
-		if _, err := pipe.SAdd(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), peer.ID).Result(); err != nil {
-			peer.Log.Errorf("add peer id to host joint-set failed: %v", err)
-			return err
-		}
+-- Add peer ID to the persistent task joint-set if persistent
+if persistent == 1 then
+    redis.call("SADD", persistent_task_peers_key, peer_id)
+		redis.call("EXPIRE", persistent_task_peers_key, ttl_seconds)
+end
 
-		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), ttl).Result(); err != nil {
-			peer.Log.Errorf("set task joint-set ttl failed: %v", err)
-			return err
-		}
+-- Add peer ID to the host joint-set
+redis.call("SADD", host_peers_key, peer_id)
+redis.call("EXPIRE", host_peers_key, ttl_seconds)
 
-		return nil
-	}); err != nil {
+return true
+`
+
+	// Create a new Redis script.
+	script := redis.NewScript(storePeerScript)
+
+	// Prepare keys.
+	keys := []string{
+		pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peer.ID),
+		pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
+		pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
+		pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
+	}
+
+	// Prepare arguments.
+	args := []interface{}{
+		peer.ID,
+		peer.Persistent,
+		string(finishedPieces),
+		peer.FSM.Current(),
+		string(blockParents),
+		peer.Task.ID,
+		peer.Host.ID,
+		peer.Cost.Nanoseconds(),
+		peer.CreatedAt.Format(time.RFC3339),
+		peer.UpdatedAt.Format(time.RFC3339),
+		remainingTTLSeconds,
+	}
+
+	// Execute the script.
+	err = script.Run(ctx, p.rdb, keys, args...).Err()
+	if err != nil {
 		peer.Log.Errorf("store peer failed: %v", err)
 		return err
 	}
@@ -254,37 +281,73 @@ func (p *peerManager) Store(ctx context.Context, peer *Peer) error {
 
 // Delete deletes persistent cache peer by a key, and it will delete the association with task and host at the same time.
 func (p *peerManager) Delete(ctx context.Context, peerID string) error {
+	// Define the Lua script as a string.
+	const deletePeerScript = `
+-- Extract keys
+local peer_key = KEYS[1]  -- Key for the peer hash
+local task_peers_key = KEYS[2]  -- Key for the task joint-set
+local persistent_task_peers_key = KEYS[3]  -- Key for the persistent task joint-set
+local host_peers_key = KEYS[4]  -- Key for the host joint-set
+
+-- Extract arguments
+local peer_id = ARGV[1]
+local persistent = tonumber(ARGV[2])
+local task_id = ARGV[3]
+local host_id = ARGV[4]
+
+-- Check if the peer exists
+if redis.call("EXISTS", peer_key) == 0 then
+    return {err = "peer not found"}
+end
+
+-- Delete the peer key
+redis.call("DEL", peer_key)
+
+-- Remove peer ID from the task joint-set
+redis.call("SREM", task_peers_key, peer_id)
+
+-- Remove peer ID from the persistent task joint-set if persistent is 1
+if persistent == 1 then
+    redis.call("SREM", persistent_task_peers_key, peer_id)
+end
+
+-- Remove peer ID from the host joint-set
+redis.call("SREM", host_peers_key, peer_id)
+
+return true
+`
+
 	log := logger.WithPeerID(peerID)
-	if _, err := p.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		peer, found := p.Load(ctx, peerID)
-		if !found {
-			return errors.New("getting peer failed from redis")
-		}
 
-		if _, err := pipe.Del(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result(); err != nil {
-			log.Errorf("delete peer failed: %v", err)
-			return err
-		}
+	// Create a new Redis script.
+	script := redis.NewScript(deletePeerScript)
 
-		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peerID).Result(); err != nil {
-			log.Errorf("delete peer id from task joint-set failed: %v", err)
-			return err
-		}
+	// Load the peer to get its metadata.
+	peer, found := p.Load(ctx, peerID)
+	if !found {
+		log.Errorf("getting peer failed from redis")
+		return errors.New("getting peer failed from redis")
+	}
 
-		if peer.Persistent {
-			if _, err := pipe.SRem(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID), peerID).Result(); err != nil {
-				log.Errorf("delete persistent peer id from task joint-set failed: %v", err)
-			}
-		}
+	// Prepare keys.
+	keys := []string{
+		pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID),
+		pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
+		pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
+		pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
+	}
 
-		if _, err := pipe.SRem(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID), peerID).Result(); err != nil {
-			log.Errorf("delete peer id from host joint-set failed: %v", err)
-			return err
-		}
+	// Prepare arguments.
+	args := []interface{}{
+		peerID,
+		peer.Persistent,
+		peer.Task.ID,
+		peer.Host.ID,
+	}
 
-		return nil
-	}); err != nil {
-		log.Errorf("store peer failed: %v", err)
+	// Execute the script.
+	if err := script.Run(ctx, p.rdb, keys, args...).Err(); err != nil {
+		peer.Log.Errorf("delete peer failed: %v", err)
 		return err
 	}
 

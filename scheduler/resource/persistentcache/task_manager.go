@@ -152,32 +152,76 @@ func (t *taskManager) LoadCurrentPersistentReplicaCount(ctx context.Context, tas
 
 // Store sets persistent cache task.
 func (t *taskManager) Store(ctx context.Context, task *Task) error {
-	if _, err := t.rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		if _, err := pipe.HSet(ctx,
-			pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID),
-			"id", task.ID,
-			"persistent_replica_count", task.PersistentReplicaCount,
-			"tag", task.Tag,
-			"application", task.Application,
-			"piece_length", task.PieceLength,
-			"content_length", task.ContentLength,
-			"total_piece_count", task.TotalPieceCount,
-			"state", task.FSM.Current(),
-			"ttl", task.TTL.Nanoseconds(),
-			"created_at", task.CreatedAt.Format(time.RFC3339),
-			"updated_at", task.UpdatedAt.Format(time.RFC3339)).Result(); err != nil {
-			task.Log.Errorf("store task failed: %v", err)
-			return err
-		}
+	// Calculate remaining TTL in seconds.
+	ttl := task.TTL - time.Since(task.CreatedAt)
+	remainingTTLSeconds := int64(ttl.Seconds())
 
-		ttl := task.TTL - time.Since(task.CreatedAt)
-		if _, err := pipe.Expire(ctx, pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID), ttl).Result(); err != nil {
-			task.Log.Errorf("set task ttl failed: %v", err)
-			return err
-		}
+	// Define the Lua script as a string.
+	const storeTaskScript = `
+-- Extract keys
+local task_key = KEYS[1]  -- Key for the task hash
 
-		return nil
-	}); err != nil {
+-- Extract arguments
+local task_id = ARGV[1]
+local persistent_replica_count = ARGV[2]
+local tag = ARGV[3]
+local application = ARGV[4]
+local piece_length = ARGV[5]
+local content_length = ARGV[6]
+local total_piece_count = ARGV[7]
+local state = ARGV[8]
+local created_at = ARGV[9]
+local updated_at = ARGV[10]
+local ttl = tonumber(ARGV[11])
+local ttl_seconds = tonumber(ARGV[12])
+
+-- Perform HSET operation to store task details
+redis.call("HSET", task_key,
+    "id", task_id,
+    "persistent_replica_count", persistent_replica_count,
+    "tag", tag,
+    "application", application,
+    "piece_length", piece_length,
+    "content_length", content_length,
+    "total_piece_count", total_piece_count,
+    "state", state,
+    "ttl", ttl,
+    "created_at", created_at,
+    "updated_at", updated_at)
+
+-- Perform EXPIRE operation if TTL is still valid
+redis.call("EXPIRE", task_key, ttl_seconds)
+
+return true
+`
+
+	// Create a new Redis script.
+	script := redis.NewScript(storeTaskScript)
+
+	// Prepare keys.
+	keys := []string{
+		pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID),
+	}
+
+	// Prepare arguments.
+	args := []interface{}{
+		task.ID,
+		task.PersistentReplicaCount,
+		task.Tag,
+		task.Application,
+		task.PieceLength,
+		task.ContentLength,
+		task.TotalPieceCount,
+		task.FSM.Current(),
+		task.CreatedAt.Format(time.RFC3339),
+		task.UpdatedAt.Format(time.RFC3339),
+		task.TTL.Nanoseconds(),
+		remainingTTLSeconds,
+	}
+
+	// Execute the script.
+	err := script.Run(ctx, t.rdb, keys, args...).Err()
+	if err != nil {
 		task.Log.Errorf("store task failed: %v", err)
 		return err
 	}
