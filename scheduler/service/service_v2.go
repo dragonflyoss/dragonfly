@@ -1746,16 +1746,20 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 			downloadPieceFinishedRequest := announcePersistentCachePeerRequest.DownloadPieceFinishedRequest
 
 			log.Info("receive DownloadPieceFinishedRequest")
-			if err := v.handleDownloadPersistentCachePieceFinishedRequest(ctx, req.GetPeerId(), downloadPieceFinishedRequest); err != nil {
-				log.Error(err)
-			}
+			go func() {
+				if err := v.handleDownloadPersistentCachePieceFinishedRequest(context.Background(), req.GetPeerId(), downloadPieceFinishedRequest); err != nil {
+					log.Error(err)
+				}
+			}()
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPieceFailedRequest:
 			downloadPieceFailedRequest := announcePersistentCachePeerRequest.DownloadPieceFailedRequest
 
 			log.Info("receive DownloadPieceFailedRequest")
-			if err := v.handleDownloadPersistentCachePieceFailedRequest(ctx, req.GetPeerId(), downloadPieceFailedRequest); err != nil {
-				log.Error(err)
-			}
+			go func() {
+				if err := v.handleDownloadPersistentCachePieceFailedRequest(context.Background(), req.GetPeerId(), downloadPieceFailedRequest); err != nil {
+					log.Error(err)
+				}
+			}()
 		default:
 			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentCachePeerRequest)
 			log.Error(msg)
