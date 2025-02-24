@@ -128,6 +128,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 		files = []internaljob.PreheatRequest{
 			{
 				URL:                 json.URL,
+				PieceLength:         json.PieceLength,
 				Tag:                 json.Tag,
 				FilteredQueryParams: json.FilteredQueryParams,
 				Headers:             json.Headers,
@@ -349,6 +350,7 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 			header.Set("Accept", v.MediaType)
 			layer := internaljob.PreheatRequest{
 				URL:                 image.blobsURL(v.Digest.String()),
+				PieceLength:         args.PieceLength,
 				Tag:                 args.Tag,
 				FilteredQueryParams: args.FilteredQueryParams,
 				Headers:             nethttp.HeaderToMap(header),

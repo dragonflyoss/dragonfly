@@ -1537,7 +1537,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 	// Store new task or update task.
 	task, loaded := v.resource.TaskManager().Load(taskID)
 	if !loaded {
-		options := []standard.TaskOption{standard.WithPieceLength(int32(download.GetPieceLength()))}
+		options := []standard.TaskOption{}
 		if download.GetDigest() != "" {
 			d, err := digest.Parse(download.GetDigest())
 			if err != nil {
@@ -1548,7 +1548,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			options = append(options, standard.WithDigest(d))
 		}
 
-		task = standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
+		task = standard.NewTask(taskID, download.GetUrl(), download.GetPieceLength(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		v.resource.TaskManager().Store(task)
 	} else {

@@ -111,6 +111,12 @@ type PreheatArgs struct {
 	// URL is the image url for preheating.
 	URL string `json:"url" binding:"required"`
 
+	// PieceLength is the piece length(bytes) for downloading file. The value needs to
+	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
+	// If the piece length is not specified, the piece length will be calculated
+	// according to the file size.
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+
 	// Tag is the tag for preheating.
 	Tag string `json:"tag" binding:"omitempty"`
 
@@ -177,6 +183,12 @@ type GetTaskArgs struct {
 	// URL is the download url of the task.
 	URL string `json:"url" binding:"omitempty"`
 
+	// PieceLength is the piece length(bytes) for downloading file. The value needs to
+	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
+	// If the piece length is not specified, the piece length will be calculated
+	// according to the file size.
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+
 	// Tag is the tag of the task.
 	Tag string `json:"tag" binding:"omitempty"`
 
@@ -210,6 +222,12 @@ type DeleteTaskArgs struct {
 
 	// URL is the download url of the task.
 	URL string `json:"url" binding:"omitempty"`
+
+	// PieceLength is the piece length(bytes) for downloading file. The value needs to
+	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
+	// If the piece length is not specified, the piece length will be calculated
+	// according to the file size.
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
 
 	// Tag is the tag of the task.
 	Tag string `json:"tag" binding:"omitempty"`

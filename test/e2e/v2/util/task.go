@@ -132,6 +132,8 @@ func CalculateSha256ByOutput(pods []*PodExec, output string) (string, error) {
 type taskID struct {
 	// url is the url of the download task.
 	url string
+	// pieceLength is the piece length of the download task.
+	pieceLength *uint64
 	// tag is the tag of the download task.
 	tag string
 	// appliccation is the application of the download task.
@@ -147,6 +149,13 @@ type TaskIDOption func(*taskID)
 func WithTaskIDURL(url string) TaskIDOption {
 	return func(o *taskID) {
 		o.url = url
+	}
+}
+
+// WithTaskIDPieceLength sets the piece length of the download task.
+func WithTaskIDPieceLength(pieceLength uint64) TaskIDOption {
+	return func(o *taskID) {
+		o.pieceLength = &pieceLength
 	}
 }
 

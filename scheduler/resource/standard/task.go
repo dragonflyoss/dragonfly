@@ -88,7 +88,7 @@ const (
 type TaskOption func(task *Task)
 
 // WithPieceLength set PieceLength for task.
-func WithPieceLength(pieceLength int32) TaskOption {
+func WithPieceLength(pieceLength uint64) TaskOption {
 	return func(t *Task) {
 		t.PieceLength = pieceLength
 	}
@@ -128,7 +128,7 @@ type Task struct {
 	Header map[string]string
 
 	// Task piece length.
-	PieceLength int32
+	PieceLength uint64
 
 	// DirectPiece is tiny piece data.
 	DirectPiece []byte
@@ -169,12 +169,13 @@ type Task struct {
 }
 
 // New task instance.
-func NewTask(id, url, tag, application string, typ commonv2.TaskType, filteredQueryParams []string,
+func NewTask(id, url string, pieceLength uint64, tag, application string, typ commonv2.TaskType, filteredQueryParams []string,
 	header map[string]string, backToSourceLimit int32, options ...TaskOption) *Task {
 	t := &Task{
 		ID:                  id,
 		Type:                typ,
 		URL:                 url,
+		PieceLength:         pieceLength,
 		Tag:                 tag,
 		Application:         application,
 		FilteredQueryParams: filteredQueryParams,
