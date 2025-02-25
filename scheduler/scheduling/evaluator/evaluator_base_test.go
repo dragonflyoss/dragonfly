@@ -184,7 +184,7 @@ func TestEvaluatorBase_EvaluateParents(t *testing.T) {
 			name:    "parents is empty",
 			parents: []*standard.Peer{},
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -201,13 +201,13 @@ func TestEvaluatorBase_EvaluateParents(t *testing.T) {
 			name: "evaluate single parent",
 			parents: []*standard.Peer{
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 			},
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -226,33 +226,33 @@ func TestEvaluatorBase_EvaluateParents(t *testing.T) {
 			name: "evaluate parents with free upload count",
 			parents: []*standard.Peer{
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bar", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"baz", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bac", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bae", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 			},
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -277,33 +277,33 @@ func TestEvaluatorBase_EvaluateParents(t *testing.T) {
 			name: "evaluate parents with pieces",
 			parents: []*standard.Peer{
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bar", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"baz", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bac", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 				standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-					standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+					standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 					standard.NewHost(
 						"bae", mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 						mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 			},
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -347,12 +347,12 @@ func TestEvaluatorBase_evaluate(t *testing.T) {
 		{
 			name: "evaluate parent",
 			parent: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -367,12 +367,12 @@ func TestEvaluatorBase_evaluate(t *testing.T) {
 		{
 			name: "evaluate parent with pieces",
 			parent: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)),
 			child: standard.NewPeer(idgen.PeerIDV1("127.0.0.1"),
-				standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength)),
+				standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest)),
 				standard.NewHost(
 					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)),
@@ -400,7 +400,7 @@ func TestEvaluatorBase_calculatePieceScore(t *testing.T) {
 	mockHost := standard.NewHost(
 		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-	mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
+	mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 	tests := []struct {
 		name            string
@@ -562,7 +562,7 @@ func TestEvaluatorBase_calculatehostUploadSuccessScore(t *testing.T) {
 			host := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
+			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			mockPeer := standard.NewPeer(mockPeerID, mockTask, host)
 			e := newEvaluatorBase()
 			tc.mock(host)
@@ -612,7 +612,7 @@ func TestEvaluatorBase_calculateFreeUploadScore(t *testing.T) {
 			host := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
+			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			mockPeer := standard.NewPeer(mockPeerID, mockTask, host)
 			e := newEvaluatorBase()
 			tc.mock(host, mockPeer)
@@ -664,7 +664,7 @@ func TestEvaluatorBase_calculateHostTypeScore(t *testing.T) {
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
+			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 			e := newEvaluatorBase()
 			tc.mock(peer)
@@ -878,7 +878,7 @@ func TestEvaluatorBase_IsBadParent(t *testing.T) {
 	mockHost := standard.NewHost(
 		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-	mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskPieceLength, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest), standard.WithPieceLength(mockTaskPieceLength))
+	mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 	tests := []struct {
 		name            string

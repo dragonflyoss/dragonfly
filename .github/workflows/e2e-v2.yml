@@ -69,7 +69,7 @@ jobs:
           install: true
 
       - name: Cache Docker layers
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -86,7 +86,7 @@ jobs:
           docker tag dragonflyoss/dfinit:$CLIENT_TAG dragonflyoss/dfinit:latest
 
       - name: Build Scheduler Image
-        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991
+        uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497
         with:
           context: .
           file: build/images/scheduler/Dockerfile
@@ -97,7 +97,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build Manager Image
-        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991
+        uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497
         with:
           context: .
           file: build/images/manager/Dockerfile
@@ -146,7 +146,7 @@ jobs:
           flags: e2etests
 
       - name: Upload Logs
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1
         if: always()
         with:
           name: ${{ matrix.module }}-e2e-tests-logs

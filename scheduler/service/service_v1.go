@@ -341,7 +341,7 @@ func (v *V1) AnnounceTask(ctx context.Context, req *schedulerv1.AnnounceTaskRequ
 	}
 
 	// Piece length is not supported in Protocol V1, use default value 0.
-	task := resource.NewTask(taskID, req.GetUrl(), 0, req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(), types.TaskTypeV1ToV2(req.GetTaskType()),
+	task := resource.NewTask(taskID, req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(), types.TaskTypeV1ToV2(req.GetTaskType()),
 		strings.Split(req.UrlMeta.GetFilter(), idgen.FilteredQueryParamsSeparator), req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 	task, _ = v.resource.TaskManager().LoadOrStore(task)
 	host := v.storeHost(ctx, req.GetPeerHost())
@@ -808,7 +808,7 @@ func (v *V1) storeTask(_ context.Context, req *schedulerv1.PeerTaskRequest, typ 
 		}
 
 		// Piece length is not supported in Protocol V1, use default value 0.
-		task := resource.NewTask(req.GetTaskId(), req.GetUrl(), 0, req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(),
+		task := resource.NewTask(req.GetTaskId(), req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(),
 			typ, filteredQueryParams, req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		v.resource.TaskManager().Store(task)
 		task.Log.Info("create new task")

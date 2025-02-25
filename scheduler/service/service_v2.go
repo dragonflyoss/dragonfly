@@ -302,7 +302,6 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 		Application:         &peer.Task.Application,
 		FilteredQueryParams: peer.Task.FilteredQueryParams,
 		RequestHeader:       peer.Task.Header,
-		PieceLength:         uint64(peer.Task.PieceLength),
 		ContentLength:       uint64(peer.Task.ContentLength.Load()),
 		PieceCount:          uint32(peer.Task.TotalPieceCount.Load()),
 		SizeScope:           peer.Task.SizeScope(),
@@ -460,7 +459,6 @@ func (v *V2) StatTask(ctx context.Context, req *schedulerv2.StatTaskRequest) (*c
 		Application:         &task.Application,
 		FilteredQueryParams: task.FilteredQueryParams,
 		RequestHeader:       task.Header,
-		PieceLength:         uint64(task.PieceLength),
 		ContentLength:       uint64(task.ContentLength.Load()),
 		PieceCount:          uint32(task.TotalPieceCount.Load()),
 		SizeScope:           task.SizeScope(),
@@ -1548,7 +1546,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			options = append(options, standard.WithDigest(d))
 		}
 
-		task = standard.NewTask(taskID, download.GetUrl(), download.GetPieceLength(), download.GetTag(), download.GetApplication(), download.GetType(),
+		task = standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		v.resource.TaskManager().Store(task)
 	} else {
