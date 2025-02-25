@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	cloud.google.com/go/storage v1.50.0
-	d7y.io/api/v2 v2.1.27
+	d7y.io/api/v2 v2.1.30
 	github.com/MysteriousPotato/go-lockable v1.0.0
 	github.com/RichardKnop/machinery v1.10.8
 	github.com/Showmax/go-fqdn v1.0.0
@@ -21,21 +21,21 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/distribution/distribution/v3 v3.0.0-20220620080156-3e4f8a0ab147
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v27.3.1+incompatible
+	github.com/docker/docker v28.0.0+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.4.0
 	github.com/elastic/go-freelru v0.16.0
 	github.com/fsouza/fake-gcs-server v1.52.0
 	github.com/gaius-qi/ping v1.0.0
 	github.com/gammazero/deque v1.0.0
-	github.com/gin-contrib/gzip v1.0.1
+	github.com/gin-contrib/gzip v1.2.2
 	github.com/gin-contrib/static v1.1.2
 	github.com/gin-contrib/zap v1.1.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-echarts/statsview v0.3.4
 	github.com/go-gorm/caches/v4 v4.0.5
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
-	github.com/go-playground/validator/v10 v10.24.0
+	github.com/go-playground/validator/v10 v10.25.0
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/go-redsync/redsync/v4 v4.13.0
@@ -87,7 +87,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sync v0.11.0
@@ -102,7 +102,7 @@ require (
 	gorm.io/driver/postgres v1.4.8
 	gorm.io/gorm v1.25.0
 	gorm.io/plugin/soft_delete v1.2.1
-	k8s.io/component-base v0.32.1
+	k8s.io/component-base v0.32.2
 	moul.io/zapgorm2 v1.3.0
 	stathat.com/c/consistent v1.0.0
 )
@@ -297,7 +297,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
-	k8s.io/apimachinery v0.32.1 // indirect
+	k8s.io/apimachinery v0.32.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

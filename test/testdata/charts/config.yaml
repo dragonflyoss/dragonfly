@@ -27,7 +27,10 @@ scheduler:
   config:
     verbose: true
     scheduler:
-      algorithm: nt
+      algorithm: default
+      retryBackToSourceLimit: 5
+      retryLimit: 7
+      retryInterval: 500ms
 
 seedPeer:
   image:
