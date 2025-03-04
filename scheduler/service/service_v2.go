@@ -113,6 +113,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			log.Infof("receive RegisterPeerRequest, url: %s, range: %#v, header: %#v, need back-to-source: %t",
 				registerPeerRequest.Download.GetUrl(), registerPeerRequest.Download.GetRange(), registerPeerRequest.Download.GetRequestHeader(), registerPeerRequest.Download.GetNeedBackToSource())
 			if err := v.handleRegisterPeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPeerRequest); err != nil {
+				log.Error(err)
+
 				// If the peer register failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -126,6 +128,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerStartedRequest:
 			log.Info("receive DownloadPeerStartedRequest")
 			if err := v.handleDownloadPeerStartedRequest(ctx, req.GetPeerId()); err != nil {
+				log.Error(err)
+
 				// If the peer started failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -139,6 +143,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerBackToSourceStartedRequest:
 			log.Info("receive DownloadPeerBackToSourceStartedRequest")
 			if err := v.handleDownloadPeerBackToSourceStartedRequest(ctx, req.GetPeerId()); err != nil {
+				log.Error(err)
+
 				// If the peer started back-to-source failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPeerBackToSourceFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -153,6 +159,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			reschedulePeerRequest := announcePeerRequest.ReschedulePeerRequest
 			log.Infof("receive ReschedulePeerRequestescription: %s", reschedulePeerRequest.GetDescription())
 			if err := v.handleReschedulePeerRequest(ctx, req.GetPeerId(), reschedulePeerRequest.GetCandidateParents()); err != nil {
+				log.Error(err)
+
 				// If the peer started back-to-source failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -177,6 +185,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			downloadPeerBackToSourceFinishedRequest := announcePeerRequest.DownloadPeerBackToSourceFinishedRequest
 			log.Infof("receive DownloadPeerBackToSourceFinishedRequest, content length: %d, piece count: %d", downloadPeerBackToSourceFinishedRequest.GetContentLength(), downloadPeerBackToSourceFinishedRequest.GetPieceCount())
 			if err := v.handleDownloadPeerBackToSourceFinishedRequest(ctx, req.GetPeerId(), downloadPeerBackToSourceFinishedRequest); err != nil {
+				log.Error(err)
+
 				// If the peer started back-to-source failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPeerBackToSourceFailedRequest(ctx, req.GetPeerId()); err != nil {
