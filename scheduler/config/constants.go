@@ -151,17 +151,6 @@ var (
 )
 
 const (
-	// DefaultStorageMaxSize is the default maximum size of record file.
-	DefaultStorageMaxSize = 100
-
-	// DefaultStorageMaxBackups is the default maximum count of backup.
-	DefaultStorageMaxBackups = 10
-
-	// DefaultStorageBufferSize is the default size of buffer container.
-	DefaultStorageBufferSize = 100
-)
-
-const (
 	// DefaultLogRotateMaxSize is the default maximum size in megabytes of log files before rotation.
 	DefaultLogRotateMaxSize = 1024
 

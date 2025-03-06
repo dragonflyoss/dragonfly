@@ -58,9 +58,6 @@ type Config struct {
 	// Job configuration.
 	Job JobConfig `yaml:"job" mapstructure:"job"`
 
-	// Storage configuration.
-	Storage StorageConfig `yaml:"storage" mapstructure:"storage"`
-
 	// Metrics configuration.
 	Metrics MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
 
@@ -261,18 +258,6 @@ type JobConfig struct {
 	Redis RedisConfig `yaml:"redis" mapstructure:"redis"`
 }
 
-type StorageConfig struct {
-	// MaxSize sets the maximum size in megabytes of storage file.
-	MaxSize int `yaml:"maxSize" mapstructure:"maxSize"`
-
-	// MaxBackups sets the maximum number of storage files to retain.
-	MaxBackups int `yaml:"maxBackups" mapstructure:"maxBackups"`
-
-	// BufferSize sets the size of buffer container,
-	// if the buffer is full, write all the records in the buffer to the file.
-	BufferSize int `yaml:"bufferSize" mapstructure:"bufferSize"`
-}
-
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
@@ -372,11 +357,6 @@ func New() *Config {
 			GlobalWorkerNum:    DefaultJobGlobalWorkerNum,
 			SchedulerWorkerNum: DefaultJobSchedulerWorkerNum,
 			LocalWorkerNum:     DefaultJobLocalWorkerNum,
-		},
-		Storage: StorageConfig{
-			MaxSize:    DefaultStorageMaxSize,
-			MaxBackups: DefaultStorageMaxBackups,
-			BufferSize: DefaultStorageBufferSize,
 		},
 		Metrics: MetricsConfig{
 			Enable:     false,
@@ -537,18 +517,6 @@ func (cfg *Config) Validate() error {
 		if cfg.Job.LocalWorkerNum == 0 {
 			return errors.New("job requires parameter localWorkerNum")
 		}
-	}
-
-	if cfg.Storage.MaxSize <= 0 {
-		return errors.New("storage requires parameter maxSize")
-	}
-
-	if cfg.Storage.MaxBackups <= 0 {
-		return errors.New("storage requires parameter maxBackups")
-	}
-
-	if cfg.Storage.BufferSize < 0 {
-		return errors.New("storage requires parameter bufferSize")
 	}
 
 	if cfg.Metrics.Enable {
