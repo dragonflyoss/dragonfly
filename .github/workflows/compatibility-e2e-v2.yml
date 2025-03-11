@@ -31,12 +31,12 @@ jobs:
         include:
           - module: manager
             image: manager
-            image-tag: v2.2.1-rc.2
+            image-tag: v2.2.1-rc.3
             chart-name: manager
             skip: "Rate Limit"
           - module: scheduler
             image: scheduler
-            image-tag: v2.2.1-rc.2
+            image-tag: v2.2.1-rc.3
             chart-name: scheduler
             skip: "Rate Limit"
           - module: client

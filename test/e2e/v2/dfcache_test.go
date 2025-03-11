@@ -60,7 +60,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -116,7 +116,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -172,7 +172,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -228,7 +228,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -284,7 +284,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
