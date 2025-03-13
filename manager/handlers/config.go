@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /configs [post]
+// @Router /api/v1/configs [post]
 func (h *Handlers) CreateConfig(ctx *gin.Context) {
 	var json types.CreateConfigRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateConfig(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /configs/{id} [delete]
+// @Router /api/v1/configs/{id} [delete]
 func (h *Handlers) DestroyConfig(ctx *gin.Context) {
 	var params types.ConfigParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroyConfig(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /configs/{id} [patch]
+// @Router /api/v1/configs/{id} [patch]
 func (h *Handlers) UpdateConfig(ctx *gin.Context) {
 	var params types.ConfigParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateConfig(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /configs/{id} [get]
+// @Router /api/v1/configs/{id} [get]
 func (h *Handlers) GetConfig(ctx *gin.Context) {
 	var params types.ConfigParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetConfig(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /configs [get]
+// @Router /api/v1/configs [get]
 func (h *Handlers) GetConfigs(ctx *gin.Context) {
 	var query types.GetConfigsQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

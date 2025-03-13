@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   d7y_io_dragonfly_v2_manager_models.Application:
     properties:
@@ -1075,7 +1075,7 @@ info:
   title: Dragonfly Manager
   version: 1.0.0
 paths:
-  /applications:
+  /api/v1/applications:
     get:
       consumes:
       - application/json
@@ -1140,7 +1140,7 @@ paths:
       summary: Create Application
       tags:
       - Application
-  /applications/{id}:
+  /api/v1/applications/{id}:
     delete:
       consumes:
       - application/json
@@ -1223,7 +1223,7 @@ paths:
       summary: Update Application
       tags:
       - Application
-  /buckets:
+  /api/v1/buckets:
     get:
       consumes:
       - application/json
@@ -1271,7 +1271,7 @@ paths:
       summary: Create Bucket
       tags:
       - Bucket
-  /buckets/{id}:
+  /api/v1/buckets/{id}:
     delete:
       consumes:
       - application/json
@@ -1322,7 +1322,7 @@ paths:
       summary: Get Bucket
       tags:
       - Bucket
-  /clusters:
+  /api/v1/clusters:
     get:
       consumes:
       - application/json
@@ -1387,7 +1387,7 @@ paths:
       summary: Create Cluster
       tags:
       - Cluster
-  /clusters/{id}:
+  /api/v1/clusters/{id}:
     delete:
       consumes:
       - application/json
@@ -1470,7 +1470,7 @@ paths:
       summary: Update Cluster
       tags:
       - Cluster
-  /configs:
+  /api/v1/configs:
     get:
       consumes:
       - application/json
@@ -1535,7 +1535,7 @@ paths:
       summary: Create Config
       tags:
       - Config
-  /configs/{id}:
+  /api/v1/configs/{id}:
     delete:
       consumes:
       - application/json
@@ -1618,26 +1618,7 @@ paths:
       summary: Update Config
       tags:
       - Config
-  /healthy:
-    get:
-      consumes:
-      - application/json
-      description: Get app health
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get Health
-      tags:
-      - Health
-  /jobs:
+  /api/v1/jobs:
     get:
       consumes:
       - application/json
@@ -1675,34 +1656,7 @@ paths:
       summary: Get Jobs
       tags:
       - Job
-    post:
-      consumes:
-      - application/json
-      description: Create by json config
-      parameters:
-      - description: Job
-        in: body
-        name: Job
-        required: true
-        schema:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Create Job
-      tags:
-      - Job
-  /jobs/{id}:
+  /api/v1/jobs/{id}:
     delete:
       consumes:
       - application/json
@@ -1785,7 +1739,7 @@ paths:
       summary: Update Job
       tags:
       - Job
-  /oauth:
+  /api/v1/oauth:
     get:
       consumes:
       - application/json
@@ -1850,7 +1804,7 @@ paths:
       summary: Create Oauth
       tags:
       - Oauth
-  /oauth/{id}:
+  /api/v1/oauth/{id}:
     delete:
       consumes:
       - application/json
@@ -1933,7 +1887,7 @@ paths:
       summary: Update Oauth
       tags:
       - Oauth
-  /peers:
+  /api/v1/peers:
     get:
       consumes:
       - application/json
@@ -1998,7 +1952,7 @@ paths:
       summary: Create Peer
       tags:
       - Peer
-  /peers/{id}:
+  /api/v1/peers/{id}:
     delete:
       consumes:
       - application/json
@@ -2049,7 +2003,7 @@ paths:
       summary: Get Peer
       tags:
       - Peer
-  /permissions:
+  /api/v1/permissions:
     get:
       description: Get Permissions
       produces:
@@ -2068,7 +2022,7 @@ paths:
       summary: Get Permissions
       tags:
       - Permission
-  /personal-access-tokens:
+  /api/v1/personal-access-tokens:
     get:
       consumes:
       - application/json
@@ -2133,7 +2087,7 @@ paths:
       summary: Create PersonalAccessToken
       tags:
       - PersonalAccessToken
-  /personal-access-tokens/{id}:
+  /api/v1/personal-access-tokens/{id}:
     delete:
       consumes:
       - application/json
@@ -2216,62 +2170,7 @@ paths:
       summary: Update PersonalAccessToken
       tags:
       - PersonalAccessToken
-  /preheats:
-    post:
-      consumes:
-      - application/json
-      description: Create by json config
-      parameters:
-      - description: Preheat
-        in: body
-        name: Preheat
-        required: true
-        schema:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Create V1 Preheat
-      tags:
-      - Preheat
-  /preheats/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Get Preheat by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get V1 Preheat
-      tags:
-      - Preheat
-  /roles:
+  /api/v1/roles:
     get:
       consumes:
       - application/json
@@ -2311,7 +2210,7 @@ paths:
       summary: Create Role
       tags:
       - Role
-  /roles/{role}:
+  /api/v1/roles/{role}:
     delete:
       consumes:
       - application/json
@@ -2356,7 +2255,7 @@ paths:
       summary: Get Role
       tags:
       - Role
-  /roles/{role}/permissions:
+  /api/v1/roles/{role}/permissions:
     delete:
       consumes:
       - application/json
@@ -2413,7 +2312,7 @@ paths:
       summary: Add Permission For Role
       tags:
       - Role
-  /scheduler-clusters:
+  /api/v1/scheduler-clusters:
     get:
       consumes:
       - application/json
@@ -2478,7 +2377,7 @@ paths:
       summary: Create SchedulerCluster
       tags:
       - SchedulerCluster
-  /scheduler-clusters/{id}:
+  /api/v1/scheduler-clusters/{id}:
     delete:
       consumes:
       - application/json
@@ -2561,7 +2460,7 @@ paths:
       summary: Update SchedulerCluster
       tags:
       - SchedulerCluster
-  /scheduler-clusters/{id}/schedulers/{scheduler_id}:
+  /api/v1/scheduler-clusters/{id}/schedulers/{scheduler_id}:
     put:
       consumes:
       - application/json
@@ -2591,7 +2490,7 @@ paths:
       summary: Add Scheduler to schedulerCluster
       tags:
       - SchedulerCluster
-  /scheduler-features:
+  /api/v1/scheduler-features:
     get:
       consumes:
       - application/json
@@ -2614,7 +2513,7 @@ paths:
       summary: Get Scheudler Features
       tags:
       - Scheduler Feature
-  /schedulers:
+  /api/v1/schedulers:
     get:
       consumes:
       - application/json
@@ -2679,7 +2578,7 @@ paths:
       summary: Create Scheduler
       tags:
       - Scheduler
-  /schedulers/{id}:
+  /api/v1/schedulers/{id}:
     delete:
       consumes:
       - application/json
@@ -2762,7 +2661,7 @@ paths:
       summary: Update Scheduler
       tags:
       - Scheduler
-  /seed-peer-clusters:
+  /api/v1/seed-peer-clusters:
     get:
       consumes:
       - application/json
@@ -2827,7 +2726,7 @@ paths:
       summary: Create SeedPeerCluster
       tags:
       - SeedPeerCluster
-  /seed-peer-clusters/{id}:
+  /api/v1/seed-peer-clusters/{id}:
     delete:
       consumes:
       - application/json
@@ -2910,7 +2809,7 @@ paths:
       summary: Update SeedPeerCluster
       tags:
       - SeedPeerCluster
-  /seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}:
+  /api/v1/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}:
     put:
       consumes:
       - application/json
@@ -2940,7 +2839,7 @@ paths:
       summary: Add SchedulerCluster to SeedPeerCluster
       tags:
       - SeedPeerCluster
-  /seed-peer-clusters/{id}/seed-peers/{seed_peer_id}:
+  /api/v1/seed-peer-clusters/{id}/seed-peers/{seed_peer_id}:
     put:
       consumes:
       - application/json
@@ -2970,7 +2869,7 @@ paths:
       summary: Add Instance to SeedPeerCluster
       tags:
       - SeedPeerCluster
-  /seed-peers:
+  /api/v1/seed-peers:
     get:
       consumes:
       - application/json
@@ -3035,7 +2934,7 @@ paths:
       summary: Create SeedPeer
       tags:
       - SeedPeer
-  /seed-peers/{id}:
+  /api/v1/seed-peers/{id}:
     delete:
       consumes:
       - application/json
@@ -3118,7 +3017,7 @@ paths:
       summary: Update SeedPeer
       tags:
       - SeedPeer
-  /user/signin/{name}:
+  /api/v1/user/signin/{name}:
     get:
       consumes:
       - application/json
@@ -3143,7 +3042,7 @@ paths:
       summary: Oauth Signin
       tags:
       - User
-  /user/signin/{name}/callback:
+  /api/v1/user/signin/{name}/callback:
     get:
       description: oauth signin callback by json config
       parameters:
@@ -3169,7 +3068,7 @@ paths:
       summary: Oauth Signin Callback
       tags:
       - Oauth
-  /user/signup:
+  /api/v1/user/signup:
     post:
       consumes:
       - application/json
@@ -3195,7 +3094,7 @@ paths:
       summary: SignUp user
       tags:
       - User
-  /users:
+  /api/v1/users:
     get:
       consumes:
       - application/json
@@ -3233,7 +3132,7 @@ paths:
       summary: Get Users
       tags:
       - User
-  /users/{id}:
+  /api/v1/users/{id}:
     get:
       consumes:
       - application/json
@@ -3292,7 +3191,7 @@ paths:
       summary: Update User
       tags:
       - User
-  /users/{id}/reset_password:
+  /api/v1/users/{id}/reset_password:
     post:
       consumes:
       - application/json
@@ -3321,7 +3220,7 @@ paths:
       summary: Reset Password For User
       tags:
       - User
-  /users/{id}/roles:
+  /api/v1/users/{id}/roles:
     get:
       description: get roles by json config
       parameters:
@@ -3346,7 +3245,7 @@ paths:
       summary: Get User Roles
       tags:
       - User
-  /users/{id}/roles/{role}:
+  /api/v1/users/{id}/roles/{role}:
     delete:
       consumes:
       - application/json
@@ -3401,4 +3300,379 @@ paths:
       summary: Add Role For User
       tags:
       - Users
+  /healthy:
+    get:
+      consumes:
+      - application/json
+      description: Get app health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Health
+      tags:
+      - Health
+  /oapi/v1/clusters:
+    get:
+      consumes:
+      - application/json
+      description: Get Clusters
+      parameters:
+      - default: 0
+        description: current page
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        description: return max item count, default 10, max 50
+        in: query
+        maximum: 50
+        minimum: 2
+        name: per_page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse'
+            type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Clusters
+      tags:
+      - Cluster
+    post:
+      consumes:
+      - application/json
+      description: Create by json config
+      parameters:
+      - description: Cluster
+        in: body
+        name: Cluster
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Create Cluster
+      tags:
+      - Cluster
+  /oapi/v1/clusters/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Destroy by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Destroy Cluster
+      tags:
+      - Cluster
+    get:
+      consumes:
+      - application/json
+      description: Get Cluster by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Cluster
+      tags:
+      - Cluster
+    patch:
+      consumes:
+      - application/json
+      description: Update by json config
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cluster
+        in: body
+        name: Cluster
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Update Cluster
+      tags:
+      - Cluster
+  /oapi/v1/jobs:
+    get:
+      consumes:
+      - application/json
+      description: Get Jobs
+      parameters:
+      - default: 0
+        description: current page
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        description: return max item count, default 10, max 50
+        in: query
+        maximum: 50
+        minimum: 2
+        name: per_page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
+            type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Jobs
+      tags:
+      - Job
+    post:
+      consumes:
+      - application/json
+      description: Create by json config
+      parameters:
+      - description: Job
+        in: body
+        name: Job
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Create Job
+      tags:
+      - Job
+  /oapi/v1/jobs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Destroy by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Destroy Job
+      tags:
+      - Job
+    get:
+      consumes:
+      - application/json
+      description: Get Job by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Job
+      tags:
+      - Job
+    patch:
+      consumes:
+      - application/json
+      description: Update by json config
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Job
+        in: body
+        name: Job
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Update Job
+      tags:
+      - Job
+  /preheats:
+    post:
+      consumes:
+      - application/json
+      description: Create by json config
+      parameters:
+      - description: Preheat
+        in: body
+        name: Preheat
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Create V1 Preheat
+      tags:
+      - Preheat
+  /preheats/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get Preheat by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get V1 Preheat
+      tags:
+      - Preheat
 swagger: "2.0"
+tags:
+- description: API router (/api/v1)
+  name: api
+- description: open API router (/oapi/v1)
+  name: oapi

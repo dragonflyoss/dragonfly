@@ -39,7 +39,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /buckets [post]
+// @Router /api/v1/buckets [post]
 func (h *Handlers) CreateBucket(ctx *gin.Context) {
 	var json types.CreateBucketRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -65,7 +65,7 @@ func (h *Handlers) CreateBucket(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /buckets/{id} [delete]
+// @Router /api/v1/buckets/{id} [delete]
 func (h *Handlers) DestroyBucket(ctx *gin.Context) {
 	var params types.BucketParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -91,7 +91,7 @@ func (h *Handlers) DestroyBucket(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /buckets/{id} [get]
+// @Router /api/v1/buckets/{id} [get]
 func (h *Handlers) GetBucket(ctx *gin.Context) {
 	var params types.BucketParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -117,7 +117,7 @@ func (h *Handlers) GetBucket(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /buckets [get]
+// @Router /api/v1/buckets [get]
 func (h *Handlers) GetBuckets(ctx *gin.Context) {
 	buckets, err := h.service.GetBuckets(ctx.Request.Context())
 	if err != nil {
