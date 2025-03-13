@@ -31,22 +31,22 @@ jobs:
         include:
           - module: manager
             image: manager
-            image-tag: v2.2.1-rc.3
+            image-tag: v2.2.1
             chart-name: manager
             skip: "Rate Limit"
           - module: scheduler
             image: scheduler
-            image-tag: v2.2.1-rc.3
+            image-tag: v2.2.1
             chart-name: scheduler
             skip: "Rate Limit"
           - module: client
             image: client
-            image-tag: v0.2.17
+            image-tag: v0.2.18
             chart-name: client
             skip: "Rate Limit"
           - module: seed-client
             image: client
-            image-tag: v0.2.17
+            image-tag: v0.2.18
             chart-name: seed-client
             skip: "Rate Limit"
 
