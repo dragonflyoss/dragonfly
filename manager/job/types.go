@@ -3,7 +3,11 @@ package job
 import (
 	"errors"
 	"fmt"
+	"regexp"
 )
+
+// accessURLRegexp is the regular expression for parsing access url.
+var accessURLRegexp, _ = regexp.Compile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
 
 // preheatImage is image information for preheat.
 type preheatImage struct {
@@ -23,7 +27,7 @@ func (p *preheatImage) blobsURL(digest string) string {
 
 // parseManifestURL parses manifest url.
 func parseManifestURL(url string) (*preheatImage, error) {
-	r := accessURLPattern.FindStringSubmatch(url)
+	r := accessURLRegexp.FindStringSubmatch(url)
 	if len(r) != 5 {
 		return nil, errors.New("parse access url failed")
 	}

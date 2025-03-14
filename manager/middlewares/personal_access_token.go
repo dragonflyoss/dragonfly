@@ -33,6 +33,8 @@ import (
 )
 
 var (
+	// oapiResourceRegexp is a regular expression to extract the resource type from the path.
+	// Example: /oapi/v1/jobs/1 -> jobs.
 	oapiResourceRegexp = regexp.MustCompile(`^/oapi/v[0-9]+/([-_a-zA-Z]*)[/.*]*`)
 )
 
@@ -45,6 +47,7 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, ErrorResponse{
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
+
 			c.Abort()
 			return
 		}
@@ -53,51 +56,56 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 		personalAccessToken := tokenFields[1]
 		var token models.PersonalAccessToken
 		if err := gdb.WithContext(c).Where("token = ?", personalAccessToken).First(&token).Error; err != nil {
-			logger.Errorf("Invalid personal access token attempt: %s, error: %v", c.Request.URL.Path, err)
+			logger.Errorf("invalid personal access token attempt: %s, error: %v", c.Request.URL.Path, err)
 			c.JSON(http.StatusUnauthorized, ErrorResponse{
 				Message: http.StatusText(http.StatusUnauthorized),
 			})
+
 			c.Abort()
 			return
 		}
 
 		// Check if the token is active.
 		if token.State != models.PersonalAccessTokenStateActive {
-			logger.Errorf("Inactive token used: %s, token name: %s, user_id: %d", c.Request.URL.Path, token.Name, token.UserID)
+			logger.Errorf("inactive token used: %s, token name: %s, user_id: %d", c.Request.URL.Path, token.Name, token.UserID)
 			c.JSON(http.StatusForbidden, ErrorResponse{
 				Message: "Token is inactive",
 			})
+
 			c.Abort()
 			return
 		}
 
 		// Check if the token has expired.
 		if time.Now().After(token.ExpiredAt) {
-			logger.Errorf("Expired token used: %s, token name: %s, user_id: %d, expired: %v",
+			logger.Errorf("expired token used: %s, token name: %s, user_id: %d, expired: %v",
 				c.Request.URL.Path, token.Name, token.UserID, token.ExpiredAt)
 			c.JSON(http.StatusForbidden, ErrorResponse{
 				Message: "Token has expired",
 			})
+
 			c.Abort()
 			return
 		}
 
 		// Check if the token's scopes include the required resource type.
-		hasScope := false
-		resourceType := getAPIResourceType(c.Request.URL.Path)
-		for _, scope := range token.Scopes {
-			if scope == resourceType {
-				hasScope = true
-				break
-			}
+		requiredPermission, err := requiredPermission(c.Request.URL.Path)
+		if err != nil {
+			logger.Errorf("failed to extract resource type from path: %s, error: %v", c.Request.URL.Path, err)
+			c.JSON(http.StatusForbidden, ErrorResponse{
+				Message: fmt.Sprintf("Failed to extract resource type from path: %s", c.Request.URL.Path),
+			})
+
+			c.Abort()
+			return
 		}
 
-		if !hasScope {
-			logger.Errorf("Insufficient scope token used: %s, token name: %s, user_id: %d, required: %s, available: %v",
-				c.Request.URL.Path, token.Name, token.UserID, resourceType, token.Scopes)
+		if !hasPermission(token.Scopes, requiredPermission) {
+			logger.Errorf("insufficient scope token used %s. Required permission: %s", token.Name, requiredPermission)
 			c.JSON(http.StatusForbidden, ErrorResponse{
-				Message: fmt.Sprintf("Token doesn't have permission to access this resource. Required scope: %s", resourceType),
+				Message: fmt.Sprintf("Token doesn't have permission to access this resource. Required permission: %s", requiredPermission),
 			})
+
 			c.Abort()
 			return
 		}
@@ -106,23 +114,42 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// getAPIResourceType extracts the resource type from the path.
-// For example: /oapi/v1/jobs -> job, /oapi/v1/clusters -> cluster.
-func getAPIResourceType(path string) string {
+// hasPermission checks if the required permission exists in the provided permissions list.
+// For backward compatibility, an empty permissions list grants all permissions.
+// This allows existing systems that don't have explicit permissions set to continue
+// working without interruption.
+//
+// Returns true if:
+// 1. The permissions list is empty (backward compatibility mode)
+// 2. The requiredPermission is found in the permissions list
+func hasPermission(permissions []string, requiredPermission string) bool {
+	if len(permissions) == 0 {
+		return true
+	}
+
+	for _, permission := range permissions {
+		if permission == requiredPermission {
+			return true
+		}
+	}
+
+	return false
+}
+
+// requiredPermission extracts the resource type from the path and returns the required permission.
+func requiredPermission(path string) (string, error) {
 	matches := oapiResourceRegexp.FindStringSubmatch(path)
 	if len(matches) != 2 {
-		return ""
+		return "", fmt.Errorf("failed to extract resource type from path: %s", path)
 	}
 
 	resource := strings.ToLower(matches[1])
 	switch resource {
 	case "jobs":
-		return types.PersonalAccessTokenScopeJob
+		return types.PersonalAccessTokenScopeJob, nil
 	case "clusters":
-		return types.PersonalAccessTokenScopeCluster
-	case "preheats":
-		return types.PersonalAccessTokenScopePreheat
+		return types.PersonalAccessTokenScopeCluster, nil
 	default:
-		return resource
+		return "", fmt.Errorf("unsupported resource type: %s", resource)
 	}
 }

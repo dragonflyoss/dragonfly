@@ -27,7 +27,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"time"
 
 	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
@@ -72,9 +71,6 @@ var defaultHTTPTransport = &http.Transport{
 	MaxConnsPerHost:     50,
 	IdleConnTimeout:     120 * time.Second,
 }
-
-// accessURLPattern is the pattern of access url.
-var accessURLPattern, _ = regexp.Compile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
 
 // Preheat is an interface for preheat job.
 type Preheat interface {
