@@ -250,6 +250,9 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 			err      error
 		)
 
+		// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-tasks:", keys could be:
+		// "{prefix}{taskID}:persistent-cache-peers", "{prefix}{taskID}:persistent-peers" and "{prefix}{taskID}".
+		// Scan all keys with prefix.
 		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID))
 		taskKeys, cursor, err = t.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 		if err != nil {
@@ -259,12 +262,21 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 
 		taskIDs := make(map[string]struct{})
 		for _, taskKey := range taskKeys {
+			// If context is done, return error.
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+
+			// Remove prefix from task key.
 			suffix := strings.TrimPrefix(taskKey, prefix)
 			if suffix == "" {
 				logger.Error("invalid task key")
 				continue
 			}
 
+			// suffix is a non-empty string like:
+			// "{taskID}:persistent-cache-peers", "{taskID}:persistent-peers" and "{taskID}".
+			// Extract taskID from suffix and avoid duplicate taskID.
 			taskID := strings.Split(suffix, ":")[0]
 			if _, ok := taskIDs[taskID]; ok {
 				continue
