@@ -19,6 +19,8 @@ package redis
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 
@@ -147,7 +149,7 @@ func MakeKeyInScheduler(namespace, id string) string {
 	return fmt.Sprintf("%s:%s", MakeNamespaceKeyInScheduler(namespace), id)
 }
 
-// MakeSchedulerClusterKeyInManager make scheduler cluster key in manager.
+// MakeSchedulerClusterKeyInManager make scheduler cluster key in scheduler.
 func MakePersistentCacheTaskKeyInScheduler(schedulerClusterID uint, taskID string) string {
 	return MakeKeyInScheduler(SchedulerClustersNamespace, fmt.Sprintf("%d:%s:%s", schedulerClusterID, PersistentCacheTasksNamespace, taskID))
 }
@@ -190,4 +192,19 @@ func MakePersistentCacheHostsInScheduler(schedulerClusterID uint) string {
 // MakePersistentCachePeersOfPersistentCacheHostInScheduler make persistent cache peers of persistent cache host in scheduler.
 func MakePersistentCachePeersOfPersistentCacheHostInScheduler(schedulerClusterID uint, hostID string) string {
 	return MakeKeyInScheduler(SchedulerClustersNamespace, fmt.Sprintf("%d:%s:%s:%s", schedulerClusterID, PersistentCacheHostsNamespace, hostID, PersistentCachePeersNamespace))
+}
+
+// ExtractSchedulerClusterIDFromPersistentCacheTaskKey extracts the scheduler cluster ID from a persistent cache task key.
+func ExtractSchedulerClusterIDFromPersistentCacheTaskKey(key string) (uint, error) {
+	parts := strings.Split(key, ":")
+	if len(parts) < 4 {
+		return 0, fmt.Errorf("invalid persistent cache task key: %s", key)
+	}
+
+	clusterID, err := strconv.ParseUint(parts[2], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid persistent cache task key: %s", key)
+	}
+
+	return uint(clusterID), nil
 }

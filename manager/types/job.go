@@ -155,7 +155,7 @@ type CreateSyncPeersJobRequest struct {
 	// UserID is the user id of the job.
 	UserID uint `json:"user_id" binding:"omitempty"`
 
-	// SeedPeerClusterIDs is the seed peer cluster ids of the job.
+	// SchedulerClusterIDs is the scheduler cluster ids of the job.
 	SchedulerClusterIDs []uint `json:"scheduler_cluster_ids" binding:"omitempty"`
 }
 
