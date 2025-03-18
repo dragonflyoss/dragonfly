@@ -22,7 +22,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
@@ -367,16 +369,23 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 			err      error
 		)
 
-		peerKeys, cursor, err = p.rdb.Scan(ctx, cursor, pkgredis.MakePersistentCachePeersInScheduler(p.config.Manager.SchedulerClusterID), 10).Result()
+		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersInScheduler(p.config.Manager.SchedulerClusterID))
+		peerKeys, cursor, err = p.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 		if err != nil {
 			logger.Errorf("scan tasks failed: %v", err)
 			return nil, err
 		}
 
 		for _, peerKey := range peerKeys {
-			peer, loaded := p.Load(ctx, peerKey)
+			peerID := strings.TrimPrefix(peerKey, prefix)
+			if peerID == "" {
+				logger.Error("invalid peer key")
+				continue
+			}
+
+			peer, loaded := p.Load(ctx, peerID)
 			if !loaded {
-				logger.WithPeerID(peerKey).Error("load peer failed")
+				logger.WithPeerID(peerID).Error("load peer failed")
 				continue
 			}
 

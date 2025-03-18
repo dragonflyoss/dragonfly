@@ -1856,7 +1856,7 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 			return status.Error(codes.Internal, err.Error())
 		}
 
-		currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, taskID)
+		currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentReplicaCount(ctx, taskID)
 		if err != nil {
 			// Collect RegisterPersistentCachePeerFailureCount metrics.
 			metrics.RegisterPersistentCachePeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
@@ -2051,7 +2051,7 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, taskID)
+	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentReplicaCount(ctx, taskID)
 	if err != nil {
 		// Collect RegisterPersistentCachePeerFailureCount metrics.
 		metrics.RegisterPersistentCachePeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
@@ -2314,7 +2314,7 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, peer.Task.ID)
+	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -2569,7 +2569,7 @@ func (v *V2) UploadPersistentCacheTaskFinished(ctx context.Context, req *schedul
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, peer.Task.ID)
+	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentReplicaCount(ctx, peer.Task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -2769,7 +2769,7 @@ func (v *V2) StatPersistentCacheTask(ctx context.Context, req *schedulerv2.StatP
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCorrentReplicaCount(ctx, task.ID)
+	currentReplicaCount, err := v.persistentCacheResource.TaskManager().LoadCurrentReplicaCount(ctx, task.ID)
 	if err != nil {
 		log.Errorf("load current replica count failed %s", err)
 		return nil, status.Error(codes.Internal, err.Error())

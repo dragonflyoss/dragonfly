@@ -19,6 +19,7 @@ package persistentcache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -183,7 +184,7 @@ func TestTaskManager_Load(t *testing.T) {
 	}
 }
 
-func TestTaskManager_LoadCorrentReplicaCount(t *testing.T) {
+func TestTaskManager_LoadCurrentReplicaCount(t *testing.T) {
 	type args struct {
 		taskID string
 	}
@@ -229,7 +230,7 @@ func TestTaskManager_LoadCorrentReplicaCount(t *testing.T) {
 				rdb:    rdb,
 			}
 
-			cnt, err := tm.LoadCorrentReplicaCount(context.Background(), tt.args.taskID)
+			cnt, err := tm.LoadCurrentReplicaCount(context.Background(), tt.args.taskID)
 			assert.Equal(t, tt.expectedCount, cnt)
 			assert.Equal(t, tt.expectedErr, err != nil, "error mismatch")
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -351,15 +352,23 @@ func TestTaskManager_LoadAll(t *testing.T) {
 		{
 			name: "scan error",
 			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, pkgredis.MakePersistentCacheTasksInScheduler(42), 10).SetErr(errors.New("scan error"))
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCacheTasksInScheduler(42)), 10).SetErr(errors.New("scan error"))
 			},
 			expectedErr: true,
 			expectedLen: 0,
 		},
 		{
+			name: "invalid task key",
+			mockRedis: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCacheTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(42))}, 0)
+			},
+			expectedErr: false,
+			expectedLen: 0,
+		},
+		{
 			name: "load task error",
 			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, pkgredis.MakePersistentCacheTasksInScheduler(42), 10).SetVal([]string{"task1"}, 0)
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCacheTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:task1", pkgredis.MakePersistentCacheTasksInScheduler(42))}, 0)
 				mock.ExpectHGetAll(pkgredis.MakePersistentCacheTaskKeyInScheduler(42, "task1")).SetErr(errors.New("load error"))
 			},
 			expectedErr: false,
@@ -368,7 +377,7 @@ func TestTaskManager_LoadAll(t *testing.T) {
 		{
 			name: "successful load all",
 			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, pkgredis.MakePersistentCacheTasksInScheduler(42), 10).SetVal([]string{"task1", "task2"}, 0)
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCacheTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:task1", pkgredis.MakePersistentCacheTasksInScheduler(42)), fmt.Sprintf("%s:task2", pkgredis.MakePersistentCacheTasksInScheduler(42))}, 0)
 				mockData := map[string]string{
 					"id":                       "task1",
 					"tag":                      "tag_value",

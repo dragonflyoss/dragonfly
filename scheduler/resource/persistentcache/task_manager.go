@@ -20,7 +20,9 @@ package persistentcache
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -35,8 +37,8 @@ type TaskManager interface {
 	// Load returns persistent cache task by a key.
 	Load(context.Context, string) (*Task, bool)
 
-	// LoadCorrentReplicaCount returns current replica count of the persistent cache task.
-	LoadCorrentReplicaCount(context.Context, string) (uint64, error)
+	// LoadCurrentReplicaCount returns current replica count of the persistent cache task.
+	LoadCurrentReplicaCount(context.Context, string) (uint64, error)
 
 	// LoadCurrentPersistentReplicaCount returns current persistent replica count of the persistent cache task.
 	LoadCurrentPersistentReplicaCount(context.Context, string) (uint64, error)
@@ -138,8 +140,8 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 	), true
 }
 
-// LoadCorrentReplicaCount returns current replica count of the persistent cache task.
-func (t *taskManager) LoadCorrentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
+// LoadCurrentReplicaCount returns current replica count of the persistent cache task.
+func (t *taskManager) LoadCurrentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
 	count, err := t.rdb.SCard(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
 	return uint64(count), err
 }
@@ -248,16 +250,30 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 			err      error
 		)
 
-		taskKeys, cursor, err = t.rdb.Scan(ctx, cursor, pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID), 10).Result()
+		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID))
+		taskKeys, cursor, err = t.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 		if err != nil {
 			logger.Error("scan tasks failed")
 			return nil, err
 		}
 
+		taskIDs := make(map[string]struct{})
 		for _, taskKey := range taskKeys {
-			task, loaded := t.Load(ctx, taskKey)
+			suffix := strings.TrimPrefix(taskKey, prefix)
+			if suffix == "" {
+				logger.Error("invalid task key")
+				continue
+			}
+
+			taskID := strings.Split(suffix, ":")[0]
+			if _, ok := taskIDs[taskID]; ok {
+				continue
+			}
+			taskIDs[taskID] = struct{}{}
+
+			task, loaded := t.Load(ctx, taskID)
 			if !loaded {
-				logger.WithTaskID(taskKey).Error("load task failed")
+				logger.WithTaskID(taskID).Error("load task failed")
 				continue
 			}
 

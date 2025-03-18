@@ -19,6 +19,7 @@ package persistentcache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -248,15 +249,23 @@ func TestPeerManager_LoadAll(t *testing.T) {
 		{
 			name: "redis scan error",
 			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, pkgredis.MakePersistentCachePeersInScheduler(42), 10).SetErr(errors.New("redis scan error"))
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCachePeersInScheduler(42)), 10).SetErr(errors.New("redis scan error"))
 			},
 			expectedPeers: nil,
 			expectedErr:   true,
 		},
 		{
+			name: "invalid peer key",
+			mockRedis: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCachePeersInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersInScheduler(42))}, 0)
+			},
+			expectedPeers: nil,
+			expectedErr:   false,
+		},
+		{
 			name: "load peer error",
 			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, pkgredis.MakePersistentCachePeersInScheduler(42), 10).SetVal([]string{"peer1"}, 0)
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCachePeersInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:peer1", pkgredis.MakePersistentCachePeersInScheduler(42))}, 0)
 				mock.ExpectHGetAll(pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1")).SetErr(errors.New("redis hgetall error"))
 			},
 			expectedPeers: nil,
@@ -270,7 +279,7 @@ func TestPeerManager_LoadAll(t *testing.T) {
 					t.Fatalf("failed to marshal bitset: %v", err)
 				}
 
-				mock.ExpectScan(0, pkgredis.MakePersistentCachePeersInScheduler(42), 10).SetVal([]string{"peer1"}, 0)
+				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCachePeersInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:peer1", pkgredis.MakePersistentCachePeersInScheduler(42))}, 0)
 				mock.ExpectHGetAll(pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1")).SetVal(map[string]string{
 					"id":              "peer1",
 					"state":           PeerStateSucceeded,
