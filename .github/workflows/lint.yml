@@ -21,7 +21,7 @@ jobs:
           fetch-depth: '0'
 
       - name: Golangci lint
-        uses: golangci/golangci-lint-action@051d91933864810ecd5e2ea2cfd98f6a5bca5347
+        uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd
         with:
           version: v1.62
           args: --verbose --timeout=10m
