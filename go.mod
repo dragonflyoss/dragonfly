@@ -2,6 +2,8 @@ module d7y.io/dragonfly/v2
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	cloud.google.com/go/storage v1.50.0
 	d7y.io/api/v2 v2.1.30
@@ -82,7 +84,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
-	go.opentelemetry.io/otel/sdk v1.34.0
+	go.opentelemetry.io/otel/sdk v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.0
