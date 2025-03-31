@@ -2,6 +2,8 @@ module d7y.io/dragonfly/v2
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	cloud.google.com/go/storage v1.50.0
 	d7y.io/api/v2 v2.1.30
@@ -21,7 +23,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/distribution/distribution/v3 v3.0.0-20220620080156-3e4f8a0ab147
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v28.0.0+incompatible
+	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.4.0
 	github.com/elastic/go-freelru v0.16.0
