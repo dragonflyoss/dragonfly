@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters [post]
+// @Router /api/v1/scheduler-clusters [post]
 func (h *Handlers) CreateSchedulerCluster(ctx *gin.Context) {
 	var json types.CreateSchedulerClusterRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateSchedulerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters/{id} [delete]
+// @Router /api/v1/scheduler-clusters/{id} [delete]
 func (h *Handlers) DestroySchedulerCluster(ctx *gin.Context) {
 	var params types.SchedulerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroySchedulerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters/{id} [patch]
+// @Router /api/v1/scheduler-clusters/{id} [patch]
 func (h *Handlers) UpdateSchedulerCluster(ctx *gin.Context) {
 	var params types.SchedulerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateSchedulerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters/{id} [get]
+// @Router /api/v1/scheduler-clusters/{id} [get]
 func (h *Handlers) GetSchedulerCluster(ctx *gin.Context) {
 	var params types.SchedulerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetSchedulerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters [get]
+// @Router /api/v1/scheduler-clusters [get]
 func (h *Handlers) GetSchedulerClusters(ctx *gin.Context) {
 	var query types.GetSchedulerClustersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
@@ -181,7 +181,7 @@ func (h *Handlers) GetSchedulerClusters(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-clusters/{id}/schedulers/{scheduler_id} [put]
+// @Router /api/v1/scheduler-clusters/{id}/schedulers/{scheduler_id} [put]
 func (h *Handlers) AddSchedulerToSchedulerCluster(ctx *gin.Context) {
 	var params types.AddSchedulerToSchedulerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {

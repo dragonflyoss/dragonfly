@@ -27,6 +27,10 @@ import (
 )
 
 func (s *service) CreatePersonalAccessToken(ctx context.Context, json types.CreatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error) {
+	if len(json.Scopes) == 0 {
+		json.Scopes = types.DefaultPersonalAccessTokenScopes
+	}
+
 	personalAccessToken := models.PersonalAccessToken{
 		Name:      json.Name,
 		BIO:       json.BIO,
@@ -58,6 +62,10 @@ func (s *service) DestroyPersonalAccessToken(ctx context.Context, id uint) error
 }
 
 func (s *service) UpdatePersonalAccessToken(ctx context.Context, id uint, json types.UpdatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error) {
+	if len(json.Scopes) == 0 {
+		json.Scopes = types.DefaultPersonalAccessTokenScopes
+	}
+
 	personalAccessToken := models.PersonalAccessToken{}
 	if err := s.db.WithContext(ctx).Preload("User").First(&personalAccessToken, id).Updates(models.PersonalAccessToken{
 		BIO:       json.BIO,

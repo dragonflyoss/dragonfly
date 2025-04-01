@@ -57,7 +57,7 @@ func newEvaluatorBase() Evaluator {
 }
 
 // EvaluateParents sort parents by evaluating multiple feature scores.
-func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standard.Peer, totalPieceCount int32) []*standard.Peer {
+func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standard.Peer, totalPieceCount uint32) []*standard.Peer {
 	sort.Slice(
 		parents,
 		func(i, j int) bool {
@@ -69,7 +69,7 @@ func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standar
 }
 
 // evaluateParents sort parents by evaluating multiple feature scores.
-func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.Peer, totalPieceCount int32) float64 {
+func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.Peer, totalPieceCount uint32) float64 {
 	parentLocation := parent.Host.Network.Location
 	parentIDC := parent.Host.Network.IDC
 	childLocation := child.Host.Network.Location
@@ -84,7 +84,7 @@ func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.P
 }
 
 // EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
-func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, totalPieceCount int32) []*persistentcache.Peer {
+func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, totalPieceCount uint32) []*persistentcache.Peer {
 	sort.Slice(
 		parents,
 		func(i, j int) bool {
@@ -96,7 +96,7 @@ func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcach
 }
 
 // evaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
-func (e *evaluatorBase) evaluatePersistentCacheParents(parent *persistentcache.Peer, child *persistentcache.Peer, totalPieceCount int32) float64 {
+func (e *evaluatorBase) evaluatePersistentCacheParents(parent *persistentcache.Peer, child *persistentcache.Peer, totalPieceCount uint32) float64 {
 	parentLocation := parent.Host.Network.Location
 	parentIDC := parent.Host.Network.IDC
 	childLocation := child.Host.Network.Location
@@ -108,7 +108,7 @@ func (e *evaluatorBase) evaluatePersistentCacheParents(parent *persistentcache.P
 }
 
 // calculatePieceScore 0.0~unlimited larger and better.
-func (e *evaluatorBase) calculatePieceScore(parentFinishedPieceCount uint, childFinishedPieceCount uint, totalPieceCount int32) float64 {
+func (e *evaluatorBase) calculatePieceScore(parentFinishedPieceCount uint, childFinishedPieceCount uint, totalPieceCount uint32) float64 {
 	// If the total piece is determined, normalize the number of
 	// pieces downloaded by the parent node.
 	if totalPieceCount > 0 {

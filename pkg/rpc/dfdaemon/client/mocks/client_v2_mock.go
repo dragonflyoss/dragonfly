@@ -214,3 +214,22 @@ func (mr *MockV2MockRecorder) SyncPieces(arg0, arg1 any, arg2 ...any) *gomock.Ca
 	varargs := append([]any{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncPieces", reflect.TypeOf((*MockV2)(nil).SyncPieces), varargs...)
 }
+
+// UpdatePersistentCacheTask mocks base method.
+func (m *MockV2) UpdatePersistentCacheTask(arg0 context.Context, arg1 *dfdaemon.UpdatePersistentCacheTaskRequest, arg2 ...grpc.CallOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdatePersistentCacheTask", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePersistentCacheTask indicates an expected call of UpdatePersistentCacheTask.
+func (mr *MockV2MockRecorder) UpdatePersistentCacheTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePersistentCacheTask", reflect.TypeOf((*MockV2)(nil).UpdatePersistentCacheTask), varargs...)
+}

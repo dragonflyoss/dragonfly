@@ -23,6 +23,7 @@ import (
 // PreheatRequest defines the request parameters for preheating.
 type PreheatRequest struct {
 	URL                 string            `json:"url" validate:"required,url"`
+	PieceLength         *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
 	Tag                 string            `json:"tag" validate:"omitempty"`
 	FilteredQueryParams string            `json:"filtered_query_params" validate:"omitempty"`
 	Headers             map[string]string `json:"headers" validate:"omitempty"`

@@ -20,7 +20,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/applications": {
+        "/api/v1/applications": {
             "get": {
                 "description": "Get Applications",
                 "consumes": [
@@ -116,7 +116,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/applications/{id}": {
+        "/api/v1/applications/{id}": {
             "get": {
                 "description": "Get Application by id",
                 "consumes": [
@@ -241,7 +241,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/buckets": {
+        "/api/v1/buckets": {
             "get": {
                 "description": "Get Buckets",
                 "consumes": [
@@ -314,7 +314,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/buckets/{id}": {
+        "/api/v1/buckets/{id}": {
             "get": {
                 "description": "Get Bucket by id",
                 "consumes": [
@@ -391,7 +391,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/clusters": {
+        "/api/v1/clusters": {
             "get": {
                 "description": "Get Clusters",
                 "consumes": [
@@ -487,7 +487,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/clusters/{id}": {
+        "/api/v1/clusters/{id}": {
             "get": {
                 "description": "Get Cluster by id",
                 "consumes": [
@@ -612,7 +612,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/configs": {
+        "/api/v1/configs": {
             "get": {
                 "description": "Get Configs",
                 "consumes": [
@@ -708,7 +708,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/configs/{id}": {
+        "/api/v1/configs/{id}": {
             "get": {
                 "description": "Get Config by id",
                 "consumes": [
@@ -833,36 +833,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/healthy": {
-            "get": {
-                "description": "Get app health",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Health"
-                ],
-                "summary": "Get Health",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/jobs": {
+        "/api/v1/jobs": {
             "get": {
                 "description": "Get Jobs",
                 "consumes": [
@@ -915,50 +886,9 @@ const docTemplate = `{
                         "description": "Internal Server Error"
                     }
                 }
-            },
-            "post": {
-                "description": "Create by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "Create Job",
-                "parameters": [
-                    {
-                        "description": "Job",
-                        "name": "Job",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
             }
         },
-        "/jobs/{id}": {
+        "/api/v1/jobs/{id}": {
             "get": {
                 "description": "Get Job by id",
                 "consumes": [
@@ -1083,7 +1013,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/oauth": {
+        "/api/v1/oauth": {
             "get": {
                 "description": "Get Oauths",
                 "consumes": [
@@ -1179,7 +1109,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/oauth/{id}": {
+        "/api/v1/oauth/{id}": {
             "get": {
                 "description": "Get Oauth by id",
                 "consumes": [
@@ -1304,7 +1234,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers": {
+        "/api/v1/peers": {
             "get": {
                 "description": "Get Peers",
                 "consumes": [
@@ -1400,7 +1330,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers/{id}": {
+        "/api/v1/peers/{id}": {
             "get": {
                 "description": "Get Peer by id",
                 "consumes": [
@@ -1477,7 +1407,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/permissions": {
+        "/api/v1/permissions": {
             "get": {
                 "description": "Get Permissions",
                 "produces": [
@@ -1506,7 +1436,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/personal-access-tokens": {
+        "/api/v1/personal-access-tokens": {
             "get": {
                 "description": "Get PersonalAccessTokens",
                 "consumes": [
@@ -1602,7 +1532,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/personal-access-tokens/{id}": {
+        "/api/v1/personal-access-tokens/{id}": {
             "get": {
                 "description": "Get PersonalAccessToken by id",
                 "consumes": [
@@ -1727,91 +1657,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/preheats": {
-            "post": {
-                "description": "Create by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Create V1 Preheat",
-                "parameters": [
-                    {
-                        "description": "Preheat",
-                        "name": "Preheat",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/preheats/{id}": {
-            "get": {
-                "description": "Get Preheat by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Get V1 Preheat",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/roles": {
+        "/api/v1/roles": {
             "get": {
                 "description": "Get roles",
                 "consumes": [
@@ -1872,7 +1718,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/roles/{role}": {
+        "/api/v1/roles/{role}": {
             "get": {
                 "description": "Get Role",
                 "consumes": [
@@ -1940,7 +1786,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/roles/{role}/permissions": {
+        "/api/v1/roles/{role}/permissions": {
             "post": {
                 "description": "Add Permission by json config",
                 "consumes": [
@@ -2026,7 +1872,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters": {
+        "/api/v1/scheduler-clusters": {
             "get": {
                 "description": "Get SchedulerClusters",
                 "consumes": [
@@ -2122,7 +1968,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters/{id}": {
+        "/api/v1/scheduler-clusters/{id}": {
             "get": {
                 "description": "Get SchedulerCluster by id",
                 "consumes": [
@@ -2247,7 +2093,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters/{id}/schedulers/{scheduler_id}": {
+        "/api/v1/scheduler-clusters/{id}/schedulers/{scheduler_id}": {
             "put": {
                 "description": "Add Scheduler to schedulerCluster",
                 "consumes": [
@@ -2292,7 +2138,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-features": {
+        "/api/v1/scheduler-features": {
             "get": {
                 "description": "Get Scheduler Features",
                 "consumes": [
@@ -2327,7 +2173,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedulers": {
+        "/api/v1/schedulers": {
             "get": {
                 "description": "Get Schedulers",
                 "consumes": [
@@ -2423,7 +2269,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedulers/{id}": {
+        "/api/v1/schedulers/{id}": {
             "get": {
                 "description": "Get Scheduler by id",
                 "consumes": [
@@ -2548,7 +2394,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters": {
+        "/api/v1/seed-peer-clusters": {
             "get": {
                 "description": "Get SeedPeerClusters",
                 "consumes": [
@@ -2644,7 +2490,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}": {
+        "/api/v1/seed-peer-clusters/{id}": {
             "get": {
                 "description": "Get SeedPeerCluster by id",
                 "consumes": [
@@ -2769,7 +2615,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}": {
+        "/api/v1/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}": {
             "put": {
                 "description": "Add SchedulerCluster to SeedPeerCluster",
                 "consumes": [
@@ -2814,7 +2660,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}/seed-peers/{seed_peer_id}": {
+        "/api/v1/seed-peer-clusters/{id}/seed-peers/{seed_peer_id}": {
             "put": {
                 "description": "Add SeedPeer to SeedPeerCluster",
                 "consumes": [
@@ -2859,7 +2705,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peers": {
+        "/api/v1/seed-peers": {
             "get": {
                 "description": "Get SeedPeers",
                 "consumes": [
@@ -2955,7 +2801,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peers/{id}": {
+        "/api/v1/seed-peers/{id}": {
             "get": {
                 "description": "Get SeedPeer by id",
                 "consumes": [
@@ -3080,7 +2926,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signin/{name}": {
+        "/api/v1/user/signin/{name}": {
             "get": {
                 "description": "oauth signin by json config",
                 "consumes": [
@@ -3118,7 +2964,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signin/{name}/callback": {
+        "/api/v1/user/signin/{name}/callback": {
             "get": {
                 "description": "oauth signin callback by json config",
                 "tags": [
@@ -3157,7 +3003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signup": {
+        "/api/v1/user/signup": {
             "post": {
                 "description": "signup by json config",
                 "consumes": [
@@ -3197,7 +3043,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
+        "/api/v1/users": {
             "get": {
                 "description": "Get Users",
                 "consumes": [
@@ -3252,7 +3098,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}": {
+        "/api/v1/users/{id}": {
             "get": {
                 "description": "Get User by id",
                 "consumes": [
@@ -3341,7 +3187,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/reset_password": {
+        "/api/v1/users/{id}/reset_password": {
             "post": {
                 "description": "reset password by json config",
                 "consumes": [
@@ -3385,7 +3231,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/roles": {
+        "/api/v1/users/{id}/roles": {
             "get": {
                 "description": "get roles by json config",
                 "produces": [
@@ -3423,7 +3269,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/roles/{role}": {
+        "/api/v1/users/{id}/roles/{role}": {
             "put": {
                 "description": "add role to user by uri config",
                 "consumes": [
@@ -3498,6 +3344,561 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/healthy": {
+            "get": {
+                "description": "Get app health",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Get Health",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/clusters": {
+            "get": {
+                "description": "Get Clusters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get Clusters",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Create Cluster",
+                "parameters": [
+                    {
+                        "description": "Cluster",
+                        "name": "Cluster",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/clusters/{id}": {
+            "get": {
+                "description": "Get Cluster by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Destroy by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Destroy Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Update Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Cluster",
+                        "name": "Cluster",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/jobs": {
+            "get": {
+                "description": "Get Jobs",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Get Jobs",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Create Job",
+                "parameters": [
+                    {
+                        "description": "Job",
+                        "name": "Job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/jobs/{id}": {
+            "get": {
+                "description": "Get Job by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Get Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Destroy by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Destroy Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Update Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Job",
+                        "name": "Job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/preheats": {
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preheat"
+                ],
+                "summary": "Create V1 Preheat",
+                "parameters": [
+                    {
+                        "description": "Preheat",
+                        "name": "Preheat",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/preheats/{id}": {
+            "get": {
+                "description": "Get Preheat by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preheat"
+                ],
+                "summary": "Get V1 Preheat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
                     },
                     "500": {
                         "description": "Internal Server Error"
@@ -5088,14 +5489,24 @@ const docTemplate = `{
                 }
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "API router (/api/v1)",
+            "name": "api"
+        },
+        {
+            "description": "open API router (/oapi/v1)",
+            "name": "oapi"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Dragonfly Manager",
 	Description:      "Dragonfly Manager Server",

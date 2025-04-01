@@ -434,21 +434,6 @@ func TestHostManager_RunGC(t *testing.T) {
 		expect func(t *testing.T, hostManager HostManager, mockHost *Host, mockPeer *Peer)
 	}{
 		{
-			name: "host reclaimed",
-			mock: func(m *gc.MockGCMockRecorder) {
-				m.Add(gomock.Any()).Return(nil).Times(1)
-			},
-			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockPeer *Peer) {
-				assert := assert.New(t)
-				hostManager.Store(mockHost)
-				err := hostManager.RunGC()
-				assert.NoError(err)
-
-				_, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, false)
-			},
-		},
-		{
 			name: "host has peers",
 			mock: func(m *gc.MockGCMockRecorder) {
 				m.Add(gomock.Any()).Return(nil).Times(1)

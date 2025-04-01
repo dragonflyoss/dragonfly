@@ -255,14 +255,15 @@ func New(opt *config.DaemonOption, d dfpath.Dfpath) (Daemon, error) {
 
 	peerTaskManagerOption := &peer.TaskManagerOption{
 		TaskOption: peer.TaskOption{
-			PeerHost:        host,
-			SchedulerOption: opt.Scheduler,
-			PieceManager:    pieceManager,
-			StorageManager:  storageManager,
-			WatchdogTimeout: opt.Download.WatchdogTimeout,
-			CalculateDigest: opt.Download.CalculateDigest,
-			GRPCCredentials: rpc.NewInsecureCredentials(),
-			GRPCDialTimeout: opt.Download.GRPCDialTimeout,
+			PeerHost:           host,
+			SchedulerOption:    opt.Scheduler,
+			PieceManager:       pieceManager,
+			StorageManager:     storageManager,
+			WatchdogTimeout:    opt.Download.WatchdogTimeout,
+			CalculateDigest:    opt.Download.CalculateDigest,
+			GRPCCredentials:    rpc.NewInsecureCredentials(),
+			GRPCDialTimeout:    opt.Download.GRPCDialTimeout,
+			CancelIdlePeerTask: opt.Download.CancelIdlePeerTask,
 		},
 		SchedulerClient:       schedulerClient,
 		PerPeerRateLimit:      opt.Download.PerPeerRateLimit.Limit,

@@ -87,13 +87,6 @@ const (
 // TaskOption is a functional option for task.
 type TaskOption func(task *Task)
 
-// WithPieceLength set PieceLength for task.
-func WithPieceLength(pieceLength int32) TaskOption {
-	return func(t *Task) {
-		t.PieceLength = pieceLength
-	}
-}
-
 // WithDigest set Digest for task.
 func WithDigest(d *digest.Digest) TaskOption {
 	return func(t *Task) {
@@ -126,9 +119,6 @@ type Task struct {
 
 	// Task request headers.
 	Header map[string]string
-
-	// Task piece length.
-	PieceLength int32
 
 	// DirectPiece is tiny piece data.
 	DirectPiece []byte

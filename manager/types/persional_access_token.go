@@ -19,14 +19,16 @@ package types
 import "time"
 
 const (
-	// PersonalAccessTokenScopePreheat represents the personal access token whose scope is preheat.
-	PersonalAccessTokenScopePreheat = "preheat"
-
 	// PersonalAccessTokenScopeJob represents the personal access token whose scope is job.
 	PersonalAccessTokenScopeJob = "job"
 
 	// PersonalAccessTokenScopeCluster represents the personal access token whose scope is cluster.
 	PersonalAccessTokenScopeCluster = "cluster"
+)
+
+var (
+	// DefaultPersonalAccessTokenScopes represents the default scopes of personal access token.
+	DefaultPersonalAccessTokenScopes = []string{PersonalAccessTokenScopeJob, PersonalAccessTokenScopeCluster}
 )
 
 type CreatePersonalAccessTokenRequest struct {

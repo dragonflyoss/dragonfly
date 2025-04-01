@@ -32,7 +32,7 @@ import (
 // @Success 200 {object} []rbac.Permission
 // @Failure 400
 // @Failure 500
-// @Router /permissions [get]
+// @Router /api/v1/permissions [get]
 func (h *Handlers) GetPermissions(g *gin.Engine) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, h.service.GetPermissions(ctx.Request.Context(), g))

@@ -278,6 +278,7 @@ type DownloadOption struct {
 	Concurrent           *ConcurrentOption `mapstructure:"concurrent" yaml:"concurrent"`
 	SyncPieceViaHTTPS    bool              `mapstructure:"syncPieceViaHTTPS" yaml:"syncPieceViaHTTPS"`
 	SplitRunningTasks    bool              `mapstructure:"splitRunningTasks" yaml:"splitRunningTasks"`
+	CancelIdlePeerTask   bool              `mapstructure:"cancelIdlePeerTask" yaml:"cancelIdlePeerTask"`
 	// resource clients option
 	ResourceClients ResourceClientsOption `mapstructure:"resourceClients" yaml:"resourceClients"`
 

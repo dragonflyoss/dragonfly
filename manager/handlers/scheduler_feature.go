@@ -34,7 +34,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /scheduler-features [get]
+// @Router /api/v1/scheduler-features [get]
 func (h *Handlers) GetSchedulerFeatures(ctx *gin.Context) {
 	features := h.service.GetSchedulerFeatures(ctx.Request.Context())
 	ctx.JSON(http.StatusOK, features)

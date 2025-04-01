@@ -267,6 +267,102 @@ var _ = Describe("Download Using Dfget", func() {
 		})
 	})
 
+	Context("1MiB file and set transfer-from-dfdaemon", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("download should be ok", Label("dfget", "download", "transfer-from-dfdaemon"), func() {
+			clientPod, err := util.ClientExec()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			out, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfget %s --disable-back-to-source --transfer-from-dfdaemon --output %s", testFile.GetDownloadURL(), testFile.GetOutputPath())).CombinedOutput()
+			fmt.Println(string(out), err)
+			Expect(err).NotTo(HaveOccurred())
+
+			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			time.Sleep(1 * time.Second)
+			seedClientPods := make([]*util.PodExec, 3)
+			for i := 0; i < 3; i++ {
+				seedClientPods[i], err = util.SeedClientExec(i)
+				fmt.Println(err)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+		})
+	})
+
+	Context("10MiB file and set transfer-from-dfdaemon", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("download should be ok", Label("dfget", "download", "transfer-from-dfdaemon"), func() {
+			clientPod, err := util.ClientExec()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			out, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfget %s --disable-back-to-source --transfer-from-dfdaemon --output %s", testFile.GetDownloadURL(), testFile.GetOutputPath())).CombinedOutput()
+			fmt.Println(string(out), err)
+			Expect(err).NotTo(HaveOccurred())
+
+			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			time.Sleep(1 * time.Second)
+			seedClientPods := make([]*util.PodExec, 3)
+			for i := 0; i < 3; i++ {
+				seedClientPods[i], err = util.SeedClientExec(i)
+				fmt.Println(err)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+		})
+	})
+
 	Context("1MiB file and set application to d7y", func() {
 		var (
 			testFile *util.File

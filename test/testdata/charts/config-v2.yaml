@@ -65,6 +65,10 @@ scheduler:
     console: false
     verbose: true
     scheduler:
+      algorithm: default
+      retryBackToSourceLimit: 7
+      retryLimit: 10
+      retryInterval: 800ms
       gc:
         hostGCInterval: 2m
 

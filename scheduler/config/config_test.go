@@ -138,11 +138,6 @@ func TestConfig_Load(t *testing.T) {
 			SchedulerWorkerNum: 1,
 			LocalWorkerNum:     5,
 		},
-		Storage: StorageConfig{
-			MaxSize:    1,
-			MaxBackups: 1,
-			BufferSize: 1,
-		},
 		Metrics: MetricsConfig{
 			Enable:     false,
 			Addr:       ":8000",
@@ -687,48 +682,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "job requires parameter localWorkerNum")
-			},
-		},
-		{
-			name:   "storage requires parameter maxSize",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Manager = mockManagerConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job = mockJobConfig
-				cfg.Storage.MaxSize = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "storage requires parameter maxSize")
-			},
-		},
-		{
-			name:   "storage requires parameter maxBackups",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Manager = mockManagerConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job = mockJobConfig
-				cfg.Storage.MaxBackups = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "storage requires parameter maxBackups")
-			},
-		},
-		{
-			name:   "storage requires parameter bufferSize",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Manager = mockManagerConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job = mockJobConfig
-				cfg.Storage.BufferSize = -1
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "storage requires parameter bufferSize")
 			},
 		},
 		{

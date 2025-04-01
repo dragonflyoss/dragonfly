@@ -47,16 +47,16 @@ var (
 		CreatedAt:   time.Now(),
 	}
 
-	mockTaskBackToSourceLimit   int32 = 200
-	mockTaskURL                       = "http://example.com/foo"
-	mockTaskID                        = idgen.TaskIDV2(mockTaskURL, mockTaskTag, mockTaskApplication, mockTaskFilteredQueryParams)
-	mockTaskDigest                    = digest.New(digest.AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
-	mockTaskTag                       = "d7y"
-	mockTaskApplication               = "foo"
-	mockTaskFilteredQueryParams       = []string{"bar"}
-	mockTaskHeader                    = map[string]string{"content-length": "100"}
-	mockTaskPieceLength         int32 = 2048
-	mockPieceDigest                   = digest.New(digest.AlgorithmMD5, "ad83a945518a4ef007d8b2db2ef165b3")
+	mockTaskBackToSourceLimit   int32  = 200
+	mockTaskURL                        = "http://example.com/foo"
+	mockTaskPieceLength         uint64 = 2048
+	mockTaskID                         = idgen.TaskIDV2(mockTaskURL, &mockTaskPieceLength, mockTaskTag, mockTaskApplication, mockTaskFilteredQueryParams)
+	mockTaskDigest                     = digest.New(digest.AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
+	mockTaskTag                        = "d7y"
+	mockTaskApplication                = "foo"
+	mockTaskFilteredQueryParams        = []string{"bar"}
+	mockTaskHeader                     = map[string]string{"content-length": "100"}
+	mockPieceDigest                    = digest.New(digest.AlgorithmMD5, "ad83a945518a4ef007d8b2db2ef165b3")
 )
 
 func TestTask_NewTask(t *testing.T) {
@@ -78,7 +78,6 @@ func TestTask_NewTask(t *testing.T) {
 				assert.Equal(task.Application, mockTaskApplication)
 				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
 				assert.EqualValues(task.Header, mockTaskHeader)
-				assert.Equal(task.PieceLength, int32(0))
 				assert.Empty(task.DirectPiece)
 				assert.Equal(task.ContentLength.Load(), int64(-1))
 				assert.Equal(task.TotalPieceCount.Load(), int32(0))
@@ -94,7 +93,7 @@ func TestTask_NewTask(t *testing.T) {
 		},
 		{
 			name:    "new task with piece length",
-			options: []TaskOption{WithPieceLength(mockTaskPieceLength)},
+			options: []TaskOption{},
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
 				assert.Equal(task.ID, mockTaskID)
@@ -105,7 +104,6 @@ func TestTask_NewTask(t *testing.T) {
 				assert.Equal(task.Application, mockTaskApplication)
 				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
 				assert.EqualValues(task.Header, mockTaskHeader)
-				assert.Equal(task.PieceLength, mockTaskPieceLength)
 				assert.Empty(task.DirectPiece)
 				assert.Equal(task.ContentLength.Load(), int64(-1))
 				assert.Equal(task.TotalPieceCount.Load(), int32(0))
@@ -132,7 +130,6 @@ func TestTask_NewTask(t *testing.T) {
 				assert.Equal(task.Application, mockTaskApplication)
 				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
 				assert.EqualValues(task.Header, mockTaskHeader)
-				assert.Equal(task.PieceLength, int32(0))
 				assert.Empty(task.DirectPiece)
 				assert.Equal(task.ContentLength.Load(), int64(-1))
 				assert.Equal(task.TotalPieceCount.Load(), int32(0))

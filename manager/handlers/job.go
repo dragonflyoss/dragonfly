@@ -38,7 +38,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /jobs [post]
+// @Router /oapi/v1/jobs [post]
 func (h *Handlers) CreateJob(ctx *gin.Context) {
 	var json types.CreateJobRequest
 	if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
@@ -132,7 +132,8 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /jobs/{id} [delete]
+// @Router /api/v1/jobs/{id} [delete]
+// @Router /oapi/v1/jobs/{id} [delete]
 func (h *Handlers) DestroyJob(ctx *gin.Context) {
 	var params types.JobParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -159,7 +160,8 @@ func (h *Handlers) DestroyJob(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /jobs/{id} [patch]
+// @Router /api/v1/jobs/{id} [patch]
+// @Router /oapi/v1/jobs/{id} [patch]
 func (h *Handlers) UpdateJob(ctx *gin.Context) {
 	var params types.JobParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -192,7 +194,8 @@ func (h *Handlers) UpdateJob(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /jobs/{id} [get]
+// @Router /api/v1/jobs/{id} [get]
+// @Router /oapi/v1/jobs/{id} [get]
 func (h *Handlers) GetJob(ctx *gin.Context) {
 	var params types.JobParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -220,7 +223,8 @@ func (h *Handlers) GetJob(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /jobs [get]
+// @Router /api/v1/jobs [get]
+// @Router /oapi/v1/jobs [get]
 func (h *Handlers) GetJobs(ctx *gin.Context) {
 	var query types.GetJobsQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

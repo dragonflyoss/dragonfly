@@ -61,13 +61,13 @@ const (
 // Evaluator is an interface that evaluates the parents.
 type Evaluator interface {
 	// EvaluateParents sort parents by evaluating multiple feature scores.
-	EvaluateParents(parents []*standard.Peer, child *standard.Peer, taskPieceCount int32) []*standard.Peer
+	EvaluateParents(parents []*standard.Peer, child *standard.Peer, taskPieceCount uint32) []*standard.Peer
 
 	// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
 	IsBadParent(peer *standard.Peer) bool
 
 	// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
-	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount int32) []*persistentcache.Peer
+	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount uint32) []*persistentcache.Peer
 
 	// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
 	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool

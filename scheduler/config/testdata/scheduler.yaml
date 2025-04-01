@@ -71,11 +71,6 @@ job:
   schedulerWorkerNum: 1
   localWorkerNum: 5
 
-storage:
-  maxSize: 1
-  maxBackups: 1
-  bufferSize: 1
-
 metrics:
   enable: false
   addr: ":8000"

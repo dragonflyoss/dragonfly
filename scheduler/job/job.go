@@ -170,9 +170,9 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return "", err
 	}
 
-	taskID := idgen.TaskIDV2(req.URL, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+	taskID := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
 	log := logger.WithTask(taskID, req.URL)
-	log.Infof("preheat %s request: %#v", req.URL, req)
+	log.Infof("preheat %s %d request: %#v", req.URL, req.PieceLength, req)
 
 	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
 	defer cancel()
@@ -275,13 +275,13 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 			port     = seedPeer.Port
 		)
 
-		target := fmt.Sprintf("%s:%d", ip, port)
+		addr := fmt.Sprintf("%s:%d", ip, port)
 		log := logger.WithHost(idgen.HostIDV2(ip, hostname, true), hostname, ip)
 
 		eg.Go(func() error {
 			log.Info("preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, target, dialOptions...)
+			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
@@ -299,6 +299,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 				taskID,
 				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
 					Url:                 req.URL,
+					PieceLength:         req.PieceLength,
 					Type:                commonv2.TaskType_STANDARD,
 					Tag:                 &req.Tag,
 					Application:         &req.Application,
@@ -417,13 +418,13 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 			port     = peer.Port
 		)
 
-		target := fmt.Sprintf("%s:%d", ip, port)
+		addr := fmt.Sprintf("%s:%d", ip, port)
 		log := logger.WithHost(peer.ID, hostname, ip)
 
 		eg.Go(func() error {
 			log.Info("preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, target, dialOptions...)
+			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
@@ -441,6 +442,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 				taskID,
 				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
 					Url:                 req.URL,
+					PieceLength:         req.PieceLength,
 					Type:                commonv2.TaskType_STANDARD,
 					Tag:                 &req.Tag,
 					Application:         &req.Application,
@@ -585,6 +587,7 @@ func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.Pre
 	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
 			Url:                 req.URL,
+			PieceLength:         req.PieceLength,
 			Type:                commonv2.TaskType_STANDARD,
 			Tag:                 &req.Tag,
 			Application:         &req.Application,

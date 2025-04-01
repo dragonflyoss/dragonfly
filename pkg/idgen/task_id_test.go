@@ -107,9 +107,12 @@ func TestTaskIDV1(t *testing.T) {
 }
 
 func TestTaskIDV2(t *testing.T) {
+	pieceLength := uint64(1024)
+
 	tests := []struct {
 		name        string
 		url         string
+		pieceLength *uint64
 		tag         string
 		application string
 		filters     []string
@@ -118,9 +121,20 @@ func TestTaskIDV2(t *testing.T) {
 		{
 			name:        "generate taskID",
 			url:         "https://example.com",
+			pieceLength: &pieceLength,
 			tag:         "foo",
 			application: "bar",
 			filters:     []string{},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "99a47b38e9d3321aebebd715bea0483c1400cef2f767f84d97458f9dcedff221")
+			},
+		},
+		{
+			name:        "generate taskID with tag and application",
+			url:         "https://example.com",
+			tag:         "foo",
+			application: "bar",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
 				assert.Equal(d, "160fa7f001d9d2e893130894fbb60a5fb006e1d61bff82955f2946582bc9de1d")
@@ -145,6 +159,15 @@ func TestTaskIDV2(t *testing.T) {
 			},
 		},
 		{
+			name:        "generate taskID with pieceLength",
+			url:         "https://example.com",
+			pieceLength: &pieceLength,
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "40c21de3ad2f1470ca1a19a2ad2577803a1829851f6cf862ffa2d4577ae51d38")
+			},
+		},
+		{
 			name:    "generate taskID with filters",
 			url:     "https://example.com?foo=foo&bar=bar",
 			filters: []string{"foo", "bar"},
@@ -157,7 +180,7 @@ func TestTaskIDV2(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, TaskIDV2(tc.url, tc.tag, tc.application, tc.filters))
+			tc.expect(t, TaskIDV2(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters))
 		})
 	}
 }

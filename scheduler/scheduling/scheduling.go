@@ -61,8 +61,10 @@ type Scheduling interface {
 	// FindSuccessParent finds success parent for the peer to download the task.
 	FindSuccessParent(context.Context, *standard.Peer, set.SafeSet[string]) (*standard.Peer, bool)
 
-	// FindReplicatePersistentCacheParents finds replicate persistent cache parents for the peer to replicate the task.
-	FindReplicatePersistentCacheParents(context.Context, *persistentcache.Task, set.SafeSet[string]) ([]*persistentcache.Peer, bool)
+	// FindReplicatePersistentCacheHosts finds replicate persistent cache hosts for the peer to replicate the task. It will compare the current
+	// persistent replica count with the persistent replica count and try to find enough parents. Then function will return the cached replicate parents,
+	// the replicate hosts without cache and found flag.
+	FindReplicatePersistentCacheHosts(context.Context, *persistentcache.Task, set.SafeSet[string]) ([]*persistentcache.Peer, []*persistentcache.Host, bool)
 
 	// FindCandidatePersistentCacheParents finds candidate persistent cache parents for the peer to download the task.
 	FindCandidatePersistentCacheParents(context.Context, *persistentcache.Peer, set.SafeSet[string]) ([]*persistentcache.Peer, bool)
@@ -410,7 +412,7 @@ func (s *scheduling) FindCandidateParents(ctx context.Context, peer *standard.Pe
 
 	// Sort candidate parents by evaluation score.
 	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, taskTotalPieceCount)
+	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, uint32(taskTotalPieceCount))
 
 	// Get the parents with candidateParentLimit.
 	candidateParentLimit := config.DefaultSchedulerCandidateParentLimit
@@ -452,7 +454,7 @@ func (s *scheduling) FindParentAndCandidateParents(ctx context.Context, peer *st
 
 	// Sort candidate parents by evaluation score.
 	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, taskTotalPieceCount)
+	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, uint32(taskTotalPieceCount))
 
 	// Get the parents with candidateParentLimit.
 	candidateParentLimit := config.DefaultSchedulerCandidateParentLimit
@@ -501,7 +503,7 @@ func (s *scheduling) FindSuccessParent(ctx context.Context, peer *standard.Peer,
 
 	// Sort candidate parents by evaluation score.
 	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	successParents = s.evaluator.EvaluateParents(successParents, peer, taskTotalPieceCount)
+	successParents = s.evaluator.EvaluateParents(successParents, peer, uint32(taskTotalPieceCount))
 
 	peer.Log.Infof("scheduling success parent is %s", successParents[0].ID)
 	return successParents[0], true
@@ -587,10 +589,79 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 	return candidateParents
 }
 
-// TODO(Gaius) Implement the following methods.
-// FindReplicatePersistentCacheParents finds replicate persistent cache parents for the peer to replicate the task.
-func (s *scheduling) FindReplicatePersistentCacheParents(ctx context.Context, task *persistentcache.Task, blocklist set.SafeSet[string]) ([]*persistentcache.Peer, bool) {
-	return nil, false
+// FindReplicatePersistentCacheHosts finds replicate persistent cache hosts for the peer to replicate the task. It will compare the current
+// persistent replica count with the persistent replica count and try to find enough parents. Then function will return the cached replicate parents,
+// the replicate hosts without cache and found flag.
+func (s *scheduling) FindReplicatePersistentCacheHosts(ctx context.Context, task *persistentcache.Task, blocklist set.SafeSet[string]) ([]*persistentcache.Peer, []*persistentcache.Host, bool) {
+	currentPersistentReplicaCount, err := s.persistentCacheResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, task.ID)
+	if err != nil {
+		task.Log.Errorf("load current persistent replica count failed %s", err)
+		return nil, nil, false
+	}
+
+	needPersistentReplicaCount := int(task.PersistentReplicaCount - currentPersistentReplicaCount)
+	if needPersistentReplicaCount <= 0 {
+		task.Log.Infof("persistent cache task %s has enough persistent replica count %d", task.ID, task.PersistentReplicaCount)
+		return nil, nil, false
+	}
+
+	var (
+		replicateHosts           []*persistentcache.Host
+		replicateHostIDs         []string
+		cachedReplicateParents   []*persistentcache.Peer
+		cachedReplicateParentIDs []string
+	)
+	cachedParents := s.filterCachedReplicatePersistentCacheParents(ctx, task, blocklist)
+	cachedParentsCount := len(cachedParents)
+
+	// If the number of cached parents is greater than or equal to the number of persistent replica count,
+	// return the cached parents directly and no need to find the replicate hosts without cache.
+	if cachedParentsCount >= needPersistentReplicaCount {
+		for _, cachedParent := range cachedParents[:needPersistentReplicaCount] {
+			cachedReplicateParents = append(cachedReplicateParents, cachedParent)
+			cachedReplicateParentIDs = append(cachedReplicateParentIDs, cachedParent.ID)
+		}
+
+		task.Log.Infof("find cached parents is %#v", cachedReplicateParentIDs)
+		return cachedReplicateParents, nil, true
+	}
+
+	// If cached parents are not enough, append the replicate cached parents and find the replicate hosts without cache.
+	if cachedParentsCount > 0 {
+		for _, cachedParent := range cachedParents {
+			cachedReplicateParents = append(cachedReplicateParents, cachedParent)
+			cachedReplicateParentIDs = append(cachedReplicateParentIDs, cachedParent.ID)
+			blocklist.Add(cachedParent.Host.ID)
+		}
+	}
+
+	// Load all current persistent peers and add them to the blocklist to avoid scheduling the same host.
+	currentPersistentPeers, err := s.persistentCacheResource.PeerManager().LoadPersistentAllByTaskID(ctx, task.ID)
+	if err != nil {
+		task.Log.Errorf("load all persistent cache peers failed: %s", err.Error())
+		return nil, nil, false
+	}
+
+	for _, currentPersistentPeer := range currentPersistentPeers {
+		blocklist.Add(currentPersistentPeer.Host.ID)
+	}
+
+	// Find the replicate hosts without cache. Calculate the number of persistent replicas needed without considering the cache.
+	// Formula: Needed persistent replica count without cache = Total persistent replica count - Current persistent replica count - Cached parents count.
+	needPersistentReplicaCount -= cachedParentsCount
+	hosts := s.filterReplicatePersistentCacheHosts(ctx, task, needPersistentReplicaCount, blocklist)
+	for _, host := range hosts {
+		replicateHosts = append(replicateHosts, host)
+		replicateHostIDs = append(replicateHostIDs, host.ID)
+	}
+
+	if len(cachedReplicateParents) == 0 && len(replicateHosts) == 0 {
+		task.Log.Info("can not find replicate hosts")
+		return nil, nil, false
+	}
+
+	task.Log.Infof("find cached parents is %#v and hosts is %#v", cachedReplicateParentIDs, replicateHostIDs)
+	return cachedReplicateParents, replicateHosts, true
 }
 
 // FindCandidatePersistentCacheParents finds candidate persistent cache parents for the peer to download the task.
@@ -626,7 +697,7 @@ func (s *scheduling) FindCandidatePersistentCacheParents(ctx context.Context, pe
 	return candidateParents, true
 }
 
-// filterCandidateParents filters the candidate parents that can be scheduled.
+// filterCandidatePersistentCacheParents filters the candidate persistent cache parents that can be scheduled.
 func (s *scheduling) filterCandidatePersistentCacheParents(ctx context.Context, peer *persistentcache.Peer, blocklist set.SafeSet[string]) []*persistentcache.Peer {
 	parents, err := s.persistentCacheResource.PeerManager().LoadAllByTaskID(ctx, peer.Task.ID)
 	if err != nil {
@@ -665,6 +736,85 @@ func (s *scheduling) filterCandidatePersistentCacheParents(ctx context.Context, 
 	return candidateParents
 }
 
+// filterCachedReplicatePersistentCacheHosts filters the cached replicate persistent cache parents that can be scheduled.
+func (s *scheduling) filterCachedReplicatePersistentCacheParents(ctx context.Context, task *persistentcache.Task, blocklist set.SafeSet[string]) []*persistentcache.Peer {
+	parents, err := s.persistentCacheResource.PeerManager().LoadAllByTaskID(ctx, task.ID)
+	if err != nil {
+		task.Log.Errorf("load all persistent cache parents failed: %s", err.Error())
+		return nil
+	}
+
+	var (
+		replicateParents   []*persistentcache.Peer
+		replicateParentIDs []string
+	)
+	for _, replicateParent := range parents {
+		// Candidate persistent cache parent is in blocklist.
+		if blocklist.Contains(replicateParent.ID) {
+			task.Log.Debugf("persistent cache parent %s host %s is not selected because it is in blocklist", replicateParent.ID, replicateParent.Host.ID)
+			continue
+		}
+
+		// If the parent is persistent, it cannot be selected.
+		if replicateParent.Persistent {
+			task.Log.Debugf("persistent cache parent %s host %s is not selected because it is persistent", replicateParent.ID, replicateParent.Host.ID)
+			continue
+		}
+
+		// If the parent is not succeeded, it cannot be selected.
+		if !replicateParent.FSM.Is(persistentcache.PeerStateSucceeded) {
+			task.Log.Debugf("persistent cache parent %s host %s is not selected because its download state is %s", replicateParent.ID, replicateParent.Host.ID, replicateParent.FSM.Current())
+			continue
+		}
+
+		// If the host is disable shared, it cannot be selected.
+		if replicateParent.Host.DisableShared {
+			task.Log.Debugf("persistent cache parent %s host %s is not selected because it is disable shared", replicateParent.ID, replicateParent.Host.ID)
+			continue
+		}
+
+		replicateParents = append(replicateParents, replicateParent)
+		replicateParentIDs = append(replicateParentIDs, replicateParent.ID)
+	}
+
+	task.Log.Infof("filter cached parents is %#v", replicateParentIDs)
+	return replicateParents
+}
+
+// filterReplicatePersistentCacheHosts filters the replicate persistent cache hosts that can be scheduled.
+func (s *scheduling) filterReplicatePersistentCacheHosts(ctx context.Context, task *persistentcache.Task, count int, blocklist set.SafeSet[string]) []*persistentcache.Host {
+	hosts, err := s.persistentCacheResource.HostManager().LoadRandom(ctx, count, blocklist)
+	if err != nil {
+		task.Log.Errorf("load all persistent cache hosts failed: %s", err.Error())
+		return nil
+	}
+
+	var (
+		replicateHosts   []*persistentcache.Host
+		replicateHostIDs []string
+	)
+	for _, host := range hosts {
+		// If the host is disable shared, it cannot be selected.
+		if host.DisableShared {
+			task.Log.Debugf("persistent cache host %s is not selected because it is disable shared", host.ID)
+			continue
+		}
+
+		// If the available disk space is not enough, it cannot be selected.
+		if host.Disk.Free < task.ContentLength {
+			task.Log.Debugf("persistent cache host %s is not selected because its free disk space is not enough, free disk is %d, content length is %d",
+				host.ID, host.Disk.Free, task.ContentLength)
+			continue
+		}
+
+		replicateHosts = append(replicateHosts, host)
+		replicateHostIDs = append(replicateHostIDs, host.ID)
+	}
+
+	task.Log.Infof("filter hosts is %#v", replicateHostIDs)
+	return replicateHosts
+}
+
 // constructSuccessNormalTaskResponse constructs scheduling successful response of the normal task.
 // Used only in v2 version of the grpc.
 func constructSuccessNormalTaskResponse(candidateParents []*standard.Peer) *schedulerv2.AnnouncePeerResponse_NormalTaskResponse {
@@ -697,7 +847,6 @@ func constructSuccessNormalTaskResponse(candidateParents []*standard.Peer) *sche
 			Application:         &candidateParent.Task.Application,
 			FilteredQueryParams: candidateParent.Task.FilteredQueryParams,
 			RequestHeader:       candidateParent.Task.Header,
-			PieceLength:         uint64(candidateParent.Task.PieceLength),
 			ContentLength:       uint64(candidateParent.Task.ContentLength.Load()),
 			PieceCount:          uint32(candidateParent.Task.TotalPieceCount.Load()),
 			SizeScope:           candidateParent.Task.SizeScope(),

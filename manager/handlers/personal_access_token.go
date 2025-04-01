@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /personal-access-tokens [post]
+// @Router /api/v1/personal-access-tokens [post]
 func (h *Handlers) CreatePersonalAccessToken(ctx *gin.Context) {
 	var json types.CreatePersonalAccessTokenRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreatePersonalAccessToken(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /personal-access-tokens/{id} [delete]
+// @Router /api/v1/personal-access-tokens/{id} [delete]
 func (h *Handlers) DestroyPersonalAccessToken(ctx *gin.Context) {
 	var params types.PersonalAccessTokenParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroyPersonalAccessToken(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /personal-access-tokens/{id} [patch]
+// @Router /api/v1/personal-access-tokens/{id} [patch]
 func (h *Handlers) UpdatePersonalAccessToken(ctx *gin.Context) {
 	var params types.PersonalAccessTokenParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdatePersonalAccessToken(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /personal-access-tokens/{id} [get]
+// @Router /api/v1/personal-access-tokens/{id} [get]
 func (h *Handlers) GetPersonalAccessToken(ctx *gin.Context) {
 	var params types.PersonalAccessTokenParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetPersonalAccessToken(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /personal-access-tokens [get]
+// @Router /api/v1/personal-access-tokens [get]
 func (h *Handlers) GetPersonalAccessTokens(ctx *gin.Context) {
 	var query types.GetPersonalAccessTokensQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

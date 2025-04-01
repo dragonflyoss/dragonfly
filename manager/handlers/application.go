@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /applications [post]
+// @Router /api/v1/applications [post]
 func (h *Handlers) CreateApplication(ctx *gin.Context) {
 	var json types.CreateApplicationRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateApplication(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /applications/{id} [delete]
+// @Router /api/v1/applications/{id} [delete]
 func (h *Handlers) DestroyApplication(ctx *gin.Context) {
 	var params types.ApplicationParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroyApplication(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /applications/{id} [patch]
+// @Router /api/v1/applications/{id} [patch]
 func (h *Handlers) UpdateApplication(ctx *gin.Context) {
 	var params types.ApplicationParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateApplication(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /applications/{id} [get]
+// @Router /api/v1/applications/{id} [get]
 func (h *Handlers) GetApplication(ctx *gin.Context) {
 	var params types.ApplicationParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetApplication(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /applications [get]
+// @Router /api/v1/applications [get]
 func (h *Handlers) GetApplications(ctx *gin.Context) {
 	var query types.GetApplicationsQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
