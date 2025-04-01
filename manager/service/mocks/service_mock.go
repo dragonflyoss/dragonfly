@@ -497,6 +497,20 @@ func (mr *MockServiceMockRecorder) DestroyPeer(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPeer", reflect.TypeOf((*MockService)(nil).DestroyPeer), arg0, arg1)
 }
 
+// DestroyPersistentCache mocks base method.
+func (m *MockService) DestroyPersistentCache(arg0 context.Context, arg1 types.PersistentCacheParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DestroyPersistentCache", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DestroyPersistentCache indicates an expected call of DestroyPersistentCache.
+func (mr *MockServiceMockRecorder) DestroyPersistentCache(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPersistentCache", reflect.TypeOf((*MockService)(nil).DestroyPersistentCache), arg0, arg1)
+}
+
 // DestroyPersonalAccessToken mocks base method.
 func (m *MockService) DestroyPersonalAccessToken(arg0 context.Context, arg1 uint) error {
 	m.ctrl.T.Helper()
@@ -810,6 +824,21 @@ func (m *MockService) GetPermissions(arg0 context.Context, arg1 *gin.Engine) []r
 func (mr *MockServiceMockRecorder) GetPermissions(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPermissions", reflect.TypeOf((*MockService)(nil).GetPermissions), arg0, arg1)
+}
+
+// GetPersistentCache mocks base method.
+func (m *MockService) GetPersistentCache(arg0 context.Context, arg1 types.PersistentCacheParams) (*types.GetPersistentCacheResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPersistentCache", arg0, arg1)
+	ret0, _ := ret[0].(*types.GetPersistentCacheResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPersistentCache indicates an expected call of GetPersistentCache.
+func (mr *MockServiceMockRecorder) GetPersistentCache(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPersistentCache", reflect.TypeOf((*MockService)(nil).GetPersistentCache), arg0, arg1)
 }
 
 // GetPersistentCaches mocks base method.

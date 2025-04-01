@@ -235,8 +235,8 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// Persistent Cache.
 	pc := apiv1.Group("/persistent-caches", jwt.MiddlewareFunc(), rbac)
-	//pc.DELETE(":id", h.DestroyPersistentCache)
-	//pc.GET(":id", h.GetPersistentCache)
+	pc.DELETE(":id", h.DestroyPersistentCache)
+	pc.GET(":id", h.GetPersistentCache)
 	pc.GET("", h.GetPersistentCaches)
 
 	// Open API router.

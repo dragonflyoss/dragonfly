@@ -32,6 +32,46 @@ import (
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
 
+// DestroyPersistentCache deletes a persistent cache task from Redis based on query parameters.
+func (s *service) DestroyPersistentCache(ctx context.Context, params types.PersistentCacheParams) error {
+	taskKey := pkgredis.MakePersistentCacheTaskKeyInScheduler(params.SchedulerClusterID, params.TaskID)
+	return s.rdb.Del(ctx, taskKey).Err()
+}
+
+// GetPersistentCache retrieves a persistent cache task from Redis based on query parameters.
+func (s *service) GetPersistentCache(ctx context.Context, params types.PersistentCacheParams) (*types.GetPersistentCacheResponse, error) {
+	// Get task data from Redis.
+	taskKey := pkgredis.MakePersistentCacheTaskKeyInScheduler(params.SchedulerClusterID, params.TaskID)
+
+	rawTask, err := s.rdb.HGetAll(ctx, taskKey).Result()
+	if err != nil {
+		logger.Warnf("getting task %s failed from redis: %v", taskKey, err)
+		return nil, err
+	}
+
+	if len(rawTask) == 0 {
+		logger.Warnf("task %s not found in redis", taskKey)
+		return nil, errors.New("task not found")
+	}
+
+	// Parse task data.
+	response, err := s.parseTaskData(ctx, rawTask)
+	if err != nil {
+		logger.Warnf("parse task %s data failed: %v", taskKey, err)
+		return nil, err
+	}
+
+	// Load peers for this task.
+	peers, err := s.loadPeersForTask(ctx, taskKey, params.SchedulerClusterID)
+	if err != nil {
+		logger.Warnf("load peers for task %s failed: %v", taskKey, err)
+	}
+
+	response.PersistentCachePeers = peers
+
+	return &response, nil
+}
+
 // GetPersistentCaches retrieves persistent cache tasks from Redis based on query parameters.
 func (s *service) GetPersistentCaches(ctx context.Context, q types.GetPersistentCachesQuery) ([]types.GetPersistentCacheResponse, int64, error) {
 	var responses []types.GetPersistentCacheResponse
@@ -42,6 +82,8 @@ func (s *service) GetPersistentCaches(ctx context.Context, q types.GetPersistent
 		// Get all available scheduler cluster IDs.
 		var cursor uint64
 		for {
+			// Scan all keys with prefix, for example:
+			// "scheduler:scheduler-clusters:1".
 			prefix := fmt.Sprintf("%s:", pkgredis.MakeNamespaceKeyInScheduler(pkgredis.SchedulerClustersNamespace))
 			keys, cursor, err := s.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 			if err != nil {
@@ -63,6 +105,7 @@ func (s *service) GetPersistentCaches(ctx context.Context, q types.GetPersistent
 				}
 
 				// Extract scheduler clusterID from suffix.
+				// If suffix does not contain ":", it is a scheduler clusterID.
 				if !strings.ContainsRune(suffix, ':') {
 					schedulerClusterID, err := strconv.ParseUint(suffix, 10, 32)
 					if err != nil {
@@ -87,12 +130,53 @@ func (s *service) GetPersistentCaches(ctx context.Context, q types.GetPersistent
 	var allTaskKeys []string
 	for _, schedulerClusterID := range schedulerClusterIDs {
 		// Get all task keys in the cluster.
-		taskKeys, err := s.rdb.Keys(ctx, pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, "*")).Result()
-		if err != nil {
-			logger.Errorf("get task keys failed: %v", err)
-			continue
+		var cursor uint64
+		for {
+			var (
+				taskKeys []string
+				err      error
+			)
+
+			// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-tasks:", keys could be:
+			// "{prefix}{taskID}:persistent-cache-peers", "{prefix}{taskID}:persistent-peers" and "{prefix}{taskID}".
+			// Scan all keys with prefix.
+			prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(schedulerClusterID))
+			taskKeys, cursor, err = s.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
+			if err != nil {
+				logger.Error("scan tasks failed")
+				continue
+			}
+
+			taskIDs := make(map[string]struct{})
+			for _, taskKey := range taskKeys {
+				// If context is done, return error.
+				if err := ctx.Err(); err != nil {
+					continue
+				}
+
+				// Remove prefix from task key.
+				suffix := strings.TrimPrefix(taskKey, prefix)
+				if suffix == "" {
+					logger.Error("invalid task key")
+					continue
+				}
+
+				// suffix is a non-empty string like:
+				// "{taskID}:persistent-cache-peers", "{taskID}:persistent-peers" and "{taskID}".
+				// Extract taskID from suffix and avoid duplicate taskID.
+				taskID := strings.Split(suffix, ":")[0]
+				if _, ok := taskIDs[taskID]; ok {
+					continue
+				}
+				taskIDs[taskID] = struct{}{}
+
+				allTaskKeys = append(allTaskKeys, taskKey)
+			}
+
+			if cursor == 0 {
+				break
+			}
 		}
-		allTaskKeys = append(allTaskKeys, taskKeys...)
 	}
 
 	// Calculate total count and pagination.

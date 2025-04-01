@@ -24,6 +24,61 @@ import (
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
+// @Summary Destroy PersistentCache
+// @Description Destroy PersistentCache by id
+// @Tags PersistentCache
+// @Accept json
+// @Produce json
+// @Param scheduler_cluster_id path string true "scheduler cluster id"
+// @Param task_id path string true "task id"
+// @Success 200
+// @Failure 400
+// @Failure 404
+// @Failure 500
+// @Router /api/v1/persistent-caches/{scheduler_cluster_id}/{task_id} [delete]
+func (h *Handlers) DestroyPersistentCache(ctx *gin.Context) {
+	var params types.PersistentCacheParams
+	if err := ctx.ShouldBindUri(&params); err != nil {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+		return
+	}
+
+	if err := h.service.DestroyPersistentCache(ctx.Request.Context(), params); err != nil {
+		ctx.Error(err) // nolint: errcheck
+		return
+	}
+
+	ctx.Status(http.StatusOK)
+}
+
+// @Summary Get PersistentCache
+// @Description Get PersistentCache by id
+// @Tags PersistentCache
+// @Accept json
+// @Produce json
+// @Param scheduler_cluster_id path string true "scheduler cluster id"
+// @Param task_id path string true "task id"
+// @Success 200 {object} types.GetPersistentCacheResponse
+// @Failure 400
+// @Failure 404
+// @Failure 500
+// @Router /api/v1/persistent-caches/{scheduler_cluster_id}/{task_id} [get]
+func (h *Handlers) GetPersistentCache(ctx *gin.Context) {
+	var params types.PersistentCacheParams
+	if err := ctx.ShouldBindUri(&params); err != nil {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+		return
+	}
+
+	persistentCache, err := h.service.GetPersistentCache(ctx.Request.Context(), params)
+	if err != nil {
+		ctx.Error(err) // nolint: errcheck
+		return
+	}
+
+	ctx.JSON(http.StatusOK, persistentCache)
+}
+
 // @Summary Get PersistentCaches
 // @Description Get PersistentCaches
 // @Tags PersistentCache

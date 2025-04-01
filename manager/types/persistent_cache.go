@@ -22,18 +22,12 @@ import (
 	"github.com/bits-and-blooms/bitset"
 )
 
-type GetPersistentCacheQuery struct {
-	// SchedulerClusterIDs is the scheduler cluster ids of the persistent cache.
-	SchedulerClusterIDs []uint `json:"scheduler_cluster_ids" binding:"omitempty"`
+type PersistentCacheParams struct {
+	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
+	SchedulerClusterID uint `uri:"scheduler_cluster_id" binding:"required"`
 
 	// TaskID is the task id of the persistent cache.
-	TaskID string `json:"task_id" binding:"omitempty"`
-
-	// Page is the page number of the persistent cache list.
-	Page int `form:"page" binding:"omitempty,gte=1"`
-
-	// PerPage is the item count per page of the persistent cache list.
-	PerPage int `form:"per_page" binding:"omitempty,gte=1,lte=10000000"`
+	TaskID string `uri:"task_id" binding:"required"`
 }
 
 type GetPersistentCachesQuery struct {
