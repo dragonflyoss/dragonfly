@@ -206,7 +206,7 @@ return true
 	}
 
 	// Prepare arguments.
-	args := []interface{}{
+	args := []any{
 		task.ID,
 		task.PersistentReplicaCount,
 		task.Tag,
@@ -250,9 +250,14 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 			err      error
 		)
 
-		// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-tasks:", keys could be:
-		// "{prefix}{taskID}:persistent-cache-peers", "{prefix}{taskID}:persistent-peers" and "{prefix}{taskID}".
-		// Scan all keys with prefix.
+		// Example: If {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-tasks:".
+		//
+		// Keys include:
+		// - "{prefix}{taskID}:persistent-cache-peers"
+		// - "{prefix}{taskID}:persistent-peers"
+		// - "{prefix}{taskID}"
+		//
+		// Purpose: Scan all keys starting with {prefix}.
 		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID))
 		taskKeys, cursor, err = t.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 		if err != nil {
@@ -274,9 +279,14 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 				continue
 			}
 
-			// suffix is a non-empty string like:
-			// "{taskID}:persistent-cache-peers", "{taskID}:persistent-peers" and "{taskID}".
-			// Extract taskID from suffix and avoid duplicate taskID.
+			// Suffix is a non-empty string.
+			//
+			// Keys include:
+			// - "{taskID}:persistent-cache-peers"
+			// - "{taskID}:persistent-peers"
+			// - "{taskID}"
+			//
+			// Purpose: Extract taskID from suffix and ensure no duplicate taskIDs.
 			taskID := strings.Split(suffix, ":")[0]
 			if _, ok := taskIDs[taskID]; ok {
 				continue

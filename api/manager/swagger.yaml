@@ -745,49 +745,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse:
-    properties:
-      application:
-        description: Application of persistent cache task.
-        type: string
-      content_length:
-        description: ContentLength is persistent cache task total content length.
-        type: integer
-      created_at:
-        description: CreatedAt is persistent cache task create time.
-        type: string
-      persistent_cache_peers:
-        description: PersistentCachePeers is the list of persistent cache peers.
-        items:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer'
-        type: array
-      persistent_replica_count:
-        description: PersistentReplicaCount is replica count of the persistent cache
-          task.
-        type: integer
-      piece_length:
-        description: PieceLength is persistent cache task piece length.
-        type: integer
-      state:
-        description: State is persistent cache task state.
-        type: string
-      tag:
-        description: Tag is used to distinguish different persistent cache tasks.
-        type: string
-      task_id:
-        description: TaskID is task id.
-        type: string
-      total_piece_count:
-        description: TotalPieceCount is total piece count.
-        type: integer
-      ttl:
-        allOf:
-        - $ref: '#/definitions/time.Duration'
-        description: TTL is persistent cache task time to live.
-      updated_at:
-        description: UpdatedAt is persistent cache task update time.
-        type: string
-    type: object
   d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse:
     properties:
       finishTime:
@@ -799,42 +756,7 @@ definitions:
       status:
         type: string
     type: object
-  d7y_io_dragonfly_v2_manager_types.PersistentCachePeer:
-    properties:
-      block_parents:
-        description: BlockParents is bad parents ids.
-        items:
-          type: string
-        type: array
-      cost:
-        allOf:
-        - $ref: '#/definitions/time.Duration'
-        description: Cost is the cost of downloading.
-      created_at:
-        description: CreatedAt is persistent cache peer create time.
-        type: string
-      finished_pieces:
-        allOf:
-        - $ref: '#/definitions/bitset.BitSet'
-        description: FinishedPieces is finished pieces bitset.
-      host:
-        allOf:
-        - $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeerHost'
-        description: Host is the peer host.
-      id:
-        description: ID is persistent cache peer id.
-        type: string
-      persistent:
-        description: Persistent is whether the peer is persistent.
-        type: boolean
-      state:
-        description: State is persistent cache peer state.
-        type: string
-      updated_at:
-        description: UpdatedAt is persistent cache peer update time.
-        type: string
-    type: object
-  d7y_io_dragonfly_v2_manager_types.PersistentCachePeerHost:
+  d7y_io_dragonfly_v2_manager_types.PersistentCacheHost:
     properties:
       announce_interval:
         allOf:
@@ -1035,6 +957,84 @@ definitions:
         type: string
       updated_at:
         description: UpdatedAt is host update time.
+        type: string
+    type: object
+  d7y_io_dragonfly_v2_manager_types.PersistentCachePeer:
+    properties:
+      block_parents:
+        description: BlockParents is bad parents ids.
+        items:
+          type: string
+        type: array
+      cost:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: Cost is the cost of downloading.
+      created_at:
+        description: CreatedAt is persistent cache peer create time.
+        type: string
+      finished_pieces:
+        allOf:
+        - $ref: '#/definitions/bitset.BitSet'
+        description: FinishedPieces is finished pieces bitset.
+      host:
+        allOf:
+        - $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheHost'
+        description: Host is the peer host.
+      id:
+        description: ID is persistent cache peer id.
+        type: string
+      persistent:
+        description: Persistent is whether the peer is persistent.
+        type: boolean
+      state:
+        description: State is persistent cache peer state.
+        type: string
+      updated_at:
+        description: UpdatedAt is persistent cache peer update time.
+        type: string
+    type: object
+  d7y_io_dragonfly_v2_manager_types.PersistentCacheTask:
+    properties:
+      application:
+        description: Application of persistent cache task.
+        type: string
+      content_length:
+        description: ContentLength is persistent cache task total content length.
+        type: integer
+      created_at:
+        description: CreatedAt is persistent cache task create time.
+        type: string
+      id:
+        description: ID is task id.
+        type: string
+      peers:
+        description: PersistentCachePeers is the list of persistent cache peers.
+        items:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer'
+        type: array
+      persistent_replica_count:
+        description: PersistentReplicaCount is replica count of the persistent cache
+          task.
+        type: integer
+      piece_length:
+        description: PieceLength is persistent cache task piece length.
+        type: integer
+      state:
+        description: State is persistent cache task state.
+        type: string
+      tag:
+        description: Tag is used to distinguish different persistent cache tasks.
+        type: string
+      total_piece_count:
+        description: TotalPieceCount is total piece count.
+        type: integer
+      ttl:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: TTL is persistent cache task time to live.
+      updated_at:
+        description: UpdatedAt is persistent cache task update time.
         type: string
     type: object
   d7y_io_dragonfly_v2_manager_types.PriorityConfig:
@@ -2352,12 +2352,17 @@ paths:
       summary: Get Permissions
       tags:
       - Permission
-  /api/v1/persistent-caches:
+  /api/v1/persistent-cache-tasks:
     get:
       consumes:
       - application/json
-      description: Get PersistentCaches
+      description: Get PersistentCacheTasks
       parameters:
+      - description: scheduler cluster id
+        in: query
+        name: scheduler_cluster_id
+        required: true
+        type: integer
       - default: 0
         description: current page
         in: query
@@ -2379,7 +2384,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse'
+              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask'
             type: array
         "400":
           description: Bad Request
@@ -2387,23 +2392,23 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-      summary: Get PersistentCaches
+      summary: Get PersistentCacheTasks
       tags:
-      - PersistentCache
-  /api/v1/persistent-caches/{scheduler_cluster_id}/{task_id}:
+      - PersistentCacheTask
+  /api/v1/persistent-cache-tasks/{id}:
     delete:
       consumes:
       - application/json
-      description: Destroy PersistentCache by id
+      description: Destroy PersistentCacheTask by id
       parameters:
       - description: scheduler cluster id
-        in: path
+        in: query
         name: scheduler_cluster_id
         required: true
-        type: string
+        type: integer
       - description: task id
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
       produces:
@@ -2417,22 +2422,22 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-      summary: Destroy PersistentCache
+      summary: Destroy PersistentCacheTask
       tags:
-      - PersistentCache
+      - PersistentCacheTask
     get:
       consumes:
       - application/json
-      description: Get PersistentCache by id
+      description: Get PersistentCacheTask by id
       parameters:
       - description: scheduler cluster id
-        in: path
+        in: query
         name: scheduler_cluster_id
         required: true
-        type: string
+        type: integer
       - description: task id
         in: path
-        name: task_id
+        name: id
         required: true
         type: string
       produces:
@@ -2441,16 +2446,16 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse'
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask'
         "400":
           description: Bad Request
         "404":
           description: Not Found
         "500":
           description: Internal Server Error
-      summary: Get PersistentCache
+      summary: Get PersistentCacheTask
       tags:
-      - PersistentCache
+      - PersistentCacheTask
   /api/v1/personal-access-tokens:
     get:
       consumes:

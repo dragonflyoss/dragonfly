@@ -233,11 +233,11 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	pat.GET(":id", h.GetPersonalAccessToken)
 	pat.GET("", h.GetPersonalAccessTokens)
 
-	// Persistent Cache.
-	pc := apiv1.Group("/persistent-caches", jwt.MiddlewareFunc(), rbac)
-	pc.DELETE(":id", h.DestroyPersistentCache)
-	pc.GET(":id", h.GetPersistentCache)
-	pc.GET("", h.GetPersistentCaches)
+	// Persistent Cache Task.
+	pc := apiv1.Group("/persistent-cache-tasks", jwt.MiddlewareFunc(), rbac)
+	pc.DELETE(":id", h.DestroyPersistentCacheTask)
+	pc.GET(":id", h.GetPersistentCacheTask)
+	pc.GET("", h.GetPersistentCacheTasks)
 
 	// Open API router.
 	oapiv1 := r.Group("/oapi/v1")

@@ -1477,9 +1477,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/persistent-caches": {
+        "/api/v1/persistent-cache-tasks": {
             "get": {
-                "description": "Get PersistentCaches",
+                "description": "Get PersistentCacheTasks",
                 "consumes": [
                     "application/json"
                 ],
@@ -1487,10 +1487,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "PersistentCache"
+                    "PersistentCacheTask"
                 ],
-                "summary": "Get PersistentCaches",
+                "summary": "Get PersistentCacheTasks",
                 "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "scheduler cluster id",
+                        "name": "scheduler_cluster_id",
+                        "in": "query",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "default": 0,
@@ -1516,7 +1523,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse"
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask"
                             }
                         }
                     },
@@ -1532,9 +1539,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/persistent-caches/{scheduler_cluster_id}/{task_id}": {
+        "/api/v1/persistent-cache-tasks/{id}": {
             "get": {
-                "description": "Get PersistentCache by id",
+                "description": "Get PersistentCacheTask by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -1542,21 +1549,21 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "PersistentCache"
+                    "PersistentCacheTask"
                 ],
-                "summary": "Get PersistentCache",
+                "summary": "Get PersistentCacheTask",
                 "parameters": [
                     {
-                        "type": "string",
+                        "type": "integer",
                         "description": "scheduler cluster id",
                         "name": "scheduler_cluster_id",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "task id",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1565,7 +1572,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse"
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask"
                         }
                     },
                     "400": {
@@ -1580,7 +1587,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Destroy PersistentCache by id",
+                "description": "Destroy PersistentCacheTask by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -1588,21 +1595,21 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "PersistentCache"
+                    "PersistentCacheTask"
                 ],
-                "summary": "Destroy PersistentCache",
+                "summary": "Destroy PersistentCacheTask",
                 "parameters": [
                     {
-                        "type": "string",
+                        "type": "integer",
                         "description": "scheduler cluster id",
                         "name": "scheduler_cluster_id",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "task id",
-                        "name": "task_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -5202,66 +5209,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_types.GetPersistentCacheResponse": {
-            "type": "object",
-            "properties": {
-                "application": {
-                    "description": "Application of persistent cache task.",
-                    "type": "string"
-                },
-                "content_length": {
-                    "description": "ContentLength is persistent cache task total content length.",
-                    "type": "integer"
-                },
-                "created_at": {
-                    "description": "CreatedAt is persistent cache task create time.",
-                    "type": "string"
-                },
-                "persistent_cache_peers": {
-                    "description": "PersistentCachePeers is the list of persistent cache peers.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer"
-                    }
-                },
-                "persistent_replica_count": {
-                    "description": "PersistentReplicaCount is replica count of the persistent cache task.",
-                    "type": "integer"
-                },
-                "piece_length": {
-                    "description": "PieceLength is persistent cache task piece length.",
-                    "type": "integer"
-                },
-                "state": {
-                    "description": "State is persistent cache task state.",
-                    "type": "string"
-                },
-                "tag": {
-                    "description": "Tag is used to distinguish different persistent cache tasks.",
-                    "type": "string"
-                },
-                "task_id": {
-                    "description": "TaskID is task id.",
-                    "type": "string"
-                },
-                "total_piece_count": {
-                    "description": "TotalPieceCount is total piece count.",
-                    "type": "integer"
-                },
-                "ttl": {
-                    "description": "TTL is persistent cache task time to live.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/time.Duration"
-                        }
-                    ]
-                },
-                "updated_at": {
-                    "description": "UpdatedAt is persistent cache task update time.",
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse": {
             "type": "object",
             "properties": {
@@ -5279,63 +5226,7 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_types.PersistentCachePeer": {
-            "type": "object",
-            "properties": {
-                "block_parents": {
-                    "description": "BlockParents is bad parents ids.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "cost": {
-                    "description": "Cost is the cost of downloading.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/time.Duration"
-                        }
-                    ]
-                },
-                "created_at": {
-                    "description": "CreatedAt is persistent cache peer create time.",
-                    "type": "string"
-                },
-                "finished_pieces": {
-                    "description": "FinishedPieces is finished pieces bitset.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/bitset.BitSet"
-                        }
-                    ]
-                },
-                "host": {
-                    "description": "Host is the peer host.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeerHost"
-                        }
-                    ]
-                },
-                "id": {
-                    "description": "ID is persistent cache peer id.",
-                    "type": "string"
-                },
-                "persistent": {
-                    "description": "Persistent is whether the peer is persistent.",
-                    "type": "boolean"
-                },
-                "state": {
-                    "description": "State is persistent cache peer state.",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "description": "UpdatedAt is persistent cache peer update time.",
-                    "type": "string"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_manager_types.PersistentCachePeerHost": {
+        "d7y_io_dragonfly_v2_manager_types.PersistentCacheHost": {
             "type": "object",
             "properties": {
                 "announce_interval": {
@@ -5608,6 +5499,122 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "description": "UpdatedAt is host update time.",
+                    "type": "string"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_types.PersistentCachePeer": {
+            "type": "object",
+            "properties": {
+                "block_parents": {
+                    "description": "BlockParents is bad parents ids.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cost": {
+                    "description": "Cost is the cost of downloading.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "created_at": {
+                    "description": "CreatedAt is persistent cache peer create time.",
+                    "type": "string"
+                },
+                "finished_pieces": {
+                    "description": "FinishedPieces is finished pieces bitset.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/bitset.BitSet"
+                        }
+                    ]
+                },
+                "host": {
+                    "description": "Host is the peer host.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheHost"
+                        }
+                    ]
+                },
+                "id": {
+                    "description": "ID is persistent cache peer id.",
+                    "type": "string"
+                },
+                "persistent": {
+                    "description": "Persistent is whether the peer is persistent.",
+                    "type": "boolean"
+                },
+                "state": {
+                    "description": "State is persistent cache peer state.",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "UpdatedAt is persistent cache peer update time.",
+                    "type": "string"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_types.PersistentCacheTask": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "description": "Application of persistent cache task.",
+                    "type": "string"
+                },
+                "content_length": {
+                    "description": "ContentLength is persistent cache task total content length.",
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "CreatedAt is persistent cache task create time.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is task id.",
+                    "type": "string"
+                },
+                "peers": {
+                    "description": "PersistentCachePeers is the list of persistent cache peers.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer"
+                    }
+                },
+                "persistent_replica_count": {
+                    "description": "PersistentReplicaCount is replica count of the persistent cache task.",
+                    "type": "integer"
+                },
+                "piece_length": {
+                    "description": "PieceLength is persistent cache task piece length.",
+                    "type": "integer"
+                },
+                "state": {
+                    "description": "State is persistent cache task state.",
+                    "type": "string"
+                },
+                "tag": {
+                    "description": "Tag is used to distinguish different persistent cache tasks.",
+                    "type": "string"
+                },
+                "total_piece_count": {
+                    "description": "TotalPieceCount is total piece count.",
+                    "type": "integer"
+                },
+                "ttl": {
+                    "description": "TTL is persistent cache task time to live.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "description": "UpdatedAt is persistent cache task update time.",
                     "type": "string"
                 }
             }

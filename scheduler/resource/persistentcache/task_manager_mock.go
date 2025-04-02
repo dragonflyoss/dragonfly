@@ -84,21 +84,6 @@ func (mr *MockTaskManagerMockRecorder) LoadAll(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAll", reflect.TypeOf((*MockTaskManager)(nil).LoadAll), arg0)
 }
 
-// LoadCurrentReplicaCount mocks base method.
-func (m *MockTaskManager) LoadCurrentReplicaCount(arg0 context.Context, arg1 string) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadCurrentReplicaCount", arg0, arg1)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LoadCurrentReplicaCount indicates an expected call of LoadCurrentReplicaCount.
-func (mr *MockTaskManagerMockRecorder) LoadCurrentReplicaCount(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadCurrentReplicaCount", reflect.TypeOf((*MockTaskManager)(nil).LoadCurrentReplicaCount), arg0, arg1)
-}
-
 // LoadCurrentPersistentReplicaCount mocks base method.
 func (m *MockTaskManager) LoadCurrentPersistentReplicaCount(arg0 context.Context, arg1 string) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -112,6 +97,21 @@ func (m *MockTaskManager) LoadCurrentPersistentReplicaCount(arg0 context.Context
 func (mr *MockTaskManagerMockRecorder) LoadCurrentPersistentReplicaCount(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadCurrentPersistentReplicaCount", reflect.TypeOf((*MockTaskManager)(nil).LoadCurrentPersistentReplicaCount), arg0, arg1)
+}
+
+// LoadCurrentReplicaCount mocks base method.
+func (m *MockTaskManager) LoadCurrentReplicaCount(arg0 context.Context, arg1 string) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadCurrentReplicaCount", arg0, arg1)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadCurrentReplicaCount indicates an expected call of LoadCurrentReplicaCount.
+func (mr *MockTaskManagerMockRecorder) LoadCurrentReplicaCount(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadCurrentReplicaCount", reflect.TypeOf((*MockTaskManager)(nil).LoadCurrentReplicaCount), arg0, arg1)
 }
 
 // Store mocks base method.

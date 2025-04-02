@@ -22,17 +22,24 @@ import (
 	"github.com/bits-and-blooms/bitset"
 )
 
-type PersistentCacheParams struct {
-	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
-	SchedulerClusterID uint `uri:"scheduler_cluster_id" binding:"required"`
-
-	// TaskID is the task id of the persistent cache.
-	TaskID string `uri:"task_id" binding:"required"`
+type PersistentCacheTaskParams struct {
+	// ID is the task id of the persistent cache.
+	ID string `uri:"id" binding:"required"`
 }
 
-type GetPersistentCachesQuery struct {
-	// SchedulerClusterIDs is the scheduler cluster ids of the persistent cache.
-	SchedulerClusterIDs []uint `json:"scheduler_cluster_ids" binding:"omitempty"`
+type DestroyPersistentCacheTaskQuery struct {
+	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
+	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
+}
+
+type GetPersistentCacheTaskQuery struct {
+	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
+	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
+}
+
+type GetPersistentCacheTasksQuery struct {
+	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
+	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
 
 	// Page is the page number of the persistent cache list.
 	Page int `form:"page" binding:"omitempty,gte=1"`
@@ -41,9 +48,9 @@ type GetPersistentCachesQuery struct {
 	PerPage int `form:"per_page" binding:"omitempty,gte=1,lte=10000000"`
 }
 
-type GetPersistentCacheResponse struct {
-	// TaskID is task id.
-	TaskID string `json:"task_id" binding:"omitempty"`
+type PersistentCacheTask struct {
+	// ID is task id.
+	ID string `json:"id" binding:"omitempty"`
 
 	// PersistentReplicaCount is replica count of the persistent cache task.
 	PersistentReplicaCount uint64 `json:"persistent_replica_count" binding:"omitempty"`
@@ -76,7 +83,7 @@ type GetPersistentCacheResponse struct {
 	UpdatedAt time.Time `json:"updated_at" binding:"omitempty"`
 
 	// PersistentCachePeers is the list of persistent cache peers.
-	PersistentCachePeers []PersistentCachePeer `json:"persistent_cache_peers" binding:"omitempty"`
+	Peers []*PersistentCachePeer `json:"peers" binding:"omitempty"`
 }
 
 type PersistentCachePeer struct {
@@ -105,10 +112,10 @@ type PersistentCachePeer struct {
 	UpdatedAt time.Time `json:"updated_at" binding:"omitempty"`
 
 	// Host is the peer host.
-	Host PersistentCachePeerHost `json:"host" binding:"omitempty"`
+	Host *PersistentCacheHost `json:"host" binding:"omitempty"`
 }
 
-type PersistentCachePeerHost struct {
+type PersistentCacheHost struct {
 	// ID is host id.
 	ID string `json:"id" binding:"omitempty"`
 
@@ -290,7 +297,7 @@ type PersistentCachePeerHost struct {
 	} `json:"build" binding:"omitempty"`
 
 	// SchedulerClusterID is the scheduler cluster id matched by scopes.
-	SchedulerClusterID uint64 `json:"scheduler_cluster_id" binding:"omitempty"`
+	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"omitempty"`
 
 	// AnnounceInterval is the interval between host announces to scheduler.
 	AnnounceInterval time.Duration `json:"announce_interval" binding:"omitempty"`
