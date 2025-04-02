@@ -86,7 +86,7 @@ func (h *Handlers) GetPersistentCache(ctx *gin.Context) {
 // @Produce json
 // @Param page query int true "current page" default(0)
 // @Param per_page query int true "return max item count, default 10, max 50" default(10) minimum(2) maximum(50)
-// @Success 200 {object} []types.GetPersistentCachesResponse
+// @Success 200 {object} []types.GetPersistentCacheResponse
 // @Failure 400
 // @Failure 404
 // @Failure 500
