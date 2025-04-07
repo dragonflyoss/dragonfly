@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.4.0
 	github.com/elastic/go-freelru v0.16.0
-	github.com/fsouza/fake-gcs-server v1.52.0
+	github.com/fsouza/fake-gcs-server v1.52.2
 	github.com/gaius-qi/ping v1.0.0
 	github.com/gammazero/deque v1.0.0
 	github.com/gin-contrib/gzip v1.2.2
