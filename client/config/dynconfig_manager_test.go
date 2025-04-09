@@ -217,9 +217,8 @@ func TestDynconfigManager_GetResolveSchedulerAddrs(t *testing.T) {
 			},
 			expect: func(t *testing.T, dynconfig Dynconfig, data *DynconfigData) {
 				assert := assert.New(t)
-				result, err := dynconfig.GetResolveSchedulerAddrs()
-				assert.NoError(err)
-				assert.EqualValues(result, []resolver.Address{{ServerName: "localhost", Addr: "localhost:3000"}})
+				_, err := dynconfig.GetResolveSchedulerAddrs()
+				assert.Error(err)
 			},
 		},
 		{

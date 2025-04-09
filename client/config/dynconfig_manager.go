@@ -119,28 +119,15 @@ func (d *dynconfigManager) GetResolveSchedulerAddrs() ([]resolver.Address, error
 			dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		}
 
-		var addr string
-		if ip, ok := ip.FormatIP(scheduler.GetIp()); ok {
-			// Check health with ip address.
-			target := fmt.Sprintf("%s:%d", ip, scheduler.GetPort())
-			if err := healthclient.Check(context.Background(), target, dialOptions...); err != nil {
-				logger.Warnf("scheduler ip address %s is unreachable: %s", target, err.Error())
-
-				// Check health with host address.
-				target = fmt.Sprintf("%s:%d", scheduler.GetHostname(), scheduler.GetPort())
-				if err := healthclient.Check(context.Background(), target, dialOptions...); err != nil {
-					logger.Warnf("scheduler host address %s is unreachable: %s", target, err.Error())
-				} else {
-					addr = target
-				}
-			} else {
-				addr = target
-			}
+		ip, ok := ip.FormatIP(scheduler.GetIp())
+		if !ok {
+			logger.Warnf("invalid IP format for scheduler: %s", scheduler.GetIp())
+			continue
 		}
 
-		if addr == "" {
-			logger.Warnf("scheduler %s %s %d has not reachable addresses",
-				scheduler.GetIp(), scheduler.GetHostname(), scheduler.GetPort())
+		addr := fmt.Sprintf("%s:%d", ip, scheduler.GetPort())
+		if err := healthclient.Check(context.Background(), addr, dialOptions...); err != nil {
+			logger.Warnf("scheduler %s is unreachable: %s", addr, err.Error())
 			continue
 		}
 
