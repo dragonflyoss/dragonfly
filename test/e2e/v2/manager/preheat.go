@@ -19,6 +19,8 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
@@ -202,6 +204,122 @@ var _ = Describe("Preheat with Manager", func() {
 			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+		})
+	})
+
+	Context("100MiB file in cache", func() {
+		var (
+			testFile *util.File
+			err      error
+		)
+
+		BeforeEach(func() {
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize100MiB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile).NotTo(BeNil())
+		})
+
+		AfterEach(func() {
+			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("preheat files in cache should be ok", Label("preheat", "file", "cache"), func() {
+			managerPod, err := util.ManagerExec(0)
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			req, err := structure.StructToMap(types.CreatePreheatJobRequest{
+				Type: internaljob.PreheatJob,
+				Args: types.PreheatArgs{
+					Type:        "file",
+					URL:         testFile.GetDownloadURL(),
+					Scope:       "single_seed_peer",
+					LoadToCache: true,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
+				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+			fmt.Println(string(out))
+
+			job := &models.Job{}
+			err = json.Unmarshal(out, job)
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			done := waitForDone(job, managerPod)
+			Expect(done).Should(BeTrue())
+
+			seedClientPod, err := util.SeedClientExec(0)
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			out, err = seedClientPod.Command("curl", "-s", "http://0.0.0.0:4002/metrics").CombinedOutput()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+			metricsOutput := string(out)
+
+			downloadTrafficRegex := regexp.MustCompile(`dragonfly_client_download_traffic{[^}]*storage_type="memory"[^}]*} ([0-9]+)`)
+			downloadMatches := downloadTrafficRegex.FindStringSubmatch(metricsOutput)
+			Expect(downloadMatches).NotTo(BeNil(), "Download traffic metric not found")
+			downloadTraffic, _ := strconv.ParseInt(downloadMatches[1], 10, 64)
+			fmt.Printf("Download traffic: %d bytes\n", downloadTraffic)
+			Expect(downloadTraffic).To(Equal(int64(util.FileSize100MiB)), "Download traffic should exactly match file size")
+
+			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			req, err = structure.StructToMap(types.CreatePreheatJobRequest{
+				Type: internaljob.PreheatJob,
+				Args: types.PreheatArgs{
+					Type:  "file",
+					URL:   testFile.GetDownloadURL(),
+					Scope: "all_seed_peers",
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			out, err = managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
+				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+			fmt.Println(string(out))
+
+			job = &models.Job{}
+			err = json.Unmarshal(out, job)
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+
+			done = waitForDone(job, managerPod)
+			Expect(done).Should(BeTrue())
+
+			seedClientPods := make([]*util.PodExec, 2)
+			for i := 0; i < 2; i++ {
+				seedClientPods[i], err = util.SeedClientExec(i + 1)
+				fmt.Println(err)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+
+			out, err = seedClientPod.Command("curl", "-s", "http://0.0.0.0:4002/metrics").CombinedOutput()
+			fmt.Println(err)
+			Expect(err).NotTo(HaveOccurred())
+			metricsOutput = string(out)
+
+			uploadTrafficRegex := regexp.MustCompile(`dragonfly_client_upload_traffic{[^}]*storage_type="memory"[^}]*} ([0-9]+)`)
+			uploadMatches := uploadTrafficRegex.FindStringSubmatch(metricsOutput)
+			Expect(uploadMatches).NotTo(BeNil(), "Upload traffic metric not found")
+			uploadTraffic, _ := strconv.ParseInt(uploadMatches[1], 10, 64)
+			fmt.Printf("Upload traffic: %d bytes\n", uploadTraffic)
+			Expect(uploadTraffic).To(Equal(int64(util.FileSize100MiB*2)), "Upload traffic should match file size times number of clients")
 		})
 	})
 
