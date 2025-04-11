@@ -308,6 +308,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 					RequestHeader:       req.Headers,
 					Timeout:             durationpb.New(req.Timeout),
 					CertificateChain:    req.CertificateChain,
+					LoadToCache:         req.LoadToCache,
 				}})
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
@@ -450,6 +451,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 					RequestHeader:       req.Headers,
 					Timeout:             durationpb.New(req.Timeout),
 					CertificateChain:    req.CertificateChain,
+					LoadToCache:         req.LoadToCache,
 				}})
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
@@ -593,6 +595,7 @@ func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.Pre
 			FilteredQueryParams: filteredQueryParams,
 			RequestHeader:       req.Headers,
 			CertificateChain:    req.CertificateChain,
+			LoadToCache:         req.LoadToCache,
 		}})
 	if err != nil {
 		log.Errorf("preheat failed: %s", err.Error())
