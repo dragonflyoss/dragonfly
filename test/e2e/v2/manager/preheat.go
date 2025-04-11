@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
@@ -263,12 +264,21 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			metricsOutput := string(out)
 
-			downloadTrafficRegex := regexp.MustCompile(`dragonfly_client_download_traffic{[^}]*storage_type="memory"[^}]*} ([0-9]+)`)
-			downloadMatches := downloadTrafficRegex.FindStringSubmatch(metricsOutput)
-			Expect(downloadMatches).NotTo(BeNil(), "Download traffic metric not found")
+			metricsLines := strings.Split(metricsOutput, "\n")
+			var downloadLine string
+			for _, line := range metricsLines {
+				if strings.HasPrefix(line, "dragonfly_client_download_traffic") {
+					downloadLine = line
+					break
+				}
+			}
+			Expect(downloadLine).NotTo(BeEmpty())
+
+			memoryStorageRegex := regexp.MustCompile(`storage_type="memory"[^}]*} ([0-9]+)`)
+			downloadMatches := memoryStorageRegex.FindStringSubmatch(downloadLine)
+			Expect(downloadMatches).NotTo(BeNil())
 			downloadTraffic, _ := strconv.ParseInt(downloadMatches[1], 10, 64)
-			fmt.Printf("Download traffic: %d bytes\n", downloadTraffic)
-			Expect(downloadTraffic).To(Equal(int64(util.FileSize100MiB)), "Download traffic should exactly match file size")
+			Expect(downloadTraffic).To(Equal(int64(util.FileSize100MiB)))
 
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
@@ -314,12 +324,20 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			metricsOutput = string(out)
 
-			uploadTrafficRegex := regexp.MustCompile(`dragonfly_client_upload_traffic{[^}]*storage_type="memory"[^}]*} ([0-9]+)`)
-			uploadMatches := uploadTrafficRegex.FindStringSubmatch(metricsOutput)
-			Expect(uploadMatches).NotTo(BeNil(), "Upload traffic metric not found")
+			metricsLines = strings.Split(metricsOutput, "\n")
+			var uploadLine string
+			for _, line := range metricsLines {
+				if strings.HasPrefix(line, "dragonfly_client_upload_traffic") {
+					uploadLine = line
+					break
+				}
+			}
+			Expect(uploadLine).NotTo(BeEmpty())
+
+			uploadMatches := memoryStorageRegex.FindStringSubmatch(uploadLine)
+			Expect(uploadMatches).NotTo(BeNil())
 			uploadTraffic, _ := strconv.ParseInt(uploadMatches[1], 10, 64)
-			fmt.Printf("Upload traffic: %d bytes\n", uploadTraffic)
-			Expect(uploadTraffic).To(Equal(int64(util.FileSize100MiB*2)), "Upload traffic should match file size times number of clients")
+			Expect(uploadTraffic).To(Equal(int64(util.FileSize100MiB * 2)))
 		})
 	})
 
