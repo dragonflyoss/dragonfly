@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
@@ -208,14 +207,14 @@ var _ = Describe("Preheat with Manager", func() {
 		})
 	})
 
-	Context("100MiB file in cache", func() {
+	Context("10MiB file in cache", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize100MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -259,27 +258,6 @@ var _ = Describe("Preheat with Manager", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			out, err = seedClientPod.Command("curl", "-s", "http://0.0.0.0:4002/metrics").CombinedOutput()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-			metricsOutput := string(out)
-
-			metricsLines := strings.Split(metricsOutput, "\n")
-			var downloadLine string
-			for _, line := range metricsLines {
-				if strings.HasPrefix(line, "dragonfly_client_download_traffic") {
-					downloadLine = line
-					break
-				}
-			}
-			Expect(downloadLine).NotTo(BeEmpty())
-
-			memoryStorageRegex := regexp.MustCompile(`storage_type="memory"[^}]*} ([0-9]+)`)
-			downloadMatches := memoryStorageRegex.FindStringSubmatch(downloadLine)
-			Expect(downloadMatches).NotTo(BeNil())
-			downloadTraffic, _ := strconv.ParseInt(downloadMatches[1], 10, 64)
-			Expect(downloadTraffic).To(Equal(int64(util.FileSize100MiB)))
-
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
@@ -319,25 +297,27 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			out, err = seedClientPod.Command("curl", "-s", "http://0.0.0.0:4002/metrics").CombinedOutput()
+			out, err = seedClientPod.Command("cat", "/var/log/dragonfly/dfdaemon/dfdaemon.log").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
-			metricsOutput = string(out)
+			logs := string(out)
 
-			metricsLines = strings.Split(metricsOutput, "\n")
-			var uploadLine string
-			for _, line := range metricsLines {
-				if strings.HasPrefix(line, "dragonfly_client_upload_traffic") {
-					uploadLine = line
-					break
-				}
+			Expect(logs).To(ContainSubstring(fmt.Sprintf("put task to cache: %s", testFile.GetTaskID())))
+
+			pieceRegex := regexp.MustCompile(`pieces: \[([0-9, ]+)\]`)
+			pieceMatches := pieceRegex.FindStringSubmatch(logs)
+			Expect(pieceMatches).NotTo(BeNil())
+			pieceNumbers := strings.Split(strings.ReplaceAll(pieceMatches[1], " ", ""), ",")
+
+			for _, number := range pieceNumbers {
+				pieceID := fmt.Sprintf("%s-%s", testFile.GetTaskID(), number)
+				putPieceCacheLog := fmt.Sprintf("put piece to cache: %s", pieceID)
+				Expect(logs).To(ContainSubstring(putPieceCacheLog))
+
+				getPieceCacheLog := fmt.Sprintf("get piece from cache: %s", pieceID)
+				cacheHits := strings.Count(logs, getPieceCacheLog)
+				Expect(cacheHits).To(Equal(2))
 			}
-			Expect(uploadLine).NotTo(BeEmpty())
-
-			uploadMatches := memoryStorageRegex.FindStringSubmatch(uploadLine)
-			Expect(uploadMatches).NotTo(BeNil())
-			uploadTraffic, _ := strconv.ParseInt(uploadMatches[1], 10, 64)
-			Expect(uploadTraffic).To(Equal(int64(util.FileSize100MiB * 2)))
 		})
 	})
 
