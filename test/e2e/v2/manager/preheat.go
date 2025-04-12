@@ -255,8 +255,6 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			var preheatedSeedClient *util.PodExec
-			var preheatedSeedClientIndex int
-			var otherSeedClientIndices []int
 
 			for i := 0; i < 3; i++ {
 				seedClient, err := util.SeedClientExec(i)
@@ -269,7 +267,6 @@ var _ = Describe("Preheat with Manager", func() {
 				out, err = seedClient.Command("bash", "-c", successCmd).CombinedOutput()
 				if err == nil && len(out) > 0 {
 					preheatedSeedClient = seedClient
-					preheatedSeedClientIndex = i
 					fmt.Printf("Found preheated seed client: %d\n", i)
 					break
 				}
@@ -277,48 +274,23 @@ var _ = Describe("Preheat with Manager", func() {
 
 			Expect(preheatedSeedClient).NotTo(BeNil())
 
-			for i := 0; i < 3; i++ {
-				if i != preheatedSeedClientIndex {
-					otherSeedClientIndices = append(otherSeedClientIndices, i)
-				}
-			}
-
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{preheatedSeedClient}, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			req, err = structure.StructToMap(types.CreatePreheatJobRequest{
-				Type: internaljob.PreheatJob,
-				Args: types.PreheatArgs{
-					Type:  "file",
-					URL:   testFile.GetDownloadURL(),
-					Scope: "all_seed_peers",
-				},
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			out, err = managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Println(string(out))
-
-			job = &models.Job{}
-			err = json.Unmarshal(out, job)
+			clientPod, err := util.ClientExec()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			done = waitForDone(job, managerPod)
-			Expect(done).Should(BeTrue())
+			out, err = clientPod.Command("sh", "-c", fmt.Sprintf("dfget %s --disable-back-to-source --output %s", testFile.GetDownloadURL(), testFile.GetOutputPath())).CombinedOutput()
+			fmt.Println(string(out), err)
+			Expect(err).NotTo(HaveOccurred())
 
-			seedClientPods := make([]*util.PodExec, 2)
-			for i, idx := range otherSeedClientIndices {
-				seedClientPods[i], err = util.SeedClientExec(idx)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
+			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
