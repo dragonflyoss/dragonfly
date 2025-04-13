@@ -497,6 +497,20 @@ func (mr *MockServiceMockRecorder) DestroyPeer(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPeer", reflect.TypeOf((*MockService)(nil).DestroyPeer), arg0, arg1)
 }
 
+// DestroyPersistentCacheTask mocks base method.
+func (m *MockService) DestroyPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DestroyPersistentCacheTask", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DestroyPersistentCacheTask indicates an expected call of DestroyPersistentCacheTask.
+func (mr *MockServiceMockRecorder) DestroyPersistentCacheTask(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPersistentCacheTask", reflect.TypeOf((*MockService)(nil).DestroyPersistentCacheTask), arg0, arg1, arg2)
+}
+
 // DestroyPersonalAccessToken mocks base method.
 func (m *MockService) DestroyPersonalAccessToken(arg0 context.Context, arg1 uint) error {
 	m.ctrl.T.Helper()
@@ -810,6 +824,37 @@ func (m *MockService) GetPermissions(arg0 context.Context, arg1 *gin.Engine) []r
 func (mr *MockServiceMockRecorder) GetPermissions(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPermissions", reflect.TypeOf((*MockService)(nil).GetPermissions), arg0, arg1)
+}
+
+// GetPersistentCacheTask mocks base method.
+func (m *MockService) GetPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) (*types.PersistentCacheTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPersistentCacheTask", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.PersistentCacheTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPersistentCacheTask indicates an expected call of GetPersistentCacheTask.
+func (mr *MockServiceMockRecorder) GetPersistentCacheTask(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPersistentCacheTask", reflect.TypeOf((*MockService)(nil).GetPersistentCacheTask), arg0, arg1, arg2)
+}
+
+// GetPersistentCacheTasks mocks base method.
+func (m *MockService) GetPersistentCacheTasks(arg0 context.Context, arg1 types.GetPersistentCacheTasksQuery) ([]*types.PersistentCacheTask, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPersistentCacheTasks", arg0, arg1)
+	ret0, _ := ret[0].([]*types.PersistentCacheTask)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetPersistentCacheTasks indicates an expected call of GetPersistentCacheTasks.
+func (mr *MockServiceMockRecorder) GetPersistentCacheTasks(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPersistentCacheTasks", reflect.TypeOf((*MockService)(nil).GetPersistentCacheTasks), arg0, arg1)
 }
 
 // GetPersonalAccessToken mocks base method.

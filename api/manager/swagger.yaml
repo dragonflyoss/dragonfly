@@ -1,5 +1,7 @@
 basePath: /
 definitions:
+  bitset.BitSet:
+    type: object
   d7y_io_dragonfly_v2_manager_models.Application:
     properties:
       bio:
@@ -754,6 +756,287 @@ definitions:
       status:
         type: string
     type: object
+  d7y_io_dragonfly_v2_manager_types.PersistentCacheHost:
+    properties:
+      announce_interval:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: AnnounceInterval is the interval between host announces to scheduler.
+      build:
+        description: Build contains build information.
+        properties:
+          git_commit:
+            description: GitCommit is git commit.
+            type: string
+          git_version:
+            description: GitVersion is git version.
+            type: string
+          go_version:
+            description: GoVersion is go version.
+            type: string
+          platform:
+            description: Platform is build platform.
+            type: string
+        type: object
+      cpu:
+        description: CPU contains cpu information.
+        properties:
+          logical_count:
+            description: LogicalCount is cpu logical count.
+            type: integer
+          percent:
+            description: Percent is cpu usage percent.
+            type: number
+          physical_count:
+            description: PhysicalCount is cpu physical count.
+            type: integer
+          process_percent:
+            description: ProcessPercent is process cpu usage percent.
+            type: number
+          times:
+            description: Times contains cpu times information.
+            properties:
+              guest:
+                description: Guest is guest cpu time.
+                type: number
+              guest_nice:
+                description: GuestNice is guest nice cpu time.
+                type: number
+              idle:
+                description: Idle is idle cpu time.
+                type: number
+              iowait:
+                description: Iowait is iowait cpu time.
+                type: number
+              irq:
+                description: Irq is irq cpu time.
+                type: number
+              nice:
+                description: Nice is nice cpu time.
+                type: number
+              softirq:
+                description: Softirq is softirq cpu time.
+                type: number
+              steal:
+                description: Steal is steal cpu time.
+                type: number
+              system:
+                description: System is system cpu time.
+                type: number
+              user:
+                description: User is user cpu time.
+                type: number
+            type: object
+        type: object
+      created_at:
+        description: CreatedAt is host create time.
+        type: string
+      disable_shared:
+        description: DisableShared is whether the host is disabled for shared with
+          other peers.
+        type: boolean
+      disk:
+        description: Disk contains disk information.
+        properties:
+          free:
+            description: Free is free disk space.
+            type: integer
+          inodes_free:
+            description: InodesFree is free inodes.
+            type: integer
+          inodes_total:
+            description: InodesTotal is total inodes.
+            type: integer
+          inodes_used:
+            description: InodesUsed is used inodes.
+            type: integer
+          inodes_used_percent:
+            description: InodesUsedPercent is inodes usage percent.
+            type: number
+          read_bandwidth:
+            description: ReadBandwidth is read bandwidth.
+            type: integer
+          total:
+            description: Total is total disk space.
+            type: integer
+          used:
+            description: Used is used disk space.
+            type: integer
+          used_percent:
+            description: UsedPercent is disk usage percent.
+            type: number
+          write_bandwidth:
+            description: WriteBandwidth is write bandwidth.
+            type: integer
+        type: object
+      download_port:
+        description: DownloadPort is piece downloading port.
+        type: integer
+      hostname:
+        description: Hostname is host name.
+        type: string
+      id:
+        description: ID is host id.
+        type: string
+      ip:
+        description: IP is host ip.
+        type: string
+      kernel_version:
+        description: KernelVersion is host kernel version.
+        type: string
+      memory:
+        description: Memory contains memory information.
+        properties:
+          available:
+            description: Available is available memory.
+            type: integer
+          free:
+            description: Free is free memory.
+            type: integer
+          process_used_percent:
+            description: ProcessUsedPercent is process memory usage percent.
+            type: number
+          total:
+            description: Total is total memory.
+            type: integer
+          used:
+            description: Used is used memory.
+            type: integer
+          used_percent:
+            description: UsedPercent is memory usage percent.
+            type: number
+        type: object
+      network:
+        description: Network contains network information.
+        properties:
+          download_rate:
+            description: DownloadRate is download rate.
+            type: integer
+          download_rate_limit:
+            description: DownloadRateLimit is download rate limit.
+            type: integer
+          idc:
+            description: IDC is network idc.
+            type: string
+          location:
+            description: Location is network location.
+            type: string
+          tcp_connection_count:
+            description: TCPConnectionCount is tcp connection count.
+            type: integer
+          upload_rate:
+            description: UploadRate is upload rate.
+            type: integer
+          upload_rate_limit:
+            description: UploadRateLimit is upload rate limit.
+            type: integer
+          upload_tcp_connection_count:
+            description: UploadTCPConnectionCount is upload tcp connection count.
+            type: integer
+        type: object
+      os:
+        description: OS is host OS.
+        type: string
+      platform:
+        description: Platform is host platform.
+        type: string
+      platform_family:
+        description: PlatformFamily is host platform family.
+        type: string
+      platform_version:
+        description: PlatformVersion is host platform version.
+        type: string
+      port:
+        description: Port is grpc service port.
+        type: integer
+      scheduler_cluster_id:
+        description: SchedulerClusterID is the scheduler cluster id matched by scopes.
+        type: integer
+      type:
+        description: Type is host type.
+        type: string
+      updated_at:
+        description: UpdatedAt is host update time.
+        type: string
+    type: object
+  d7y_io_dragonfly_v2_manager_types.PersistentCachePeer:
+    properties:
+      block_parents:
+        description: BlockParents is bad parents ids.
+        items:
+          type: string
+        type: array
+      cost:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: Cost is the cost of downloading.
+      created_at:
+        description: CreatedAt is persistent cache peer create time.
+        type: string
+      finished_pieces:
+        allOf:
+        - $ref: '#/definitions/bitset.BitSet'
+        description: FinishedPieces is finished pieces bitset.
+      host:
+        allOf:
+        - $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheHost'
+        description: Host is the peer host.
+      id:
+        description: ID is persistent cache peer id.
+        type: string
+      persistent:
+        description: Persistent is whether the peer is persistent.
+        type: boolean
+      state:
+        description: State is persistent cache peer state.
+        type: string
+      updated_at:
+        description: UpdatedAt is persistent cache peer update time.
+        type: string
+    type: object
+  d7y_io_dragonfly_v2_manager_types.PersistentCacheTask:
+    properties:
+      application:
+        description: Application of persistent cache task.
+        type: string
+      content_length:
+        description: ContentLength is persistent cache task total content length.
+        type: integer
+      created_at:
+        description: CreatedAt is persistent cache task create time.
+        type: string
+      id:
+        description: ID is task id.
+        type: string
+      peers:
+        description: PersistentCachePeers is the list of persistent cache peers.
+        items:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer'
+        type: array
+      persistent_replica_count:
+        description: PersistentReplicaCount is replica count of the persistent cache
+          task.
+        type: integer
+      piece_length:
+        description: PieceLength is persistent cache task piece length.
+        type: integer
+      state:
+        description: State is persistent cache task state.
+        type: string
+      tag:
+        description: Tag is used to distinguish different persistent cache tasks.
+        type: string
+      total_piece_count:
+        description: TotalPieceCount is total piece count.
+        type: integer
+      ttl:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: TTL is persistent cache task time to live.
+      updated_at:
+        description: UpdatedAt is persistent cache task update time.
+        type: string
+    type: object
   d7y_io_dragonfly_v2_manager_types.PriorityConfig:
     properties:
       urls:
@@ -1065,6 +1348,26 @@ definitions:
         description: Name is bucket name.
         type: string
     type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
 host: localhost:8080
 info:
   contact:
@@ -1656,6 +1959,33 @@ paths:
       summary: Get Jobs
       tags:
       - Job
+    post:
+      consumes:
+      - application/json
+      description: Create by json config
+      parameters:
+      - description: Job
+        in: body
+        name: Job
+        required: true
+        schema:
+          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Job'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Create Job
+      tags:
+      - Job
   /api/v1/jobs/{id}:
     delete:
       consumes:
@@ -2022,6 +2352,110 @@ paths:
       summary: Get Permissions
       tags:
       - Permission
+  /api/v1/persistent-cache-tasks:
+    get:
+      consumes:
+      - application/json
+      description: Get PersistentCacheTasks
+      parameters:
+      - description: scheduler cluster id
+        in: query
+        name: scheduler_cluster_id
+        required: true
+        type: integer
+      - default: 0
+        description: current page
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        description: return max item count, default 10, max 50
+        in: query
+        maximum: 50
+        minimum: 2
+        name: per_page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask'
+            type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get PersistentCacheTasks
+      tags:
+      - PersistentCacheTask
+  /api/v1/persistent-cache-tasks/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Destroy PersistentCacheTask by id
+      parameters:
+      - description: scheduler cluster id
+        in: query
+        name: scheduler_cluster_id
+        required: true
+        type: integer
+      - description: task id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Destroy PersistentCacheTask
+      tags:
+      - PersistentCacheTask
+    get:
+      consumes:
+      - application/json
+      description: Get PersistentCacheTask by id
+      parameters:
+      - description: scheduler cluster id
+        in: query
+        name: scheduler_cluster_id
+        required: true
+        type: integer
+      - description: task id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get PersistentCacheTask
+      tags:
+      - PersistentCacheTask
   /api/v1/personal-access-tokens:
     get:
       consumes:

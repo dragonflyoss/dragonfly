@@ -257,7 +257,7 @@ return true
 	}
 
 	// Prepare arguments.
-	args := []interface{}{
+	args := []any{
 		peer.ID,
 		peer.Persistent,
 		string(finishedPieces),
@@ -340,7 +340,7 @@ return true
 	}
 
 	// Prepare arguments.
-	args := []interface{}{
+	args := []any{
 		peerID,
 		peer.Persistent,
 		peer.Task.ID,

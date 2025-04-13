@@ -147,7 +147,7 @@ func MakeKeyInScheduler(namespace, id string) string {
 	return fmt.Sprintf("%s:%s", MakeNamespaceKeyInScheduler(namespace), id)
 }
 
-// MakeSchedulerClusterKeyInManager make scheduler cluster key in manager.
+// MakeSchedulerClusterKeyInManager make scheduler cluster key in scheduler.
 func MakePersistentCacheTaskKeyInScheduler(schedulerClusterID uint, taskID string) string {
 	return MakeKeyInScheduler(SchedulerClustersNamespace, fmt.Sprintf("%d:%s:%s", schedulerClusterID, PersistentCacheTasksNamespace, taskID))
 }

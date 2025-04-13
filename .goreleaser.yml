@@ -139,8 +139,7 @@ nfpms:
     license: "Apache 2.0"
     homepage: https://d7y.io
     bindir: /usr/bin
-    builds:
-      - dfget
+    ids: [dfget]
     formats:
       - rpm
       - deb
@@ -185,8 +184,7 @@ nfpms:
     license: "Apache 2.0"
     homepage: https://d7y.io
     bindir: /usr/bin
-    builds:
-      - dfcache
+    ids: [dfcache]
     formats:
       - rpm
       - deb
@@ -229,8 +227,7 @@ nfpms:
     license: "Apache 2.0"
     homepage: https://d7y.io
     bindir: /usr/bin
-    builds:
-      - dfstore
+    ids: [dfstore]
     formats:
       - rpm
       - deb

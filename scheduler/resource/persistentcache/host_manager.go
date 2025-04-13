@@ -594,7 +594,7 @@ return true
 	}
 
 	// Prepare arguments.
-	args := []interface{}{
+	args := []any{
 		host.ID,
 		host.Type.Name(),
 		host.Hostname,
@@ -696,7 +696,7 @@ return true
 	}
 
 	// Prepare arguments.
-	args := []interface{}{
+	args := []any{
 		hostID,
 	}
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -127,13 +128,7 @@ func hasPermission(permissions []string, requiredPermission string) bool {
 		return true
 	}
 
-	for _, permission := range permissions {
-		if permission == requiredPermission {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(permissions, requiredPermission)
 }
 
 // requiredPermission extracts the resource type from the path and returns the required permission.

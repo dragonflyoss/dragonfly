@@ -137,6 +137,10 @@ type Service interface {
 	UpdatePersonalAccessToken(context.Context, uint, types.UpdatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error)
 	GetPersonalAccessToken(context.Context, uint) (*models.PersonalAccessToken, error)
 	GetPersonalAccessTokens(context.Context, types.GetPersonalAccessTokensQuery) ([]models.PersonalAccessToken, int64, error)
+
+	DestroyPersistentCacheTask(context.Context, uint, string) error
+	GetPersistentCacheTask(context.Context, uint, string) (*types.PersistentCacheTask, error)
+	GetPersistentCacheTasks(context.Context, types.GetPersistentCacheTasksQuery) ([]*types.PersistentCacheTask, int64, error)
 }
 
 type service struct {

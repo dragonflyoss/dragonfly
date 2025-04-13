@@ -38,6 +38,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
+// @Router /api/v1/jobs [post]
 // @Router /oapi/v1/jobs [post]
 func (h *Handlers) CreateJob(ctx *gin.Context) {
 	var json types.CreateJobRequest
