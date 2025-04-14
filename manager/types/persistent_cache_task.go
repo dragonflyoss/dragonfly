@@ -29,17 +29,17 @@ type PersistentCacheTaskParams struct {
 
 type DestroyPersistentCacheTaskQuery struct {
 	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
-	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
+	SchedulerClusterID uint `form:"scheduler_cluster_id" binding:"required"`
 }
 
 type GetPersistentCacheTaskQuery struct {
 	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
-	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
+	SchedulerClusterID uint `form:"scheduler_cluster_id" binding:"required"`
 }
 
 type GetPersistentCacheTasksQuery struct {
 	// SchedulerClusterID is the scheduler cluster id of the persistent cache.
-	SchedulerClusterID uint `json:"scheduler_cluster_id" binding:"required"`
+	SchedulerClusterID uint `form:"scheduler_cluster_id" binding:"required"`
 
 	// Page is the page number of the persistent cache list.
 	Page int `form:"page" binding:"omitempty,gte=1"`

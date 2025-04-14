@@ -38,24 +38,28 @@ func (s *service) DestroyPersistentCacheTask(ctx context.Context, schedulerClust
 }
 
 // GetPersistentCacheTask retrieves a persistent cache task from Redis based on query parameters.
-func (s *service) GetPersistentCacheTask(ctx context.Context, schedulerClusterID uint, id string) (*types.PersistentCacheTask, error) {
+func (s *service) GetPersistentCacheTask(ctx context.Context, schedulerClusterID uint, id string) (types.PersistentCacheTask, error) {
 	return s.loadTask(ctx, schedulerClusterID, id)
 }
 
 // GetPersistentCacheTasks retrieves persistent cache tasks from Redis based on query parameters.
-func (s *service) GetPersistentCacheTasks(ctx context.Context, q types.GetPersistentCacheTasksQuery) ([]*types.PersistentCacheTask, int64, error) {
+func (s *service) GetPersistentCacheTasks(ctx context.Context, q types.GetPersistentCacheTasksQuery) ([]types.PersistentCacheTask, int64, error) {
 	tasks, err := s.loadAllTasks(ctx, q.SchedulerClusterID)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	if len(tasks) == 0 {
+		return []types.PersistentCacheTask{}, 0, nil
 	}
 
 	return tasks, int64(len(tasks)), nil
 }
 
 // loadAllTasks loads all persistent cache tasks from Redis based on the provided scheduler cluster ID.
-func (s *service) loadAllTasks(ctx context.Context, schedulerClusterID uint) ([]*types.PersistentCacheTask, error) {
+func (s *service) loadAllTasks(ctx context.Context, schedulerClusterID uint) ([]types.PersistentCacheTask, error) {
 	var (
-		tasks  []*types.PersistentCacheTask
+		tasks  []types.PersistentCacheTask
 		cursor uint64
 	)
 
@@ -126,18 +130,18 @@ func (s *service) loadAllTasks(ctx context.Context, schedulerClusterID uint) ([]
 }
 
 // loadTask loads a task from Redis based on the provided key.
-func (s *service) loadTask(ctx context.Context, schedulerClusterID uint, id string) (*types.PersistentCacheTask, error) {
+func (s *service) loadTask(ctx context.Context, schedulerClusterID uint, id string) (types.PersistentCacheTask, error) {
 	taskKey := pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, id)
 	rawTask, err := s.rdb.HGetAll(ctx, taskKey).Result()
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 
 	if len(rawTask) == 0 {
-		return nil, errors.New("task not found")
+		return types.PersistentCacheTask{}, errors.New("task not found")
 	}
 
-	task := &types.PersistentCacheTask{
+	task := types.PersistentCacheTask{
 		ID:          rawTask["id"],
 		Tag:         rawTask["tag"],
 		Application: rawTask["application"],
@@ -147,55 +151,55 @@ func (s *service) loadTask(ctx context.Context, schedulerClusterID uint, id stri
 	// Parse PersistentReplicaCount.
 	persistentReplicaCount, err := strconv.ParseUint(rawTask["persistent_replica_count"], 10, 64)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.PersistentReplicaCount = persistentReplicaCount
 
 	// Parse PieceLength.
 	pieceLength, err := strconv.ParseUint(rawTask["piece_length"], 10, 64)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.PieceLength = pieceLength
 
 	// Parse ContentLength.
 	contentLength, err := strconv.ParseUint(rawTask["content_length"], 10, 64)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.ContentLength = contentLength
 
 	// Parse TotalPieceCount.
 	totalPieceCount, err := strconv.ParseUint(rawTask["total_piece_count"], 10, 32)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.TotalPieceCount = uint32(totalPieceCount)
 
 	// Parse TTL.
 	ttl, err := strconv.ParseInt(rawTask["ttl"], 10, 64)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.TTL = time.Duration(ttl)
 
 	// Parse CreatedAt.
 	createdAt, err := time.Parse(time.RFC3339, rawTask["created_at"])
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.CreatedAt = createdAt
 
 	// Parse UpdatedAt.
 	updatedAt, err := time.Parse(time.RFC3339, rawTask["updated_at"])
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.UpdatedAt = updatedAt
 
 	peers, err := s.loadAllPeersByTaskID(ctx, schedulerClusterID, task.ID)
 	if err != nil {
-		return nil, err
+		return types.PersistentCacheTask{}, err
 	}
 	task.Peers = peers
 	return task, nil

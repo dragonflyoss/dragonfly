@@ -827,10 +827,10 @@ func (mr *MockServiceMockRecorder) GetPermissions(arg0, arg1 any) *gomock.Call {
 }
 
 // GetPersistentCacheTask mocks base method.
-func (m *MockService) GetPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) (*types.PersistentCacheTask, error) {
+func (m *MockService) GetPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) (types.PersistentCacheTask, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPersistentCacheTask", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*types.PersistentCacheTask)
+	ret0, _ := ret[0].(types.PersistentCacheTask)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -842,10 +842,10 @@ func (mr *MockServiceMockRecorder) GetPersistentCacheTask(arg0, arg1, arg2 any) 
 }
 
 // GetPersistentCacheTasks mocks base method.
-func (m *MockService) GetPersistentCacheTasks(arg0 context.Context, arg1 types.GetPersistentCacheTasksQuery) ([]*types.PersistentCacheTask, int64, error) {
+func (m *MockService) GetPersistentCacheTasks(arg0 context.Context, arg1 types.GetPersistentCacheTasksQuery) ([]types.PersistentCacheTask, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPersistentCacheTasks", arg0, arg1)
-	ret0, _ := ret[0].([]*types.PersistentCacheTask)
+	ret0, _ := ret[0].([]types.PersistentCacheTask)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
