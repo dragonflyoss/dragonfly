@@ -261,7 +261,7 @@ var _ = Describe("Preheat with Manager", func() {
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
 
-				taskIDCmd := fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/dfdaemon.log", testFile.GetTaskID())
+				taskIDCmd := fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/*", testFile.GetTaskID())
 				successCmd := fmt.Sprintf("%s | grep -a 'download task succeeded'", taskIDCmd)
 
 				out, err = seedClient.Command("bash", "-c", successCmd).CombinedOutput()
@@ -294,7 +294,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			out, err = preheatedSeedClient.Command("grep", "-E", "\"(put task to cache|put piece to cache|get piece from cache)\"", "/var/log/dragonfly/dfdaemon/dfdaemon.log").CombinedOutput()
+			out, err = preheatedSeedClient.Command("grep", "-E", "\"(put task to cache|put piece to cache|get piece from cache)\"", "/var/log/dragonfly/dfdaemon/*").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			logs := string(out)
