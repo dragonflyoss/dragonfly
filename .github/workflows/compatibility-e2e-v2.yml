@@ -33,12 +33,12 @@ jobs:
             image: manager
             image-tag: v2.2.1
             chart-name: manager
-            skip: "Rate Limit | preheat files in cache"
+            skip: "Rate Limit | Preheat files in cache"
           - module: scheduler
             image: scheduler
             image-tag: v2.2.1
             chart-name: scheduler
-            skip: "Rate Limit | preheat files in cache"
+            skip: "Rate Limit | Preheat files in cache"
           - module: client
             image: client
             image-tag: v0.2.18
