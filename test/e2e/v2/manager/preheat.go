@@ -224,7 +224,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Preheat files in cache should be ok", Label("preheat", "file", "cache"), func() {
+		It("preheat files in cache should be ok", Label("preheat", "file", "cache"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
