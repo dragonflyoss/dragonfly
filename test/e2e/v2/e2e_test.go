@@ -32,7 +32,7 @@ import (
 
 var _ = AfterSuite(func() {
 	for _, server := range util.Servers {
-		for i := 0; i < server.Replicas; i++ {
+		for i := range server.Replicas {
 			fmt.Printf("\n------------------------------ Get %s-%d Artifact Started ------------------------------\n", server.Name, i)
 
 			out, err := util.KubeCtlCommand("-n", server.Namespace, "get", "pod", "-l", fmt.Sprintf("component=%s", server.Name),

@@ -61,14 +61,17 @@ func ListAvailableOutOfTreePlugins() {
 		fmt.Fprintf(os.Stderr, "no plugin found\n")
 		return
 	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read plugin dir %s error: %s\n", d.PluginDir(), err)
 		return
 	}
+
 	if len(files) == 0 {
 		fmt.Fprintf(os.Stderr, "no out of tree plugin found\n")
 		return
 	}
+
 	for _, file := range files {
 		var attr []byte
 		fileName := file.Name()
@@ -76,11 +79,13 @@ func ListAvailableOutOfTreePlugins() {
 			fmt.Fprintf(os.Stderr, "not support directory: %s\n", fileName)
 			continue
 		}
-		subs := dfplugin.PluginFormatExpr.FindStringSubmatch(fileName)
+
+		subs := dfplugin.PluginFormatRegex.FindStringSubmatch(fileName)
 		if len(subs) != 3 {
 			fmt.Fprintf(os.Stderr, "not valid plugin name: %s\n", fileName)
 			continue
 		}
+
 		typ, name := subs[1], subs[2]
 		switch typ {
 		case string(dfplugin.PluginTypeResource), string(dfplugin.PluginTypeScheduler), string(dfplugin.PluginTypeManager):
@@ -89,6 +94,7 @@ func ListAvailableOutOfTreePlugins() {
 				fmt.Fprintf(os.Stderr, "not valid plugin binary format %s: %q\n", fileName, err)
 				continue
 			}
+
 			attr, err = json.Marshal(data)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "marshal attribute for %s error: %q\n", fileName, err)

@@ -78,7 +78,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
@@ -184,7 +184,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
@@ -266,7 +266,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())

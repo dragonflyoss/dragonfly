@@ -79,7 +79,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
@@ -137,7 +137,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
@@ -195,7 +195,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
@@ -255,23 +255,18 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			var preheatedSeedClient *util.PodExec
-
-			taskIDCmd := fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/*", testFile.GetTaskID())
-			successCmd := fmt.Sprintf("%s | grep -a 'download task succeeded'", taskIDCmd)
-
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClient, err := util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
 
-				out, err = seedClient.Command("bash", "-c", successCmd).CombinedOutput()
+				out, err = seedClient.Command("bash", "-c", fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/* | grep -a 'download task succeeded'", testFile.GetTaskID())).CombinedOutput()
 				if err == nil && len(out) > 0 {
 					preheatedSeedClient = seedClient
 					fmt.Printf("Found preheated seed client: %d\n", i)
 					break
 				}
 			}
-
 			Expect(preheatedSeedClient).NotTo(BeNil())
 
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{preheatedSeedClient}, testFile.GetTaskID())
@@ -294,11 +289,10 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			out, err = preheatedSeedClient.Command("bash", "-c", taskIDCmd).CombinedOutput()
+			out, err = preheatedSeedClient.Command("bash", "-c", fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/*", testFile.GetTaskID())).CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			logs := string(out)
-
 			Expect(logs).To(ContainSubstring(fmt.Sprintf("put task to cache: %s", testFile.GetTaskID())))
 
 			pieceRegex := regexp.MustCompile(`pieces: \[([0-9, ]+)\]`)
@@ -308,11 +302,8 @@ var _ = Describe("Preheat with Manager", func() {
 
 			for _, number := range pieceNumbers {
 				pieceID := fmt.Sprintf("%s-%s", testFile.GetTaskID(), number)
-				putPieceCacheLog := fmt.Sprintf("put piece to cache: %s", pieceID)
-				Expect(logs).To(ContainSubstring(putPieceCacheLog))
-
-				getPieceCacheLog := fmt.Sprintf("get piece from cache: %s", pieceID)
-				Expect(logs).To(ContainSubstring(getPieceCacheLog))
+				Expect(logs).To(ContainSubstring(fmt.Sprintf("put piece to cache: %s", pieceID)))
+				Expect(logs).To(ContainSubstring(fmt.Sprintf("get piece from cache: %s", pieceID)))
 			}
 		})
 	})
@@ -357,7 +348,7 @@ var _ = Describe("Preheat with Manager", func() {
 
 			for _, taskMetadata := range taskMetadatas {
 				seedClientPods := make([]*util.PodExec, 3)
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					seedClientPods[i], err = util.SeedClientExec(i)
 					fmt.Println(err)
 					Expect(err).NotTo(HaveOccurred())
@@ -419,7 +410,7 @@ var _ = Describe("Preheat with Manager", func() {
 
 			for _, taskMetadata := range taskMetadatas {
 				seedClientPods := make([]*util.PodExec, 3)
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					seedClientPods[i], err = util.SeedClientExec(i)
 					fmt.Println(err)
 					Expect(err).NotTo(HaveOccurred())
@@ -483,7 +474,7 @@ var _ = Describe("Preheat with Manager", func() {
 
 			for _, taskMetadata := range taskMetadatas {
 				seedClientPods := make([]*util.PodExec, 3)
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					seedClientPods[i], err = util.SeedClientExec(i)
 					fmt.Println(err)
 					Expect(err).NotTo(HaveOccurred())

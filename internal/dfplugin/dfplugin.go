@@ -38,7 +38,7 @@ const (
 	PluginMetaKeyName = "name"
 )
 
-var PluginFormatExpr = regexp.MustCompile("d7y-(resource|manager|scheduler)-plugin-([a-z0-9]+).so")
+var PluginFormatRegex = regexp.MustCompile("d7y-(resource|manager|scheduler)-plugin-([a-z0-9]+).so")
 
 type PluginType string
 
