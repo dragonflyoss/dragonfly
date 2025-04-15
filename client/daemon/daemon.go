@@ -114,7 +114,7 @@ func New(opt *config.DaemonOption, d dfpath.Dfpath) (Daemon, error) {
 		logger.Infof("update runtime max threads: %d", opt.MaxThreads)
 	}
 
-	// FIXME the viper casts all case sensitive keys into lower case, but the resource clients option is map[string]interface{}, it should not be casted.
+	// FIXME the viper casts all case sensitive keys into lower case, but the resource clients option is map[string]any, it should not be casted.
 	// issue: https://github.com/spf13/viper/issues/1014
 	tmpOpt := config.NewDaemonConfig()
 	err := tmpOpt.Load(viper.ConfigFileUsed())
