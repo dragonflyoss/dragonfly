@@ -216,7 +216,7 @@ func (s *service) loadAllPeersByTaskID(ctx context.Context, schedulerClusterID u
 	for _, peerID := range peerIDs {
 		peer, err := s.loadPeer(ctx, schedulerClusterID, peerID)
 		if err != nil {
-			logger.Warnf("load peer %s failed: %v", peer.ID, err)
+			logger.Warnf("load peer %s failed: %v", peerID, err)
 			continue
 		}
 
