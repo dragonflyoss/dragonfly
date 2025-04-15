@@ -28,7 +28,7 @@ require (
 	github.com/fsouza/fake-gcs-server v1.52.2
 	github.com/gaius-qi/ping v1.0.0
 	github.com/gammazero/deque v1.0.0
-	github.com/gin-contrib/gzip v1.2.2
+	github.com/gin-contrib/gzip v1.2.3
 	github.com/gin-contrib/static v1.1.5
 	github.com/gin-contrib/zap v1.1.3
 	github.com/gin-gonic/gin v1.10.0
