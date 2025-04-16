@@ -117,6 +117,20 @@ func (mr *MockServiceMockRecorder) AddSeedPeerToSeedPeerCluster(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddSeedPeerToSeedPeerCluster", reflect.TypeOf((*MockService)(nil).AddSeedPeerToSeedPeerCluster), arg0, arg1, arg2)
 }
 
+// AsyncCreateAudit mocks base method.
+func (m *MockService) AsyncCreateAudit(ctx context.Context, json *types.CreateAuditRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AsyncCreateAudit", ctx, json)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AsyncCreateAudit indicates an expected call of AsyncCreateAudit.
+func (mr *MockServiceMockRecorder) AsyncCreateAudit(ctx, json any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AsyncCreateAudit", reflect.TypeOf((*MockService)(nil).AsyncCreateAudit), ctx, json)
+}
+
 // CreateApplication mocks base method.
 func (m *MockService) CreateApplication(arg0 context.Context, arg1 types.CreateApplicationRequest) (*models.Application, error) {
 	m.ctrl.T.Helper()
@@ -625,6 +639,22 @@ func (m *MockService) GetApplications(arg0 context.Context, arg1 types.GetApplic
 func (mr *MockServiceMockRecorder) GetApplications(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplications", reflect.TypeOf((*MockService)(nil).GetApplications), arg0, arg1)
+}
+
+// GetAudits mocks base method.
+func (m *MockService) GetAudits(ctx context.Context, q types.GetAuditsQuery) ([]models.Audit, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAudits", ctx, q)
+	ret0, _ := ret[0].([]models.Audit)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetAudits indicates an expected call of GetAudits.
+func (mr *MockServiceMockRecorder) GetAudits(ctx, q any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAudits", reflect.TypeOf((*MockService)(nil).GetAudits), ctx, q)
 }
 
 // GetBucket mocks base method.

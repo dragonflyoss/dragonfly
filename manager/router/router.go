@@ -93,6 +93,9 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	// Personal access token middleware.
 	personalAccessToken := middlewares.PersonalAccessToken(database.DB)
 
+	// Audit middleware.
+	r.Use(middlewares.Audit(service))
+
 	// Error middleware.
 	r.Use(middlewares.Error())
 
@@ -238,6 +241,10 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	pc.DELETE(":id", h.DestroyPersistentCacheTask)
 	pc.GET(":id", h.GetPersistentCacheTask)
 	pc.GET("", h.GetPersistentCacheTasks)
+
+	// Audit.
+	at := apiv1.Group("/audits", jwt.MiddlewareFunc(), rbac)
+	at.GET("", h.GetAudits)
 
 	// Open API router.
 	oapiv1 := r.Group("/oapi/v1")

@@ -241,6 +241,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/audits": {
+            "get": {
+                "description": "Get Audits",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Audit"
+                ],
+                "summary": "Get Audits",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Audit"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/api/v1/buckets": {
             "get": {
                 "description": "Get Buckets",
@@ -4137,6 +4192,50 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_models.Audit": {
+            "type": "object",
+            "properties": {
+                "actor_name": {
+                    "type": "string"
+                },
+                "actor_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "detail": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_del": {
+                    "type": "integer"
+                },
+                "operated_at": {
+                    "type": "string"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

@@ -141,6 +141,9 @@ type Service interface {
 	DestroyPersistentCacheTask(context.Context, uint, string) error
 	GetPersistentCacheTask(context.Context, uint, string) (types.PersistentCacheTask, error)
 	GetPersistentCacheTasks(context.Context, types.GetPersistentCacheTasksQuery) ([]types.PersistentCacheTask, int64, error)
+
+	AsyncCreateAudit(ctx context.Context, json *types.CreateAuditRequest) error
+	GetAudits(ctx context.Context, q types.GetAuditsQuery) ([]models.Audit, int64, error)
 }
 
 type service struct {

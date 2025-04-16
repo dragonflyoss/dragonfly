@@ -111,6 +111,7 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		c.Set("pat", &token)
 		c.Next()
 	}
 }

@@ -25,6 +25,35 @@ definitions:
       user_id:
         type: integer
     type: object
+  d7y_io_dragonfly_v2_manager_models.Audit:
+    properties:
+      actor_name:
+        type: string
+      actor_type:
+        type: string
+      created_at:
+        type: string
+      detail:
+        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap'
+      event_type:
+        type: string
+      id:
+        type: integer
+      is_del:
+        type: integer
+      operated_at:
+        type: string
+      operation:
+        type: string
+      path:
+        type: string
+      state:
+        type: string
+      status_code:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   d7y_io_dragonfly_v2_manager_models.Config:
     properties:
       bio:
@@ -1526,6 +1555,44 @@ paths:
       summary: Update Application
       tags:
       - Application
+  /api/v1/audits:
+    get:
+      consumes:
+      - application/json
+      description: Get Audits
+      parameters:
+      - default: 0
+        description: current page
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        description: return max item count, default 10, max 50
+        in: query
+        maximum: 50
+        minimum: 2
+        name: per_page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Audit'
+            type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Audits
+      tags:
+      - Audit
   /api/v1/buckets:
     get:
       consumes:

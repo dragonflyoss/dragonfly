@@ -1306,7 +1306,7 @@
 - **deps:** bump github.com/prometheus/client_golang from 1.12.2 to 1.13.0 ([#1564](https://github.com/dragonflyoss/dragonfly/issues/1564))
 - **deps:** bump go.opentelemetry.io/otel/exporters/jaeger from 1.14.0 to 1.15.1 ([#2376](https://github.com/dragonflyoss/dragonfly/issues/2376))
 - **deps:** bump go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin from 0.32.0 to 0.34.0 ([#1547](https://github.com/dragonflyoss/dragonfly/issues/1547))
-- **deps:** bump github.com/sirupsen/logrus from 1.8.1 to 1.9.0 ([#1544](https://github.com/dragonflyoss/dragonfly/issues/1544))
+- **deps:** bump github.com/sirupsen/es, len(auditslogrus from 1.8.1 to 1.9.0 ([#1544](https://github.com/dragonflyoss/dragonfly/issues/1544))
 - **deps:** bump github.com/jarcoal/httpmock from 1.0.8 to 1.2.0 ([#1542](https://github.com/dragonflyoss/dragonfly/issues/1542))
 - **deps:** bump go.opentelemetry.io/otel/exporters/jaeger from 1.8.0 to 1.9.0 ([#1541](https://github.com/dragonflyoss/dragonfly/issues/1541))
 - **deps:** bump google.golang.org/grpc from 1.47.0 to 1.48.0 ([#1508](https://github.com/dragonflyoss/dragonfly/issues/1508))

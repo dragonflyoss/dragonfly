@@ -101,6 +101,7 @@ func New(cfg *config.Config) (*Database, error) {
 
 func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&models.Audit{},
 		&models.Job{},
 		&models.SeedPeerCluster{},
 		&models.SeedPeer{},
