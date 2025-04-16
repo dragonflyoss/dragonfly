@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=alpine:3.20
 
-FROM golang:1.23.0-alpine3.20 AS builder
+FROM golang:1.23.8-alpine3.20 AS builder
 
 COPY . /go/src/
 
@@ -21,4 +21,3 @@ EXPOSE 80
 WORKDIR /
 
 ENTRYPOINT ["/usr/local/bin/no-content-length"]
-

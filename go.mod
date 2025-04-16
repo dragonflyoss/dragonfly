@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.23.0
+go 1.23.8
 
 require (
 	cloud.google.com/go/storage v1.50.0
