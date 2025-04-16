@@ -318,8 +318,7 @@ func checkAndSpawnDaemon(dfgetLockPath, daemonSockPath string) (client.V1, error
 
 	logger.Info("do start daemon")
 
-	err = cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
