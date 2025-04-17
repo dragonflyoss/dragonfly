@@ -152,6 +152,7 @@ func (s *server) OnNotify(data *config.DynconfigData) {
 	}
 }
 
+// stop peer server and download server
 func (s *server) Stop() {
 	s.peerServer.GracefulStop()
 	s.downloadServer.GracefulStop()
