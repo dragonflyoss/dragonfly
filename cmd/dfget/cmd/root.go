@@ -236,6 +236,7 @@ func runDfget(cmd *cobra.Command, dfgetLockPath, daemonSockPath string) error {
 	logger.Infof("version:\n%s", version.Version())
 
 	ff := dependency.InitMonitor(dfgetConfig.PProfPort, dfgetConfig.Telemetry)
+	// stop statsview
 	defer ff()
 
 	var (
