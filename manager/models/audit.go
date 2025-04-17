@@ -60,7 +60,7 @@ type Audit struct {
 	// Operation represents the operation, it will be the HTTP method for API events.
 	Operation string `gorm:"column:operation;type:varchar(256);not null;comment:operation" json:"operation"`
 	// OperatedAt represents the operation time.
-	OperatedAt time.Time `gorm:"column:operated_at;type:timestamp;not null;comment:operation time" json:"operated_at"`
+	OperatedAt time.Time `gorm:"column:operated_at;type:timestamp;default:current_timestamp;comment:operated at" json:"operated_at"`
 	// State represents the state, it indicates the state of the operation, e.g SUCCESS for API status code >= 200 & < 300.
 	State string `gorm:"column:state;type:varchar(100);not null;comment:state" json:"state"`
 	// Path represents the request path, it will be the URL path for API events.

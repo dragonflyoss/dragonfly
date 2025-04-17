@@ -30,8 +30,8 @@ import (
 
 type BaseModel struct {
 	ID        uint                  `gorm:"primarykey;comment:id" json:"id"`
-	CreatedAt time.Time             `gorm:"column:created_at;type:timestamp;default:current_timestamp" json:"created_at"`
-	UpdatedAt time.Time             `gorm:"column:updated_at;type:timestamp;default:current_timestamp" json:"updated_at"`
+	CreatedAt time.Time             `gorm:"column:created_at;type:timestamp;default:current_timestamp;comment:created at" json:"created_at"`
+	UpdatedAt time.Time             `gorm:"column:updated_at;type:timestamp;default:current_timestamp;comment:updated at" json:"updated_at"`
 	IsDel     soft_delete.DeletedAt `gorm:"softDelete:flag;comment:soft delete flag" json:"is_del"`
 }
 
