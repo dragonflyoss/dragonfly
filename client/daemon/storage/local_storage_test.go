@@ -163,9 +163,7 @@ func TestLocalTaskStore_PutAndGetPiece(t *testing.T) {
 			for i := 0; i*pieceSize < len(testBytes); i++ {
 				start := i * pieceSize
 				end := start + pieceSize
-				if end > len(testBytes) {
-					end = len(testBytes)
-				}
+				end = min(end, len(testBytes))
 				pieces = append(pieces, struct {
 					index int
 					start int

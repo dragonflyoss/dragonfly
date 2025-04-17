@@ -71,7 +71,7 @@ var _ = Describe("Containerd with CRI support", func() {
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())

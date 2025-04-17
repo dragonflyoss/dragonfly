@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 
 	"github.com/go-http-utils/headers"
 	"go.opentelemetry.io/otel/trace"
@@ -177,9 +178,7 @@ func (s *streamTask) Start(ctx context.Context) (io.ReadCloser, map[string]strin
 			return nil, attr, err
 		}
 		if exa != nil {
-			for k, v := range exa.Header {
-				attr[k] = v
-			}
+			maps.Copy(attr, exa.Header)
 		}
 		rc, err := s.peerTaskConductor.StorageManager.ReadAllPieces(
 			ctx,
@@ -197,9 +196,7 @@ func (s *streamTask) Start(ctx context.Context) (io.ReadCloser, map[string]strin
 			return nil, attr, err
 		}
 		if exa != nil {
-			for k, v := range exa.Header {
-				attr[k] = v
-			}
+			maps.Copy(attr, exa.Header)
 		}
 	}
 
@@ -373,9 +370,7 @@ pieceReady:
 		return nil, attr, err
 	}
 	if exa != nil {
-		for k, v := range exa.Header {
-			attr[k] = v
-		}
+		maps.Copy(attr, exa.Header)
 	}
 
 	attr[headers.ContentLength] = fmt.Sprintf("%d", s.peerTaskConductor.GetContentLength()-s.skipBytes)

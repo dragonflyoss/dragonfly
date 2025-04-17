@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 	"time"
@@ -323,9 +324,7 @@ func (ptm *peerTaskManager) tryReuseStreamPeerTask(ctx context.Context, taskID s
 	attr[headers.ContentLength] = fmt.Sprintf("%d", length)
 
 	if exa != nil {
-		for k, v := range exa.Header {
-			attr[k] = v
-		}
+		maps.Copy(attr, exa.Header)
 	}
 
 	if reuseRange != nil {

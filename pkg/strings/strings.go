@@ -17,6 +17,7 @@
 package strings
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -27,13 +28,7 @@ func IsBlank(s string) bool {
 
 // Contains reports whether the string contains the element.
 func Contains(slice []string, ele string) bool {
-	for _, one := range slice {
-		if one == ele {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(slice, ele)
 }
 
 // Remove the duplicate elements in the string slice.

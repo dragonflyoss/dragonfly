@@ -875,7 +875,7 @@ func (ts *testSpec) runConductorTest(assert *testifyassert.Assertions, require *
 		}
 	}
 
-	for i := 0; i < ptcCount; i++ {
+	for i := range ptcCount {
 		request := &schedulerv1.PeerTaskRequest{
 			Url:      ts.url,
 			UrlMeta:  urlMeta,
@@ -920,7 +920,7 @@ func (ts *testSpec) runConductorTest(assert *testifyassert.Assertions, require *
 	}
 	assert.True(success, "task should success")
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		ptm.runningPeerTasks.Range(func(key, value any) bool {
 			noRunningTask = false
 			return false

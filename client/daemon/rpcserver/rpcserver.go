@@ -573,7 +573,7 @@ func (s *server) startDownloadWorkers(
 	lock := sync.Mutex{}
 	sender := &sequentialResultSender{realSender: stream}
 
-	for i := 0; i < s.recursiveConcurrent; i++ {
+	for i := range s.recursiveConcurrent {
 		go func(i int) {
 			logKV := []any{
 				"recursiveDownloader", fmt.Sprintf("%d", i),

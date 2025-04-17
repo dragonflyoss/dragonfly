@@ -140,9 +140,7 @@ func parseRangeHeader(rangeHeader string, fileSize int64) (start, end int64) {
 		end = fileSize - 1
 		bytes, _ := strconv.ParseInt(parts[1], 10, 64)
 		start = fileSize - bytes
-		if start < 0 {
-			start = 0
-		}
+		start = max(start, 0)
 
 	case parts[1] == "": // N-: from N to end
 		start, _ = strconv.ParseInt(parts[0], 10, 64)

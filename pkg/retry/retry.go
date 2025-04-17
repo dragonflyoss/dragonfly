@@ -33,7 +33,7 @@ func Run(ctx context.Context,
 		cancel bool
 		cause  error
 	)
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		if i > 0 {
 			time.Sleep(math.RandBackoffSeconds(initBackoff, maxBackoff, 2.0, i))
 		}

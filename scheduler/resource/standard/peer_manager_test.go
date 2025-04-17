@@ -554,7 +554,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
-				for i := 0; i < PeerCountLimitForTask+1; i++ {
+				for range PeerCountLimitForTask + 1 {
 					peer := NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost)
 					mockPeer.Task.StorePeer(peer)
 				}

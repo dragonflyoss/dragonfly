@@ -902,9 +902,7 @@ func newPieceGroup(i int32, reminderPieces int32, startPieceNum int32, minPieceC
 	// calculate piece group first and last range byte with parsedRange.Start
 	startByte := int64(start) * int64(pieceSize)
 	endByte := int64(end+1)*int64(pieceSize) - 1
-	if endByte > parsedRange.Length-1 {
-		endByte = parsedRange.Length - 1
-	}
+	endByte = min(endByte, parsedRange.Length-1)
 
 	// adjust by range start
 	startByte += parsedRange.Start
@@ -935,7 +933,7 @@ func (pm *pieceManager) concurrentDownloadSourceByPiece(
 
 	downloadedPieceCount := atomic.NewInt32(startPieceNum)
 
-	for i := 0; i < con; i++ {
+	for i := range con {
 		go func(i int) {
 			for {
 				select {

@@ -107,9 +107,7 @@ func (i *intervalSleepReader) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	end := i.offset + i.size
-	if end > len(i.data) {
-		end = len(i.data)
-	}
+	end = min(end, len(i.data))
 
 	n = copy(p, i.data[i.offset:end])
 	time.Sleep(i.interval)

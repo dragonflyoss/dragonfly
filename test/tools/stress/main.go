@@ -102,7 +102,7 @@ func main() {
 	wgCollect.Add(1)
 	go collect(wgCollect, resultCh)
 
-	for i := 0; i < con; i++ {
+	for range con {
 		wgProcess.Add(1)
 		go process(ctx, wgProcess, resultCh)
 	}

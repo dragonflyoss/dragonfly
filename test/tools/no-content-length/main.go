@@ -59,7 +59,7 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("wrong X-Dragonfly-E2E-Status-Code format %s, error: %s", str, err)
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("wrong X-Dragonfly-E2E-Status-Code format")))
+			_, _ = w.Write(fmt.Appendf([]byte{}, "wrong X-Dragonfly-E2E-Status-Code format"))
 			return
 		}
 		w.WriteHeader(code)
@@ -70,12 +70,12 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rgs, err := parseRange(s, math.MaxInt)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("wrong range format")))
+			_, _ = w.Write(fmt.Appendf([]byte{}, "wrong range format"))
 			return
 		}
 		if len(rgs) > 1 || len(rgs) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("unsupport range format")))
+			_, _ = w.Write(fmt.Appendf([]byte{}, "unsupport range format"))
 			return
 		}
 		rg = &rgs[0]
@@ -89,7 +89,7 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filePath := path.Join(f.dir, upath)
 	if !strings.HasPrefix(filePath, f.dir) {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(fmt.Sprintf("target is not in correct dir")))
+		_, _ = w.Write(fmt.Appendf([]byte{}, "target is not in correct dir"))
 		return
 	}
 	fileInfo, err := os.Stat(filePath)
@@ -99,19 +99,19 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		_, _ = w.Write([]byte(fmt.Sprintf("%s", err)))
+		_, _ = w.Write(fmt.Appendf([]byte{}, "%s", err))
 		return
 	}
 	if fileInfo.IsDir() {
 		// todo list files
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(fmt.Sprintf("target is dir not file")))
+		_, _ = w.Write(fmt.Appendf([]byte{}, "target is dir not file"))
 		return
 	}
 	file, err := os.Open(filePath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(fmt.Sprintf("%s", err)))
+		_, _ = w.Write(fmt.Appendf([]byte{}, "%s", err))
 		return
 	}
 	defer file.Close()

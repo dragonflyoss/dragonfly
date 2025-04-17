@@ -365,7 +365,7 @@ func setupMembers(assert *assert.Assertions, memberCount int) []*peerExchange {
 	ports, err := freeport.GetFreePorts(2 * memberCount)
 	assert.Nil(err)
 
-	for i := 0; i < memberCount; i++ {
+	for i := range memberCount {
 		rpcPort, gossipPort := ports[2*i], ports[2*i+1]
 		testMembers = append(testMembers, &testMember{
 			idx:        i,
@@ -378,7 +378,7 @@ func setupMembers(assert *assert.Assertions, memberCount int) []*peerExchange {
 		})
 	}
 
-	for i := 0; i < memberCount; i++ {
+	for i := range memberCount {
 		peerExchangeServers = append(peerExchangeServers, setupMember(assert, testMembers[i], members))
 	}
 	return peerExchangeServers

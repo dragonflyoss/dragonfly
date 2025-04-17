@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -285,10 +286,5 @@ func exportPassThroughHeader(header http.Header) map[string]string {
 }
 
 func detectTemporary(statusCode int) bool {
-	for _, code := range notTemporaryStatusCode {
-		if code == statusCode {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(notTemporaryStatusCode, statusCode)
 }

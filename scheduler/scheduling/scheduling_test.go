@@ -1043,7 +1043,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := 0; i < 11; i++ {
+			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
@@ -1361,7 +1361,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := 0; i < 11; i++ {
+			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
@@ -1623,7 +1623,7 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := 0; i < 11; i++ {
+			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)

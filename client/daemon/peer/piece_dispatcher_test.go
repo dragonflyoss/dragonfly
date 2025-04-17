@@ -66,9 +66,9 @@ func (pc *pieceTestManager) Run() {
 	// producer
 	go func() {
 		slice := make([]*DownloadPieceRequest, 0)
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			for _, peer := range pc.peers {
-				for j := 0; j < pc.pieceNum; j++ {
+				for j := range pc.pieceNum {
 					slice = append(slice, &DownloadPieceRequest{
 						piece:  &commonv1.PieceInfo{PieceNum: int32(j)},
 						DstPid: peer.id,

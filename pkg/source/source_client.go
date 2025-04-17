@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,11 +79,10 @@ func (e UnexpectedStatusCodeError) Got() int {
 // CheckResponseCode returns UnexpectedStatusError if the given response code is not
 // one of the allowed status codes; otherwise nil.
 func CheckResponseCode(respCode int, allowed []int) error {
-	for _, v := range allowed {
-		if respCode == v {
-			return nil
-		}
+	if slices.Contains(allowed, respCode) {
+		return nil
 	}
+
 	return UnexpectedStatusCodeError{allowed, respCode}
 }
 

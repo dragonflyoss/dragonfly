@@ -40,7 +40,7 @@ func init() {
 
 var _ = AfterSuite(func() {
 	for _, server := range servers {
-		for i := 0; i < server.replicas; i++ {
+		for i := range server.replicas {
 			out, err := util.KubeCtlCommand("-n", server.namespace, "get", "pod", "-l", fmt.Sprintf("component=%s", server.name),
 				"-o", fmt.Sprintf("jsonpath='{.items[%d].metadata.name}'", i)).CombinedOutput()
 			if err != nil {

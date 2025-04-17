@@ -993,7 +993,7 @@ func TestEvaluatorBase_IsBadParent(t *testing.T) {
 			totalPieceCount: 1,
 			mock: func(peer *standard.Peer) {
 				peer.FSM.SetState(standard.PeerStateRunning)
-				for i := 0; i < 30; i++ {
+				for i := range 30 {
 					peer.AppendPieceCost(time.Duration(i))
 				}
 				peer.AppendPieceCost(50)
@@ -1009,7 +1009,7 @@ func TestEvaluatorBase_IsBadParent(t *testing.T) {
 			totalPieceCount: 1,
 			mock: func(peer *standard.Peer) {
 				peer.FSM.SetState(standard.PeerStateRunning)
-				for i := 0; i < 30; i++ {
+				for i := range 30 {
 					peer.AppendPieceCost(time.Duration(i))
 				}
 				peer.AppendPieceCost(18)

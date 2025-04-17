@@ -35,7 +35,7 @@ var _ = Describe("Download with dfget and proxy", func() {
 		singleDfgetTest("dfget daemon download should be ok",
 			dragonflyNamespace, "component=dfdaemon",
 			"dragonfly-dfdaemon-", "dfdaemon")
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			singleDfgetTest(
 				fmt.Sprintf("dfget daemon proxy-%d should be ok", i),
 				dragonflyE2ENamespace,

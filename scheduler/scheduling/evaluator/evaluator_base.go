@@ -192,11 +192,9 @@ func (e *evaluatorBase) calculateMultiElementAffinityScore(dst, src string) floa
 	elementLen = math.Min(len(dstElements), len(srcElements))
 
 	// Maximum element length is 5.
-	if elementLen > maxElementLen {
-		elementLen = maxElementLen
-	}
+	elementLen = min(elementLen, maxElementLen)
 
-	for i := 0; i < elementLen; i++ {
+	for i := range elementLen {
 		if !strings.EqualFold(dstElements[i], srcElements[i]) {
 			break
 		}

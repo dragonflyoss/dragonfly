@@ -47,7 +47,7 @@ var _ = Describe("Preheat with manager", func() {
 	Context("preheat", func() {
 		It("preheat files should be ok", Label("preheat", "file"), func() {
 			seedPeerPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedPeerPods[i] = getSeedPeerExec(i)
 			}
 			fsPod := getFileServerExec()
@@ -110,7 +110,7 @@ var _ = Describe("Preheat with manager", func() {
 			}
 
 			seedPeerPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedPeerPods[i] = getSeedPeerExec(i)
 			}
 			fsPod := getFileServerExec()
@@ -177,7 +177,7 @@ var _ = Describe("Preheat with manager", func() {
 			}
 
 			seedPeerPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedPeerPods[i] = getSeedPeerExec(i)
 			}
 			fsPod := getFileServerExec()
@@ -245,7 +245,7 @@ var _ = Describe("Preheat with manager", func() {
 			}
 
 			seedPeerPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				seedPeerPods[i] = getSeedPeerExec(i)
 			}
 			fsPod := getFileServerExec()

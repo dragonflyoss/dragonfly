@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -726,11 +727,9 @@ func (s *storageManager) ReloadPersistentTask(gcCallback GCCallback) {
 	done := make(chan struct{})
 
 	reloadGoroutineCount := s.storeOption.ReloadGoroutineCount
-	if count < reloadGoroutineCount {
-		reloadGoroutineCount = count
-	}
+	reloadGoroutineCount = min(reloadGoroutineCount, count)
 
-	for i := 0; i < reloadGoroutineCount; i++ {
+	for range reloadGoroutineCount {
 		go func() {
 			for {
 				select {
@@ -981,7 +980,7 @@ func (s *storageManager) TryGC() (bool, error) {
 		// remove reclaimed task in markedTasks
 		for i, k := range markedTasks {
 			if k.TaskID == key.TaskID && k.PeerID == key.PeerID {
-				markedTasks = append(markedTasks[:i], markedTasks[i+1:]...)
+				markedTasks = slices.Delete(markedTasks, i, i+1)
 				break
 			}
 		}

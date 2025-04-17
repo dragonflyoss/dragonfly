@@ -16,6 +16,8 @@
 
 package slices
 
+import "slices"
+
 // Contains returns true if elements is present in a collection.
 func Contains[T comparable](s []T, els ...T) bool {
 	ss := make(map[T]struct{}, len(s))
@@ -63,7 +65,7 @@ func RemoveDuplicates[T comparable](s []T) []T {
 
 // Remove removes an element from a collection.
 func Remove[T comparable](s []T, i int) []T {
-	return append(s[:i], s[i+1:]...)
+	return slices.Delete(s, i, i+1)
 }
 
 // Reverse reverses elements in a collection.
