@@ -58,6 +58,7 @@ func (g *genDocCommand) bindFlags() {
 	flagSet.StringVar(&g.path, "path", "./", "destination dir of generated markdown documents")
 }
 
+// runDoc generates markdown documents.
 func (g *genDocCommand) runDoc() error {
 	_ = os.MkdirAll(g.path, fs.FileMode(0700))
 	file, err := os.Stat(g.path)
