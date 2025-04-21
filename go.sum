@@ -63,8 +63,8 @@ cloud.google.com/go/storage v1.50.0 h1:3TbVkzTooBvnZsk7WaAQfOsNrdoM8QHusXA1cpk6Q
 cloud.google.com/go/storage v1.50.0/go.mod h1:l7XeiD//vx5lfqE3RavfmU9yvk5Pp0Zhcv482poyafY=
 cloud.google.com/go/trace v1.11.2 h1:4ZmaBdL8Ng/ajrgKqY5jfvzqMXbrDcBsUGXOT9aqTtI=
 cloud.google.com/go/trace v1.11.2/go.mod h1:bn7OwXd4pd5rFuAnTrzBuoZ4ax2XQeG3qNgYmfCy0Io=
-d7y.io/api/v2 v2.1.30 h1:KCHcg2oWX8jSFwJXuxgmNCPlPx29/2tcMXHT7wVKqWo=
-d7y.io/api/v2 v2.1.30/go.mod h1:RFsSiRgEBfMrSHlrZWbkJ3xil8fnbbGSj0UMwbUUC5I=
+d7y.io/api/v2 v2.1.36 h1:Gs9NNC9U9ou5QdIxrZT6hpmNwuIYVU66t1Af5RhzgXk=
+d7y.io/api/v2 v2.1.36/go.mod h1:VVOSCRsCW+r8/GnGbqAKQDC1sWLltRTT80ANHi3t1ZE=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
