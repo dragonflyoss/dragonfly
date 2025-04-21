@@ -24,7 +24,6 @@ import (
 	"golang.org/x/time/rate"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/pkg/math"
 )
 
 const (
@@ -182,14 +181,14 @@ func (ts *samplingTrafficShaper) updateLimit() {
 		if !te.needUpdate {
 			// if this task is added within 1 second, don't reduce its limit this time
 			te.needUpdate = true
-			needBandwidth = math.Max(needBandwidth, oldLimit)
+			needBandwidth = max(needBandwidth, oldLimit)
 		}
 		if contentLength := te.ptc.contentLength.Load(); contentLength > 0 {
 			remainingLength := contentLength - te.ptc.completedLength.Load()
-			needBandwidth = math.Min(remainingLength, needBandwidth)
+			needBandwidth = min(remainingLength, needBandwidth)
 		}
 		// delta bandwidth, make sure it's larger than 0
-		needBandwidth = math.Max(needBandwidth-int64(te.pieceSize), int64(0))
+		needBandwidth = max(needBandwidth-int64(te.pieceSize), int64(0))
 		te.needBandwidth = needBandwidth
 		totalNeedBandwidth += needBandwidth
 		totalLeastBandwidth += int64(te.pieceSize)
@@ -200,7 +199,7 @@ func (ts *samplingTrafficShaper) updateLimit() {
 		// diffLimit indicates the difference between the allocated bandwidth and pieceSize
 		var diffLimit float64
 		// make sure new limit is not smaller than pieceSize
-		diffLimit = math.Max(
+		diffLimit = max(
 			(float64(ts.totalRateLimit)-float64(totalLeastBandwidth))*(float64(te.needBandwidth)/float64(totalNeedBandwidth)), 0)
 		te.ptc.limiter.SetLimit(rate.Limit(diffLimit + float64(te.pieceSize)))
 		ts.Debugf("period update limit, task %s, need bandwidth %d, diff rate limit %f", te.ptc.taskID, te.needBandwidth, diffLimit)
@@ -215,7 +214,7 @@ func (ts *samplingTrafficShaper) AddTask(taskID string, ptc *peerTaskConductor) 
 		nTasks++
 	}
 	pieceSize := ts.computePieceSize(ptc.contentLength.Load())
-	limit := rate.Limit(math.Max(float64(ts.totalRateLimit)/float64(nTasks), float64(pieceSize)))
+	limit := rate.Limit(max(float64(ts.totalRateLimit)/float64(nTasks), float64(pieceSize)))
 	// make sure bandwidth is not smaller than pieceSize
 	ptc.limiter.SetLimit(limit)
 	ts.tasks[taskID] = &taskEntry{ptc: ptc, lastSecondBandwidth: atomic.NewInt64(0), pieceSize: pieceSize}
@@ -227,7 +226,7 @@ func (ts *samplingTrafficShaper) AddTask(taskID string, ptc *peerTaskConductor) 
 	// reduce all running tasks' bandwidth
 	for _, te := range ts.tasks {
 		// make sure bandwidth is not smaller than pieceSize
-		newLimit := math.Max(ratio*te.ptc.limiter.Limit(), rate.Limit(te.pieceSize))
+		newLimit := max(ratio*te.ptc.limiter.Limit(), rate.Limit(te.pieceSize))
 		te.ptc.limiter.SetLimit(newLimit)
 		ts.Debugf("a task added, task %s rate limit updated to %f", te.ptc.taskID, newLimit)
 	}

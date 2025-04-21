@@ -51,6 +51,6 @@ func RandString(n int) string {
 }
 
 func RandBackoffSeconds(initBackoff float64, maxBackoff float64, base float64, exp int) time.Duration {
-	m := math.Max(initBackoff, rand.Float64()*math.Min(math.Pow(base, float64(exp))*initBackoff, maxBackoff))
+	m := max(initBackoff, rand.Float64()*min(math.Pow(base, float64(exp))*initBackoff, maxBackoff))
 	return time.Duration(m * float64(time.Second))
 }

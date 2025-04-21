@@ -20,7 +20,6 @@ import (
 	"sort"
 	"strings"
 
-	"d7y.io/dragonfly/v2/pkg/math"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
@@ -189,7 +188,7 @@ func (e *evaluatorBase) calculateMultiElementAffinityScore(dst, src string) floa
 	var score, elementLen int
 	dstElements := strings.Split(dst, types.AffinitySeparator)
 	srcElements := strings.Split(src, types.AffinitySeparator)
-	elementLen = math.Min(len(dstElements), len(srcElements))
+	elementLen = min(len(dstElements), len(srcElements))
 
 	// Maximum element length is 5.
 	elementLen = min(elementLen, maxElementLen)
