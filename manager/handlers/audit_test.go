@@ -123,6 +123,27 @@ func TestHandlers_GetAudits(t *testing.T) {
 				assert.Equal(mockAuditModel, &audits[0])
 			},
 		},
+		{
+			name: "success with query parameters",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/audits?page=2&per_page=20&operation=GET&state=SUCCESS", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.GetAudits(gomock.Any(), gomock.Eq(types.GetAuditsQuery{
+					Page:      2,
+					PerPage:   20,
+					Operation: "GET",
+					State:     "SUCCESS",
+				})).Return([]models.Audit{*mockAuditModel}, int64(1), nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				var audits []models.Audit
+				err := json.Unmarshal(w.Body.Bytes(), &audits)
+				assert.NoError(err)
+				assert.Len(audits, 1)
+				assert.Equal(mockAuditModel, &audits[0])
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

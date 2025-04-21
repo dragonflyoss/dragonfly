@@ -30,6 +30,13 @@ type CreateAuditRequest struct {
 }
 
 type GetAuditsQuery struct {
-	Page    int `form:"page" binding:"omitempty,gte=1"`
-	PerPage int `form:"per_page" binding:"omitempty,gte=1,lte=10000000"`
+	ActorType  string `form:"actor_type" binding:"omitempty,oneof=UNKNOWN USER PAT"`
+	ActorName  string `form:"actor_name" binding:"omitempty"`
+	EventType  string `form:"event_type" binding:"omitempty,oneof=API"`
+	Operation  string `form:"operation" binding:"omitempty"`
+	State      string `form:"state" binding:"omitempty,oneof=SUCCESS FAILURE"`
+	Path       string `form:"path" binding:"omitempty"`
+	StatusCode int    `form:"status_code" binding:"omitempty"`
+	Page       int    `form:"page" binding:"omitempty,gte=1"`
+	PerPage    int    `form:"per_page" binding:"omitempty,gte=1,lte=10000000"`
 }
