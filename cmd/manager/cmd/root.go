@@ -94,6 +94,7 @@ func init() {
 	dependency.InitCommandAndConfig(rootCmd, true, cfg)
 }
 
+// initDfpath initializes dfpath.
 func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	var options []dfpath.Option
 	if cfg.LogDir != "" {
