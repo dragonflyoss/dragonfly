@@ -658,8 +658,9 @@ func (pt *peerTaskConductor) storeTinyPeerTask() {
 		return
 	}
 	if n != contentLength {
-		pt.Errorf("write tiny data storage failed, want: %d, wrote: %d", contentLength, n)
-		pt.cancel(commonv1.Code_ClientError, err.Error())
+		resson := fmt.Sprintf("write tiny data storage failed, want: %d, wrote: %d", contentLength, n)
+		pt.Error(resson)
+		pt.cancel(commonv1.Code_ClientError, resson)
 		return
 	}
 
