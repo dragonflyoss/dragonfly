@@ -121,7 +121,15 @@ func (s *service) processAudit() {
 func (s *service) GetAudits(ctx context.Context, q types.GetAuditsQuery) ([]models.Audit, int64, error) {
 	var count int64
 	audits := []models.Audit{}
-	if err := s.db.WithContext(ctx).Scopes(models.Paginate(q.Page, q.PerPage)).Find(&audits).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
+	if err := s.db.WithContext(ctx).Scopes(models.Paginate(q.Page, q.PerPage)).Where(&models.Audit{
+		ActorType:  q.ActorType,
+		ActorName:  q.ActorName,
+		EventType:  q.EventType,
+		Operation:  q.Operation,
+		State:      q.State,
+		Path:       q.Path,
+		StatusCode: q.StatusCode,
+	}).Order("created_at DESC").Find(&audits).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
