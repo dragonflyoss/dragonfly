@@ -32,7 +32,6 @@ import (
 	"github.com/go-echarts/statsview"
 	"github.com/go-echarts/statsview/viewer"
 	"github.com/mitchellh/mapstructure"
-	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
@@ -93,43 +92,36 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 
 // InitMonitor initialize monitor and return final handler
 func InitMonitor(pprofPort int, otelOption base.TelemetryOption) func() {
-	var fc = make(chan func(), 5)
+	var shutdowns = make(chan func(), 5)
 
-	if pprofPort >= 0 {
-		// Enable go pprof and statsview
+	if pprofPort > 0 {
+		addr := fmt.Sprintf("%s:%d", net.IPv4zero.String(), pprofPort)
+		viewer.SetConfiguration(viewer.WithAddr(addr))
+		sv := statsview.New()
+
 		go func() {
-			if pprofPort == 0 {
-				pprofPort, _ = freeport.GetFreePort()
+			if err := sv.Start(); err != nil {
+				logger.Errorf("started statsview on http://%s/debug/statsview error: %v", err, addr)
 			}
-
-			debugAddr := fmt.Sprintf(":%d", pprofPort)
-			viewer.SetConfiguration(viewer.WithAddr(debugAddr))
-
-			logger.With("pprof", fmt.Sprintf("http://%s/debug/pprof", debugAddr),
-				"statsview", fmt.Sprintf("http://%s/debug/statsview", debugAddr)).
-				Infof("enable pprof at %s", debugAddr)
-
-			vm := statsview.New()
-			if err := vm.Start(); err != nil {
-				logger.Warnf("serve pprof error: %v", err)
-			}
-			fc <- func() { vm.Stop() }
 		}()
+
+		logger.Infof("started statsview on http://%s/debug/statsview", addr)
+		shutdowns <- func() { sv.Stop() }
 	}
 
-	ff, err := initJaegerTracer(otelOption)
+	shutdown, err := initJaegerTracer(otelOption)
 	if err != nil {
 		logger.Warnf("init jaeger tracer error: %v", err)
 		return func() {}
 	}
-	fc <- ff
+	shutdowns <- shutdown
 
 	return func() {
-		logger.Infof("do %d monitor finalizer", len(fc))
+		logger.Infof("do %d monitor finalizer", len(shutdowns))
 		for {
 			select {
-			case f := <-fc:
-				f()
+			case shutdown := <-shutdowns:
+				shutdown()
 			default:
 				return
 			}

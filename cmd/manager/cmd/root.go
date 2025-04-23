@@ -114,9 +114,8 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 
 func runManager(d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-
-	ff := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
-	defer ff()
+	shutdown := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
+	defer shutdown()
 
 	svr, err := manager.New(cfg, d)
 	if err != nil {

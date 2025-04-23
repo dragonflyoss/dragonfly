@@ -121,9 +121,8 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 
 func runScheduler(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-
-	ff := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
-	defer ff()
+	shutdown := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
+	defer shutdown()
 
 	svr, err := scheduler.New(ctx, cfg, d)
 	if err != nil {
