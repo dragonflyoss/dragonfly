@@ -17,6 +17,7 @@
 package database
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -197,6 +198,34 @@ func seed(db *gorm.DB) error {
 			}
 
 			logger.Infof("update scheduler %d default features", scheduler.ID)
+		}
+	}
+
+	// Create default GC config.
+	var config models.Config
+	if err := db.Model(models.Config{}).First(&config, models.Config{Name: models.ConfigGC}).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		gcConfig := &models.GCConfig{
+			Audit: &models.GCAuditConfig{
+				TTL: models.DefaultGCAuditTTL,
+			},
+			Job: &models.GCJobConfig{
+				TTL: models.DefaultGCJobTTL,
+			},
+		}
+		gcConfigVal, err := json.Marshal(gcConfig)
+		if err != nil {
+			return err
+		}
+
+		if err := db.Model(models.Config{}).Create(&models.Config{
+			Name:  models.ConfigGC,
+			Value: string(gcConfigVal),
+		}).Error; err != nil {
+			return err
 		}
 	}
 
