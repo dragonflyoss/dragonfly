@@ -155,7 +155,6 @@ func (p *peerManager) RunGC() error {
 	p.Map.Range(func(_, value any) bool {
 		peer, ok := value.(*Peer)
 		if !ok {
-			peer.Log.Warn("invalid peer")
 			return true
 		}
 
