@@ -117,7 +117,6 @@ func (t *taskManager) RunGC() error {
 	t.Map.Range(func(_, value any) bool {
 		task, ok := value.(*Task)
 		if !ok {
-			task.Log.Error("invalid task")
 			return true
 		}
 
