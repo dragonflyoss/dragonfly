@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 60
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -69,6 +70,6 @@ jobs:
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
+      upload-tag-name: "${{ needs.goreleaser.outputs.tag_name }}"
       upload-assets: true # upload to a new release
-      upload-tag-name: "${{ needs.release.outputs.tag_name }}"
       draft-release: true
