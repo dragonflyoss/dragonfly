@@ -28,12 +28,14 @@ import (
 )
 
 const (
-	// auditBatchInsertSize is the size for batch insertion.
-	auditBatchInsertSize = 500
-	// auditBatchInsertInterval is the interval for batch insertion.
-	auditBatchInsertInterval = 5 * time.Second
-	// auditBufferSize is the size of the audit channel buffer.
-	auditBufferSize = 1000
+	// AuditBufferSize is the size of the audit channel buffer.
+	AuditBufferSize = 1000
+
+	// AuditInsertBatchSize is the size for batch insertion.
+	AuditInsertBatchSize = 500
+
+	// AuditInsertInterval is the interval for batch insertion.
+	AuditInsertInterval = time.Second * 5
 )
 
 var (
@@ -43,7 +45,7 @@ var (
 
 func (s *service) AsyncCreateAudit(ctx context.Context, json *types.CreateAuditRequest) error {
 	once.Do(func() {
-		auditCh = make(chan *models.Audit, auditBufferSize)
+		auditCh = make(chan *models.Audit, AuditBufferSize)
 		go s.processAudit()
 	})
 
@@ -67,7 +69,7 @@ func (s *service) AsyncCreateAudit(ctx context.Context, json *types.CreateAuditR
 			return nil
 		default:
 			// Avoid to hang out the AsyncCreateAudit if the buffer is full.
-			return fmt.Errorf("audit buffer is full, buffer size: %d, drop the audit %#v", auditBufferSize, audit)
+			return fmt.Errorf("audit buffer is full, buffer size: %d, drop the audit %#v", AuditBufferSize, audit)
 		}
 	}
 }
@@ -75,8 +77,8 @@ func (s *service) AsyncCreateAudit(ctx context.Context, json *types.CreateAuditR
 func (s *service) processAudit() {
 	// Use the new context as this is asynchronous operation.
 	ctx := context.Background()
-	audits := make([]*models.Audit, 0, auditBatchInsertSize)
-	ticker := time.NewTicker(auditBatchInsertInterval)
+	audits := make([]*models.Audit, 0, AuditInsertBatchSize)
+	ticker := time.NewTicker(AuditInsertInterval)
 	defer ticker.Stop()
 
 	createAuditInBatch := func(ctx context.Context, audits []*models.Audit) error {
@@ -101,17 +103,17 @@ func (s *service) processAudit() {
 			}
 
 			audits = append(audits, audit)
-			if len(audits) >= auditBatchInsertSize {
+			if len(audits) >= AuditInsertBatchSize {
 				if err := createAuditInBatch(ctx, audits); err == nil {
-					audits = make([]*models.Audit, 0, auditBatchInsertSize)
+					audits = make([]*models.Audit, 0, AuditInsertBatchSize)
 				}
 
-				ticker.Reset(auditBatchInsertInterval)
+				ticker.Reset(AuditInsertInterval)
 			}
 		case <-ticker.C:
 			if len(audits) > 0 {
 				if err := createAuditInBatch(ctx, audits); err == nil {
-					audits = make([]*models.Audit, 0, auditBatchInsertSize)
+					audits = make([]*models.Audit, 0, AuditInsertBatchSize)
 				}
 			}
 		}
