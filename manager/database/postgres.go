@@ -49,7 +49,7 @@ func newPostgres(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// Run migration.
+	// Run migration when needed.
 	if postgresCfg.Migrate {
 		if err := migrate(db); err != nil {
 			return nil, err
