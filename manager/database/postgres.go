@@ -31,7 +31,7 @@ import (
 func newPostgres(cfg *config.Config) (*gorm.DB, error) {
 	postgresCfg := &cfg.Database.Postgres
 
-	// Format dsn string.
+	// Format DSN string.
 	dsn := formatPostgresDSN(postgresCfg)
 
 	// Connect to postgres.
