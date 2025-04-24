@@ -91,8 +91,8 @@ func ParseFilteredQueryParams(rawFilteredQueryParams string) []string {
 	return strings.Split(rawFilteredQueryParams, FilteredQueryParamsSeparator)
 }
 
-// TaskIDV2 generates v2 version of task id.
-func TaskIDV2(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
+// TaskIDV2ByURLBased generates v2 version of task id by url based.
+func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
 	url, err := neturl.FilterQueryParams(url, filteredQueryParams)
 	if err != nil {
 		url = ""
@@ -104,4 +104,9 @@ func TaskIDV2(url string, pieceLength *uint64, tag, application string, filtered
 	}
 
 	return pkgdigest.SHA256FromStrings(params...)
+}
+
+// TaskIDV2ByContent generates v2 version of task id by content.
+func TaskIDV2ByContent(content string) string {
+	return pkgdigest.SHA256FromStrings(content)
 }

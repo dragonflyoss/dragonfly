@@ -4199,18 +4199,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actor_name": {
+                    "description": "ActorName represents the actor name, it can be the username or token name.",
                     "type": "string"
                 },
                 "actor_type": {
+                    "description": "ActorType represents the actor type, which can be one of the following:\n- UNKNOWN: Represents an unknown actor such as not authenticated.\n- USER: Represents a user.\n- PAT: Represents a personal access token.",
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "detail": {
-                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                    "description": "Detail represents the detail, leave for extension for future use.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                        }
+                    ]
                 },
                 "event_type": {
+                    "description": "EventType represents the event type, indicates the type of event, API for http request,\ncan expand to other types such as SYSTEM for internal system events in future.",
                     "type": "string"
                 },
                 "id": {
@@ -4220,18 +4228,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "operated_at": {
+                    "description": "OperatedAt represents the operation time.",
                     "type": "string"
                 },
                 "operation": {
+                    "description": "Operation represents the operation, it will be the HTTP method for API events.",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Path represents the request path, it will be the URL path for API events.",
                     "type": "string"
                 },
                 "state": {
+                    "description": "State represents the state, it indicates the state of the operation, e.g SUCCESS for API status code \u003e= 200 \u0026 \u003c 300.",
                     "type": "string"
                 },
                 "status_code": {
+                    "description": "StatusCode represents the status code, can be ignored for non-API events.",
                     "type": "integer"
                 },
                 "updated_at": {

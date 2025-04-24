@@ -63,7 +63,9 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 
 	taskID := json.TaskID
 	if json.URL != "" {
-		taskID = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams))
+		taskID = idgen.TaskIDV2ByURLBased(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams))
+	} else if json.ContentForCalculatingTaskID != nil {
+		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
 	}
 
 	args, err := internaljob.MarshalRequest(internaljob.GetTaskRequest{
@@ -121,7 +123,9 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 
 	taskID := json.TaskID
 	if json.URL != "" {
-		taskID = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams))
+		taskID = idgen.TaskIDV2ByURLBased(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams))
+	} else if json.ContentForCalculatingTaskID != nil {
+		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
 	}
 
 	args, err := internaljob.MarshalRequest(internaljob.DeleteTaskRequest{

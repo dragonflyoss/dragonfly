@@ -123,17 +123,19 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 	case PreheatFileType:
 		files = []internaljob.PreheatRequest{
 			{
-				URL:                 json.URL,
-				PieceLength:         json.PieceLength,
-				Tag:                 json.Tag,
-				FilteredQueryParams: json.FilteredQueryParams,
-				Headers:             json.Headers,
-				Scope:               json.Scope,
-				ConcurrentCount:     json.ConcurrentCount,
-				CertificateChain:    p.certificateChain,
-				InsecureSkipVerify:  p.insecureSkipVerify,
-				Timeout:             json.Timeout,
-				LoadToCache:         json.LoadToCache,
+				URL:                         json.URL,
+				PieceLength:                 json.PieceLength,
+				Tag:                         json.Tag,
+				Application:                 json.Application,
+				FilteredQueryParams:         json.FilteredQueryParams,
+				Headers:                     json.Headers,
+				Scope:                       json.Scope,
+				ConcurrentCount:             json.ConcurrentCount,
+				CertificateChain:            p.certificateChain,
+				InsecureSkipVerify:          p.insecureSkipVerify,
+				Timeout:                     json.Timeout,
+				LoadToCache:                 json.LoadToCache,
+				ContentForCalculatingTaskID: json.ContentForCalculatingTaskID,
 			},
 		}
 	default:
@@ -349,6 +351,7 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 				URL:                 image.blobsURL(v.Digest.String()),
 				PieceLength:         args.PieceLength,
 				Tag:                 args.Tag,
+				Application:         args.Application,
 				FilteredQueryParams: args.FilteredQueryParams,
 				Headers:             nethttp.HeaderToMap(header),
 				Scope:               args.Scope,

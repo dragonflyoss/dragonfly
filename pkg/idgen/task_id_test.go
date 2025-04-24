@@ -106,7 +106,7 @@ func TestTaskIDV1(t *testing.T) {
 	}
 }
 
-func TestTaskIDV2(t *testing.T) {
+func TestTaskIDV2ByURLBased(t *testing.T) {
 	pieceLength := uint64(1024)
 
 	tests := []struct {
@@ -180,7 +180,30 @@ func TestTaskIDV2(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, TaskIDV2(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters))
+			tc.expect(t, TaskIDV2ByURLBased(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters))
+		})
+	}
+}
+
+func TestTaskIDV2ByContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		expect  func(t *testing.T, d any)
+	}{
+		{
+			name:    "generate taskID",
+			content: "This is a test file",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "e2d0fe1585a63ec6009c8016ff8dda8b17719a637405a4e23c0ff81339148249")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, TaskIDV2ByContent(tc.content))
 		})
 	}
 }
