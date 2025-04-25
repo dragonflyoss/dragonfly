@@ -304,26 +304,11 @@ type GRPCTLSServerConfig struct {
 }
 
 type JobConfig struct {
-	// GC configuration, used to clean up expired jobs. If the count of the jobs is huge,
-	// it may cause performance problems.
-	GC GCConfig `yaml:"gc" mapstructure:"gc"`
-
 	// Preheat configuration.
 	Preheat PreheatConfig `yaml:"preheat" mapstructure:"preheat"`
 
 	// Sync peers configuration.
 	SyncPeers SyncPeersConfig `yaml:"syncPeers" mapstructure:"syncPeers"`
-}
-
-type GCConfig struct {
-	// Interval is the interval for gc.
-	Interval time.Duration `yaml:"interval" mapstructure:"interval"`
-
-	// TTL is the ttl for job.
-	TTL time.Duration `yaml:"ttl" mapstructure:"ttl"`
-
-	// BatchSize is the batch size when operating gorm database.
-	BatchSize int `yaml:"batchSize" mapstructure:"batchSize"`
 }
 
 type PreheatConfig struct {
@@ -444,11 +429,6 @@ func New() *Config {
 			},
 		},
 		Job: JobConfig{
-			GC: GCConfig{
-				Interval:  DefaultJobGCInterval,
-				TTL:       DefaultJobGCTTL,
-				BatchSize: DefaultJobGCBatchSize,
-			},
 			Preheat: PreheatConfig{
 				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
 				TLS:             PreheatTLSClientConfig{},
@@ -623,18 +603,6 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Cache.Local.TTL == 0 {
 		return errors.New("local requires parameter ttl")
-	}
-
-	if cfg.Job.GC.Interval == 0 {
-		return errors.New("gc requires parameter interval")
-	}
-
-	if cfg.Job.GC.TTL == 0 {
-		return errors.New("gc requires parameter ttl")
-	}
-
-	if cfg.Job.GC.BatchSize == 0 {
-		return errors.New("gc requires parameter batchSize")
 	}
 
 	if cfg.Job.Preheat.RegistryTimeout == 0 {

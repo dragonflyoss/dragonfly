@@ -111,8 +111,8 @@ type PreheatArgs struct {
 	// URL is the image or file url for preheating.
 	URL string `json:"url" binding:"omitempty"`
 
-	// URLs is the file urls for preheating, only support file type. The priority is lower than URL,
-	// if both URL and URLs are set,
+	// URLs is the file urls for preheating, only support file type. If URLs and URL are
+	// both set, it will combine the URLs and URL into a list to preheat.
 	URLs []string `json:"urls" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to

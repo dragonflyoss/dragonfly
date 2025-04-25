@@ -177,11 +177,6 @@ func TestConfig_Load(t *testing.T) {
 			},
 		},
 		Job: JobConfig{
-			GC: GCConfig{
-				Interval:  1 * time.Second,
-				TTL:       1 * time.Second,
-				BatchSize: 100,
-			},
 			Preheat: PreheatConfig{
 				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
 				TLS: PreheatTLSClientConfig{
@@ -734,51 +729,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "local requires parameter ttl")
-			},
-		},
-		{
-			name:   "gc requires parameter interval",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.GC.Interval = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "gc requires parameter interval")
-			},
-		},
-		{
-			name:   "gc requires parameter ttl",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.GC.TTL = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "gc requires parameter ttl")
-			},
-		},
-		{
-			name:   "gc requires parameter batchSize",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.GC.BatchSize = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "gc requires parameter batchSize")
 			},
 		},
 		{

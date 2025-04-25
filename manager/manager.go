@@ -34,6 +34,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/cache"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
+	"d7y.io/dragonfly/v2/manager/gc"
 	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
@@ -42,6 +43,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/service"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/rpc"
@@ -92,6 +94,9 @@ type Server struct {
 
 	// Job rate limiter.
 	jobRateLimiter ratelimiter.JobRateLimiter
+
+	// GC server.
+	gc pkggc.GC
 
 	// GRPC server.
 	grpcServer *grpc.Server
@@ -154,6 +159,14 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	// Initialize job rate limiter.
 	s.jobRateLimiter, err = ratelimiter.NewJobRateLimiter(db)
 	if err != nil {
+		return nil, err
+	}
+
+	// Initialize garbage collector.
+	s.gc = pkggc.New()
+
+	// Register job gc task.
+	if err := s.gc.Add(gc.NewJobGCTask(db.DB)); err != nil {
 		return nil, err
 	}
 
@@ -253,6 +266,10 @@ func (s *Server) Serve() error {
 		s.jobRateLimiter.Serve()
 	}()
 
+	// Started gc server.
+	s.gc.Start()
+	logger.Info("started gc server")
+
 	// Generate GRPC listener.
 	ip, ok := ip.FormatIP(s.config.Server.GRPC.ListenIP.String())
 	if !ok {
@@ -298,6 +315,9 @@ func (s *Server) Stop() {
 
 	// Stop job rate limiter.
 	s.jobRateLimiter.Stop()
+
+	// Stop gc server.
+	s.gc.Stop()
 
 	// Stop GRPC server.
 	stopped := make(chan struct{})
