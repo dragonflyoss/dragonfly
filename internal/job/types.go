@@ -22,19 +22,20 @@ import (
 
 // PreheatRequest defines the request parameters for preheating.
 type PreheatRequest struct {
-	URL                 string            `json:"url" validate:"required,url"`
-	PieceLength         *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
-	Tag                 string            `json:"tag" validate:"omitempty"`
-	FilteredQueryParams string            `json:"filtered_query_params" validate:"omitempty"`
-	Headers             map[string]string `json:"headers" validate:"omitempty"`
-	Application         string            `json:"application" validate:"omitempty"`
-	Priority            int32             `json:"priority" validate:"omitempty"`
-	Scope               string            `json:"scope" validate:"omitempty"`
-	ConcurrentCount     int64             `json:"concurrent_count" validate:"omitempty"`
-	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
-	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
-	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
-	LoadToCache         bool              `json:"load_to_cache" validate:"omitempty"`
+	URL                         string            `json:"url" validate:"required,url"`
+	PieceLength                 *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
+	Tag                         string            `json:"tag" validate:"omitempty"`
+	FilteredQueryParams         string            `json:"filtered_query_params" validate:"omitempty"`
+	Headers                     map[string]string `json:"headers" validate:"omitempty"`
+	Application                 string            `json:"application" validate:"omitempty"`
+	Priority                    int32             `json:"priority" validate:"omitempty"`
+	Scope                       string            `json:"scope" validate:"omitempty"`
+	ConcurrentCount             int64             `json:"concurrent_count" validate:"omitempty"`
+	CertificateChain            [][]byte          `json:"certificate_chain" validate:"omitempty"`
+	InsecureSkipVerify          bool              `json:"insecure_skip_verify" validate:"omitempty"`
+	Timeout                     time.Duration     `json:"timeout" validate:"omitempty"`
+	LoadToCache                 bool              `json:"load_to_cache" validate:"omitempty"`
+	ContentForCalculatingTaskID *string           `json:"content_for_calculating_task_id" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.

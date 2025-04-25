@@ -109,7 +109,7 @@ type PreheatArgs struct {
 	Type string `json:"type" binding:"required,oneof=image file"`
 
 	// URL is the image url for preheating.
-	URL string `json:"url" binding:"required"`
+	URL string `json:"url" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
 	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
@@ -119,6 +119,9 @@ type PreheatArgs struct {
 
 	// Tag is the tag for preheating.
 	Tag string `json:"tag" binding:"omitempty"`
+
+	// Application is the application string for preheating.
+	Application string `json:"application" binding:"omitempty"`
 
 	// FilteredQueryParams is the filtered query params for preheating.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
@@ -146,6 +149,12 @@ type PreheatArgs struct {
 
 	// LoadToCache is the flag for preheating content in cache storage, default is false.
 	LoadToCache bool `json:"load_to_cache" binding:"omitempty"`
+
+	// ContentForCalculatingTaskID is the content used to calculate the task id.
+	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
+	// Otherwise, calculate the task ID based on url, piece_length, tag, application,
+	// and filtered_query_params. It is only used for file preheating task.
+	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
@@ -200,6 +209,11 @@ type GetTaskArgs struct {
 
 	// FilteredQueryParams is the filtered query params of the task.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
+
+	// ContentForCalculatingTaskID is the content used to calculate the task id.
+	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
+	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
+	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
 
 type CreateDeleteTaskJobRequest struct {
@@ -243,4 +257,9 @@ type DeleteTaskArgs struct {
 
 	// Timeout is the timeout for deleting, default is 30 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
+
+	// ContentForCalculatingTaskID is the content used to calculate the task id.
+	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
+	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
+	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }

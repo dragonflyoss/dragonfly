@@ -41,7 +41,6 @@ type Job struct {
 	Preheat
 	SyncPeers
 	Task
-	GC
 }
 
 // New returns a new Job.
@@ -78,29 +77,21 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 		return nil, err
 	}
 
-	gc, err := newGC(cfg, gdb)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Job{
 		Job:       j,
 		Preheat:   preheat,
 		SyncPeers: syncPeers,
 		Task:      newTask(j),
-		GC:        gc,
 	}, nil
 }
 
 // Serve starts the job server.
 func (j *Job) Serve() {
-	go j.GC.Serve()
 	go j.SyncPeers.Serve()
 }
 
 // Stop stops the job server.
 func (j *Job) Stop() {
-	j.GC.Stop()
 	j.SyncPeers.Stop()
 }
 

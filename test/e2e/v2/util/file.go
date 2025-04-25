@@ -117,7 +117,7 @@ func (f *File) GetTaskID(opts ...TaskIDOption) string {
 		opt(taskIDOptions)
 	}
 
-	return idgen.TaskIDV2(taskIDOptions.url, taskIDOptions.pieceLength, taskIDOptions.tag, taskIDOptions.application, taskIDOptions.filteredQueryParams)
+	return idgen.TaskIDV2ByURLBased(taskIDOptions.url, taskIDOptions.pieceLength, taskIDOptions.tag, taskIDOptions.application, taskIDOptions.filteredQueryParams)
 }
 
 // GetOutputPath returns the output path of the file.

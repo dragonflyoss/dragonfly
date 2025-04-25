@@ -170,7 +170,13 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return "", err
 	}
 
-	taskID := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+	var taskID string
+	if req.ContentForCalculatingTaskID != nil {
+		taskID = idgen.TaskIDV2ByContent(*req.ContentForCalculatingTaskID)
+	} else {
+		taskID = idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+	}
+
 	log := logger.WithTask(taskID, req.URL)
 	log.Infof("preheat %s %d request: %#v", req.URL, req.PieceLength, req)
 
@@ -298,17 +304,18 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 				ctx,
 				taskID,
 				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-					Url:                 req.URL,
-					PieceLength:         req.PieceLength,
-					Type:                commonv2.TaskType_STANDARD,
-					Tag:                 &req.Tag,
-					Application:         &req.Application,
-					Priority:            commonv2.Priority(req.Priority),
-					FilteredQueryParams: strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
-					RequestHeader:       req.Headers,
-					Timeout:             durationpb.New(req.Timeout),
-					CertificateChain:    req.CertificateChain,
-					LoadToCache:         req.LoadToCache,
+					Url:                         req.URL,
+					PieceLength:                 req.PieceLength,
+					Type:                        commonv2.TaskType_STANDARD,
+					Tag:                         &req.Tag,
+					Application:                 &req.Application,
+					Priority:                    commonv2.Priority(req.Priority),
+					FilteredQueryParams:         strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					RequestHeader:               req.Headers,
+					Timeout:                     durationpb.New(req.Timeout),
+					CertificateChain:            req.CertificateChain,
+					LoadToCache:                 req.LoadToCache,
+					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 				}})
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
@@ -441,17 +448,18 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 				ctx,
 				taskID,
 				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-					Url:                 req.URL,
-					PieceLength:         req.PieceLength,
-					Type:                commonv2.TaskType_STANDARD,
-					Tag:                 &req.Tag,
-					Application:         &req.Application,
-					Priority:            commonv2.Priority(req.Priority),
-					FilteredQueryParams: strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
-					RequestHeader:       req.Headers,
-					Timeout:             durationpb.New(req.Timeout),
-					CertificateChain:    req.CertificateChain,
-					LoadToCache:         req.LoadToCache,
+					Url:                         req.URL,
+					PieceLength:                 req.PieceLength,
+					Type:                        commonv2.TaskType_STANDARD,
+					Tag:                         &req.Tag,
+					Application:                 &req.Application,
+					Priority:                    commonv2.Priority(req.Priority),
+					FilteredQueryParams:         strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					RequestHeader:               req.Headers,
+					Timeout:                     durationpb.New(req.Timeout),
+					CertificateChain:            req.CertificateChain,
+					LoadToCache:                 req.LoadToCache,
+					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 				}})
 			if err != nil {
 				log.Errorf("preheat failed: %s", err.Error())
@@ -586,16 +594,17 @@ func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.Pre
 	filteredQueryParams := strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator)
 	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
-			Url:                 req.URL,
-			PieceLength:         req.PieceLength,
-			Type:                commonv2.TaskType_STANDARD,
-			Tag:                 &req.Tag,
-			Application:         &req.Application,
-			Priority:            commonv2.Priority(req.Priority),
-			FilteredQueryParams: filteredQueryParams,
-			RequestHeader:       req.Headers,
-			CertificateChain:    req.CertificateChain,
-			LoadToCache:         req.LoadToCache,
+			Url:                         req.URL,
+			PieceLength:                 req.PieceLength,
+			Type:                        commonv2.TaskType_STANDARD,
+			Tag:                         &req.Tag,
+			Application:                 &req.Application,
+			Priority:                    commonv2.Priority(req.Priority),
+			FilteredQueryParams:         filteredQueryParams,
+			RequestHeader:               req.Headers,
+			CertificateChain:            req.CertificateChain,
+			LoadToCache:                 req.LoadToCache,
+			ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 		}})
 	if err != nil {
 		log.Errorf("preheat failed: %s", err.Error())

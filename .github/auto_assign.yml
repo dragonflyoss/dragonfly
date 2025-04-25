@@ -1,0 +1,18 @@
+# Set to true to add reviewers to pull requests
+addReviewers: true
+
+# Set to true to add assignees to pull requests
+addAssignees: author
+
+# A list of reviewers to be added to pull requests (GitHub user name)
+reviewers:
+  - gaius-qi
+  - yxxhero
+  - chlins
+  - CormickKneey
+  - jim3ma
+  - hyy0322
+  - xujihui1985
+
+# A number of reviewers added to the pull request
+numberOfReviewers: 3
