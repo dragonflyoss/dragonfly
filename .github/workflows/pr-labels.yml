@@ -1,0 +1,20 @@
+name: PR Label
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Classify PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR impact specified
+        uses: mheap/github-action-required-labels@388fd6af37b34cdfe5a23b37060e763217e58b03 # v5.5
+        with:
+          mode: exactly
+          count: 1
+          labels: 'bug, enhancement, documentation, dependencies'
