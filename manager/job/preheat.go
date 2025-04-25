@@ -116,14 +116,28 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 	var err error
 	switch PreheatType(json.Type) {
 	case PreheatImageType:
+		// Image preheat only supports to preheat single image.
+		if json.URL == "" {
+			return nil, errors.New("invalid params: url is required")
+		}
+
 		files, err = p.getImageLayers(ctx, json)
 		if err != nil {
 			return nil, err
 		}
 	case PreheatFileType:
-		files = []internaljob.PreheatRequest{
-			{
-				URL:                         json.URL,
+		// File preheat supports to preheat multiple files and single file.
+		if json.URL == "" && len(json.URLs) == 0 {
+			return nil, errors.New("invalid params: url or urls is required")
+		}
+
+		if json.URL != "" {
+			json.URLs = append(json.URLs, json.URL)
+		}
+
+		for _, url := range json.URLs {
+			files = append(files, internaljob.PreheatRequest{
+				URL:                         url,
 				PieceLength:                 json.PieceLength,
 				Tag:                         json.Tag,
 				Application:                 json.Application,
@@ -136,8 +150,9 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 				Timeout:                     json.Timeout,
 				LoadToCache:                 json.LoadToCache,
 				ContentForCalculatingTaskID: json.ContentForCalculatingTaskID,
-			},
+			})
 		}
+
 	default:
 		return nil, errors.New("unknown preheat type")
 	}

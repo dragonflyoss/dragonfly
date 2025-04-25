@@ -91,7 +91,7 @@ type CreatePreheatJobRequest struct {
 	// BIO is the description of the job.
 	BIO string `json:"bio" binding:"omitempty"`
 
-	// Type is the preheating type, support image and file.
+	// Type is the type of the job.
 	Type string `json:"type" binding:"required"`
 
 	// Args is the arguments of the preheating job.
@@ -108,8 +108,12 @@ type PreheatArgs struct {
 	// Type is the preheating type, support image and file.
 	Type string `json:"type" binding:"required,oneof=image file"`
 
-	// URL is the image url for preheating.
+	// URL is the image or file url for preheating.
 	URL string `json:"url" binding:"omitempty"`
+
+	// URLs is the file urls for preheating, only support file type. The priority is lower than URL,
+	// if both URL and URLs are set,
+	URLs []string `json:"urls" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
 	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
