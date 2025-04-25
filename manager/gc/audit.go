@@ -28,57 +28,57 @@ import (
 )
 
 const (
-	// DefaultJobGCBatchSize is the default batch size for deleting jobs.
-	DefaultJobGCBatchSize = 5000
+	// DefaultAuditGCBatchSize is the default batch size for deleting jobs.
+	DefaultAuditGCBatchSize = 5000
 
-	// DefaultJobGCInterval is the default interval for running job GC.
-	DefaultJobGCInterval = time.Hour * 3
+	// DefaultAuditGCInterval is the default interval for running audit GC.
+	DefaultAuditGCInterval = time.Hour * 6
 
-	// DefaultJobGCTimeout is the default timeout for running job GC.
-	DefaultJobGCTimeout = time.Hour * 1
+	// DefaultAuditGCTimeout is the default timeout for running audit GC.
+	DefaultAuditGCTimeout = time.Hour * 2
 
-	// JohGCTaskID is the ID of the job GC task.
-	JobGCTaskID = "job"
+	// AuditGCTaskID is the ID of the audit GC task.
+	AuditGCTaskID = "audit"
 )
 
-func NewJobGCTask(db *gorm.DB) pkggc.Task {
+func NewAuditGCTask(db *gorm.DB) pkggc.Task {
 	return pkggc.Task{
-		ID:       JobGCTaskID,
-		Interval: DefaultJobGCInterval,
-		Timeout:  DefaultJobGCTimeout,
-		Runner:   &job{db: db, recorder: newJobRecorder(db)},
+		ID:       AuditGCTaskID,
+		Interval: DefaultAuditGCInterval,
+		Timeout:  DefaultAuditGCTimeout,
+		Runner:   &audit{db: db, recorder: newJobRecorder(db)},
 	}
 }
 
-// job is the struct for cleaning up jobs which implements the gc Runner interface.
-type job struct {
+// audit is the struct for cleaning up audits which implements the gc Runner interface.
+type audit struct {
 	db       *gorm.DB
 	recorder *jobRecorder
 }
 
 // RunGC implements the gc Runner interface.
-func (j *job) RunGC() error {
-	ttl, err := j.getTTL()
+func (a *audit) RunGC() error {
+	ttl, err := a.getTTL()
 	if err != nil {
 		return err
 	}
 
-	if err = j.recorder.Init(JobGCTaskID, models.JSONMap{
+	if err := a.recorder.Init(AuditGCTaskID, models.JSONMap{
 		"ttl":        ttl,
-		"batch_size": DefaultJobGCBatchSize,
+		"batch_size": DefaultAuditGCBatchSize,
 	}); err != nil {
 		return err
 	}
 
 	var gcResult Result
 	defer func() {
-		if err := j.recorder.Record(gcResult); err != nil {
-			logger.Errorf("failed to record job GC result: %v", err)
+		if err := a.recorder.Record(gcResult); err != nil {
+			logger.Errorf("failed to record audit GC result: %v", err)
 		}
 	}()
 
 	for {
-		result := j.db.Where("created_at < ?", time.Now().Add(-ttl)).Limit(DefaultJobGCBatchSize).Unscoped().Delete(&models.Job{})
+		result := a.db.Where("created_at < ?", time.Now().Add(-ttl)).Limit(DefaultAuditGCBatchSize).Unscoped().Delete(&models.Audit{})
 		if result.Error != nil {
 			gcResult.Error = result.Error
 			return result.Error
@@ -89,15 +89,15 @@ func (j *job) RunGC() error {
 		}
 
 		gcResult.Purged += result.RowsAffected
-		logger.Infof("gc job deleted %d jobs", result.RowsAffected)
+		logger.Infof("gc audit deleted %d audits", result.RowsAffected)
 	}
 
 	return nil
 }
 
-func (j *job) getTTL() (time.Duration, error) {
+func (a *audit) getTTL() (time.Duration, error) {
 	var config models.Config
-	if err := j.db.Model(models.Config{}).First(&config, &models.Config{Name: models.ConfigGC}).Error; err != nil {
+	if err := a.db.Model(models.Config{}).First(&config, &models.Config{Name: models.ConfigGC}).Error; err != nil {
 		return 0, err
 	}
 
@@ -106,5 +106,5 @@ func (j *job) getTTL() (time.Duration, error) {
 		return 0, err
 	}
 
-	return gcConfig.Job.TTL, nil
+	return gcConfig.Audit.TTL, nil
 }

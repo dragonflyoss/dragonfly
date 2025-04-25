@@ -170,6 +170,11 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 		return nil, err
 	}
 
+	// Register audit gc task.
+	if err := s.gc.Add(gc.NewAuditGCTask(db.DB)); err != nil {
+		return nil, err
+	}
+
 	// Initialize REST server.
 	restService := service.New(cfg, db, cache, job, enforcer, objectStorage)
 	router, err := router.Init(cfg, d.LogDir(), restService, db, enforcer, s.jobRateLimiter, EmbedFolder(assets, assetsTargetPath))
