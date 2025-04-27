@@ -64,12 +64,36 @@ jobs:
   provenance:
     needs: [goreleaser]
     permissions:
-      actions: read # To read the workflow path.
-      id-token: write # To sign the provenance.
-      contents: write # To add assets to a release.
+      id-token: write
+      contents: write
+      actions: read
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
-      upload-tag-name: "${{ needs.goreleaser.outputs.tag_name }}"
-      upload-assets: true # upload to a new release
-      draft-release: true
+
+  upload-provenance:
+    needs: [goreleaser, provenance]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Download SLSA provenance artifacts
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: multiple.intoto.jsonl
+          path: artifacts
+
+      - name: Upload SLSA Provenance Attestation to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.goreleaser.outputs.tag_name }}
+        run: |
+          set -euxo pipefail
+          ARTIFACT_PATH="artifacts/multiple.intoto.jsonl"
+          gh release upload "$TAG_NAME" "$ARTIFACT_PATH" --clobber
