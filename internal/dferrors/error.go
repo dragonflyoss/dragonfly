@@ -36,6 +36,7 @@ var (
 	ErrNoCandidateNode = errors.New("no candidate server node")
 )
 
+// IsEndOfStream returns true if the error is end of stream.
 func IsEndOfStream(err error) bool {
 	return err == ErrEndOfStream
 }
