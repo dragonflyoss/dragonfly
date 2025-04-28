@@ -1,6 +1,7 @@
 module d7y.io/dragonfly/v2
 
 go 1.23.8
+toolchain go1.24.1
 
 require (
 	cloud.google.com/go/storage v1.50.0
@@ -65,7 +66,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_golang v1.22.0
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shirou/gopsutil/v3 v3.24.5
@@ -102,7 +103,7 @@ require (
 	gorm.io/driver/postgres v1.4.8
 	gorm.io/gorm v1.25.0
 	gorm.io/plugin/soft_delete v1.2.1
-	k8s.io/component-base v0.32.2
+	k8s.io/component-base v0.33.0
 	moul.io/zapgorm2 v1.3.0
 	stathat.com/c/consistent v1.0.0
 )
@@ -219,7 +220,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -245,7 +246,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.55.0 // indirect
+	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rabbitmq/amqp091-go v1.9.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -299,7 +300,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
-	k8s.io/apimachinery v0.32.2 // indirect
+	k8s.io/apimachinery v0.33.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
