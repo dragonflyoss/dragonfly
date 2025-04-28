@@ -88,6 +88,7 @@ func ConvertGRPCErrorToDfError(err error) error {
 	return err
 }
 
+// IsGRPCDfError checks if the error is a GRPCDfError.
 func IsGRPCDfError(err error) (*DfError, bool) {
 	for _, d := range status.Convert(err).Details() {
 		switch internal := d.(type) {
