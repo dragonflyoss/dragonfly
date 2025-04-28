@@ -100,7 +100,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/driver/postgres v1.4.8
-	gorm.io/gorm v1.25.0
+	gorm.io/gorm v1.26.0
 	gorm.io/plugin/soft_delete v1.2.1
 	k8s.io/component-base v0.32.2
 	moul.io/zapgorm2 v1.3.0
