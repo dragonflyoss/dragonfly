@@ -110,3 +110,8 @@ func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string
 func TaskIDV2ByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
 }
+
+// PersistentCacheTaskIDByContent generates persistent cache task id by content.
+func PersistentCacheTaskIDByContent(content string) string {
+	return pkgdigest.CRC32FromStrings(content)
+}

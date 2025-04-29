@@ -29,6 +29,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/zeebo/blake3"
@@ -195,4 +196,20 @@ func SHA256FromBytes(bytes []byte) string {
 	h := sha256.New()
 	h.Write(bytes)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// CRC32FromStrings computes the CRC32 checksum with multiple strings.
+func CRC32FromStrings(data ...string) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	h := crc32.NewIEEE()
+	for _, s := range data {
+		if _, err := h.Write([]byte(s)); err != nil {
+			return ""
+		}
+	}
+
+	return strconv.FormatUint(uint64(h.Sum32()), 10)
 }
