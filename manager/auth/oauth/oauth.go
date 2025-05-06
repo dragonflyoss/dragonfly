@@ -26,6 +26,7 @@ import (
 )
 
 const (
+	// default timeout for oauth
 	timeout = 2 * time.Minute
 )
 
