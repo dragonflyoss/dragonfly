@@ -270,6 +270,7 @@ type MetricsConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 }
 
+// GRPCConfig is gRPC server configuration.
 type GRPCConfig struct {
 	// AdvertiseIP is advertise ip.
 	AdvertiseIP net.IP `yaml:"advertiseIP" mapstructure:"advertiseIP"`
