@@ -26,6 +26,7 @@ import (
 )
 
 const (
+	// default timeout for oauth
 	timeout = 2 * time.Minute
 )
 
@@ -40,6 +41,7 @@ type User struct {
 	Avatar string
 }
 
+// Oauth interface for oauth2
 type Oauth interface {
 	AuthCodeURL() (string, error)
 	Exchange(string) (*oauth2.Token, error)
