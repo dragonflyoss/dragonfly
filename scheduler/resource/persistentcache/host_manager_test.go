@@ -798,7 +798,7 @@ func TestHostManager_RunGC(t *testing.T) {
 				rdb: rdb,
 			}
 
-			err := h.RunGC()
+			err := h.RunGC(context.Background())
 			if tt.expectErr {
 				assert.Error(t, err)
 			} else {

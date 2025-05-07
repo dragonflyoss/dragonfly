@@ -272,7 +272,7 @@ func (s *Server) Serve() error {
 	}()
 
 	// Started gc server.
-	s.gc.Start()
+	s.gc.Start(context.Background())
 	logger.Info("started gc server")
 
 	// Generate GRPC listener.

@@ -17,6 +17,7 @@
 package standard
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -442,7 +443,7 @@ func TestHostManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				hostManager.Store(mockHost)
 				mockHost.StorePeer(mockPeer)
-				err := hostManager.RunGC()
+				err := hostManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockHost.ID)
@@ -461,7 +462,7 @@ func TestHostManager_RunGC(t *testing.T) {
 				mockHost.StorePeer(mockPeer)
 				mockHost.PeerCount.Add(0)
 				mockHost.ConcurrentUploadCount.Add(1)
-				err := hostManager.RunGC()
+				err := hostManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockHost.ID)
@@ -480,7 +481,7 @@ func TestHostManager_RunGC(t *testing.T) {
 					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
 					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)
 				hostManager.Store(mockSeedHost)
-				err := hostManager.RunGC()
+				err := hostManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockSeedHost.ID)
@@ -498,7 +499,7 @@ func TestHostManager_RunGC(t *testing.T) {
 				mockHost.AnnounceInterval = 1 * time.Microsecond
 				hostManager.Store(mockHost)
 				mockHost.StorePeer(mockPeer)
-				err := hostManager.RunGC()
+				err := hostManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				mockHost.Peers.Range(func(_, value any) bool {

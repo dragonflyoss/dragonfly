@@ -19,6 +19,7 @@
 package standard
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -59,7 +60,7 @@ type HostManager interface {
 	LoadAll() []*Host
 
 	// Try to reclaim host.
-	RunGC() error
+	RunGC(context.Context) error
 }
 
 // hostManager contains content for host manager.
@@ -163,7 +164,7 @@ func (h *hostManager) LoadRandom(n int, blocklist set.SafeSet[string]) []*Host {
 }
 
 // RunGC tries to reclaim host.
-func (h *hostManager) RunGC() error {
+func (h *hostManager) RunGC(ctx context.Context) error {
 	h.Map.Range(func(_, value any) bool {
 		host, ok := value.(*Host)
 		if !ok {

@@ -57,7 +57,7 @@ type HostManager interface {
 	LoadRandom(context.Context, int, set.SafeSet[string]) ([]*Host, error)
 
 	// RunGC runs garbage collection.
-	RunGC() error
+	RunGC(context.Context) error
 }
 
 // hostManager contains content for host manager.
@@ -783,8 +783,8 @@ func (h *hostManager) LoadRandom(ctx context.Context, n int, blocklist set.SafeS
 }
 
 // RunGC runs garbage collection.
-func (h *hostManager) RunGC() error {
-	hosts, err := h.LoadAll(context.Background())
+func (h *hostManager) RunGC(ctx context.Context) error {
+	hosts, err := h.LoadAll(ctx)
 	if err != nil {
 		logger.Error("load all hosts failed")
 		return err
@@ -796,7 +796,7 @@ func (h *hostManager) RunGC() error {
 		elapsed := time.Since(host.UpdatedAt)
 		if host.AnnounceInterval > 0 && elapsed > host.AnnounceInterval*2 {
 			host.Log.Info("host has been reclaimed")
-			if err := h.Delete(context.Background(), host.ID); err != nil {
+			if err := h.Delete(ctx, host.ID); err != nil {
 				host.Log.Errorf("delete host failed: %v", err)
 			}
 		}

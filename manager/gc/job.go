@@ -17,6 +17,7 @@
 package gc
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -57,7 +58,7 @@ type job struct {
 }
 
 // RunGC implements the gc Runner interface.
-func (j *job) RunGC() error {
+func (j *job) RunGC(ctx context.Context) error {
 	ttl, err := j.getTTL()
 	if err != nil {
 		return err
