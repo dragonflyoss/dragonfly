@@ -190,6 +190,8 @@ type PostgresConfig struct {
 	Migrate bool `yaml:"migrate" mapstructure:"migrate"`
 }
 
+// RedisConfig is redis configuration.
+// see: https://redis.uptrace.dev/guide/universal.html
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
