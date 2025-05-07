@@ -26,7 +26,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/RichardKnop/machinery/v1"
+	"github.com/dragonflyoss/machinery/v1"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"

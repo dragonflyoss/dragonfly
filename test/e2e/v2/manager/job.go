@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	. "github.com/onsi/gomega" //nolint
 
 	"d7y.io/dragonfly/v2/manager/models"

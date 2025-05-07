@@ -60,6 +60,9 @@ database:
     db: 0
     brokerDB: 1
     backendDB: 2
+    proxy:
+      enable: true
+      addr: ":65101"
 
 cache:
   redis:

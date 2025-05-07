@@ -165,6 +165,10 @@ func TestConfig_Load(t *testing.T) {
 				DB:         0,
 				BrokerDB:   1,
 				BackendDB:  2,
+				Proxy: RedisProxyConfig{
+					Enable: true,
+					Addr:   ":65101",
+				},
 			},
 		},
 		Cache: CacheConfig{
@@ -699,6 +703,22 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "redis requires parameter ttl")
+			},
+		},
+		{
+			name:   "redis proxy requires parameter addr",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.Proxy.Enable = true
+				cfg.Database.Redis.Proxy.Addr = ""
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis proxy requires parameter addr")
 			},
 		},
 		{
