@@ -190,6 +190,16 @@ type PostgresConfig struct {
 	Migrate bool `yaml:"migrate" mapstructure:"migrate"`
 }
 
+type RedisProxyConfig struct {
+	// Enable redis proxy.
+	Enable bool `yaml:"enable" mapstructure:"enable"`
+
+	// Proxy address to listen on, default is ":65100".
+	Addr string `yaml:"addr" mapstructure:"addr"`
+}
+
+// RedisConfig is redis configuration.
+// see: https://redis.uptrace.dev/guide/universal.html
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
@@ -223,6 +233,14 @@ type RedisConfig struct {
 
 	// BackendDB is server backend DB name.
 	BackendDB int `yaml:"backendDB" mapstructure:"backendDB"`
+
+	// Proxy is redis proxy configuration.
+	// If enabled, the manager starts a TCP proxy (defaulting to port 65100) that
+	// forwards requests to the Redis service. This allows Schedulers to connect to Redis
+	// via the manager's local port, which is useful for network isolation as only the
+	// manager's IP and port need to be exposed.
+	// Note: Only a single Redis address is supported by the proxy.
+	Proxy RedisProxyConfig `yaml:"proxy" mapstructure:"proxy"`
 }
 
 type CacheConfig struct {
@@ -270,6 +288,7 @@ type MetricsConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 }
 
+// GRPCConfig is gRPC server configuration.
 type GRPCConfig struct {
 	// AdvertiseIP is advertise ip.
 	AdvertiseIP net.IP `yaml:"advertiseIP" mapstructure:"advertiseIP"`
@@ -417,6 +436,10 @@ func New() *Config {
 				DB:        DefaultRedisDB,
 				BrokerDB:  DefaultRedisBrokerDB,
 				BackendDB: DefaultRedisBackendDB,
+				Proxy: RedisProxyConfig{
+					Enable: false,
+					Addr:   DefaultRedisProxyAddr,
+				},
 			},
 		},
 		Cache: CacheConfig{
@@ -591,6 +614,12 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Database.Redis.BackendDB < 0 {
 		return errors.New("redis requires parameter backendDB")
+	}
+
+	if cfg.Database.Redis.Proxy.Enable {
+		if cfg.Database.Redis.Proxy.Addr == "" {
+			return errors.New("redis proxy requires parameter addr")
+		}
 	}
 
 	if cfg.Cache.Redis.TTL == 0 {

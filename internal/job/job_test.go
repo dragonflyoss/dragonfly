@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/stretchr/testify/assert"
 )
 

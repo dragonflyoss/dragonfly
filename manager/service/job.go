@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	internaljob "d7y.io/dragonfly/v2/internal/job"

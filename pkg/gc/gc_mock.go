@@ -10,6 +10,7 @@
 package gc
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -54,41 +55,41 @@ func (mr *MockGCMockRecorder) Add(arg0 any) *gomock.Call {
 }
 
 // Run mocks base method.
-func (m *MockGC) Run(arg0 string) error {
+func (m *MockGC) Run(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Run", arg0)
+	ret := m.ctrl.Call(m, "Run", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockGCMockRecorder) Run(arg0 any) *gomock.Call {
+func (mr *MockGCMockRecorder) Run(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockGC)(nil).Run), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockGC)(nil).Run), arg0, arg1)
 }
 
 // RunAll mocks base method.
-func (m *MockGC) RunAll() {
+func (m *MockGC) RunAll(arg0 context.Context) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RunAll")
+	m.ctrl.Call(m, "RunAll", arg0)
 }
 
 // RunAll indicates an expected call of RunAll.
-func (mr *MockGCMockRecorder) RunAll() *gomock.Call {
+func (mr *MockGCMockRecorder) RunAll(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunAll", reflect.TypeOf((*MockGC)(nil).RunAll))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunAll", reflect.TypeOf((*MockGC)(nil).RunAll), arg0)
 }
 
 // Start mocks base method.
-func (m *MockGC) Start() {
+func (m *MockGC) Start(arg0 context.Context) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Start")
+	m.ctrl.Call(m, "Start", arg0)
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockGCMockRecorder) Start() *gomock.Call {
+func (mr *MockGCMockRecorder) Start(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockGC)(nil).Start))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockGC)(nil).Start), arg0)
 }
 
 // Stop mocks base method.

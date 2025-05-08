@@ -17,6 +17,7 @@
 package standard
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -313,7 +314,7 @@ func TestTaskManager_RunGC(t *testing.T) {
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
 				taskManager.Store(mockTask)
-				err := taskManager.RunGC()
+				err := taskManager.RunGC(context.Background())
 				assert.NoError(err)
 				_, loaded := taskManager.Load(mockTask.ID)
 				assert.Equal(loaded, false)
@@ -328,7 +329,7 @@ func TestTaskManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				taskManager.Store(mockTask)
 				mockTask.StorePeer(mockPeer)
-				err := taskManager.RunGC()
+				err := taskManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				task, loaded := taskManager.Load(mockTask.ID)

@@ -20,7 +20,7 @@ import (
 	"context"
 	"strconv"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

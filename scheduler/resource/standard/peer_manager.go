@@ -53,7 +53,7 @@ type PeerManager interface {
 	Range(f func(any, any) bool)
 
 	// Try to reclaim peer.
-	RunGC() error
+	RunGC(context.Context) error
 }
 
 // peerManager contains content for peer manager.
@@ -151,7 +151,7 @@ func (p *peerManager) Range(f func(key, value any) bool) {
 }
 
 // Try to reclaim peer.
-func (p *peerManager) RunGC() error {
+func (p *peerManager) RunGC(ctx context.Context) error {
 	p.Map.Range(func(_, value any) bool {
 		peer, ok := value.(*Peer)
 		if !ok {
@@ -170,7 +170,7 @@ func (p *peerManager) RunGC() error {
 		// Avoid the disabled shared host to be scheduled, and store the unused peer in the peer manager.
 		if peer.Host.DisableShared {
 			peer.Log.Info("peer host is disabled shared, causing the peer to leave")
-			if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+			if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 				peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 				return true
 			}
@@ -184,7 +184,7 @@ func (p *peerManager) RunGC() error {
 			elapsed := time.Since(peer.PieceUpdatedAt.Load())
 			if elapsed > p.pieceDownloadTimeout {
 				peer.Log.Info("peer elapsed exceeds the timeout of downloading piece, causing the peer to leave")
-				if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+				if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 					peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 					return true
 				}
@@ -198,7 +198,7 @@ func (p *peerManager) RunGC() error {
 		elapsed := time.Since(peer.UpdatedAt.Load())
 		if elapsed > p.peerTTL {
 			peer.Log.Info("peer elapsed exceeds the peer ttl, causing the peer to leave")
-			if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+			if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 				peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 				return true
 			}
@@ -211,7 +211,7 @@ func (p *peerManager) RunGC() error {
 		elapsed = time.Since(peer.Host.UpdatedAt.Load())
 		if elapsed > p.hostTTL {
 			peer.Log.Info("peer elapsed exceeds the host ttl, causing the peer to leave")
-			if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+			if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 				peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 				return true
 			}
@@ -223,7 +223,7 @@ func (p *peerManager) RunGC() error {
 		// then set the peer state to PeerStateLeave and then delete peer.
 		if peer.FSM.Is(PeerStateFailed) {
 			peer.Log.Info("peer state is PeerStateFailed, causing the peer to leave")
-			if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+			if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 				peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 				return true
 			}
@@ -244,7 +244,7 @@ func (p *peerManager) RunGC() error {
 		if peer.Task.PeerCount() > PeerCountLimitForTask &&
 			peer.FSM.Is(PeerStateSucceeded) && degree == 0 {
 			peer.Log.Info("task dag size exceeds the limit, causing the peer to leave")
-			if err := peer.FSM.Event(context.Background(), PeerEventLeave); err != nil {
+			if err := peer.FSM.Event(ctx, PeerEventLeave); err != nil {
 				peer.Log.Errorf("peer fsm event failed: %s", err.Error())
 				return true
 			}

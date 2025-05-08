@@ -17,6 +17,7 @@
 package standard
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -339,7 +340,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
@@ -362,14 +363,14 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.Host.DisableShared = true
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.Equal(loaded, true)
 				assert.Equal(peer.FSM.Current(), PeerStateLeave)
 
-				err = peerManager.RunGC()
+				err = peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded = peerManager.Load(mockPeer.ID)
@@ -391,14 +392,14 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateRunning)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.Equal(loaded, true)
 				assert.Equal(peer.FSM.Current(), PeerStateLeave)
 
-				err = peerManager.RunGC()
+				err = peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded = peerManager.Load(mockPeer.ID)
@@ -420,14 +421,14 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateBackToSource)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.Equal(loaded, true)
 				assert.Equal(peer.FSM.Current(), PeerStateLeave)
 
-				err = peerManager.RunGC()
+				err = peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded = peerManager.Load(mockPeer.ID)
@@ -449,14 +450,14 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.Equal(loaded, true)
 				assert.Equal(peer.FSM.Current(), PeerStateLeave)
 
-				err = peerManager.RunGC()
+				err = peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded = peerManager.Load(mockPeer.ID)
@@ -478,14 +479,14 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.Equal(loaded, true)
 				assert.Equal(peer.FSM.Current(), PeerStateLeave)
 
-				err = peerManager.RunGC()
+				err = peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded = peerManager.Load(mockPeer.ID)
@@ -507,7 +508,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				peerManager.Store(mockPeer)
 				mockPeer.FSM.SetState(PeerStateFailed)
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				peer, loaded := peerManager.Load(mockPeer.ID)
@@ -532,7 +533,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				mockPeer.Task.DeletePeer(mockPeer.ID)
 
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded := peerManager.Load(mockPeer.ID)
@@ -559,7 +560,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 					mockPeer.Task.StorePeer(peer)
 				}
 
-				err := peerManager.RunGC()
+				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				_, loaded := peerManager.Load(mockPeer.ID)

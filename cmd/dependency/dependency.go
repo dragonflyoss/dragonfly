@@ -101,7 +101,7 @@ func InitMonitor(pprofPort int, otelOption base.TelemetryOption) func() {
 
 		go func() {
 			if err := sv.Start(); err != nil {
-				logger.Errorf("started statsview on http://%s/debug/statsview error: %v", err, addr)
+				logger.Errorf("started statsview on http://%s/debug/statsview error: %v", addr, err)
 			}
 		}()
 

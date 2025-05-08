@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"

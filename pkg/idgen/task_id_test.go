@@ -207,3 +207,26 @@ func TestTaskIDV2ByContent(t *testing.T) {
 		})
 	}
 }
+
+func TestPersistentCacheTaskIDbyContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		expect  func(t *testing.T, d any)
+	}{
+		{
+			name:    "generate persistentCacheTaskID",
+			content: "This is a test file",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "107352521")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, PersistentCacheTaskIDByContent(tc.content))
+		})
+	}
+}

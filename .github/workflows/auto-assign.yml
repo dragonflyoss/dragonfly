@@ -4,8 +4,11 @@ on:
   pull_request_target:
     types: [opened, reopened, ready_for_review]
 
+permissions:
+  pull-requests: write
+
 jobs:
   add-assignee:
     runs-on: ubuntu-latest
     steps:
-      - uses: kentaro-m/auto-assign-action@248761c4feb3917c1b0444e33fad1a50093b9847
+      - uses: kentaro-m/auto-assign-action@7ae38e468e64dec0af17820972bc4915aa511ec2

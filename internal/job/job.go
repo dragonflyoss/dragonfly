@@ -26,10 +26,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1"
-	machineryv1config "github.com/RichardKnop/machinery/v1/config"
-	machineryv1log "github.com/RichardKnop/machinery/v1/log"
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/dragonflyoss/machinery/v1"
+	machineryv1config "github.com/dragonflyoss/machinery/v1/config"
+	machineryv1log "github.com/dragonflyoss/machinery/v1/log"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/redis/go-redis/v9"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -68,10 +68,24 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 		return nil, err
 	}
 
+	var broker string
+	if cfg.Username != "" {
+		broker = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
+	} else {
+		broker = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
+	}
+
+	var backend string
+	if cfg.Username != "" {
+		backend = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
+	} else {
+		backend = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
+	}
+
 	server, err := machinery.NewServer(&machineryv1config.Config{
-		Broker:          fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB),
+		Broker:          broker,
 		DefaultQueue:    queue.String(),
-		ResultBackend:   fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB),
+		ResultBackend:   backend,
 		ResultsExpireIn: DefaultResultsExpireIn,
 		Redis: &machineryv1config.RedisConfig{
 			MasterName:     cfg.MasterName,

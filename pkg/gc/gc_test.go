@@ -17,6 +17,7 @@
 package gc
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -120,11 +121,11 @@ func TestGC_Run(t *testing.T) {
 
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
-					mr.EXPECT().RunGC().Do(func() { wg.Done() }).Return(nil).Times(1),
+					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(nil).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
 
-				if err := gc.Run(id); err != nil {
+				if err := gc.Run(context.Background(), id); err != nil {
 					t.Error(err)
 				}
 			},
@@ -144,12 +145,12 @@ func TestGC_Run(t *testing.T) {
 				err := errors.New("bar")
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
-					mr.EXPECT().RunGC().Do(func() { wg.Done() }).Return(err).Times(1),
+					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(err).Times(1),
 					ml.EXPECT().Errorf(gomock.Any(), gomock.Eq("foo"), gomock.Eq(err)).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
 
-				if err := gc.Run(id); err != nil {
+				if err := gc.Run(context.Background(), id); err != nil {
 					t.Error(err)
 				}
 			},
@@ -163,7 +164,7 @@ func TestGC_Run(t *testing.T) {
 			},
 			run: func(gc GC, id string, ml *MockLogger, mr *MockRunner, t *testing.T) {
 				assert := assert.New(t)
-				assert.EqualError(gc.Run("bar"), "can not find task bar")
+				assert.EqualError(gc.Run(context.Background(), "bar"), "can not find task bar")
 			},
 		},
 	}
@@ -215,11 +216,11 @@ func TestGC_RunAll(t *testing.T) {
 
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
-					mr.EXPECT().RunGC().Do(func() { wg.Done() }).Return(nil).Times(1),
+					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(nil).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
 
-				gc.RunAll()
+				gc.RunAll(context.Background())
 			},
 		},
 		{
@@ -242,12 +243,12 @@ func TestGC_RunAll(t *testing.T) {
 				err := errors.New("baz")
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
-					mr.EXPECT().RunGC().Do(func() { wg.Done() }).Return(err).Times(1),
+					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(err).Times(1),
 					ml.EXPECT().Errorf(gomock.Any(), gomock.Eq("foo"), gomock.Eq(err)).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
 
-				gc.RunAll()
+				gc.RunAll(context.Background())
 			},
 		},
 	}
@@ -297,6 +298,6 @@ func TestGC_Start(t *testing.T) {
 		wg.Done()
 	}).Times(1)
 
-	gc.Start()
+	gc.Start(context.Background())
 	gc.Stop()
 }

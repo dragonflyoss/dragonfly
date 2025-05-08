@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 
+	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/test/e2e/v2/util"
 )
 
@@ -60,7 +61,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --content-for-calculating-task-id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -68,11 +69,12 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", testFile.GetSha256(), testFile.GetOutputPath())).CombinedOutput()
+			taskID := idgen.PersistentCacheTaskIDByContent(testFile.GetSha256())
+			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", taskID, testFile.GetOutputPath())).CombinedOutput()
 			fmt.Println(string(exportOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
-			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, testFile.GetSha256())
+			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, taskID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
@@ -116,7 +118,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --content-for-calculating-task-id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -124,11 +126,12 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", testFile.GetSha256(), testFile.GetOutputPath())).CombinedOutput()
+			taskID := idgen.PersistentCacheTaskIDByContent(testFile.GetSha256())
+			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", taskID, testFile.GetOutputPath())).CombinedOutput()
 			fmt.Println(string(exportOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
-			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, testFile.GetSha256())
+			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, taskID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
@@ -172,7 +175,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --content-for-calculating-task-id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -180,11 +183,12 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", testFile.GetSha256(), testFile.GetOutputPath())).CombinedOutput()
+			taskID := idgen.PersistentCacheTaskIDByContent(testFile.GetSha256())
+			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --output %s", taskID, testFile.GetOutputPath())).CombinedOutput()
 			fmt.Println(string(exportOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
-			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, testFile.GetSha256())
+			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, taskID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
@@ -228,7 +232,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --content-for-calculating-task-id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -236,11 +240,12 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --transfer-from-dfdaemon --output %s", testFile.GetSha256(), testFile.GetOutputPath())).CombinedOutput()
+			taskID := idgen.PersistentCacheTaskIDByContent(testFile.GetSha256())
+			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --transfer-from-dfdaemon --output %s", taskID, testFile.GetOutputPath())).CombinedOutput()
 			fmt.Println(string(exportOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
-			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, testFile.GetSha256())
+			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, taskID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
@@ -284,7 +289,7 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
+			importOut, err := clientPod.Command("sh", "-c", fmt.Sprintf("dfcache import %s --persistent-replica-count 1 --content-for-calculating-task-id %s", testFile.GetOutputPath(), testFile.GetSha256())).CombinedOutput()
 			fmt.Println(string(importOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -292,11 +297,12 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 
-			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --transfer-from-dfdaemon --output %s", testFile.GetSha256(), testFile.GetOutputPath())).CombinedOutput()
+			taskID := idgen.PersistentCacheTaskIDByContent(testFile.GetSha256())
+			exportOut, err := seedClientPod.Command("sh", "-c", fmt.Sprintf("dfcache export %s --transfer-from-dfdaemon --output %s", taskID, testFile.GetOutputPath())).CombinedOutput()
 			fmt.Println(string(exportOut), err)
 			Expect(err).NotTo(HaveOccurred())
 
-			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, testFile.GetSha256())
+			sha256sum, err = util.CalculateSha256ByPersistentCacheTaskID([]*util.PodExec{seedClientPod}, taskID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 

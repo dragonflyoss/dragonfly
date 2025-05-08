@@ -65,6 +65,9 @@ const (
 
 	// DefaultRedisBackendDB is default db for redis backend.
 	DefaultRedisBackendDB = 2
+
+	// DefaultRedisProxyAddr is default address for redis proxy.
+	DefaultRedisProxyAddr = ":65100"
 )
 
 const (

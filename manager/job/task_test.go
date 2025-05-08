@@ -21,7 +21,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/RichardKnop/machinery/v1"
+	"github.com/dragonflyoss/machinery/v1"
 	"github.com/stretchr/testify/assert"
 
 	"d7y.io/dragonfly/v2/internal/job"

@@ -46,6 +46,7 @@ import (
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
+	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 )
 
@@ -106,6 +107,9 @@ type Server struct {
 
 	// Metrics server.
 	metricsServer *http.Server
+
+	// Redis proxy.
+	redisProxy redis.Proxy
 }
 
 // New creates a new manager server.
@@ -221,6 +225,10 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 		s.metricsServer = metrics.New(&cfg.Metrics, grpcServer)
 	}
 
+	if cfg.Database.Redis.Proxy.Enable {
+		s.redisProxy = redis.NewProxy(cfg.Database.Redis.Proxy.Addr, cfg.Database.Redis.Addrs[0])
+	}
+
 	return s, nil
 }
 
@@ -234,6 +242,7 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("rest server closed unexpect: %v", err)
 			}
 		} else {
@@ -241,6 +250,7 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("rest server closed unexpect: %v", err)
 			}
 		}
@@ -254,7 +264,18 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("metrics server closed unexpect: %v", err)
+			}
+		}()
+	}
+
+	// Started redis proxy server.
+	if s.redisProxy != nil {
+		go func() {
+			logger.Infof("started redis proxy server at %s", s.config.Database.Redis.Proxy.Addr)
+			if err := s.redisProxy.Serve(); err != nil {
+				logger.Fatalf("redis proxy server closed unexpect: %v", err)
 			}
 		}()
 	}
@@ -272,7 +293,7 @@ func (s *Server) Serve() error {
 	}()
 
 	// Started gc server.
-	s.gc.Start()
+	s.gc.Start(context.Background())
 	logger.Info("started gc server")
 
 	// Generate GRPC listener.
@@ -313,6 +334,12 @@ func (s *Server) Stop() {
 		} else {
 			logger.Info("metrics server closed under request")
 		}
+	}
+
+	// Stop redis proxy server.
+	if s.redisProxy != nil {
+		s.redisProxy.Stop()
+		logger.Info("redis proxy server closed under request")
 	}
 
 	// Stop job server.

@@ -17,6 +17,7 @@
 package gc
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -57,7 +58,7 @@ type audit struct {
 }
 
 // RunGC implements the gc Runner interface.
-func (a *audit) RunGC() error {
+func (a *audit) RunGC(ctx context.Context) error {
 	ttl, err := a.getTTL()
 	if err != nil {
 		return err

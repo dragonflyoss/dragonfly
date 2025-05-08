@@ -36,6 +36,7 @@ var (
 	ErrNoCandidateNode = errors.New("no candidate server node")
 )
 
+// IsEndOfStream returns true if the error is end of stream.
 func IsEndOfStream(err error) bool {
 	return err == ErrEndOfStream
 }
@@ -88,6 +89,7 @@ func ConvertGRPCErrorToDfError(err error) error {
 	return err
 }
 
+// IsGRPCDfError checks if the error is a GRPCDfError.
 func IsGRPCDfError(err error) (*DfError, bool) {
 	for _, d := range status.Convert(err).Details() {
 		switch internal := d.(type) {

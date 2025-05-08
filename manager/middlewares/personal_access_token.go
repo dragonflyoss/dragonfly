@@ -66,6 +66,9 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Set the personal access token in the context for audit purposes.
+		c.Set("pat", &token)
+
 		// Check if the token is active.
 		if token.State != models.PersonalAccessTokenStateActive {
 			logger.Errorf("inactive token used: %s, token name: %s, user_id: %d", c.Request.URL.Path, token.Name, token.UserID)
@@ -111,7 +114,6 @@ func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("pat", &token)
 		c.Next()
 	}
 }

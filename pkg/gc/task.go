@@ -19,12 +19,13 @@
 package gc
 
 import (
+	"context"
 	"errors"
 	"time"
 )
 
 type Runner interface {
-	RunGC() error
+	RunGC(context.Context) error
 }
 
 // Task is an struct used to run GC instance.
