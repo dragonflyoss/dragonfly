@@ -101,17 +101,17 @@ func (mr *MockHostManagerMockRecorder) LoadRandom(arg0, arg1, arg2 any) *gomock.
 }
 
 // RunGC mocks base method.
-func (m *MockHostManager) RunGC() error {
+func (m *MockHostManager) RunGC(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunGC")
+	ret := m.ctrl.Call(m, "RunGC", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RunGC indicates an expected call of RunGC.
-func (mr *MockHostManagerMockRecorder) RunGC() *gomock.Call {
+func (mr *MockHostManagerMockRecorder) RunGC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockHostManager)(nil).RunGC))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockHostManager)(nil).RunGC), arg0)
 }
 
 // Store mocks base method.

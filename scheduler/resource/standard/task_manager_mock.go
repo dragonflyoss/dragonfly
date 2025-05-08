@@ -10,6 +10,7 @@
 package standard
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -94,17 +95,17 @@ func (mr *MockTaskManagerMockRecorder) Range(f any) *gomock.Call {
 }
 
 // RunGC mocks base method.
-func (m *MockTaskManager) RunGC() error {
+func (m *MockTaskManager) RunGC(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunGC")
+	ret := m.ctrl.Call(m, "RunGC", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RunGC indicates an expected call of RunGC.
-func (mr *MockTaskManagerMockRecorder) RunGC() *gomock.Call {
+func (mr *MockTaskManagerMockRecorder) RunGC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockTaskManager)(nil).RunGC))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockTaskManager)(nil).RunGC), arg0)
 }
 
 // Store mocks base method.

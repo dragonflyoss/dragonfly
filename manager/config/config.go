@@ -198,6 +198,8 @@ type RedisProxyConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 }
 
+// RedisConfig is redis configuration.
+// see: https://redis.uptrace.dev/guide/universal.html
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
@@ -286,6 +288,7 @@ type MetricsConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 }
 
+// GRPCConfig is gRPC server configuration.
 type GRPCConfig struct {
 	// AdvertiseIP is advertise ip.
 	AdvertiseIP net.IP `yaml:"advertiseIP" mapstructure:"advertiseIP"`

@@ -235,7 +235,7 @@ func (s *Server) Serve() error {
 	}()
 
 	// Serve GC.
-	s.gc.Start()
+	s.gc.Start(context.Background())
 	logger.Info("gc start successfully")
 
 	// Serve Job.

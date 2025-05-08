@@ -19,6 +19,7 @@
 package standard
 
 import (
+	"context"
 	"sync"
 
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
@@ -51,7 +52,7 @@ type TaskManager interface {
 	Range(f func(any, any) bool)
 
 	// Try to reclaim task.
-	RunGC() error
+	RunGC(context.Context) error
 }
 
 // taskManager contains content for task manager.
@@ -113,7 +114,7 @@ func (t *taskManager) Range(f func(key, value any) bool) {
 }
 
 // Try to reclaim task.
-func (t *taskManager) RunGC() error {
+func (t *taskManager) RunGC(ctx context.Context) error {
 	t.Map.Range(func(_, value any) bool {
 		task, ok := value.(*Task)
 		if !ok {
