@@ -42,6 +42,7 @@ const (
 	AuditGCTaskID = "audit"
 )
 
+// NewAuditGCTask returns a new audit GC task.
 func NewAuditGCTask(db *gorm.DB) pkggc.Task {
 	return pkggc.Task{
 		ID:       AuditGCTaskID,
