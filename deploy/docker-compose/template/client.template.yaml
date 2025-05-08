@@ -30,7 +30,7 @@ download:
   # rateLimit is the default rate limit of the download speed in KiB/MiB/GiB per second, default is 10GiB/s.
   rateLimit: 10GiB
   # pieceTimeout is the timeout for downloading a piece from source.
-  pieceTimeout: 30s
+  pieceTimeout: 60s
   # concurrentPieceCount is the number of concurrent pieces to download.
   concurrentPieceCount: 10
 
@@ -76,9 +76,36 @@ scheduler:
   # Announcer will provide the scheduler with peer information for scheduling,
   # peer information includes cpu, memory, etc.
   announceInterval: 10s
-  # scheduleTimeout is the timeout for scheduling. If the scheduling timesout, dfdaemon will back-to-source
-  # download if enableBackToSource is true, otherwise dfdaemon will return download failed.
-  scheduleTimeout: 30s
+  # schedule_timeout is timeout for the scheduler to respond to a scheduling request from dfdaemon, default is 3 hours.
+  #
+  # If the scheduler's response time for a scheduling decision exceeds this timeout,
+  # dfdaemon will encounter a `TokioStreamElapsed(Elapsed(()))` error.
+  #
+  # Behavior upon timeout:
+  #   - If `enable_back_to_source` is `true`, dfdaemon will attempt to download directly
+  #     from the source.
+  #   - Otherwise (if `enable_back_to_source` is `false`), dfdaemon will report a download failure.
+  #
+  # **Important Considerations Regarding Timeout Triggers**:
+  # This timeout isn't solely for the scheduler's direct response. It can also be triggered
+  # if the overall duration of the client's interaction with the scheduler for a task
+  # (e.g., client downloading initial pieces and reporting their status back to the scheduler)
+  # exceeds `schedule_timeout`. During such client-side processing and reporting,
+  # the scheduler might be awaiting these updates before sending its comprehensive
+  # scheduling response, and this entire period is subject to the `schedule_timeout`.
+  #
+  # **Configuration Guidance**:
+  # To prevent premature timeouts, `schedule_timeout` should be configured to a value
+  # greater than the maximum expected time for the *entire scheduling interaction*.
+  # This includes:
+  #   1. The scheduler's own processing and response time.
+  #   2. The time taken by the client to download any initial pieces and download all pieces finished,
+  #      as this communication is part of the scheduling phase.
+  #
+  # Setting this value too low can lead to `TokioStreamElapsed` errors even if the
+  # network and scheduler are functioning correctly but the combined interaction time
+  # is longer than the configured timeout.
+  scheduleTimeout: 3h
   # maxScheduleCount is the max count of schedule.
   maxScheduleCount: 5
   # enableBackToSource indicates whether enable back-to-source download, when the scheduling failed.
