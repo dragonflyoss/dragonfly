@@ -22,9 +22,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	// nolint
-	_ "d7y.io/dragonfly/v2/manager/models"
-	// nolint
 	"d7y.io/dragonfly/v2/manager/types"
+	// nolint
+	_ "d7y.io/dragonfly/v2/manager/models"
 	// nolint
 	_ "d7y.io/dragonfly/v2/pkg/objectstorage"
 )
