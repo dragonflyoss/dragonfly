@@ -48,7 +48,9 @@ func (h *Handlers) GetAudits(ctx *gin.Context) {
 	h.setPaginationDefault(&query.Page, &query.PerPage)
 	audits, count, err := h.service.GetAudits(ctx.Request.Context(), query)
 	if err != nil {
-		ctx.Error(err) //nolint: errcheck
+		func() {
+			_ = ctx.Error(err)
+		}()
 		return
 	}
 
