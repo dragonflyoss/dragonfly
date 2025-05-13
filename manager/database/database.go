@@ -90,7 +90,6 @@ func New(cfg *config.Config) (*Database, error) {
 		SentinelPassword: cfg.Database.Redis.SentinelPassword,
 	})
 	if err != nil {
-		logger.Errorf("redis: %s", err.Error())
 		return nil, err
 	}
 
