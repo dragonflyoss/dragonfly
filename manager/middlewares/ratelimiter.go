@@ -25,6 +25,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 )
 
+// CreateJobRateLimiter create job rate limiter middleware
 func CreateJobRateLimiter(limiter ratelimiter.JobRateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json types.CreateJobRequest

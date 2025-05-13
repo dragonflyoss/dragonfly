@@ -39,6 +39,7 @@ import (
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
+	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	internaljob "d7y.io/dragonfly/v2/internal/job"
@@ -256,15 +257,10 @@ func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *interna
 // If all the seed peers download task failed, return error. If some of the seed peers download task failed, return success tasks and failure tasks.
 // Notify the client that the preheat is successful.
 func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	// If seed peer is disabled, return error.
-	if !j.config.SeedPeer.Enable {
-		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
-	}
-
 	// If scheduler has no available seed peer, return error.
-	seedPeers := j.resource.SeedPeer().Client().SeedPeers()
-	if len(seedPeers) == 0 {
-		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	seedPeers, err := j.selectSeedPeers(req.Percentage, log)
+	if err != nil {
+		return nil, err
 	}
 
 	var (
@@ -401,14 +397,40 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
 }
 
+// selectSeedPeers selects seed peers by percentage.
+func (j *job) selectSeedPeers(percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
+	if !j.config.SeedPeer.Enable {
+		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	}
+
+	seedPeers := j.resource.SeedPeer().Client().SeedPeers()
+	if len(seedPeers) == 0 {
+		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	}
+
+	if percentage == nil {
+		log.Infof("percentage is nil, select all seed peers, length is %d", len(seedPeers))
+		return seedPeers, nil
+	}
+
+	count := (len(seedPeers) * int(*percentage)) / 100
+
+	// Ensure at least one peer is selected if percentage > 0.
+	if count == 0 && *percentage > 0 {
+		count = 1
+	}
+
+	log.Infof("select %d seed peers from %d seed peers, percentage is %d", count, len(seedPeers), *percentage)
+	return seedPeers[:count], nil
+}
+
 // preheatAllPeers preheats job by all peers, only suoported by v2 protocol. Scheduler will trigger all peers to download task.
 // If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 // failure tasks. Notify the client that the preheat is successful.
 func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	// If scheduler has no available peer, return error.
-	peers := j.resource.HostManager().LoadAll()
-	if len(peers) == 0 {
-		return nil, fmt.Errorf("cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	peers, err := j.selectPeers(req.Percentage, log)
+	if err != nil {
+		return nil, err
 	}
 
 	var (
@@ -543,6 +565,29 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 	}
 
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
+}
+
+// selectPeers selects peers by percentage.
+func (j *job) selectPeers(percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
+	peers := j.resource.HostManager().LoadAll()
+	if len(peers) == 0 {
+		return nil, fmt.Errorf("cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	}
+
+	if percentage == nil {
+		log.Infof("percentage is nil, select all peers, length is %d", len(peers))
+		return peers, nil
+	}
+
+	count := (len(peers) * int(*percentage)) / 100
+
+	// Ensure at least one peer is selected if percentage > 0.
+	if count == 0 && *percentage > 0 {
+		count = 1
+	}
+
+	log.Infof("select %d peers from %d peers, percentage is %d", count, len(peers), *percentage)
+	return peers[:count], nil
 }
 
 // preheatV1 preheats job by v1 grpc protocol.
