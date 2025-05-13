@@ -78,7 +78,7 @@ const (
 	DefaultLFUCacheTTL = 3 * time.Minute
 
 	// DefaultLFUCacheSize is default size for lfu cache.
-	DefaultLFUCacheSize = 30 * 1000
+	DefaultLFUCacheSize = 10 * 1000
 )
 
 const (
