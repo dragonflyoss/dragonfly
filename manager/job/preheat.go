@@ -145,6 +145,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 				Headers:                     json.Headers,
 				Scope:                       json.Scope,
 				Percentage:                  json.Percentage,
+				Count:                       json.Count,
 				ConcurrentCount:             json.ConcurrentCount,
 				CertificateChain:            p.certificateChain,
 				InsecureSkipVerify:          p.insecureSkipVerify,
@@ -174,7 +175,7 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 		for _, file := range files {
 			args, err := internaljob.MarshalRequest(file)
 			if err != nil {
-				logger.Errorf("preheat marshal request: %v, error: %v", file, err)
+				logger.Errorf("[preheat]: preheat marshal request: %v, error: %v", file, err)
 				continue
 			}
 
@@ -197,9 +198,9 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 		tasks = append(tasks, *signature)
 	}
 
-	logger.Infof("create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
+	logger.Infof("[preheat]: create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
 	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 0); err != nil {
-		logger.Errorf("create preheat group %s failed", group.GroupUUID, err)
+		logger.Errorf("[preheat]: create preheat group %s failed", group.GroupUUID, err)
 		return nil, err
 	}
 
@@ -372,6 +373,7 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 				Headers:             nethttp.HeaderToMap(header),
 				Scope:               args.Scope,
 				Percentage:          args.Percentage,
+				Count:               args.Count,
 				ConcurrentCount:     args.ConcurrentCount,
 				CertificateChain:    p.certificateChain,
 				InsecureSkipVerify:  p.insecureSkipVerify,
