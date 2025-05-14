@@ -35,27 +35,23 @@ var _ = Describe("Containerd with CRI support", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "f6da796ed137cd53c9759b634aa80e2b93b5c66f7dc23db016d739d63496a430",
+					ID:     "1f047bc5cd298700f1190641992556c3958ad3bf389105dedd537e7913b3f8dc",
 					Sha256: "ca51217de9012bffe54390f1a91365af22a06279a3f2b3e57d4d2dc99b989588",
 				},
 				{
-					ID:     "9176125ce8d7b67276d077ab15af1a5809080f02f16efce2a3d2c4fce600bedd",
+					ID:     "77e5c810d83f5be37314b512ab4acd78341e923c50d4da47c9e1199abfd8da9f",
 					Sha256: "0d816dfc0753b877a04e3df93557bd3597fc7d0e308726655b14401c22a3b92a",
 				},
 				{
-					ID:     "f5d1cbede9a750c5f3014d8aefef5f57a12ee4ee8d48e6201d19d42a69226b2c",
+					ID:     "562184a74d7dc841ce714921d394a95d540534bd8518b20ea0f2bac9ab040694",
 					Sha256: "b5941d5a445040d3a792e5be361ca42989d97fc30ff53031f3004ccea8e44520",
 				},
 				{
-					ID:     "17d49b1b992fde658d1abfce6bae5877f48de760aba17cf573bd0e40e6a15001",
-					Sha256: "c1d6d1b2d5a367259e6e51a7f4d1ccd66a28cc9940d6599d8a8ea9544dd4b4a8",
-				},
-				{
-					ID:     "d68cb057073fb4eff2989e9110e7127d6812415db223a6658e8e71f3686b8acb",
+					ID:     "ca428437ad023f7f6e1174d95b1d352d3c834846a0f1de5ae8dce5cf3d4f5aa5",
 					Sha256: "2a1bc4e0f20bb5ed9a2197ecffde7eace4a9b9179048614205d025df73ba97c7",
 				},
 				{
-					ID:     "5ad1cd4c767450ad216b95bc438d4c228f0945cd247fb43f737ae9beac6fba4b",
+					ID:     "53a25c54374bec29c3b0f313f421ae5d139b27ed3b51bfe1fbfeaa86a08937b5",
 					Sha256: "078ea4eebc352a499d7bb6ff65fab1325226e524acac89a9db922ad91cab88f1",
 				},
 			}
@@ -98,19 +94,19 @@ var _ = Describe("Containerd with CRI support", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "6f55276e68f872fba78843019fd12a8461a14ccf4ac375057680123d3e4d8cbe",
+					ID:     "fd68f82ea453803d0e9fb2976f5f034e0ab90d6aa5856b1adc40039212d92aa8",
 					Sha256: "0f4277a6444fbaf4eb5a7f39103e281dd57969953c7425edc7c8d4aa419347eb",
 				},
 				{
-					ID:     "83b91ece0ebe89274fd99aed64fd4257bccde245e8da0fbbcdf7c4da8d5533de",
+					ID:     "785f97d679062050a12d0489104f13a3e8fe68922e17b95aaed6249d0b983ab9",
 					Sha256: "e55b67c1d5660c34dcb0d8e6923d0a50695a4f0d94f858353069bae17d0bfdea",
 				},
 				{
-					ID:     "6b6a238a08ddaed6594284cff238cdaf0cd0364570023e4731eefca3aa27a002",
+					ID:     "04f978cb5d8062dfccf0e70774c05c8f2c95ee385b3349fe6efbb6d2b15c6d02",
 					Sha256: "8572bc8fb8a32061648dd183b2c0451c82be1bd053a4ea8fae991436b92faebb",
 				},
 				{
-					ID:     "8e373a2dbd9a733585db5478a0d15bab88ec3d4c60f0ce064ef4d7453c97a05f",
+					ID:     "95c7239527dd27df223708d2fa4a9ca2d764d44341ebe4dab600d346502058be",
 					Sha256: "88bfc12bad0cc91b2d47de4c7a755f6547b750256cc4c8b284e07aae13e4e041",
 				},
 			}
@@ -154,27 +150,27 @@ var _ = Describe("Containerd with CRI support", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "eae30e4f11c1f9e46305de15d560f161eca4339358684150bbc6b3636242fa08",
+					ID:     "4977d204abab1b21a677daf2f705934caa7f5f21c364a7625ad230c933b41e72",
 					Sha256: "c8071d0de0f5bb17fde217dafdc9d2813ce9db77e60f6233bcd32f1c8888b121",
 				},
 				{
-					ID:     "fc4538dc3b9f25e601a59302e6edcf7cb9eaf97c4ecda5fd3f600de736e3e5dd",
+					ID:     "cd9e68218c4f69d8b71cec3e9d9342b9665088994dd2049e733a430aaf564d8b",
 					Sha256: "e964513726885fa2f977425fc889eabbe25c9fa47e7a4b0ec5e2baef96290f47",
 				},
 				{
-					ID:     "53cc7eb8cfe8f396d7dcaa25163bdd65720e4ac5d39a70d8a595abde26b86f22",
+					ID:     "94ad52f16ab43c874ab6a0a6480aefe34970139e9c444472fbb01d76b0ec5bda",
 					Sha256: "0e304933d7eae4674e05b3bc409f236c65077e2b7055119bbd66ff613fe5e1ad",
 				},
 				{
-					ID:     "8961dce0ceecdf7eeace18af8c9e5404b279b5cd541f9220c42e049c738d00b9",
+					ID:     "a294e4746f268f08345c522c03e86e3c787b22ff27c2de8cabffd52d14080226",
 					Sha256: "53b01ef3d5d676a8514ded6b469932e33d84738e5e00932ca124382a8567c44b",
 				},
 				{
-					ID:     "829047ff8b3ef37c68764e73ad50dfbf3e657419fa6bf1b373c46ad5dfc48768",
+					ID:     "0036c704a45de385e36c7752e4a3496e9f3f50c37ac5cc4ce737d57aceb3eb12",
 					Sha256: "c9d959fc168ad8bdc9a021066eb9c1dd4de8e860c03619a88d8ba0ff5479d9ea",
 				},
 				{
-					ID:     "7f784cfc82e45628e6cd35fae45b61a0e9ce66b772542f03d650534a34a8297c",
+					ID:     "efcea01bf4082b7425e027a436e6a284d6e46860e053e673678758a906f28660",
 					Sha256: "b6acfae843b58bf14369ebbeafa96af5352cde9a89f8255ca51f92b233a6e405",
 				},
 			}
@@ -218,15 +214,15 @@ var _ = Describe("Containerd with CRI support", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "ec17104ac49cf85fced3652f854e09b0cf0948fb232b136e3f57be3f9aeb77b2",
+					ID:     "0721e454cdc3cf4a6285b8f44638387af69475cc76dcf81b9cd4ae618268b921",
 					Sha256: "c58d97dd21c3b3121f262a1fbb5a278f77ab85dba7a02b819e710f34683cf746",
 				},
 				{
-					ID:     "2453086dcc76db72d09a710be96625d53a41c78747fd56c6ea1f2f340691b731",
+					ID:     "fcae534b9d18697437c096c9442a1800e427a7d8aed80de335a93bef42d881de",
 					Sha256: "2ff0ae26fa61a2b0f88f470a8e50f7623ea48b224eb072a5878a20d663d5307d",
 				},
 				{
-					ID:     "4f89c2f02c36714b19cde131a654babc558c261abb6ee2c94ff54b5fcd4c8daf",
+					ID:     "1ce41bca3caca3d74f262b6e2fbccca6629714f6a31c26fe5c3fe941566b7777",
 					Sha256: "b1826117441e607acd3b98c93cdb16759c2cc2240852055b8a2b5860f3204f1e",
 				},
 			}

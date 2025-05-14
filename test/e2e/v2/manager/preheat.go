@@ -337,11 +337,11 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "50f91088cd60a49bf565396c1f7ba1f8b9d32c9f1541d2e06b085c780030805a",
+					ID:     "a5040eb77de7f771cb3ce3ecb2ebb61af124d3341e0b5c6854b7e220eb0dc680",
 					Sha256: "a711f05d33845e2e9deffcfcc5adf082d7c6e97e3e3a881d193d9aae38f092a8",
 				},
 				{
-					ID:     "a048c8c66a652030fba31514735ff51288c54f72f878e363948303ded065e199",
+					ID:     "f9f24ea0c08c3637d2d5770fbf80a201f69482226de7cf4490bb1c540ac51b37",
 					Sha256: "f643e116a03d9604c344edb345d7592c48cc00f2a4848aaf773411f4fb30d2f5",
 				},
 			}
@@ -391,19 +391,19 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "1a2cf94649557d3e978f355bcc8eaffadd4c8d41e334fc93adc3ea49488d1200",
+					ID:     "d4d951a403de1bffc916f99da4c2240a9d059ebb77d3a72f9aff717fc79ecdc1",
 					Sha256: "f1f1039835051ecc04909f939530e86a20f02d2ce5ad7a81c0fa3616f7303944",
 				},
 				{
-					ID:     "ba71de48fb521ec52a4dff60106af10512eb21a40b8fd1756467af19592e6a74",
+					ID:     "7de709bb37831ab4765124d9ba99e4875292eb64316dbf1a35ddc9fb93bd1f34",
 					Sha256: "871ab018db94b4ae7b137764837bc4504393a60656ba187189e985cd809064f7",
 				},
 				{
-					ID:     "3cf396cec1d067374714655cf98f5e505626d1b6cdec094b1469b3c98569e3d1",
+					ID:     "978cf50feb0176010e9a06fdad59b70527ec113b8c9f55ec0c90e662778711d2",
 					Sha256: "f1a1d290795d904815786e41d39a41dc1af5de68a9e9020baba8bd83b32d8f95",
 				},
 				{
-					ID:     "b04072342af19c13fcda146a71727edd03442d9851ca185d297f53442ba12a22",
+					ID:     "ce58246d09c169d4c1aa8d8c6bf759cfeed9f7641488888610685e19a75fab56",
 					Sha256: "f1ffc4b5459e82dc8e7ddd1d1a2ec469e85a1f076090c22851a1f2ce6f71e1a6",
 				},
 			}
@@ -451,23 +451,23 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "d83d909b2ec5660323a4225149fb87886f9897cf6098ffcb108a77ac252facaf",
+					ID:     "37f5bbbbf666734f24617784b63f74ecffedf963f8d0d69c09263040833ccd35",
 					Sha256: "9986a736f7d3d24bb01b0a560fa0f19c4b57e56c646e1f998941529d28710e6b",
 				},
 				{
-					ID:     "0eb92ed9ea3561063efceaf414e2a5431410d5ba76523bb2e0a4793fdf9a38b1",
+					ID:     "51b0632572673b3ebd4dfa03e0eed7e6d87a40761e21136d12facb6708704e9a",
 					Sha256: "f7307687fd72fb79eadd7f38f8cb9675b76480e32365a5d282a06f788944e9f2",
 				},
 				{
-					ID:     "45e6cddeb6d117e61312e3913779b88e3ac8c37f8df2f0814bf2d8cda6f784d7",
+					ID:     "bef8903b7dd6e0a8a332d588e18050b5a957dd65b168b50550fddace6edc09e0",
 					Sha256: "fc5951fb196d09e569f4592b50e3a71ad01d11da229b8a500fea278eba0170c5",
 				},
 				{
-					ID:     "e1ab22f7ff59940064e2ffde854fe3e0fcd23267268ff382696875c49844c985",
+					ID:     "0f5a6501cc568be92877beec44a0f1c57416b06599921ab264dac41b0bb06af2",
 					Sha256: "c7c72808bf776cd122bdaf4630a4a35ea319603d6a3b6cbffddd4c7fd6d2d269",
 				},
 				{
-					ID:     "56ee9d6d3bcac9e6543073e175ba2a0ee5d37c27d6e1a7daabeea44b7fbdd4a4",
+					ID:     "f84cee1df2c7219fe589903cfff6f9ad71a518f64966a91a3063366dd9b4e063",
 					Sha256: "edbf1aa1d62d9c17605c1ee2d9dff43489bc0f8ae056367734386c35bfae226a",
 				},
 			}
