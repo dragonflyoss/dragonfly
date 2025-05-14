@@ -22,6 +22,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -76,6 +77,7 @@ func NewRedis(cfg *redis.UniversalOptions) (redis.UniversalClient, error) {
 	})
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
+		logger.Errorf("failed to ping redis: %v", err)
 		return nil, err
 	}
 

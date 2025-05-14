@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
 	pkgdigest "d7y.io/dragonfly/v2/pkg/digest"
 	neturl "d7y.io/dragonfly/v2/pkg/net/url"
@@ -103,6 +104,7 @@ func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string
 		params = append(params, strconv.FormatUint(*pieceLength, 10))
 	}
 
+	params = append(params, commonv2.TaskType_STANDARD.String())
 	return pkgdigest.SHA256FromStrings(params...)
 }
 

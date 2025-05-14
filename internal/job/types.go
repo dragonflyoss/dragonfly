@@ -31,6 +31,7 @@ type PreheatRequest struct {
 	Priority                    int32             `json:"priority" validate:"omitempty"`
 	Scope                       string            `json:"scope" validate:"omitempty"`
 	Percentage                  *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
+	Count                       *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
 	ConcurrentCount             int64             `json:"concurrent_count" validate:"omitempty"`
 	CertificateChain            [][]byte          `json:"certificate_chain" validate:"omitempty"`
 	InsecureSkipVerify          bool              `json:"insecure_skip_verify" validate:"omitempty"`

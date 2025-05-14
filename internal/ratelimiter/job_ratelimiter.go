@@ -37,7 +37,7 @@ const (
 	jobRateLimiterSuffix = "job"
 
 	// defaultRefreshInterval is the default interval to refresh the rate limiters.
-	defaultRefreshInterval = 10 * time.Minute
+	defaultRefreshInterval = 3 * time.Minute
 )
 
 // JobRateLimiter is an interface for a job rate limiter.
@@ -94,11 +94,13 @@ func NewJobRateLimiter(database *database.Database) (JobRateLimiter, error) {
 func (j *jobRateLimiter) TakeByClusterID(ctx context.Context, clusterID uint, tokens int64) (time.Duration, error) {
 	rawLimiter, loaded := j.clusters.Load(clusterID)
 	if !loaded {
+		logger.Errorf("[job-rate-limiter]: cluster %d not found", clusterID)
 		return 0, fmt.Errorf("cluster %d not found", clusterID)
 	}
 
 	limiter, ok := rawLimiter.(*limiters.TokenBucket)
 	if !ok {
+		logger.Errorf("[job-rate-limiter]: cluster %d is not a distributed rate limiter", clusterID)
 		return 0, fmt.Errorf("cluster %d is not a distributed rate limiter", clusterID)
 	}
 
@@ -123,9 +125,9 @@ func (j *jobRateLimiter) Serve() {
 	for {
 		select {
 		case <-tick.C:
-			logger.Infof("refresh job rate limiter started")
+			logger.Infof("[job-rate-limiter]: refresh job rate limiter started")
 			if err := j.refresh(context.Background()); err != nil {
-				logger.Errorf("refresh job rate limiter failed: %v", err)
+				logger.Errorf("[job-rate-limiter]: refresh job rate limiter failed: %v", err)
 			}
 		case <-j.done:
 			return
@@ -149,13 +151,13 @@ func (j *jobRateLimiter) refresh(ctx context.Context) error {
 	for _, schedulerCluster := range schedulerClusters {
 		b, err := schedulerCluster.Config.MarshalJSON()
 		if err != nil {
-			logger.Errorf("marshal scheduler cluster %d config failed: %v", schedulerCluster.ID, err)
+			logger.Errorf("[job-rate-limiter]: marshal scheduler cluster %d config failed: %v", schedulerCluster.ID, err)
 			return err
 		}
 
 		var schedulerClusterConfig types.SchedulerClusterConfig
 		if err := json.Unmarshal(b, &schedulerClusterConfig); err != nil {
-			logger.Errorf("unmarshal scheduler cluster %d config failed: %v", schedulerCluster.ID, err)
+			logger.Errorf("[job-rate-limiter]: unmarshal scheduler cluster %d config failed: %v", schedulerCluster.ID, err)
 			return err
 		}
 
@@ -165,7 +167,7 @@ func (j *jobRateLimiter) refresh(ctx context.Context) error {
 			jobRateLimit = int(schedulerClusterConfig.JobRateLimit)
 		}
 
-		logger.Debugf("create job rate limiter for scheduler cluster %d with rate limit %d", schedulerCluster.ID, jobRateLimit)
+		logger.Debugf("[job-rate-limiter]: create job rate limiter for scheduler cluster %d with rate limit %d", schedulerCluster.ID, jobRateLimit)
 		j.clusters.Store(schedulerCluster.ID,
 			NewDistributedRateLimiter(j.database.RDB, j.key(schedulerCluster.ID)).TokenBucket(ctx, int64(jobRateLimit), time.Second))
 	}

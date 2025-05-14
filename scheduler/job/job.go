@@ -162,12 +162,12 @@ func (j *job) Serve() {
 func (j *job) preheat(ctx context.Context, data string) (string, error) {
 	req := &internaljob.PreheatRequest{}
 	if err := internaljob.UnmarshalRequest(data, req); err != nil {
-		logger.Errorf("unmarshal request err: %s, request body: %s", err.Error(), data)
+		logger.Errorf("[preheat]: unmarshal request err: %s, request body: %s", err.Error(), data)
 		return "", err
 	}
 
 	if err := validator.New().Struct(req); err != nil {
-		logger.Errorf("preheat %s validate failed: %s", req.URL, err.Error())
+		logger.Errorf("[preheat]: preheat %s validate failed: %s", req.URL, err.Error())
 		return "", err
 	}
 
@@ -179,14 +179,14 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 	}
 
 	log := logger.WithTask(taskID, req.URL)
-	log.Infof("preheat %s %d request: %#v", req.URL, req.PieceLength, req)
+	log.Infof("[preheat]: preheat %s %d request: %#v", req.URL, req.PieceLength, req)
 
 	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
 	defer cancel()
 
 	switch req.Scope {
 	case managertypes.SingleSeedPeerScope:
-		log.Info("preheat single seed peer")
+		log.Info("[preheat]: preheat single seed peer")
 		resp, err := j.preheatSinglePeer(ctx, taskID, req, log)
 		if err != nil {
 			return "", err
@@ -195,7 +195,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllSeedPeersScope:
-		log.Info("preheat all seed peers")
+		log.Info("[preheat]: preheat all seed peers")
 		resp, err := j.preheatAllSeedPeers(ctx, taskID, req, log)
 		if err != nil {
 			return "", err
@@ -204,7 +204,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllPeersScope:
-		log.Info("preheat all peers")
+		log.Info("[preheat]: preheat all peers")
 		resp, err := j.preheatAllPeers(ctx, taskID, req, log)
 		if err != nil {
 			return "", err
@@ -213,7 +213,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	default:
-		log.Warnf("scope is invalid %s, preheat single peer", req.Scope)
+		log.Warnf("[preheat]: scope is invalid %s, preheat single peer", req.Scope)
 		resp, err := j.preheatSinglePeer(ctx, taskID, req, log)
 		if err != nil {
 			return "", err
@@ -240,7 +240,7 @@ func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *interna
 	// v2 protocol, preheat by v1 grpc protocol.
 	resp, err := j.preheatV2(ctx, taskID, req, log)
 	if err != nil {
-		log.Errorf("preheat failed: %s", err.Error())
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 		if st, ok := status.FromError(err); ok {
 			if st.Code() == codes.Unimplemented {
 				return j.preheatV1(ctx, taskID, req, log)
@@ -258,7 +258,7 @@ func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *interna
 // Notify the client that the preheat is successful.
 func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	// If scheduler has no available seed peer, return error.
-	seedPeers, err := j.selectSeedPeers(req.Percentage, log)
+	seedPeers, err := j.selectSeedPeers(req.Count, req.Percentage, log)
 	if err != nil {
 		return nil, err
 	}
@@ -281,11 +281,11 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 		log := logger.WithHost(idgen.HostIDV2(ip, hostname, true), hostname, ip)
 
 		eg.Go(func() error {
-			log.Info("preheat started")
+			log.Info("[preheat]: preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
-				log.Errorf("preheat failed: %s", err.Error())
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 					URL:         req.URL,
 					Hostname:    hostname,
@@ -314,7 +314,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 				}})
 			if err != nil {
-				log.Errorf("preheat failed: %s", err.Error())
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 					URL:         req.URL,
 					Hostname:    hostname,
@@ -330,7 +330,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 				_, err := stream.Recv()
 				if err != nil {
 					if err == io.EOF {
-						log.Info("preheat succeeded")
+						log.Info("[preheat]: preheat succeeded")
 						successTasks.Store(ip, &internaljob.PreheatSuccessTask{
 							URL:      req.URL,
 							Hostname: hostname,
@@ -340,7 +340,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 						return nil
 					}
 
-					log.Errorf("preheat failed: %s", err.Error())
+					log.Errorf("[preheat]: preheat failed: %s", err.Error())
 					failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 						URL:         req.URL,
 						Hostname:    hostname,
@@ -356,7 +356,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 
 	// Wait for all tasks to complete and print the errors.
 	if err := eg.Wait(); err != nil {
-		log.Errorf("preheat failed: %s", err.Error())
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 	}
 
 	// If successTasks is not empty, return success tasks and failure tasks.
@@ -397,8 +397,9 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
 }
 
-// selectSeedPeers selects seed peers by percentage.
-func (j *job) selectSeedPeers(percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
+// selectSeedPeers selects seed peers by count or percentage. If count and percentage are both nil, select all seed peers.
+// If count and percentage are both set, use count first.
+func (j *job) selectSeedPeers(count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
 	if !j.config.SeedPeer.Enable {
 		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
@@ -408,27 +409,37 @@ func (j *job) selectSeedPeers(percentage *uint8, log *logger.SugaredLoggerOnWith
 		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
-	if percentage == nil {
-		log.Infof("percentage is nil, select all seed peers, length is %d", len(seedPeers))
-		return seedPeers, nil
+	if count != nil {
+		if *count > uint32(len(seedPeers)) {
+			log.Infof("[preheat]: count is %d, but seed peers count is %d. use seed peers count", *count, len(seedPeers))
+			*count = uint32(len(seedPeers))
+		}
+
+		log.Infof("[preheat]: select %d seed peers from %d seed peers", *count, len(seedPeers))
+		return seedPeers[:*count], nil
 	}
 
-	count := (len(seedPeers) * int(*percentage)) / 100
+	if percentage != nil {
+		seedPeerCount := (len(seedPeers) * int(*percentage)) / 100
 
-	// Ensure at least one peer is selected if percentage > 0.
-	if count == 0 && *percentage > 0 {
-		count = 1
+		// Ensure at least one peer is selected if percentage > 0.
+		if seedPeerCount == 0 && *percentage > 0 {
+			seedPeerCount = 1
+		}
+
+		log.Infof("[preheat]: select %d seed peers from %d seed peers, percentage is %d", seedPeerCount, len(seedPeers), *percentage)
+		return seedPeers[:seedPeerCount], nil
 	}
 
-	log.Infof("select %d seed peers from %d seed peers, percentage is %d", count, len(seedPeers), *percentage)
-	return seedPeers[:count], nil
+	log.Infof("[preheat]: count and percentage are both nil, select all seed peers, count is %d", len(seedPeers))
+	return seedPeers, nil
 }
 
 // preheatAllPeers preheats job by all peers, only suoported by v2 protocol. Scheduler will trigger all peers to download task.
 // If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 // failure tasks. Notify the client that the preheat is successful.
 func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	peers, err := j.selectPeers(req.Percentage, log)
+	peers, err := j.selectPeers(req.Count, req.Percentage, log)
 	if err != nil {
 		return nil, err
 	}
@@ -451,11 +462,11 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 		log := logger.WithHost(peer.ID, hostname, ip)
 
 		eg.Go(func() error {
-			log.Info("preheat started")
+			log.Info("[preheat]: preheat started")
 			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 			if err != nil {
-				log.Errorf("preheat failed: %s", err.Error())
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 					URL:         req.URL,
 					Hostname:    hostname,
@@ -484,7 +495,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 				}})
 			if err != nil {
-				log.Errorf("preheat failed: %s", err.Error())
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 					URL:         req.URL,
 					Hostname:    hostname,
@@ -500,7 +511,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 				_, err := stream.Recv()
 				if err != nil {
 					if err == io.EOF {
-						log.Info("preheat succeeded")
+						log.Info("[preheat]: preheat succeeded")
 						successTasks.Store(ip, &internaljob.PreheatSuccessTask{
 							URL:      req.URL,
 							Hostname: hostname,
@@ -510,7 +521,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 						return nil
 					}
 
-					log.Errorf("preheat failed: %s", err.Error())
+					log.Errorf("[preheat]: preheat failed: %s", err.Error())
 					failureTasks.Store(ip, &internaljob.PreheatFailureTask{
 						URL:         req.URL,
 						Hostname:    hostname,
@@ -526,7 +537,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 
 	// Wait for all tasks to complete and print the errors.
 	if err := eg.Wait(); err != nil {
-		log.Errorf("preheat failed: %s", err.Error())
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 	}
 
 	// If successTasks is not empty, return success tasks and failure tasks.
@@ -567,27 +578,38 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
 }
 
-// selectPeers selects peers by percentage.
-func (j *job) selectPeers(percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
+// selectPeers selects peers by count or percentage. If count and percentage are both nil, select all peers.
+// If count and percentage are both set, use count first.
+func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
 	peers := j.resource.HostManager().LoadAll()
 	if len(peers) == 0 {
-		return nil, fmt.Errorf("cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+		return nil, fmt.Errorf("[preheat]: cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
-	if percentage == nil {
-		log.Infof("percentage is nil, select all peers, length is %d", len(peers))
-		return peers, nil
+	if count != nil {
+		if *count > uint32(len(peers)) {
+			log.Infof("[preheat]: count is %d, but peers count is %d. use peers count", *count, len(peers))
+			*count = uint32(len(peers))
+		}
+
+		log.Infof("[preheat]: select %d peers from %d seed peers", *count, len(peers))
+		return peers[:*count], nil
 	}
 
-	count := (len(peers) * int(*percentage)) / 100
+	if percentage != nil {
+		peerCount := (len(peers) * int(*percentage)) / 100
 
-	// Ensure at least one peer is selected if percentage > 0.
-	if count == 0 && *percentage > 0 {
-		count = 1
+		// Ensure at least one peer is selected if percentage > 0.
+		if peerCount == 0 && *percentage > 0 {
+			peerCount = 1
+		}
+
+		log.Infof("[preheat]: select %d peers from %d peers, percentage is %d", peerCount, len(peers), *percentage)
+		return peers[:peerCount], nil
 	}
 
-	log.Infof("select %d peers from %d peers, percentage is %d", count, len(peers), *percentage)
-	return peers[:count], nil
+	log.Infof("[preheat]: count and percentage are both nil, select all peers, count is %d", len(peers))
+	return peers, nil
 }
 
 // preheatV1 preheats job by v1 grpc protocol.
@@ -607,26 +629,26 @@ func (j *job) preheatV1(ctx context.Context, taskID string, req *internaljob.Pre
 		UrlMeta: urlMeta,
 	})
 	if err != nil {
-		log.Errorf("preheat failed: %s", err.Error())
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 		return nil, err
 	}
 
 	for {
 		piece, err := stream.Recv()
 		if err != nil {
-			log.Errorf("recive piece failed: %s", err.Error())
+			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
 			return nil, err
 		}
 
 		if piece.Done == true {
-			log.Info("preheat succeeded")
+			log.Info("[preheat]: preheat succeeded")
 			if host, ok := j.resource.HostManager().Load(piece.HostId); ok {
 				return &internaljob.PreheatResponse{
 					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: host.Hostname, IP: host.IP}},
 				}, nil
 			}
 
-			log.Warnf("host %s not found", piece.HostId)
+			log.Warnf("[preheat]: host %s not found", piece.HostId)
 			return &internaljob.PreheatResponse{
 				SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
 			}, nil
@@ -652,7 +674,7 @@ func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.Pre
 			ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
 		}})
 	if err != nil {
-		log.Errorf("preheat failed: %s", err.Error())
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 		return nil, err
 	}
 
@@ -662,20 +684,20 @@ func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.Pre
 		resp, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				log.Info("preheat succeeded")
+				log.Info("[preheat]: preheat succeeded")
 				if host, ok := j.resource.HostManager().Load(hostID); ok {
 					return &internaljob.PreheatResponse{
 						SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: host.Hostname, IP: host.IP}},
 					}, nil
 				}
 
-				log.Warnf("host %s not found", hostID)
+				log.Warnf("[preheat]: host %s not found", hostID)
 				return &internaljob.PreheatResponse{
 					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
 				}, nil
 			}
 
-			log.Errorf("recive piece failed: %s", err.Error())
+			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
 			return nil, err
 		}
 

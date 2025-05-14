@@ -127,7 +127,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			filters:     []string{},
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "99a47b38e9d3321aebebd715bea0483c1400cef2f767f84d97458f9dcedff221")
+				assert.Equal(d, "27554d06dfc788c2c2c60e01960152ffbd4b145fc103fcb80b432b4dc238a6fe")
 			},
 		},
 		{
@@ -137,7 +137,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			application: "bar",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "160fa7f001d9d2e893130894fbb60a5fb006e1d61bff82955f2946582bc9de1d")
+				assert.Equal(d, "06408fbf247ddaca478f8cb9565fe5591c28efd0994b8fea80a6a87d3203c5ca")
 			},
 		},
 		{
@@ -146,7 +146,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			tag:  "foo",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "2773851c628744fb7933003195db436ce397c1722920696c4274ff804d86920b")
+				assert.Equal(d, "3c3f230ef9f191dd2821510346a7bc138e4894bee9aee184ba250a3040701d2a")
 			},
 		},
 		{
@@ -155,7 +155,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			application: "bar",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "63dee2822037636b0109876b58e95692233840753a882afa69b9b5ee82a6c57d")
+				assert.Equal(d, "c9f9261b7305c24371244f9f149f5d4589ed601348fdf22d7f6f4b10658fdba2")
 			},
 		},
 		{
@@ -164,7 +164,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			pieceLength: &pieceLength,
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "40c21de3ad2f1470ca1a19a2ad2577803a1829851f6cf862ffa2d4577ae51d38")
+				assert.Equal(d, "9f7c9aafbc6f30f8f41a96ca77eeae80c5b60964b3034b0ee43ccf7b2f9e52b8")
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			filters: []string{"foo", "bar"},
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "100680ad546ce6a577f42f52df33b4cfdca756859e664b8d7de329b150d09ce9")
+				assert.Equal(d, "457b4328cde278e422c9e243f7bfd1e97f511fec43a80f535cf6b0ef6b086776")
 			},
 		},
 	}
