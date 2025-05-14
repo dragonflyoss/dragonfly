@@ -17,6 +17,7 @@
 package idgen
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,74 @@ import (
 	pkgdigest "d7y.io/dragonfly/v2/pkg/digest"
 	neturl "d7y.io/dragonfly/v2/pkg/net/url"
 	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
+)
+
+// DefaultFilteredQueryParams is the default filtered query params to generate the task id.
+var DefaultFilteredQueryParams []string = slices.Concat(
+	S3FilteredQueryParams,
+	GcsFilteredQueryParams,
+	OssFilteredQueryParams,
+	ObsFilteredQueryParams,
+	CosFilteredQueryParams,
+	ContainerdFilteredQueryParams,
+)
+
+var (
+	// S3FilteredQueryParams is the default filtered query params with s3 protocol to generate the task id.
+	S3FilteredQueryParams = []string{
+		"X-Amz-Algorithm",
+		"X-Amz-Credential",
+		"X-Amz-Date",
+		"X-Amz-Expires",
+		"X-Amz-SignedHeaders",
+		"X-Amz-Signature",
+		"X-Amz-Security-Token",
+		"X-Amz-User-Agent",
+	}
+
+	// GcsFilteredQueryParams is the filtered query params with gcs protocol to generate the task id.
+	GcsFilteredQueryParams = []string{
+		"X-Goog-Algorithm",
+		"X-Goog-Credential",
+		"X-Goog-Date",
+		"X-Goog-Expires",
+		"X-Goog-SignedHeaders",
+		"X-Goog-Signature",
+	}
+
+	// OssFilteredQueryParams is the default filtered query params with oss protocol to generate the task id.
+	OssFilteredQueryParams = []string{
+		"OSSAccessKeyId",
+		"Expires",
+		"Signature",
+		"SecurityToken",
+	}
+
+	// ObsFilteredQueryParams is the default filtered query params with obs protocol to generate the task id.
+	ObsFilteredQueryParams = []string{
+		"AccessKeyId",
+		"Signature",
+		"Expires",
+		"X-Obs-Date",
+		"X-Obs-Security-Token",
+	}
+
+	// CosFilteredQueryParams is the default filtered query params with cos protocol to generate the task id.
+	CosFilteredQueryParams = []string{
+		"q-sign-algorithm",
+		"q-ak",
+		"q-sign-time",
+		"q-key-time",
+		"q-header-list",
+		"q-url-param-list",
+		"q-signature",
+		"x-cos-security-token",
+	}
+
+	// ContainerdFilteredQueryParams is the default filtered query params with containerd to generate the task id.
+	ContainerdFilteredQueryParams = []string{
+		"ns",
+	}
 )
 
 const (
