@@ -204,11 +204,11 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	bucket.GET("", h.GetBuckets)
 
 	// Config.
-	config := apiv1.Group("/configs")
-	config.POST("", jwt.MiddlewareFunc(), rbac, h.CreateConfig)
-	config.DELETE(":id", jwt.MiddlewareFunc(), rbac, h.DestroyConfig)
-	config.PATCH(":id", jwt.MiddlewareFunc(), rbac, h.UpdateConfig)
-	config.GET(":id", jwt.MiddlewareFunc(), rbac, h.GetConfig)
+	config := apiv1.Group("/configs", jwt.MiddlewareFunc(), rbac)
+	config.POST("", h.CreateConfig)
+	config.DELETE(":id", h.DestroyConfig)
+	config.PATCH(":id", h.UpdateConfig)
+	config.GET(":id", h.GetConfig)
 	config.GET("", h.GetConfigs)
 
 	// TODO Add auth to the following routes and fix the tests.
