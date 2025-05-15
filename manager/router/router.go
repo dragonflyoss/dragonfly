@@ -44,6 +44,7 @@ const (
 	OtelServiceName         = "dragonfly-manager"
 )
 
+// Init initializes the gin engine with all the routes and middleware.
 func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer,
 	limiter ratelimiter.JobRateLimiter, assets static.ServeFileSystem) (*gin.Engine, error) {
 	// Set mode.
