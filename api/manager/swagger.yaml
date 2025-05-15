@@ -732,30 +732,6 @@ definitions:
     - seed_peer_cluster_id
     - type
     type: object
-  d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest:
-    properties:
-      filteredQueryParams:
-        type: string
-      headers:
-        additionalProperties:
-          type: string
-        type: object
-      type:
-        enum:
-        - image
-        - file
-        type: string
-      url:
-        type: string
-    required:
-    - type
-    - url
-    type: object
-  d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse:
-    properties:
-      id:
-        type: string
-    type: object
   d7y_io_dragonfly_v2_manager_types.DeletePermissionForRoleRequest:
     properties:
       action:
@@ -794,17 +770,6 @@ definitions:
       seed_peer_cluster_id:
         type: integer
       updated_at:
-        type: string
-    type: object
-  d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse:
-    properties:
-      finishTime:
-        type: string
-      id:
-        type: string
-      startTime:
-        type: string
-      status:
         type: string
     type: object
   d7y_io_dragonfly_v2_manager_types.PersistentCacheHost:
@@ -4138,61 +4103,6 @@ paths:
       summary: Update Job
       tags:
       - Job
-  /preheats:
-    post:
-      consumes:
-      - application/json
-      description: Create by json config
-      parameters:
-      - description: Preheat
-        in: body
-        name: Preheat
-        required: true
-        schema:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Create V1 Preheat
-      tags:
-      - Preheat
-  /preheats/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Get Preheat by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get V1 Preheat
-      tags:
-      - Preheat
 swagger: "2.0"
 tags:
 - description: API router (/api/v1)

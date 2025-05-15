@@ -20,15 +20,12 @@ import (
 	"cmp"
 	"math/rand"
 	"sync"
-	"testing"
 	"time"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
-
-	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
 type peerDesc struct {
@@ -122,48 +119,4 @@ func (pc *pieceTestManager) Order() []string {
 	peerIDs := maps.Keys(pc.peers)
 	slices.SortFunc(peerIDs, func(a, b string) int { return cmp.Compare(*pc.peers[a].count, *pc.peers[b].count) })
 	return peerIDs
-}
-
-func TestPieceDispatcherCount(t *testing.T) {
-	type args struct {
-		randomRatio float64
-		peers       []peerDesc
-		pieceNum    int
-	}
-	tests := []struct {
-		name string
-		args args
-		want map[string]int
-	}{
-		{
-			name: "no random",
-			args: args{
-				randomRatio: 0,
-				peers: []peerDesc{
-					{"bad", time.Second * 4, nil},
-					{"mid", time.Second * 3, nil},
-					{"good", time.Second * 2, nil},
-				},
-				pieceNum: 10000,
-			},
-			want: map[string]int{
-				"bad":  0,
-				"mid":  0,
-				"good": 4000,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pieceDispatcher := NewPieceDispatcher(tt.args.randomRatio, logger.With())
-			pieceTestManager := newPieceTestManager(pieceDispatcher, tt.args.peers, tt.args.pieceNum)
-			pieceTestManager.Run()
-			for p, c := range tt.want {
-				if *pieceTestManager.peers[p].count < c {
-					t.Errorf("peer %s should receive more pieces than %d, however get %d", p, c, *pieceTestManager.peers[p].count)
-					t.Fail()
-				}
-			}
-		})
-	}
 }

@@ -368,21 +368,6 @@ func (mr *MockServiceMockRecorder) CreateSyncPeersJob(ctx, json any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSyncPeersJob", reflect.TypeOf((*MockService)(nil).CreateSyncPeersJob), ctx, json)
 }
 
-// CreateV1Preheat mocks base method.
-func (m *MockService) CreateV1Preheat(arg0 context.Context, arg1 types.CreateV1PreheatRequest) (*types.CreateV1PreheatResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateV1Preheat", arg0, arg1)
-	ret0, _ := ret[0].(*types.CreateV1PreheatResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateV1Preheat indicates an expected call of CreateV1Preheat.
-func (mr *MockServiceMockRecorder) CreateV1Preheat(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateV1Preheat", reflect.TypeOf((*MockService)(nil).CreateV1Preheat), arg0, arg1)
-}
-
 // DeletePermissionForRole mocks base method.
 func (m *MockService) DeletePermissionForRole(arg0 context.Context, arg1 string, arg2 types.DeletePermissionForRoleRequest) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1128,21 +1113,6 @@ func (m *MockService) GetUsers(arg0 context.Context, arg1 types.GetUsersQuery) (
 func (mr *MockServiceMockRecorder) GetUsers(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsers", reflect.TypeOf((*MockService)(nil).GetUsers), arg0, arg1)
-}
-
-// GetV1Preheat mocks base method.
-func (m *MockService) GetV1Preheat(arg0 context.Context, arg1 string) (*types.GetV1PreheatResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetV1Preheat", arg0, arg1)
-	ret0, _ := ret[0].(*types.GetV1PreheatResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetV1Preheat indicates an expected call of GetV1Preheat.
-func (mr *MockServiceMockRecorder) GetV1Preheat(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetV1Preheat", reflect.TypeOf((*MockService)(nil).GetV1Preheat), arg0, arg1)
 }
 
 // OauthSignin mocks base method.

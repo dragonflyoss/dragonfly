@@ -4070,90 +4070,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/preheats": {
-            "post": {
-                "description": "Create by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Create V1 Preheat",
-                "parameters": [
-                    {
-                        "description": "Preheat",
-                        "name": "Preheat",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/preheats/{id}": {
-            "get": {
-                "description": "Get Preheat by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Get V1 Preheat",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -5225,42 +5141,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest": {
-            "type": "object",
-            "required": [
-                "type",
-                "url"
-            ],
-            "properties": {
-                "filteredQueryParams": {
-                    "type": "string"
-                },
-                "headers": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "image",
-                        "file"
-                    ]
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_types.DeletePermissionForRoleRequest": {
             "type": "object",
             "required": [
@@ -5317,23 +5197,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse": {
-            "type": "object",
-            "properties": {
-                "finishTime": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "startTime": {
-                    "type": "string"
-                },
-                "status": {
                     "type": "string"
                 }
             }

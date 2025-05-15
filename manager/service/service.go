@@ -123,9 +123,6 @@ type Service interface {
 	GetJob(context.Context, uint) (*models.Job, error)
 	GetJobs(context.Context, types.GetJobsQuery) ([]models.Job, int64, error)
 
-	CreateV1Preheat(context.Context, types.CreateV1PreheatRequest) (*types.CreateV1PreheatResponse, error)
-	GetV1Preheat(context.Context, string) (*types.GetV1PreheatResponse, error)
-
 	CreateApplication(context.Context, types.CreateApplicationRequest) (*models.Application, error)
 	DestroyApplication(context.Context, uint) error
 	UpdateApplication(context.Context, uint, types.UpdateApplicationRequest) (*models.Application, error)

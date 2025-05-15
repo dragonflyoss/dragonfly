@@ -251,7 +251,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// Job.
 	ojob := oapiv1.Group("/jobs", personalAccessToken)
-	ojob.POST("", h.CreateJob)
+	ojob.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	ojob.DELETE(":id", h.DestroyJob)
 	ojob.PATCH(":id", h.UpdateJob)
 	ojob.GET(":id", h.GetJob)
@@ -264,13 +264,6 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	oc.PATCH(":id", h.UpdateCluster)
 	oc.GET(":id", h.GetCluster)
 	oc.GET("", h.GetClusters)
-
-	// TODO Remove this api.
-	// Compatible with the V1 preheat.
-	pv1 := r.Group("/preheats")
-	r.GET("_ping", h.GetHealth)
-	pv1.POST("", h.CreateV1Preheat)
-	pv1.GET(":id", h.GetV1Preheat)
 
 	// Health Check.
 	r.GET("/healthy", h.GetHealth)
