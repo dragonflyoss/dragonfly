@@ -34,7 +34,7 @@ func CreateJobRateLimiter(limiter ratelimiter.JobRateLimiter) gin.HandlerFunc {
 			return
 		}
 
-		if _, err := limiter.TakeByClusterIDs(c, json.SchedulerClusterIDs, 1); err != nil {
+		if allowed := limiter.AllowByClusterIDs(c, json.SchedulerClusterIDs); !allowed {
 			c.String(http.StatusTooManyRequests, "rate limit exceeded")
 			c.Abort()
 			return
