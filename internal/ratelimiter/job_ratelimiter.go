@@ -23,8 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mennanov/limiters"
-
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
@@ -42,14 +40,12 @@ const (
 
 // JobRateLimiter is an interface for a job rate limiter.
 type JobRateLimiter interface {
-	// TakeByClusterID takes a token from the rate limiter by cluster ID, returns the time to wait
-	// until the next token is available.
-	TakeByClusterID(ctx context.Context, clusterID uint, tokens int64) (time.Duration, error)
+	// AllowByClusterID checks if a request is allowed based on the rate limit for a specific cluster ID.
+	AllowByClusterID(ctx context.Context, clusterID uint) bool
 
-	// TakeByClusterIDs takes a token from the rate limiter by cluster IDs, returns the time to wait
-	// until the next token is available. If only one cluster is reatcted the limit, return the
-	// time to wait.
-	TakeByClusterIDs(ctx context.Context, clusterIDs []uint, tokens int64) (time.Duration, error)
+	// AllowByClusterIDs checks if a request is allowed based on the rate limit for multiple cluster IDs.
+	// If any cluster ID is not allowed, it returns false.
+	AllowByClusterIDs(ctx context.Context, clusterIDs []uint) bool
 
 	// Serve started job rate limiter server.
 	Serve()
@@ -63,7 +59,7 @@ type jobRateLimiter struct {
 	// database used to store the rate limit.
 	database *database.Database
 
-	// clusters used to store the rate limit by cluster.
+	// clusters is a map of rate limiters for each cluster.
 	clusters *sync.Map
 
 	// refreshInterval is the interval to refresh the rate limiters.
@@ -89,34 +85,44 @@ func NewJobRateLimiter(database *database.Database) (JobRateLimiter, error) {
 	return j, nil
 }
 
-// TakeByClusterID takes a token from the rate limiter by cluster ID, returns the time to wait
-// until the next token is available.
-func (j *jobRateLimiter) TakeByClusterID(ctx context.Context, clusterID uint, tokens int64) (time.Duration, error) {
+// AllowByClusterID checks if a request is allowed based on the rate limit for a specific cluster ID.
+func (j *jobRateLimiter) AllowByClusterID(ctx context.Context, clusterID uint) bool {
 	rawLimiter, loaded := j.clusters.Load(clusterID)
 	if !loaded {
 		logger.Errorf("[job-rate-limiter]: cluster %d not found", clusterID)
-		return 0, fmt.Errorf("cluster %d not found", clusterID)
+		return false
 	}
 
-	limiter, ok := rawLimiter.(*limiters.TokenBucket)
+	limiter, ok := rawLimiter.(DistributedRateLimiter)
 	if !ok {
 		logger.Errorf("[job-rate-limiter]: cluster %d is not a distributed rate limiter", clusterID)
-		return 0, fmt.Errorf("cluster %d is not a distributed rate limiter", clusterID)
+		return false
 	}
 
-	return limiter.Take(ctx, tokens)
+	result, err := limiter.Allow(ctx)
+	if err != nil {
+		logger.Errorf("[job-rate-limiter]: cluster %d allow failed: %v", clusterID, err)
+		return false
+	}
+
+	if result.Allowed == 0 {
+		logger.Errorf("[job-rate-limiter]: cluster %d rate limit exceeded", clusterID)
+		return false
+	}
+
+	return true
 }
 
-// TakeByClusterIDs takes a token from the rate limiter by cluster IDs, returns the time to wait
-// until the next token is available.
-func (j *jobRateLimiter) TakeByClusterIDs(ctx context.Context, clusterIDs []uint, tokens int64) (time.Duration, error) {
+// AllowByClusterIDs checks if a request is allowed based on the rate limit for multiple cluster IDs.
+// If any cluster ID is not allowed, it returns false.
+func (j *jobRateLimiter) AllowByClusterIDs(ctx context.Context, clusterIDs []uint) bool {
 	for _, clusterID := range clusterIDs {
-		if duration, err := j.TakeByClusterID(ctx, clusterID, tokens); err != nil {
-			return duration, err
+		if allowed := j.AllowByClusterID(ctx, clusterID); !allowed {
+			return false
 		}
 	}
 
-	return 0, nil
+	return true
 }
 
 // Serve started rate limiter server.
@@ -164,12 +170,12 @@ func (j *jobRateLimiter) refresh(ctx context.Context) error {
 		// Use the default rate limit if the rate limit is not set.
 		jobRateLimit := config.DefaultClusterJobRateLimit
 		if schedulerClusterConfig.JobRateLimit != 0 {
-			jobRateLimit = int(schedulerClusterConfig.JobRateLimit)
+			jobRateLimit = schedulerClusterConfig.JobRateLimit
 		}
 
 		logger.Debugf("[job-rate-limiter]: create job rate limiter for scheduler cluster %d with rate limit %d", schedulerCluster.ID, jobRateLimit)
 		j.clusters.Store(schedulerCluster.ID,
-			NewDistributedRateLimiter(j.database.RDB, j.key(schedulerCluster.ID)).TokenBucket(ctx, int64(jobRateLimit), time.Second))
+			NewDistributedRateLimiter(j.database.RDB, j.key(schedulerCluster.ID), jobRateLimit))
 	}
 
 	return nil

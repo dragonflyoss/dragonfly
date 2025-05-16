@@ -79,20 +79,57 @@ func (j *job) RunGC(ctx context.Context) error {
 	}()
 
 	for {
-		result := j.db.Where("created_at < ?", time.Now().Add(-ttl)).Limit(DefaultJobGCBatchSize).Unscoped().Delete(&models.Job{})
-		if result.Error != nil {
-			gcResult.Error = result.Error
-			return result.Error
+		var currentBatchAffectedRows int64
+		if err := j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var jobIDs []uint
+			if err := tx.Model(&models.Job{}).
+				Where("created_at < ?", time.Now().Add(-ttl)).
+				Limit(DefaultJobGCBatchSize).
+				Pluck("id", &jobIDs).Error; err != nil {
+				return err
+			}
+
+			if len(jobIDs) == 0 {
+				currentBatchAffectedRows = 0
+				return nil
+			}
+
+			// 1. Explicitly delete from the first join table (e.g., job_seed_peer_cluster).
+			//    Using tx.Exec for raw SQL deletion from the join table.
+			if err := tx.Exec("DELETE FROM job_seed_peer_cluster WHERE job_id IN (?)", jobIDs).Error; err != nil {
+				return err
+			}
+
+			// 2. Explicitly delete from the second join table (e.g., job_scheduler_cluster).
+			if err := tx.Exec("DELETE FROM job_scheduler_cluster WHERE job_id IN (?)", jobIDs).Error; err != nil {
+				return err
+			}
+
+			// 3. Delete the jobs themselves using the collected IDs.
+			//    Use Unscoped() for a hard delete if your models.Job uses GORM's soft delete (gorm.DeletedAt).
+			result := tx.Where("id IN (?)", jobIDs).Unscoped().Delete(&models.Job{})
+			if result.Error != nil {
+				return result.Error
+			}
+			currentBatchAffectedRows = result.RowsAffected
+
+			return nil
+		}); err != nil {
+			gcResult.Error = err
+			logger.Errorf("gc job batch processing failed: %v", err)
+			return err
 		}
 
-		if result.RowsAffected == 0 {
+		if currentBatchAffectedRows == 0 {
+			logger.Info("gc job finished: no more jobs to delete in this iteration.")
 			break
 		}
 
-		gcResult.Purged += result.RowsAffected
-		logger.Infof("gc job deleted %d jobs", result.RowsAffected)
+		gcResult.Purged += currentBatchAffectedRows
+		logger.Infof("gc job deleted %d jobs in this batch", currentBatchAffectedRows)
 	}
 
+	logger.Infof("gc job completed: total %d jobs purged", gcResult.Purged)
 	return nil
 }
 

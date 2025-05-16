@@ -18,42 +18,39 @@ package ratelimiter
 
 import (
 	"context"
-	"time"
 
-	goredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
-	"github.com/mennanov/limiters"
+	redis_rate "github.com/go-redis/redis_rate/v10"
 	redis "github.com/redis/go-redis/v9"
-
-	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
 
 // DistributedRateLimiter is an interface for a distributed rate limiter.
 type DistributedRateLimiter interface {
-	// TokenBucket returns a token bucket rate limiter.
-	TokenBucket(ctx context.Context, capacity int64, per time.Duration) *limiters.TokenBucket
+	// Allow checks if a request is allowed based on the rate limit.
+	Allow(ctx context.Context) (*redis_rate.Result, error)
 }
 
 // distributedRateLimiter is an implementation of DistributedRateLimiter.
 type distributedRateLimiter struct {
-	// Key used to store the rate limit in the database.
+	// key used to store the rate limit in the database.
 	key string
 
-	// Database used to store the rate limit.
-	rdb redis.UniversalClient
+	// limiter is the rate limiter instance.
+	limiter *redis_rate.Limiter
+
+	// limit is the rate limit in requests per second.
+	limit uint32
 }
 
-// NewDistributedRateLimiter creates a new instance of DistributedRateLimiter.
-func NewDistributedRateLimiter(rdb redis.UniversalClient, key string) DistributedRateLimiter {
-	return &distributedRateLimiter{key, rdb}
+// NewDistributedRateLimiter creates a new instance of DistributedRateLimiter. Parameters:
+//   - rdb: Redis client for distributed rate limiting.
+//   - key: Unique key for the rate limit.
+//   - limit: Rate limit in requests per second.
+func NewDistributedRateLimiter(rdb redis.UniversalClient, key string, limit uint32) DistributedRateLimiter {
+	limiter := redis_rate.NewLimiter(rdb)
+	return &distributedRateLimiter{key, limiter, limit}
 }
 
-// locker returns a distributed locker.
-func (d *distributedRateLimiter) locker() limiters.DistLocker {
-	return limiters.NewLockRedis(goredis.NewPool(d.rdb), pkgredis.MakeDistributedRateLimiterLockerKeyInManager(d.key))
-}
-
-// TokenBucket returns a token bucket rate limiter.
-func (d *distributedRateLimiter) TokenBucket(ctx context.Context, capacity int64, per time.Duration) *limiters.TokenBucket {
-	bucket := limiters.NewTokenBucketRedis(d.rdb, pkgredis.MakeDistributedRateLimiterKeyInManager(d.key), per, false)
-	return limiters.NewTokenBucket(capacity, per, d.locker(), bucket, limiters.NewSystemClock(), limiters.NewStdLogger())
+// Allow checks if a request is allowed based on the rate limit.
+func (d *distributedRateLimiter) Allow(ctx context.Context) (*redis_rate.Result, error) {
+	return d.limiter.Allow(ctx, d.key, redis_rate.PerSecond(int(d.limit)))
 }
