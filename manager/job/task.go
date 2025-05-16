@@ -102,7 +102,7 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 	}
 
 	logger.Infof("create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
-	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 0); err != nil {
+	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
 		logger.Errorf("create task group %s failed", group.GroupUUID, err)
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 	}
 
 	logger.Infof("create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
-	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 0); err != nil {
+	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
 		logger.Errorf("create preheat group %s failed", group.GroupUUID, err)
 		return nil, err
 	}

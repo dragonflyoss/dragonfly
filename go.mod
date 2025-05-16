@@ -23,7 +23,7 @@ require (
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.4.0
-	github.com/dragonflyoss/machinery v1.10.10
+	github.com/dragonflyoss/machinery v1.10.13
 	github.com/elastic/go-freelru v0.16.0
 	github.com/fsouza/fake-gcs-server v1.52.2
 	github.com/gaius-qi/ping v1.0.0

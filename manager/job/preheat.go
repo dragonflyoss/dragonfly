@@ -199,7 +199,7 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 	}
 
 	logger.Infof("[preheat]: create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
-	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 0); err != nil {
+	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
 		logger.Errorf("[preheat]: create preheat group %s failed", group.GroupUUID, err)
 		return nil, err
 	}

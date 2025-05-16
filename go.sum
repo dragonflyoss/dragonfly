@@ -441,8 +441,8 @@ github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 h1:ZClxb8laGDf5arX
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1/go.mod h1:cyGadeNEkKy96OOhEzfZl+yxihPEzKnqJwvfuSUqbZE=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
-github.com/dragonflyoss/machinery v1.10.10 h1:vvyPikg8W6Og6jyyUU5VVG+Lzjm+55v9xfVkqKaf8o8=
-github.com/dragonflyoss/machinery v1.10.10/go.mod h1:YUhavio0FVIsY9e3mVrj7weroc08gWm1hiauPDu1S28=
+github.com/dragonflyoss/machinery v1.10.13 h1:0iixzz4rn+oDIDHLz8sj5sQ5veTVg+Z1TOVKm2nnWv8=
+github.com/dragonflyoss/machinery v1.10.13/go.mod h1:YUhavio0FVIsY9e3mVrj7weroc08gWm1hiauPDu1S28=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=

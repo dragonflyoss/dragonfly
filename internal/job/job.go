@@ -88,12 +88,15 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 		ResultBackend:   backend,
 		ResultsExpireIn: DefaultResultsExpireIn,
 		Redis: &machineryv1config.RedisConfig{
-			MasterName:     cfg.MasterName,
-			MaxIdle:        DefaultRedisMaxIdle,
-			IdleTimeout:    DefaultRedisIdleTimeout,
-			ReadTimeout:    DefaultRedisReadTimeout,
-			WriteTimeout:   DefaultRedisWriteTimeout,
-			ConnectTimeout: DefaultRedisConnectTimeout,
+			MasterName:             cfg.MasterName,
+			MaxIdle:                DefaultRedisMaxIdle,
+			MaxActive:              DefaultRedisMaxActive,
+			IdleTimeout:            DefaultRedisIdleTimeout,
+			ReadTimeout:            DefaultRedisReadTimeout,
+			WriteTimeout:           DefaultRedisWriteTimeout,
+			ConnectTimeout:         DefaultRedisConnectTimeout,
+			NormalTasksPollPeriod:  DefaultRedisNormalTasksPollPeriod,
+			DelayedTasksPollPeriod: DefaultRedisDelayedTasksPollPeriod,
 		},
 	})
 	if err != nil {
