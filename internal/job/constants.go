@@ -35,6 +35,9 @@ const (
 
 	// DeleteTaskJob is the name of deleting task job.
 	DeleteTaskJob = "delete_task"
+
+	// GCJob is the name of gc job.
+	GCJob = "gc"
 )
 
 // Machinery server configuration.

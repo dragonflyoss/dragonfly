@@ -51,10 +51,11 @@ func newJobRecorder(db *gorm.DB) *jobRecorder {
 	}
 }
 
-func (jb *jobRecorder) Init(taskID string, args models.JSONMap) error {
+func (jb *jobRecorder) Init(userID uint, taskID string, args models.JSONMap) error {
 	job := models.Job{
 		Type:   GCJobType,
 		TaskID: taskID,
+		UserID: userID,
 		Args:   args,
 	}
 
