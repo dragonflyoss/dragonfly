@@ -234,6 +234,12 @@ type RedisConfig struct {
 	// BackendDB is server backend DB name.
 	BackendDB int `yaml:"backendDB" mapstructure:"backendDB"`
 
+	// PoolSize is the maximum number of connections in the idle connection pool.
+	PoolSize int `yaml:"poolSize" mapstructure:"poolSize"`
+
+	// PoolTimeout is the maximum amount of time a connection may be idle before being closed.
+	PoolTimeout time.Duration `yaml:"poolTimeout" mapstructure:"poolTimeout"`
+
 	// Proxy is redis proxy configuration.
 	// If enabled, the manager starts a TCP proxy (defaulting to port 65100) that
 	// forwards requests to the Redis service. This allows Schedulers to connect to Redis
@@ -433,9 +439,11 @@ func New() *Config {
 				Migrate:              true,
 			},
 			Redis: RedisConfig{
-				DB:        DefaultRedisDB,
-				BrokerDB:  DefaultRedisBrokerDB,
-				BackendDB: DefaultRedisBackendDB,
+				DB:          DefaultRedisDB,
+				BrokerDB:    DefaultRedisBrokerDB,
+				BackendDB:   DefaultRedisBackendDB,
+				PoolSize:    DefaultRedisPoolSize,
+				PoolTimeout: DefaultRedisPoolTimeout,
 				Proxy: RedisProxyConfig{
 					Enable: false,
 					Addr:   DefaultRedisProxyAddr,

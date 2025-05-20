@@ -57,6 +57,12 @@ const (
 )
 
 const (
+	// DefaultRedisPoolSize is default pool size for redis.
+	DefaultRedisPoolSize = 20
+
+	// DefaultRedisPoolTimeout is default pool timeout for redis.
+	DefaultRedisPoolTimeout = 10 * time.Second
+
 	// DefaultRedisDB is default db for redis.
 	DefaultRedisDB = 0
 
@@ -78,7 +84,7 @@ const (
 	DefaultLFUCacheTTL = 3 * time.Minute
 
 	// DefaultLFUCacheSize is default size for lfu cache.
-	DefaultLFUCacheSize = 10 * 1000
+	DefaultLFUCacheSize = 8 * 1000
 )
 
 const (
