@@ -57,6 +57,8 @@ database:
     addrs: [foo, bar]
     masterName: baz
     password: bar
+    poolSize: 10
+    poolTimeout: 1s
     db: 0
     brokerDB: 1
     backendDB: 2
