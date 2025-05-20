@@ -39,6 +39,8 @@ database:
     password: foo
     brokerDB: 1
     backendDB: 2
+    poolSize: 10
+    poolTimeout: 1s
 
 dynConfig:
   refreshInterval: 10s

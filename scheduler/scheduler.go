@@ -122,6 +122,8 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 			Password:         cfg.Database.Redis.Password,
 			SentinelUsername: cfg.Database.Redis.SentinelUsername,
 			SentinelPassword: cfg.Database.Redis.SentinelPassword,
+			PoolSize:         cfg.Database.Redis.PoolSize,
+			PoolTimeout:      cfg.Database.Redis.PoolTimeout,
 		})
 		if err != nil {
 			return nil, err

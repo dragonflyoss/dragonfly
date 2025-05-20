@@ -88,6 +88,8 @@ func New(cfg *config.Config) (*Database, error) {
 		Password:         cfg.Database.Redis.Password,
 		SentinelUsername: cfg.Database.Redis.SentinelUsername,
 		SentinelPassword: cfg.Database.Redis.SentinelPassword,
+		PoolSize:         cfg.Database.Redis.PoolSize,
+		PoolTimeout:      cfg.Database.Redis.PoolTimeout,
 	})
 	if err != nil {
 		return nil, err

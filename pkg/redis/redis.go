@@ -74,6 +74,8 @@ func NewRedis(cfg *redis.UniversalOptions) (redis.UniversalClient, error) {
 		Password:         cfg.Password,
 		SentinelUsername: cfg.SentinelUsername,
 		SentinelPassword: cfg.SentinelPassword,
+		PoolSize:         cfg.PoolSize,
+		PoolTimeout:      cfg.PoolTimeout,
 	})
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
