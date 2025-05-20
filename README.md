@@ -80,7 +80,7 @@ Please refer to our [Code of Conduct][codeconduct].
 [arch]: docs/images/arch.png
 [logo-linear]: docs/images/logo/dragonfly-linear.svg
 [discussion]: https://github.com/dragonflyoss/dragonfly/discussions
-[contributing]: CONTRIBUTING.md
-[codeconduct]: CODE_OF_CONDUCT.md
+[contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+[codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
 [d7y.io]: https://d7y.io/
 [dingtalk]: docs/images/community/dingtalk-group.jpeg
