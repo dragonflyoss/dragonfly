@@ -239,7 +239,7 @@ Dragonfly project, we should reach an agreement on
 the version of tools used in the development environment.
 Here are some dependents with specific version:
 
-- golang: v1.15
+- golang: check [go.mod](./go.mod) for the required version
 - misspell: latest
 - shellCheck: latest
 - docker: latest
@@ -256,7 +256,7 @@ It can reduce problems of the developing environment.
 The Dragonfly project uses
 [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more)
 to manage dependencies on external packages.
-This requires a working Go environment with version 1.15 or greater installed.
+Please check the [go.mod](./go.mod) for required dependencies versions.
 
 To add or update a new dependency, use the `go get` command:
 
