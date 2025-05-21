@@ -95,13 +95,15 @@ func TestConfig_Load(t *testing.T) {
 		},
 		Database: DatabaseConfig{
 			Redis: RedisConfig{
-				Host:       "127.0.0.1",
-				Password:   "foo",
-				Addrs:      []string{"foo", "bar"},
-				MasterName: "baz",
-				Port:       6379,
-				BrokerDB:   DefaultRedisBrokerDB,
-				BackendDB:  DefaultRedisBackendDB,
+				Host:        "127.0.0.1",
+				Password:    "foo",
+				Addrs:       []string{"foo", "bar"},
+				MasterName:  "baz",
+				Port:        6379,
+				BrokerDB:    DefaultRedisBrokerDB,
+				BackendDB:   DefaultRedisBackendDB,
+				PoolSize:    10,
+				PoolTimeout: 1 * time.Second,
 			},
 		},
 		DynConfig: DynConfig{

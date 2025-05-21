@@ -25,6 +25,20 @@ import (
 	"time"
 )
 
+type ContextKey string
+
+func (ck ContextKey) String() string {
+	return string(ck)
+}
+
+var (
+	// ContextKeyUserID is the key for user ID in context.
+	ContextKeyUserID ContextKey = "user_id"
+
+	// ContextKeyTaskID is the key for task ID in context.
+	ContextKeyTaskID ContextKey = "task_id"
+)
+
 // GC is the interface used for release resource.
 type GC interface {
 	// Add adds GC task.

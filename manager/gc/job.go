@@ -64,10 +64,25 @@ func (j *job) RunGC(ctx context.Context) error {
 		return err
 	}
 
-	if err = j.recorder.Init(JobGCTaskID, models.JSONMap{
+	args := models.JSONMap{
 		"ttl":        ttl,
 		"batch_size": DefaultJobGCBatchSize,
-	}); err != nil {
+	}
+
+	var userID uint
+	if id, ok := ctx.Value(pkggc.ContextKeyUserID).(uint); ok {
+		userID = id
+	}
+
+	var taskID string
+	if id, ok := ctx.Value(pkggc.ContextKeyTaskID).(string); ok {
+		taskID = id
+	} else {
+		// Use the default task ID if taskID is not provided. (applied to background periodic execution scenarios)
+		taskID = AuditGCTaskID
+	}
+
+	if err = j.recorder.Init(userID, taskID, args); err != nil {
 		return err
 	}
 

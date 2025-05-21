@@ -20,19 +20,79 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	"d7y.io/dragonfly/v2/pkg/retry"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/structure"
 )
+
+const (
+	// DefaultGCJobPollingTimeout is the default timeout for polling GC job.
+	DefaultGCJobPollingTimeout = 30 * time.Minute
+
+	// DefaultGCJobPollingInterval is the default interval for polling GC job.
+	DefaultGCJobPollingInterval = 5 * time.Second
+)
+
+func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest) (*models.Job, error) {
+	taskID := uuid.NewString()
+	ctx = context.WithValue(ctx, pkggc.ContextKeyTaskID, taskID)
+	ctx = context.WithValue(ctx, pkggc.ContextKeyUserID, json.UserID)
+
+	// This is a non-block function to run the gc task, which will run the task asynchronously in the backend.
+	if err := s.gc.Run(ctx, json.Args.Type); err != nil {
+		return nil, err
+	}
+
+	return s.pollingGCJob(ctx, json.Type, json.UserID, taskID)
+}
+
+func (s *service) pollingGCJob(ctx context.Context, jobType string, userID uint, taskID string) (*models.Job, error) {
+	ctx, cancel := context.WithTimeout(ctx, DefaultGCJobPollingTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(DefaultGCJobPollingInterval)
+	defer ticker.Stop()
+
+	job := models.Job{}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context done: %w", ctx.Err())
+
+		case <-ticker.C:
+			if err := s.db.WithContext(ctx).First(&job, models.Job{
+				Type:   jobType,
+				UserID: userID,
+				TaskID: taskID,
+			}).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					continue
+				}
+
+				return nil, err
+			}
+
+			// Return the job if the job is in success or failure state, otherwise continue polling.
+			if job.State == machineryv1tasks.StateSuccess || job.State == machineryv1tasks.StateFailure {
+				return &job, nil
+			}
+		}
+	}
+}
 
 func (s *service) CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error {
 	schedulers, err := s.findSchedulerInClusters(ctx, json.SchedulerClusterIDs)

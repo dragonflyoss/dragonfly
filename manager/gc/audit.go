@@ -65,10 +65,25 @@ func (a *audit) RunGC(ctx context.Context) error {
 		return err
 	}
 
-	if err := a.recorder.Init(AuditGCTaskID, models.JSONMap{
+	args := models.JSONMap{
 		"ttl":        ttl,
 		"batch_size": DefaultAuditGCBatchSize,
-	}); err != nil {
+	}
+
+	var userID uint
+	if id, ok := ctx.Value(pkggc.ContextKeyUserID).(uint); ok {
+		userID = id
+	}
+
+	var taskID string
+	if id, ok := ctx.Value(pkggc.ContextKeyTaskID).(string); ok {
+		taskID = id
+	} else {
+		// Use the default task ID if taskID is not provided. (applied to background periodic execution scenarios)
+		taskID = AuditGCTaskID
+	}
+
+	if err := a.recorder.Init(userID, taskID, args); err != nil {
 		return err
 	}
 

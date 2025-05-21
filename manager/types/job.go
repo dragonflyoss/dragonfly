@@ -276,3 +276,22 @@ type DeleteTaskArgs struct {
 	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
 	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
+
+type CreateGCJobRequest struct {
+	// BIO is the description of the job.
+	BIO string `json:"bio" binding:"omitempty"`
+
+	// Type is the type of the job.
+	Type string `json:"type" binding:"required"`
+
+	// Args is the arguments of the gc.
+	Args GCArgs `json:"args" binding:"required"`
+
+	// UserID is the user id of the job.
+	UserID uint `json:"user_id" binding:"omitempty"`
+}
+
+type GCArgs struct {
+	// Type is the type of the job.
+	Type string `json:"type" binding:"required,oneof=audit job"`
+}

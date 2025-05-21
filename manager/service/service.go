@@ -33,6 +33,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 	"d7y.io/dragonfly/v2/manager/types"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
 )
 
@@ -118,6 +119,7 @@ type Service interface {
 	CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error
 	CreateDeleteTaskJob(context.Context, types.CreateDeleteTaskJobRequest) (*models.Job, error)
 	CreateGetTaskJob(context.Context, types.CreateGetTaskJobRequest) (*models.Job, error)
+	CreateGCJob(context.Context, types.CreateGCJobRequest) (*models.Job, error)
 	DestroyJob(context.Context, uint) error
 	UpdateJob(context.Context, uint, types.UpdateJobRequest) (*models.Job, error)
 	GetJob(context.Context, uint) (*models.Job, error)
@@ -152,18 +154,20 @@ type service struct {
 	rdb           redis.UniversalClient
 	cache         *cache.Cache
 	job           *job.Job
+	gc            pkggc.GC
 	enforcer      *casbin.Enforcer
 	objectStorage objectstorage.ObjectStorage
 }
 
 // NewREST returns a new REST instance
-func New(cfg *config.Config, database *database.Database, cache *cache.Cache, job *job.Job, enforcer *casbin.Enforcer, objectStorage objectstorage.ObjectStorage) Service {
+func New(cfg *config.Config, database *database.Database, cache *cache.Cache, job *job.Job, gc pkggc.GC, enforcer *casbin.Enforcer, objectStorage objectstorage.ObjectStorage) Service {
 	return &service{
 		config:        cfg,
 		db:            database.DB,
 		rdb:           database.RDB,
 		cache:         cache,
 		job:           job,
+		gc:            gc,
 		enforcer:      enforcer,
 		objectStorage: objectStorage,
 	}

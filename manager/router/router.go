@@ -252,7 +252,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// Job.
 	ojob := oapiv1.Group("/jobs", personalAccessToken)
-	ojob.POST("", h.CreateJob)
+	ojob.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	ojob.DELETE(":id", h.DestroyJob)
 	ojob.PATCH(":id", h.UpdateJob)
 	ojob.GET(":id", h.GetJob)

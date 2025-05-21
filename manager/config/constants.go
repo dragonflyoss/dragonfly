@@ -58,7 +58,7 @@ const (
 
 const (
 	// DefaultRedisPoolSize is default pool size for redis.
-	DefaultRedisPoolSize = 20
+	DefaultRedisPoolSize = 40
 
 	// DefaultRedisPoolTimeout is default pool timeout for redis.
 	DefaultRedisPoolTimeout = 10 * time.Second

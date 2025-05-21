@@ -34,7 +34,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/cache"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
-	"d7y.io/dragonfly/v2/manager/gc"
+	managergc "d7y.io/dragonfly/v2/manager/gc"
 	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
@@ -167,20 +167,21 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 
 	// Initialize garbage collector.
-	s.gc = pkggc.New()
-
+	gc := pkggc.New()
 	// Register job gc task.
-	if err := s.gc.Add(gc.NewJobGCTask(db.DB)); err != nil {
+	if err := gc.Add(managergc.NewJobGCTask(db.DB)); err != nil {
 		return nil, err
 	}
 
 	// Register audit gc task.
-	if err := s.gc.Add(gc.NewAuditGCTask(db.DB)); err != nil {
+	if err := gc.Add(managergc.NewAuditGCTask(db.DB)); err != nil {
 		return nil, err
 	}
 
+	s.gc = gc
+
 	// Initialize REST server.
-	restService := service.New(cfg, db, cache, job, enforcer, objectStorage)
+	restService := service.New(cfg, db, cache, job, gc, enforcer, objectStorage)
 	router, err := router.Init(cfg, d.LogDir(), restService, db, enforcer, s.jobRateLimiter, EmbedFolder(assets, assetsTargetPath))
 	if err != nil {
 		return nil, err

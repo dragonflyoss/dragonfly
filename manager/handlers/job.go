@@ -118,6 +118,20 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 		}
 
 		ctx.JSON(http.StatusOK, job)
+	case job.GCJob:
+		var json types.CreateGCJobRequest
+		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+
+		job, err := h.service.CreateGCJob(ctx.Request.Context(), json)
+		if err != nil {
+			ctx.Error(err) // nolint: errcheck
+			return
+		}
+
+		ctx.JSON(http.StatusOK, job)
 	default:
 		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "Unknow type"})
 	}

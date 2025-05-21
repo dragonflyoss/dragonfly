@@ -283,6 +283,12 @@ type RedisConfig struct {
 	// SentinelPassword is sentinel server password.
 	SentinelPassword string `yaml:"sentinelPassword" mapstructure:"sentinelPassword"`
 
+	// PoolSize is the maximum number of idle connections in the pool.
+	PoolSize int `yaml:"poolSize" mapstructure:"poolSize"`
+
+	// PoolTimeout is the maximum amount of time a connection may be idle before being closed.
+	PoolTimeout time.Duration `yaml:"poolTimeout" mapstructure:"poolTimeout"`
+
 	// BrokerDB is broker database name.
 	BrokerDB int `yaml:"brokerDB" mapstructure:"brokerDB"`
 
@@ -334,8 +340,10 @@ func New() *Config {
 		},
 		Database: DatabaseConfig{
 			Redis: RedisConfig{
-				BrokerDB:  DefaultRedisBrokerDB,
-				BackendDB: DefaultRedisBackendDB,
+				BrokerDB:    DefaultRedisBrokerDB,
+				BackendDB:   DefaultRedisBackendDB,
+				PoolSize:    DefaultRedisPoolSize,
+				PoolTimeout: DefaultRedisPoolTimeout,
 			},
 		},
 		DynConfig: DynConfig{

@@ -51,6 +51,12 @@ const (
 
 	// DefaultRedisBackendDB is default db for redis backend.
 	DefaultRedisBackendDB = 2
+
+	// DefaultRedisPoolSize is default pool size for redis.
+	DefaultRedisPoolSize = 20
+
+	// DefaultRedisPoolTimeout is default pool timeout for redis.
+	DefaultRedisPoolTimeout = 10 * time.Second
 )
 
 const (
