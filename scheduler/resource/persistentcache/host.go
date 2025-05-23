@@ -243,7 +243,7 @@ type Disk struct {
 	ReadBandwidth uint64
 }
 
-// New host instance.
+// NewHost returns a new host.
 func NewHost(
 	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort int32,
 	schedulerClusterId uint64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
