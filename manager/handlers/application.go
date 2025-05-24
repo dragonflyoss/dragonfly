@@ -44,9 +44,14 @@ func (h *Handlers) CreateApplication(ctx *gin.Context) {
 		return
 	}
 
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	application, err := h.service.CreateApplication(ctx.Request.Context(), json)
 	if err != nil {
-		ctx.Error(err) // nolint: errcheck
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		return
 	}
 
@@ -71,8 +76,13 @@ func (h *Handlers) DestroyApplication(ctx *gin.Context) {
 		return
 	}
 
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	if err := h.service.DestroyApplication(ctx.Request.Context(), params.ID); err != nil {
-		ctx.Error(err) // nolint: errcheck
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		return
 	}
 
@@ -104,9 +114,14 @@ func (h *Handlers) UpdateApplication(ctx *gin.Context) {
 		return
 	}
 
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	application, err := h.service.UpdateApplication(ctx.Request.Context(), params.ID, json)
 	if err != nil {
-		ctx.Error(err) // nolint: errcheck
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		return
 	}
 
@@ -131,9 +146,14 @@ func (h *Handlers) GetApplication(ctx *gin.Context) {
 		return
 	}
 
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	application, err := h.service.GetApplication(ctx.Request.Context(), params.ID)
 	if err != nil {
-		ctx.Error(err) // nolint: errcheck
+		ctx.JSON(http.StatusNotFound, gin.H{"errors": err.Error()})
 		return
 	}
 
@@ -159,10 +179,23 @@ func (h *Handlers) GetApplications(ctx *gin.Context) {
 		return
 	}
 
+	// Validate pagination parameters
+	if query.Page < 0 {
+		query.Page = 0
+	}
+	if query.PerPage < 2 || query.PerPage > 50 {
+		query.PerPage = 10
+	}
+
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	h.setPaginationDefault(&query.Page, &query.PerPage)
 	applications, count, err := h.service.GetApplications(ctx.Request.Context(), query)
 	if err != nil {
-		ctx.Error(err) // nolint: errcheck
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		return
 	}
 
