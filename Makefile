@@ -61,12 +61,6 @@ docker-build-manager:
 	./hack/docker-build.sh manager
 .PHONY: docker-build-manager
 
-# Build testing tools image.
-docker-build-testing-tools: build-dirs
-	@echo "Begin to testing tools image."
-	./test/tools/no-content-length/build.sh
-.PHONY: docker-build-testing-tools
-
 # Push dfdaemon image.
 docker-push-dfdaemon: docker-build-dfdaemon
 	@echo "Begin to push dfdaemon docker image."
@@ -298,16 +292,6 @@ build-dfstore-man-page:
 	@pandoc -s -t man ./build/package/docs/dfstore/dfstore_version.md -o ./build/package/docs/dfstore/dfstore-version.1
 .PHONY: build-dfstore-man-page
 
-# Generate e2e sha256sum.
-build-e2e-sha256sum:
-	@GOOS=linux GOARCH=amd64 go build -o /tmp/sha256sum-offset test/tools/sha256sum-offset/main.go
-.PHONY: build-e2e-sha256sum
-
-# Generate e2e download grpc test binary.
-build-e2e-download-grpc-test:
-	@GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /tmp/download-grpc-test test/tools/download-grpc-test/main.go
-.PHONY: build-e2e-download-grpc-test
-
 # Run unittests.
 test:
 	@go test -v -race -short ${PKG_LIST}
@@ -331,12 +315,12 @@ install-e2e-test:
 .PHONY: install-e2e-test
 
 # Run E2E tests.
-e2e-test: install-e2e-test build-e2e-sha256sum build-e2e-download-grpc-test
+e2e-test: install-e2e-test build-e2e-sha256sum
 	@ginkgo -v -r --race --fail-fast --cover --trace --show-node-events test/e2e
 .PHONY: e2e-test
 
 # Run E2E tests with coverage.
-e2e-test-coverage: install-e2e-test build-e2e-sha256sum build-e2e-download-grpc-test
+e2e-test-coverage: install-e2e-test build-e2e-sha256sum
 	@ginkgo -v -r --race --fail-fast --cover --trace --show-node-events test/e2e
 	@cat coverprofile.out >> coverage.txt
 .PHONY: e2e-test-coverage
@@ -349,7 +333,7 @@ clean-e2e-test:
 .PHONY: clean-e2e-test
 
 # Kind load dragonfly.
-kind-load: kind-load-scheduler kind-load-dfdaemon kind-load-manager kind-load-testing-tools
+kind-load: kind-load-scheduler kind-load-dfdaemon kind-load-manager
 	@echo "Kind load image done."
 .PHONY: kind-load
 
@@ -367,11 +351,6 @@ kind-load-dfdaemon:
 kind-load-manager:
 	@./hack/kind-load.sh manager
 .PHONY: kind-load-manager
-
-# Run kind load docker testing tools.
-kind-load-testing-tools:
-	@./hack/kind-load.sh no-content-length
-.PHONY: kind-load-testing-tools
 
 # Run code lint.
 lint: markdownlint
@@ -427,7 +406,6 @@ help:
 	@echo "make build-manager-server           build manager server"
 	@echo "make build-manager-console          build manager console"
 	@echo "make build-e2e-sha256sum            build sha256sum test tool"
-	@echo "make build-e2e-download-grpc-test   build download grpc test tool"
 	@echo "make install-dfget                  install dfget"
 	@echo "make install-scheduler              install scheduler"
 	@echo "make install-manager                install manager"
@@ -452,7 +430,6 @@ help:
 	@echo "make kind-load-scheduler            kind load scheduler docker image"
 	@echo "make kind-load-dfdaemon             kind load dfdaemon docker image"
 	@echo "make kind-load-manager              kind load manager docker image"
-	@echo "make kind-load-testing-tools        kind load testing tools docker image"
 	@echo "make lint                           run code lint"
 	@echo "make markdownlint                   run markdown lint"
 	@echo "make generate                       run go generate"

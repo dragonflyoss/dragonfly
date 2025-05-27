@@ -401,6 +401,15 @@ type NetworkConfig struct {
 // New config instance.
 func New() *Config {
 	return &Config{
+		Options: base.Options{
+			Console:   false,
+			Verbose:   false,
+			PProfPort: -1,
+			Tracing: base.TracingConfig{
+				Addr:        "",
+				ServiceName: types.ManagerName,
+			},
+		},
 		Server: ServerConfig{
 			Name: DefaultServerName,
 			GRPC: GRPCConfig{

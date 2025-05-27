@@ -179,7 +179,7 @@ func (o *objectStorage) initRouter(cfg *config.DaemonOption, logDir string) *gin
 	p.Use(r)
 
 	// Opentelemetry.
-	if cfg.Options.Telemetry.Jaeger != "" {
+	if cfg.Tracing.Addr != "" {
 		r.Use(otelgin.Middleware(OtelServiceName))
 	}
 

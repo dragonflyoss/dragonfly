@@ -17,6 +17,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
 	"d7y.io/dragonfly/v2/client/config"
@@ -36,7 +38,10 @@ var deleteCmd = &cobra.Command{
 	SilenceUsage:       true,
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runDfcacheSubcmd(config.CmdDelete, args)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		return runDfcacheSubcmd(ctx, config.CmdDelete, args)
 	},
 }
 

@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 
-	_ "d7y.io/dragonfly/v2/test/e2e/v2/manager"
-	"d7y.io/dragonfly/v2/test/e2e/v2/util"
+	_ "d7y.io/dragonfly/v2/test/e2e/manager"
+	"d7y.io/dragonfly/v2/test/e2e/util"
 )
 
 var _ = AfterSuite(func() {

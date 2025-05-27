@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -46,6 +47,9 @@ for managing schedulers and seed peers, offering http apis and portal, etc.`,
 	DisableAutoGenTag: true,
 	SilenceUsage:      true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		// Convert config.
 		if err := cfg.Convert(); err != nil {
 			return err
@@ -73,7 +77,7 @@ for managing schedulers and seed peers, offering http apis and portal, etc.`,
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.ManagerName))
 
-		return runManager(d)
+		return runManager(ctx, d)
 	},
 }
 
@@ -112,9 +116,9 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	return dfpath.New(options...)
 }
 
-func runManager(d dfpath.Dfpath) error {
+func runManager(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-	shutdown := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
+	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
 	defer shutdown()
 
 	svr, err := manager.New(cfg, d)

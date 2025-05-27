@@ -27,7 +27,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/structure"
-	"d7y.io/dragonfly/v2/test/e2e/v2/util"
+	"d7y.io/dragonfly/v2/test/e2e/util"
 )
 
 var _ = Describe("GetTask and DeleteTask with Manager", func() {

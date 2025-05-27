@@ -67,6 +67,9 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:       true,
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		start := time.Now()
 
 		// Convert config
@@ -104,7 +107,7 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("output path: %s\n", dfgetConfig.Output)
 
 		// do get file
-		err = runDfget(cmd, d.DfgetLockPath(), d.DaemonSockPath())
+		err = runDfget(ctx, cmd, d.DfgetLockPath(), d.DaemonSockPath())
 		if err != nil {
 			msg := fmt.Sprintf("download success: %t, cost: %d ms error: %s", false, time.Since(start).Milliseconds(), err.Error())
 			logger.With("url", dfgetConfig.URL).Info(msg)
@@ -232,10 +235,10 @@ func initDfgetDfpath(cfg *config.ClientOption) (dfpath.Dfpath, error) {
 }
 
 // runDfget does some init operations and starts to download.
-func runDfget(cmd *cobra.Command, dfgetLockPath, daemonSockPath string) error {
+func runDfget(ctx context.Context, cmd *cobra.Command, dfgetLockPath, daemonSockPath string) error {
 	logger.Infof("version:\n%s", version.Version())
 
-	ff := dependency.InitMonitor(dfgetConfig.PProfPort, dfgetConfig.Telemetry)
+	ff := dependency.InitMonitor(ctx, dfgetConfig.PProfPort, dfgetConfig.Tracing)
 	// stop statsview
 	defer ff()
 

@@ -17,14 +17,16 @@
 package base
 
 type Options struct {
-	Console   bool            `yaml:"console" mapstructure:"console"`
-	Verbose   bool            `yaml:"verbose" mapstructure:"verbose"`
-	PProfPort int             `yaml:"pprof-port" mapstructure:"pprof-port"`
-	Telemetry TelemetryOption `yaml:",inline" mapstructure:",squash"`
+	Console   bool          `yaml:"console" mapstructure:"console"`
+	Verbose   bool          `yaml:"verbose" mapstructure:"verbose"`
+	PProfPort int           `yaml:"pprof-port" mapstructure:"pprof-port"`
+	Tracing   TracingConfig `yaml:"tracing" mapstructure:"tracing"`
 }
 
-// TelemetryOption is the option for telemetry
-type TelemetryOption struct {
-	Jaeger      string `yaml:"jaeger" mapstructure:"jaeger"`
+// TracingConfig defines the configuration for OpenTelemetry tracing.
+type TracingConfig struct {
+	// Addr is the address of the tracing collector.
+	Addr string `yaml:"addr" mapstructure:"addr"`
+	// ServiceName is the name of the service for tracing.
 	ServiceName string `yaml:"service-name" mapstructure:"service-name"`
 }

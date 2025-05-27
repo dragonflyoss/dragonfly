@@ -114,7 +114,7 @@ func initDfcacheDfpath(cfg *config.CacheOption) (dfpath.Dfpath, error) {
 }
 
 // runDfcache does some init operations and starts to download.
-func runDfcacheSubcmd(cmdName string, args []string) error {
+func runDfcacheSubcmd(ctx context.Context, cmdName string, args []string) error {
 	// Convert config
 	if err := dfcacheConfig.Convert(cmdName, args); err != nil {
 		return err
@@ -147,7 +147,7 @@ func runDfcacheSubcmd(cmdName string, args []string) error {
 	}
 	logger.Infof("version:\n%s", version.Version())
 
-	ff := dependency.InitMonitor(dfcacheConfig.PProfPort, dfcacheConfig.Telemetry)
+	ff := dependency.InitMonitor(ctx, dfcacheConfig.PProfPort, dfcacheConfig.Tracing)
 	defer ff()
 
 	if dfdaemonClient, err = checkDaemon(d.DaemonSockPath()); err != nil {

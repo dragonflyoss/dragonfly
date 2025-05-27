@@ -1,4 +1,4 @@
-name: E2E Test With Nydus(API v2 - Rust Client)
+name: E2E Test With Nydus
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
   KIND_VERSION: v0.12.0
   CONTAINERD_VERSION: v1.5.2
   NERDCTL_VER: 0.22.2
-  KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
+  KIND_CONFIG_PATH: test/testdata/kind/config.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
   NYDUS_SNAPSHOTTER_CHARTS_PATH: deploy/helm-charts/charts/nydus-snapshotter
 
@@ -106,14 +106,14 @@ jobs:
         run: |
           helm install --wait --timeout 10m --dependency-update \
             --create-namespace --namespace dragonfly-system \
-            -f test/testdata/charts/config-v2.yaml \
+            -f test/testdata/charts/config.yaml \
             dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
 
       - name: Setup nydus
         run: |
           helm install --wait --timeout 10m --dependency-update \
             --create-namespace --namespace nydus-system \
-            -f test/testdata/charts/config-v2-nydus.yaml \
+            -f test/testdata/charts/config-nydus.yaml \
             nydus-snapshotter ${{ env.NYDUS_SNAPSHOTTER_CHARTS_PATH }}
 
           export ns=nydus-system

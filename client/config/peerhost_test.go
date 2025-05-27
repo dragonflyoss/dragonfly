@@ -236,8 +236,8 @@ func TestPeerHostOption_Load(t *testing.T) {
 			Console:   true,
 			Verbose:   true,
 			PProfPort: -1,
-			Telemetry: base.TelemetryOption{
-				Jaeger:      "foo",
+			Tracing: base.TracingConfig{
+				Addr:        "foo",
 				ServiceName: "bar",
 			},
 		},

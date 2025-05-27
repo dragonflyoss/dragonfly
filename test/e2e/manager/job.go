@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega" //nolint
 
 	"d7y.io/dragonfly/v2/manager/models"
-	"d7y.io/dragonfly/v2/test/e2e/v2/util"
+	"d7y.io/dragonfly/v2/test/e2e/util"
 )
 
 func waitForDone(job *models.Job, pod *util.PodExec) bool {
