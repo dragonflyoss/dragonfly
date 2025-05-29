@@ -49,7 +49,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/memberlist v0.5.3
-	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.25.3+incompatible
+	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.25.4+incompatible
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/johanbrandhorst/certify v1.9.0
@@ -101,7 +101,6 @@ require (
 	gorm.io/driver/postgres v1.4.8
 	gorm.io/gorm v1.25.0
 	gorm.io/plugin/soft_delete v1.2.1
-	k8s.io/component-base v0.32.2
 	moul.io/zapgorm2 v1.3.0
 	stathat.com/c/consistent v1.0.0
 )
@@ -124,7 +123,6 @@ require (
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
@@ -276,7 +274,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
-	k8s.io/apimachinery v0.32.2 // indirect
-	k8s.io/klog/v2 v2.130.1 // indirect
-	sigs.k8s.io/yaml v1.4.0 // indirect
 )
