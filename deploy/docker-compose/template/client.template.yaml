@@ -1,5 +1,5 @@
-# verbose prints log to stdout.
-verbose: true
+# console prints log to stdout.
+console: true
 
 log:
   # Specify the logging level [trace, debug, info, warn, error]
