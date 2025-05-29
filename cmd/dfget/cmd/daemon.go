@@ -55,6 +55,9 @@ it supports container engine, wget and other downloading tools through proxy fun
 	SilenceUsage:       true,
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		// Convert config
 		if err := cfg.Convert(); err != nil {
 			return err
@@ -82,7 +85,7 @@ it supports container engine, wget and other downloading tools through proxy fun
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.DaemonName))
 
-		return runDaemon(d)
+		return runDaemon(ctx, d)
 	},
 }
 
@@ -144,7 +147,7 @@ func initDaemonDfpath(cfg *config.DaemonOption) (dfpath.Dfpath, error) {
 	return dfpath.New(options...)
 }
 
-func runDaemon(d dfpath.Dfpath) error {
+func runDaemon(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("Version:\n%s", version.Version())
 	netAddr := &dfnet.NetAddr{Type: dfnet.UNIX, Addr: d.DaemonSockPath()}
 	daemonClient, err := client.GetInsecureV1(context.Background(), netAddr.String())
@@ -193,7 +196,7 @@ func runDaemon(d dfpath.Dfpath) error {
 
 	logger.Infof("daemon is launched by pid: %d", viper.GetInt("launcher"))
 
-	ff := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
+	ff := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
 	defer ff()
 
 	svr, err := server.New(cfg, d)

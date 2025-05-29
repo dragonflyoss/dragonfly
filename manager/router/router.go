@@ -37,11 +37,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/handlers"
 	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/service"
-)
-
-const (
-	PrometheusSubsystemName = "dragonfly_manager"
-	OtelServiceName         = "dragonfly-manager"
+	"d7y.io/dragonfly/v2/pkg/types"
 )
 
 // Init initializes the gin engine with all the routes and middleware.
@@ -56,7 +52,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	h := handlers.New(service)
 
 	// Prometheus metrics.
-	p := ginprometheus.NewPrometheus(PrometheusSubsystemName)
+	p := ginprometheus.NewPrometheus(types.ManagerName)
 	// URL removes query string.
 	// Prometheus metrics need to reduce label,
 	// refer to https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels.
@@ -66,8 +62,8 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	p.Use(r)
 
 	// Opentelemetry.
-	if cfg.Options.Telemetry.Jaeger != "" {
-		r.Use(otelgin.Middleware(OtelServiceName))
+	if cfg.Tracing.Addr != "" {
+		r.Use(otelgin.Middleware(types.ManagerName))
 	}
 
 	// Gin middleware.

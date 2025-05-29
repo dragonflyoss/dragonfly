@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 
-	"d7y.io/dragonfly/v2/test/e2e/v2/util"
+	"d7y.io/dragonfly/v2/test/e2e/util"
 )
 
 var _ = Describe("Download Using Proxy", func() {

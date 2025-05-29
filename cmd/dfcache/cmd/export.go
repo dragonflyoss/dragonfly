@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -39,7 +40,10 @@ var exportCmd = &cobra.Command{
 	SilenceUsage:       true,
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runDfcacheSubcmd(config.CmdExport, args)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		return runDfcacheSubcmd(ctx, config.CmdExport, args)
 	},
 }
 

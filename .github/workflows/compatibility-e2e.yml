@@ -1,4 +1,4 @@
-name: E2E Test With Nydus(API v2 - Rust Client)
+name: Compatibility E2E Test
 
 on:
   push:
@@ -10,21 +10,46 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
-permissions:  
+permissions:
   contents: read
 
 env:
   KIND_VERSION: v0.12.0
   CONTAINERD_VERSION: v1.5.2
-  NERDCTL_VER: 0.22.2
-  KIND_CONFIG_PATH: test/testdata/kind/config-v2.yaml
+  KIND_CONFIG_PATH: test/testdata/kind/config.yaml
+  DRAGONFLY_CHARTS_CONFIG_PATH: test/testdata/charts/config.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
-  NYDUS_SNAPSHOTTER_CHARTS_PATH: deploy/helm-charts/charts/nydus-snapshotter
+  DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/dufs.yaml
 
 jobs:
-  e2e_tests_nydus:
+  compatibility_e2e_tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      matrix:
+        module: ["manager", "scheduler", "client", "seed-client"]
+        include:
+          - module: manager
+            image: manager
+            image-tag: v2.2.1
+            chart-name: manager
+            skip: "Rate Limit | preheat files in cache"
+          - module: scheduler
+            image: scheduler
+            image-tag: v2.2.1
+            chart-name: scheduler
+            skip: "Rate Limit | preheat files in cache"
+          - module: client
+            image: client
+            image-tag: v0.2.31
+            chart-name: client
+            skip: "Rate Limit"
+          - module: seed-client
+            image: client
+            image-tag: v0.2.31
+            chart-name: seed-client
+            skip: "Rate Limit"
+
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
@@ -42,6 +67,16 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          go-version-file: go.mod
+
+      - name: Get dependencies
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo@v2.22.1
+          mkdir -p /tmp/artifact
 
       - name: Setup buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
@@ -104,75 +139,32 @@ jobs:
 
       - name: Setup dragonfly
         run: |
-          helm install --wait --timeout 10m --dependency-update \
-            --create-namespace --namespace dragonfly-system \
-            -f test/testdata/charts/config-v2.yaml \
-            dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
-
-      - name: Setup nydus
-        run: |
-          helm install --wait --timeout 10m --dependency-update \
-            --create-namespace --namespace nydus-system \
-            -f test/testdata/charts/config-v2-nydus.yaml \
-            nydus-snapshotter ${{ env.NYDUS_SNAPSHOTTER_CHARTS_PATH }}
-
-          export ns=nydus-system
-          p=`kubectl -n $ns get pods --no-headers -o custom-columns=NAME:metadata.name`
-          echo "snapshotter pod name ${p}"
-          # helm wait is wait for daemonset, in this e2e test we ensure the pod is ready
-          kubectl -n $ns wait po $p --for=condition=ready --timeout=2m
+          helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system --set ${{ matrix.chart-name }}.image.tag=${{ matrix.image-tag }} --set ${{ matrix.chart-name }}.image.repository=dragonflyoss/${{ matrix.image }} -f ${{ env.DRAGONFLY_CHARTS_CONFIG_PATH }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
+          kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
+          kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
         run: |
-          docker exec kind-worker curl -L -o nerdctl-${NERDCTL_VER}-linux-amd64.tar.gz https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VER}/nerdctl-${NERDCTL_VER}-linux-amd64.tar.gz
-          docker exec kind-worker tar xzf nerdctl-${NERDCTL_VER}-linux-amd64.tar.gz
-          docker exec kind-worker install -D -m 755 nerdctl /usr/local/bin/nerdctl
-
-          # this is only a simple test that run `date` in container
-          docker exec kind-worker /usr/local/bin/nerdctl run --snapshotter nydus --network=none ghcr.io/dragonflyoss/image-service/nginx:nydus-latest date
-
-          kubectl apply -f test/testdata/k8s/nydus.yaml
-          kubectl wait po nydus-pod --for=condition=ready --timeout=1m
-          kubectl delete -f test/testdata/k8s/nydus.yaml
+          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --skip="${{ matrix.skip }}" test/e2e
+          cat coverprofile.out >> coverage.txt
 
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-      - name: Dump logs
-        if: always()
-        continue-on-error: true
-        run: |
-          # Dump nydus logs.
-          nydus_log_dir="/tmp/nydus"
-          mkdir -p $nydus_log_dir
-          export nydus_ns=nydus-system
-          for p in `kubectl -n $nydus_ns get pods --no-headers -o custom-columns=NAME:metadata.name`; do kubectl -n $nydus_ns get pod $p -o yaml >> $nydus_log_dir/nydus-pods.log; done
-          for p in `kubectl -n $nydus_ns get pods --no-headers -o custom-columns=NAME:metadata.name`; do kubectl -n $nydus_ns describe pod $p  >> $nydus_log_dir/nydus-pods.log; done
-
-          docker exec kind-control-plane cat /etc/containerd/config.toml >> $nydus_log_dir/containerd-config.toml
-          docker exec kind-control-plane containerd config dump >> $nydus_log_dir/containerd-config-dump.toml
-
-          docker exec kind-control-plane journalctl -u containerd >> $nydus_log_dir/containerd.log
-          docker exec kind-control-plane journalctl -u kubelet >> $nydus_log_dir/kubelet.log
-
-          # Dump dragonfly client logs.
-          dragonfly_log_dir="tmp/dragonfly"
-          mkdir -p $dragonfly_log_dir
-          export dragonfly_ns=dragonfly-system
-
-          pod_names=$(kubectl get pods -l component=client -o custom-columns=NAME:metadata.name --no-headers -n $dragonfly_ns)
-          for pod_name in $pod_names; do
-              mkdir -p "/tmp/dragonfly/${pod_name}"
-              kubectl cp "${pod_name}:/var/log/dragonfly" "/tmp/dragonfly/${pod_name}" -n $dragonfly_ns
-          done
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.txt
+          flags: e2etests
 
       - name: Upload Logs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: nydus-e2e-tests-logs
+          name: ${{ matrix.module }}-e2e-tests-logs
           path: |
-            /tmp/nydus
-            /tmp/dragonfly
+            /tmp/artifact/**

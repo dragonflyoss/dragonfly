@@ -21,9 +21,6 @@ main() {
         ;;
     manager)
         kind-load manager
-        ;;
-    no-content-length)
-        kind-load no-content-length
     esac
 }
 

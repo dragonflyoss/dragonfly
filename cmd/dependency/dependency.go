@@ -35,11 +35,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v3"
 
 	"d7y.io/dragonfly/v2/client/config"
@@ -69,8 +71,6 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 		flags.Bool("console", false, "whether logger output records to the stdout")
 		flags.Bool("verbose", false, "whether logger use debug level")
 		flags.Int("pprof-port", -1, "listen port for pprof, 0 represents random port")
-		flags.String("jaeger", "", "jaeger endpoint url, like: http://localhost:14250/api/traces")
-		flags.String("service-name", fmt.Sprintf("%s-%s", "dragonfly", cmd.Name()), "name of the service for tracer")
 		flags.String("config", "", fmt.Sprintf("the path of configuration file with yaml extension name, default is %s, it can also be set by env var: %s", filepath.Join(dfpath.DefaultConfigDir, rootName+".yaml"), strings.ToUpper(rootName+"_config")))
 
 		// Bind common flags
@@ -90,31 +90,26 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 	}
 }
 
-// InitMonitor initialize monitor and return final handler
-func InitMonitor(pprofPort int, otelOption base.TelemetryOption) func() {
-	var shutdowns = make(chan func(), 5)
+// InitMonitor initialize monitor and return final handler.
+func InitMonitor(ctx context.Context, pprofPort int, tracingConfig base.TracingConfig) func() {
+	var shutdowns = make(chan func(), 2)
 
+	// Start pprof server if pprofPort is greater than 0.
 	if pprofPort > 0 {
-		addr := fmt.Sprintf("%s:%d", net.IPv4zero.String(), pprofPort)
-		viewer.SetConfiguration(viewer.WithAddr(addr))
-		sv := statsview.New()
-
-		go func() {
-			if err := sv.Start(); err != nil {
-				logger.Errorf("started statsview on http://%s/debug/statsview error: %v", addr, err)
-			}
-		}()
-
-		logger.Infof("started statsview on http://%s/debug/statsview", addr)
-		shutdowns <- func() { sv.Stop() }
+		shutdown := startStatsView(pprofPort)
+		shutdowns <- shutdown
 	}
 
-	shutdown, err := initJaegerTracer(otelOption)
-	if err != nil {
-		logger.Warnf("init jaeger tracer error: %v", err)
-		return func() {}
+	// Initialize jaeger tracer if tracing address is set.
+	if tracingConfig.Addr != "" {
+		shutdown, err := initJaegerTracer(ctx, tracingConfig)
+		if err != nil {
+			logger.Warnf("init jaeger tracer error: %v", err)
+			return func() {}
+		}
+
+		shutdowns <- shutdown
 	}
-	shutdowns <- shutdown
 
 	return func() {
 		logger.Infof("do %d monitor finalizer", len(shutdowns))
@@ -127,6 +122,63 @@ func InitMonitor(pprofPort int, otelOption base.TelemetryOption) func() {
 			}
 		}
 	}
+}
+
+// startStatsView starts the statsview server on the specified port.
+func startStatsView(port int) func() {
+	addr := fmt.Sprintf("%s:%d", net.IPv4zero.String(), port)
+	viewer.SetConfiguration(viewer.WithAddr(addr))
+	sv := statsview.New()
+
+	go func() {
+		if err := sv.Start(); err != nil {
+			logger.Errorf("started statsview on http://%s/debug/statsview error: %v", addr, err)
+		}
+	}()
+
+	logger.Infof("started statsview on http://%s/debug/statsview", addr)
+	return func() {
+		logger.Info("stopped statsview")
+		sv.Stop()
+	}
+}
+
+// initTracer creates a new trace provider instance and registers it as global trace provider.
+func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (func(), error) {
+	conn, err := grpc.NewClient(tracingConfig.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("could not create gRPC connection to collector: %w", err)
+	}
+
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, fmt.Errorf("could not create trace exporter: %w", err)
+	}
+
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(1.0))),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.HostNameKey.String(fqdn.FQDNHostname),
+			semconv.HostIPKey.String(ip.IPv4.String()),
+			semconv.ServiceNameKey.String(tracingConfig.ServiceName),
+			semconv.ServiceNamespaceKey.String("dragonfly"),
+			semconv.ServiceVersionKey.String(version.GitVersion))),
+	)
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTracerProvider(provider)
+
+	return func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		logger.Info("stoped jaeger tracer")
+		if err := provider.Shutdown(ctx); err != nil {
+			logger.Errorf("shutdown jaeger tracer error: %v", err)
+		}
+	}, nil
 }
 
 func SetupQuitSignalHandler(handler func()) {
@@ -249,47 +301,4 @@ func initDecoderConfig(dc *mapstructure.DecoderConfig) {
 			return v, nil
 		}
 	}, dc.DecodeHook)
-}
-
-// initTracer creates a new trace provider instance and registers it as global trace provider.
-func initJaegerTracer(otelOption base.TelemetryOption) (func(), error) {
-	// currently, only support jaeger, otherwise just keeps the context of the caller but does not record spans.
-	if otelOption.Jaeger == "" {
-		tp := sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(sdktrace.NeverSample()),
-		)
-		otel.SetTracerProvider(tp)
-		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-		return func() {}, nil
-	}
-
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(otelOption.Jaeger)))
-	if err != nil {
-		return nil, err
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		// Always be sure to batch in production.
-		sdktrace.WithBatcher(exp),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		// Record information about this application in an Resource.
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(otelOption.ServiceName),
-			semconv.ServiceInstanceIDKey.String(fmt.Sprintf("%s|%s", fqdn.FQDNHostname, ip.IPv4.String())),
-			semconv.ServiceNamespaceKey.String("dragonfly"),
-			semconv.ServiceVersionKey.String(version.GitVersion))),
-	)
-
-	// Register our TracerProvider as the global so any imported
-	// instrumentation in the future will default to using it.
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-
-	return func() {
-		// Do not make the application hang when it is shutdown.
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		_ = tp.Shutdown(ctx)
-	}, nil
 }

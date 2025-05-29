@@ -1,8 +1,9 @@
 console: true
 verbose: true
 pprof-port: -1
-jaeger: "foo"
-service-name: "bar"
+tracing:
+  addr: "foo"
+  service-name: "bar"
 metrics: ":8000"
 aliveTime: 0s
 gcInterval: 1m0s

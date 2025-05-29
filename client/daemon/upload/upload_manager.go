@@ -173,7 +173,7 @@ func (um *uploadManager) initRouter(cfg *config.DaemonOption, logDir string) *gi
 	p.Use(r)
 
 	// Opentelemetry
-	if cfg.Options.Telemetry.Jaeger != "" {
+	if cfg.Tracing.Addr != "" {
 		r.Use(otelgin.Middleware(OtelServiceName))
 	}
 

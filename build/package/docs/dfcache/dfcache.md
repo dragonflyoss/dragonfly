@@ -22,10 +22,8 @@ responsibility to go back to source and add file into P2P network.
       --config string         the path of configuration file with yaml extension name, default is /etc/dragonfly/dfcache.yaml, it can also be set by env var: DFCACHE_CONFIG
       --console               whether logger output records to the stdout
   -h, --help                  help for dfcache
-      --jaeger string         jaeger endpoint url, like: http://localhost:14250/api/traces
       --logdir string         Dfcache log directory
-      --pprof-port int        listen port for pprof, 0 represents random port (default -1)
-      --service-name string   name of the service for tracer (default "dragonfly-dfcache")
+      --pprof-port int        listen port for pprof(default -1)
   -t, --tag string            different tags for the same cid will be recognized as different  files in P2P network
       --timeout duration      Timeout for this cache operation, 0 is infinite
       --verbose               whether logger use debug level

@@ -47,6 +47,9 @@ generate and maintain a P2P network during the download process, and push suitab
 	DisableAutoGenTag: true,
 	SilenceUsage:      true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		// Convert config.
 		if err := cfg.Convert(); err != nil {
 			return err
@@ -56,9 +59,6 @@ generate and maintain a P2P network during the download process, and push suitab
 		if err := cfg.Validate(); err != nil {
 			return err
 		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 
 		// Initialize dfpath.
 		d, err := initDfpath(&cfg.Server)
@@ -121,7 +121,7 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 
 func runScheduler(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-	shutdown := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
+	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
 	defer shutdown()
 
 	svr, err := scheduler.New(ctx, cfg, d)

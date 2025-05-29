@@ -181,9 +181,9 @@ console: false
 # Whether to enable debug level logger and enable pprof.
 verbose: true
 
-# Listen port for pprof, only valid when the verbose option is true
-# default is -1. If it is 0, pprof will use a random port.
+# Listen port for pprof, only valid when the verbose option is true, default is -1.
 pprof-port: -1
 
-# Jaeger endpoint url, like: http://jaeger.dragonfly.svc:14268/api/traces.
-jaeger: ''
+tracing:
+  # Jaeger endpoint url, like: http://jaeger.dragonfly.svc:4317.
+  addr: ''

@@ -25,6 +25,7 @@ import (
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/fqdn"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
+	"d7y.io/dragonfly/v2/pkg/types"
 )
 
 type Config struct {
@@ -315,6 +316,15 @@ type NetworkConfig struct {
 // New default configuration.
 func New() *Config {
 	return &Config{
+		Options: base.Options{
+			Console:   false,
+			Verbose:   false,
+			PProfPort: -1,
+			Tracing: base.TracingConfig{
+				Addr:        "",
+				ServiceName: types.SchedulerName,
+			},
+		},
 		Server: ServerConfig{
 			Port:          DefaultServerPort,
 			AdvertisePort: DefaultServerAdvertisePort,
