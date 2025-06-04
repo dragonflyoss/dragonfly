@@ -87,8 +87,8 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 			return
 		}
 
-		if json.Args.TaskID == "" && json.Args.URL == "" {
-			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id or url is required"})
+		if json.Args.TaskID == "" && json.Args.URL == "" && json.Args.ContentForCalculatingTaskID == nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id, content_for_calculating_task_id or url is required"})
 			return
 		}
 
@@ -106,8 +106,8 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 			return
 		}
 
-		if json.Args.TaskID == "" && json.Args.URL == "" {
-			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id or url is required"})
+		if json.Args.TaskID == "" && json.Args.URL == "" && json.Args.ContentForCalculatingTaskID == nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id, content_for_calculating_task_id or url is required"})
 			return
 		}
 
