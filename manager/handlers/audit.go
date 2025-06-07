@@ -36,7 +36,8 @@ import (
 // @Success 200 {object} []models.Audit
 // @Failure 400
 // @Failure 404
-// @Failure 500
+// @Failure 422 {object} map[string]string "Validation error"
+// @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/audits [get]
 func (h *Handlers) GetAudits(ctx *gin.Context) {
 	var query types.GetAuditsQuery
@@ -45,10 +46,23 @@ func (h *Handlers) GetAudits(ctx *gin.Context) {
 		return
 	}
 
+	// Validate pagination parameters
+	if query.Page < 0 {
+		query.Page = 0
+	}
+	if query.PerPage < 2 || query.PerPage > 50 {
+		query.PerPage = 10
+	}
+
+	if h.service == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": "service unavailable"})
+		return
+	}
+
 	h.setPaginationDefault(&query.Page, &query.PerPage)
 	audits, count, err := h.service.GetAudits(ctx.Request.Context(), query)
 	if err != nil {
-		ctx.Error(err) //nolint: errcheck
+		ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		return
 	}
 
