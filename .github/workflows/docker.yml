@@ -108,7 +108,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Run Trivy vulnerability scanner in tarball mode
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37
         with:
           image-ref: dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           severity: 'CRITICAL,HIGH'
