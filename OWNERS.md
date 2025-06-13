@@ -26,3 +26,13 @@ Please refer to our [MAINTAINERS.md](MAINTAINERS.md).
 |      [garen wen](https://github.com/garenwen)       |   Garen Wen   |     wenmxiang@gmail.com      |  Baidu Group  |
 
 <!-- markdownlint-restore -->
+
+## Community Managers
+
+<!-- markdownlint-disable -->
+
+|                 GitHub ID                 |    Name    |         Email         |  Company  |
+| :---------------------------------------: | :--------: | :-------------------: | :-------: |
+| [mingcheng](https://github.com/mingcheng) | Cheng Ming | mingcheng@outlook.com | Ant Group |
+
+<!-- markdownlint-restore -->
