@@ -66,6 +66,7 @@ func (a *audit) RunGC(ctx context.Context) error {
 	}
 
 	args := models.JSONMap{
+		"type":       AuditGCTaskID,
 		"ttl":        ttl,
 		"batch_size": DefaultAuditGCBatchSize,
 	}
