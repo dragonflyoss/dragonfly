@@ -99,6 +99,20 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 		}
 
 		ctx.JSON(http.StatusOK, job)
+	case job.GetImageJob:
+		var json types.CreateGetImageJobRequest
+		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+
+		job, err := h.service.CreateGetImageJob(ctx.Request.Context(), json)
+		if err != nil {
+			ctx.Error(err) // nolint: errcheck
+			return
+		}
+
+		ctx.JSON(http.StatusOK, job)
 	case job.DeleteTaskJob:
 		var json types.CreateDeleteTaskJobRequest
 		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {

@@ -116,9 +116,9 @@ type PreheatArgs struct {
 	URLs []string `json:"urls" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
-	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
-	// If the piece length is not specified, the piece length will be calculated
-	// according to the file size.
+	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
+	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
+	// the piece length will be calculated according to the file size.
 	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
 
 	// Tag is the tag for preheating.
@@ -209,9 +209,9 @@ type GetTaskArgs struct {
 	URL string `json:"url" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
-	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
-	// If the piece length is not specified, the piece length will be calculated
-	// according to the file size.
+	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
+	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
+	// the piece length will be calculated according to the file size.
 	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
 
 	// Tag is the tag of the task.
@@ -247,13 +247,13 @@ type CreateGetImageJobRequest struct {
 }
 
 type GetImageArgs struct {
-	// URL is the download url of the task.
-	URL string `json:"url" binding:"omitempty"`
+	// URL is the image manifest url of the task.
+	URL string `json:"url" binding:"required"`
 
-	// PieceLength is the piece length(bytes) for downloading file. The value needs to
-	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
-	// If the piece length is not specified, the piece length will be calculated
-	// according to the file size.
+	// PieceLength is the piece length(bytes) for downloading image blobs. The value needs to
+	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
+	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
+	// the piece length will be calculated according to the file size.
 	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
 
 	// Tag is the tag of the task.
@@ -265,10 +265,8 @@ type GetImageArgs struct {
 	// FilteredQueryParams is the filtered query params of the task.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
 
-	// ContentForCalculatingTaskID is the content used to calculate the task id.
-	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
-	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
-	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
+	// Headers is the http headers for authentication.
+	Headers map[string]string `json:"headers" binding:"omitempty"`
 
 	// Username is the username for authentication.
 	Username string `json:"username" binding:"omitempty"`
@@ -278,6 +276,42 @@ type GetImageArgs struct {
 
 	// The image type preheating task can specify the image architecture type. eg: linux/amd64.
 	Platform string `json:"platform" binding:"omitempty"`
+}
+
+// CreateGetImageJobResponse is the response for creating a get image job.
+type CreateGetImageJobResponse struct {
+	// Image is the image information.
+	Image Image `json:"image"`
+
+	// Peers is the peers that have downloaded the image.
+	Peers []Peer `json:"peers"`
+}
+
+// Peer represents a peer in the get image job.
+type Peer struct {
+	// IP is the IP address of the peer.
+	IP string `json:"ip"`
+
+	// Hostname is the hostname of the peer.
+	Hostname string `json:"hostname"`
+
+	// Image is the image information of the peer has downloaded.
+	Image Image `json:"image"`
+
+	// SchedulerClusterID is the scheduler cluster id of the peer.
+	SchedulerClusterID uint `json:"scheduler_cluster_id"`
+}
+
+// Image represents the image information.
+type Image struct {
+	// Layers is the list of layers of the image.
+	Layers []Layer `json:"layers"`
+}
+
+// Layer represents a layer of the image.
+type Layer struct {
+	// URL is the URL of the layer.
+	URL string `json:"url"`
 }
 
 type CreateDeleteTaskJobRequest struct {
@@ -305,9 +339,9 @@ type DeleteTaskArgs struct {
 	URL string `json:"url" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
-	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
-	// If the piece length is not specified, the piece length will be calculated
-	// according to the file size.
+	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
+	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
+	// the piece length will be calculated according to the file size.
 	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
 
 	// Tag is the tag of the task.

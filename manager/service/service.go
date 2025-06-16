@@ -119,6 +119,7 @@ type Service interface {
 	CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error
 	CreateDeleteTaskJob(context.Context, types.CreateDeleteTaskJobRequest) (*models.Job, error)
 	CreateGetTaskJob(context.Context, types.CreateGetTaskJobRequest) (*models.Job, error)
+	CreateGetImageJob(context.Context, types.CreateGetImageJobRequest) (*types.CreateGetImageJobResponse, error)
 	CreateGCJob(context.Context, types.CreateGCJobRequest) (*models.Job, error)
 	DestroyJob(context.Context, uint) error
 	UpdateJob(context.Context, uint, types.UpdateJobRequest) (*models.Job, error)

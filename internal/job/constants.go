@@ -33,6 +33,9 @@ const (
 	// GetTaskJob is the name of getting task job.
 	GetTaskJob = "get_task"
 
+	// GetImageJob is the name of getting image job.
+	GetImageJob = "get_image"
+
 	// DeleteTaskJob is the name of deleting task job.
 	DeleteTaskJob = "delete_task"
 

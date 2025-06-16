@@ -18,6 +18,7 @@ package database
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	xxhash "github.com/cespare/xxhash/v2"
@@ -36,7 +37,10 @@ const (
 // cacher is a cache implementation using LRU for gorm.
 type cacher struct {
 	// store is the LRU cache.
-	store *lru.LRU[string, any]
+	store *lru.ShardedLRU[string, any]
+
+	// mu is a mutex to protect the store.
+	mu sync.Mutex
 }
 
 // hashStringXXHASH returns the hash of the string s.
@@ -46,7 +50,7 @@ func hashStringXXHASH(s string) uint32 {
 
 // newCacher creates a new cacher.
 func newCacher() (caches.Cacher, error) {
-	store, err := lru.New[string, any](defaultCacheSize, hashStringXXHASH)
+	store, err := lru.NewSharded[string, any](defaultCacheSize, hashStringXXHASH)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +90,7 @@ func (c *cacher) Store(ctx context.Context, key string, val *caches.Query[any]) 
 // INSERT / UPDATE / DELETE queries are sent to the DB.
 func (c *cacher) Invalidate(ctx context.Context) error {
 	var err error
-	c.store, err = lru.New[string, any](defaultCacheSize, hashStringXXHASH)
+	c.store, err = lru.NewSharded[string, any](defaultCacheSize, hashStringXXHASH)
 	if err != nil {
 		return err
 	}
