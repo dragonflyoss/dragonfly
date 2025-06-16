@@ -229,6 +229,57 @@ type GetTaskArgs struct {
 	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
 
+type CreateGetImageJobRequest struct {
+	// BIO is the description of the job.
+	BIO string `json:"bio" binding:"omitempty"`
+
+	// Type is the type of the job.
+	Type string `json:"type" binding:"required"`
+
+	// Args is the arguments of the job.
+	Args GetImageArgs `json:"args" binding:"omitempty"`
+
+	// UserID is the user id of the job.
+	UserID uint `json:"user_id" binding:"omitempty"`
+
+	// SchedulerClusterIDs is the scheduler cluster ids of the job.
+	SchedulerClusterIDs []uint `json:"scheduler_cluster_ids" binding:"omitempty"`
+}
+
+type GetImageArgs struct {
+	// URL is the download url of the task.
+	URL string `json:"url" binding:"omitempty"`
+
+	// PieceLength is the piece length(bytes) for downloading file. The value needs to
+	// be greater than or equal to 4194304, for example: 4194304(4mib), 8388608(8mib).
+	// If the piece length is not specified, the piece length will be calculated
+	// according to the file size.
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+
+	// Tag is the tag of the task.
+	Tag string `json:"tag" binding:"omitempty"`
+
+	// Application is the application of the task.
+	Application string `json:"application" binding:"omitempty"`
+
+	// FilteredQueryParams is the filtered query params of the task.
+	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
+
+	// ContentForCalculatingTaskID is the content used to calculate the task id.
+	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
+	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
+	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
+
+	// Username is the username for authentication.
+	Username string `json:"username" binding:"omitempty"`
+
+	// Password is the password for authentication.
+	Password string `json:"password" binding:"omitempty"`
+
+	// The image type preheating task can specify the image architecture type. eg: linux/amd64.
+	Platform string `json:"platform" binding:"omitempty"`
+}
+
 type CreateDeleteTaskJobRequest struct {
 	// BIO is the description of the job.
 	BIO string `json:"bio" binding:"omitempty"`
