@@ -26,7 +26,7 @@ import (
 
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
-	"golang.org/x/sync/semaphore"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -51,8 +51,8 @@ const (
 	// DefaultGCJobPollingInterval is the default interval for polling GC job.
 	DefaultGCJobPollingInterval = 5 * time.Second
 
-	// DefaultPreheatConcurrentCount is the default concurrent count for preheat job.
-	DefaultGetImageJobConcurrentCount = 30
+	// DefaultGetImageDistributionJobConcurrentCount is the default concurrent count for getting image distribution job.
+	DefaultGetImageDistributionJobConcurrentCount = 30
 )
 
 func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest) (*models.Job, error) {
@@ -62,7 +62,7 @@ func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest
 
 	// This is a non-block function to run the gc task, which will run the task asynchronously in the backend.
 	if err := s.gc.Run(ctx, json.Args.Type); err != nil {
-		logger.Errorf("run gc job failed: %v", err)
+		logger.Errorf("run gc job failed: %w", err)
 		return nil, err
 	}
 
@@ -107,7 +107,7 @@ func (s *service) pollingGCJob(ctx context.Context, jobType string, userID uint,
 func (s *service) CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error {
 	schedulers, err := s.findSchedulerInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
-		logger.Errorf("find scheduler in clusters failed: %v", err)
+		logger.Errorf("find scheduler in clusters failed: %w", err)
 		return err
 	}
 
@@ -133,19 +133,19 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
-		logger.Errorf("convert preheat args to map failed: %v", err)
+		logger.Errorf("convert preheat args to map failed: %w", err)
 		return nil, err
 	}
 
 	candidateSchedulers, err := s.findAllCandidateSchedulersInClusters(ctx, json.SchedulerClusterIDs, []string{types.SchedulerFeaturePreheat})
 	if err != nil {
-		logger.Errorf("find candidate schedulers in clusters failed: %v", err)
+		logger.Errorf("find candidate schedulers in clusters failed: %w", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreatePreheat(ctx, candidateSchedulers, json.Args)
 	if err != nil {
-		logger.Errorf("create preheat job failed: %v", err)
+		logger.Errorf("create preheat job failed: %w", err)
 		return nil, err
 	}
 
@@ -165,7 +165,7 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
-		logger.Errorf("create preheat job failed: %v", err)
+		logger.Errorf("create preheat job failed: %w", err)
 		return nil, err
 	}
 
@@ -180,19 +180,19 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
-		logger.Errorf("convert get task args to map failed: %v", err)
+		logger.Errorf("convert get task args to map failed: %w", err)
 		return nil, err
 	}
 
 	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
-		logger.Errorf("find schedulers in clusters failed: %v", err)
+		logger.Errorf("find schedulers in clusters failed: %w", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreateGetTask(ctx, schedulers, json.Args)
 	if err != nil {
-		logger.Errorf("create get task job failed: %v", err)
+		logger.Errorf("create get task job failed: %w", err)
 		return nil, err
 	}
 
@@ -212,7 +212,7 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
-		logger.Errorf("create get task job failed: %v", err)
+		logger.Errorf("create get task job failed: %w", err)
 		return nil, err
 	}
 
@@ -221,12 +221,12 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 	return &job, nil
 }
 
-func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetImageJobRequest) (*types.CreateGetImageJobResponse, error) {
+func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error) {
 	layers, err := s.getImageLayers(ctx, json)
 	if err != nil {
-		msg := fmt.Sprintf("get image layers failed: %v", err)
-		logger.Error(msg)
-		return nil, errors.New(msg)
+		err = fmt.Errorf("get image layers failed: %w", err)
+		logger.Error(err)
+		return nil, err
 	}
 
 	image := types.Image{Layers: make([]types.Layer, 0, len(layers))}
@@ -236,7 +236,8 @@ func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetIma
 
 	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
-		logger.Errorf("find schedulers in clusters failed: %v", err)
+		err = fmt.Errorf("find schedulers in clusters failed: %w", err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -245,18 +246,18 @@ func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetIma
 	jobs := s.createGetTaskJobsSync(ctx, layers, json, schedulers)
 	peers, err := s.extractPeersFromJobs(jobs)
 	if err != nil {
-		msg := fmt.Sprintf("extract peers from jobs failed: %v", err)
-		logger.Error(msg)
-		return nil, errors.New(msg)
+		err = fmt.Errorf("extract peers from jobs failed: %w", err)
+		logger.Error(err)
+		return nil, err
 	}
 
-	return &types.CreateGetImageJobResponse{
+	return &types.CreateGetImageDistributionJobResponse{
 		Image: image,
 		Peers: peers,
 	}, nil
 }
 
-func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageJobRequest) ([]internaljob.PreheatRequest, error) {
+func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]internaljob.PreheatRequest, error) {
 	var certPool *x509.CertPool
 	if len(s.config.Job.Preheat.TLS.CACert) != 0 {
 		certPool = x509.NewCertPool()
@@ -265,7 +266,7 @@ func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageJ
 		}
 	}
 
-	files, err := job.GetImageLayers(ctx, types.PreheatArgs{
+	layers, err := job.GetImageLayers(ctx, types.PreheatArgs{
 		Type:                job.PreheatImageType.String(),
 		URL:                 json.Args.URL,
 		PieceLength:         json.Args.PieceLength,
@@ -281,30 +282,20 @@ func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageJ
 		return nil, fmt.Errorf("get image layers failed: %w", err)
 	}
 
-	if len(files) == 0 {
+	if len(layers) == 0 {
 		return nil, errors.New("no valid image layers found")
 	}
 
-	return files, nil
+	return layers, nil
 }
 
-func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljob.PreheatRequest, json types.CreateGetImageJobRequest, schedulers []models.Scheduler) []*models.Job {
-	jobs := make([]*models.Job, 0, len(layers))
-	sem := semaphore.NewWeighted(DefaultGetImageJobConcurrentCount)
+func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljob.PreheatRequest, json types.CreateGetImageDistributionJobRequest, schedulers []models.Scheduler) []*models.Job {
 	var mu sync.Mutex
-	var wg sync.WaitGroup
+	jobs := make([]*models.Job, 0, len(layers))
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(DefaultGetImageDistributionJobConcurrentCount)
 	for _, file := range layers {
-		wg.Add(1)
-
-		go func(file internaljob.PreheatRequest) {
-			defer wg.Done()
-
-			if err := sem.Acquire(ctx, 1); err != nil {
-				logger.Warnf("failed to acquire semaphore: %v", err)
-				return
-			}
-			defer sem.Release(1)
-
+		eg.Go(func() error {
 			job, err := s.createGetTaskJobSync(ctx, types.CreateGetTaskJobRequest{
 				BIO:  json.BIO,
 				Type: internaljob.GetTaskJob,
@@ -318,16 +309,22 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
 			}, schedulers)
 			if err != nil {
-				logger.Warnf("failed to create task job for image layer %s: %v", file.URL, err)
-				return
+				logger.Warnf("failed to create task job for image layer %s: %w", file.URL, err)
+				return nil
 			}
 
 			mu.Lock()
 			jobs = append(jobs, job)
 			mu.Unlock()
-		}(file)
+			return nil
+		})
 	}
-	wg.Wait()
+
+	// If any of the goroutines return an error, ignore it and continue processing.
+	if err := eg.Wait(); err != nil {
+		logger.Errorf("failed to create get task jobs: %w", err)
+	}
+
 	return jobs
 }
 
@@ -464,19 +461,17 @@ func (s *service) extractPeersFromJobs(jobs []*models.Job) ([]types.Peer, error)
 					p, found := m[hostID]
 					if !found {
 						m[hostID] = &types.Peer{
-							IP:       ip,
-							Hostname: hostname,
-							Image: types.Image{
-								Layers: []types.Layer{{URL: url}},
-							},
+							IP:                 ip,
+							Hostname:           hostname,
+							CachedLayers:       []types.Layer{{URL: url}},
 							SchedulerClusterID: uint(schedulerClusterID),
 						}
 					} else {
-						if slices.Contains(p.Image.Layers, types.Layer{URL: url}) {
+						if slices.Contains(p.CachedLayers, types.Layer{URL: url}) {
 							continue
 						}
 
-						p.Image.Layers = append(p.Image.Layers, types.Layer{URL: url})
+						p.CachedLayers = append(p.CachedLayers, types.Layer{URL: url})
 					}
 				}
 			}
@@ -502,19 +497,19 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
-		logger.Errorf("convert delete task args to map failed: %v", err)
+		logger.Errorf("convert delete task args to map failed: %w", err)
 		return nil, err
 	}
 
 	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
-		logger.Errorf("find schedulers in clusters failed: %v", err)
+		logger.Errorf("find schedulers in clusters failed: %w", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreateDeleteTask(ctx, schedulers, json.Args)
 	if err != nil {
-		logger.Errorf("create delete task job failed: %v", err)
+		logger.Errorf("create delete task job failed: %w", err)
 		return nil, err
 	}
 
@@ -534,7 +529,7 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
-		logger.Errorf("create delete task job failed: %v", err)
+		logger.Errorf("create delete task job failed: %w", err)
 		return nil, err
 	}
 
@@ -715,13 +710,15 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupID 
 	if _, _, err := retry.Run(ctx, initBackoff, maxBackoff, maxAttempts, func() (any, bool, error) {
 		groupJob, err := s.job.GetGroupJobState(name, groupID)
 		if err != nil {
-			log.Errorf("polling group failed: %s", err.Error())
+			err = fmt.Errorf("get group job state failed: %w", err)
+			log.Error(err)
 			return nil, false, err
 		}
 
 		result, err := structure.StructToMap(groupJob)
 		if err != nil {
-			log.Errorf("polling group failed: %s", err.Error())
+			err = fmt.Errorf("convert group job state to map failed: %w", err)
+			log.Error(err)
 			return nil, false, err
 		}
 
@@ -729,7 +726,8 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupID 
 			State:  groupJob.State,
 			Result: result,
 		}).Error; err != nil {
-			log.Errorf("polling group failed: %s", err.Error())
+			err = fmt.Errorf("update job state failed: %w", err)
+			log.Error(err)
 			return nil, true, err
 		}
 
@@ -749,7 +747,8 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupID 
 			return nil, false, errors.New(msg)
 		}
 	}); err != nil {
-		log.Errorf("polling group failed: %s", err.Error())
+		err = fmt.Errorf("polling group job failed: %w", err)
+		log.Error(err)
 	}
 
 	// Polling timeout and failed.
@@ -758,8 +757,10 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupID 
 		if err := s.db.WithContext(ctx).First(&job, id).Updates(models.Job{
 			State: machineryv1tasks.StateFailure,
 		}).Error; err != nil {
-			log.Errorf("polling group failed: %s", err.Error())
+			err = fmt.Errorf("update job state to failure failed: %w", err)
+			log.Error(err)
 		}
+
 		log.Error("polling group timeout")
 	}
 }

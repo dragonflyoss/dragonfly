@@ -18,7 +18,6 @@ package database
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	xxhash "github.com/cespare/xxhash/v2"
@@ -38,9 +37,6 @@ const (
 type cacher struct {
 	// store is the LRU cache.
 	store *lru.ShardedLRU[string, any]
-
-	// mu is a mutex to protect the store.
-	mu sync.Mutex
 }
 
 // hashStringXXHASH returns the hash of the string s.

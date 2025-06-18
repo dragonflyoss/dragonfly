@@ -119,7 +119,7 @@ type PreheatArgs struct {
 	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
 	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
 	// the piece length will be calculated according to the file size.
-	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304,lte=67108864"`
 
 	// Tag is the tag for preheating.
 	Tag string `json:"tag" binding:"omitempty"`
@@ -212,7 +212,7 @@ type GetTaskArgs struct {
 	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
 	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
 	// the piece length will be calculated according to the file size.
-	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304,lte=67108864"`
 
 	// Tag is the tag of the task.
 	Tag string `json:"tag" binding:"omitempty"`
@@ -229,7 +229,7 @@ type GetTaskArgs struct {
 	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
 
-type CreateGetImageJobRequest struct {
+type CreateGetImageDistributionJobRequest struct {
 	// BIO is the description of the job.
 	BIO string `json:"bio" binding:"omitempty"`
 
@@ -237,7 +237,7 @@ type CreateGetImageJobRequest struct {
 	Type string `json:"type" binding:"required"`
 
 	// Args is the arguments of the job.
-	Args GetImageArgs `json:"args" binding:"omitempty"`
+	Args GetImageDistributionArgs `json:"args" binding:"omitempty"`
 
 	// UserID is the user id of the job.
 	UserID uint `json:"user_id" binding:"omitempty"`
@@ -246,7 +246,7 @@ type CreateGetImageJobRequest struct {
 	SchedulerClusterIDs []uint `json:"scheduler_cluster_ids" binding:"omitempty"`
 }
 
-type GetImageArgs struct {
+type GetImageDistributionArgs struct {
 	// URL is the image manifest url of the task.
 	URL string `json:"url" binding:"required"`
 
@@ -254,7 +254,7 @@ type GetImageArgs struct {
 	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
 	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
 	// the piece length will be calculated according to the file size.
-	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304,lte=67108864"`
 
 	// Tag is the tag of the task.
 	Tag string `json:"tag" binding:"omitempty"`
@@ -278,8 +278,8 @@ type GetImageArgs struct {
 	Platform string `json:"platform" binding:"omitempty"`
 }
 
-// CreateGetImageJobResponse is the response for creating a get image job.
-type CreateGetImageJobResponse struct {
+// CreateGetImageDistributionJobResponse is the response for creating a get image job.
+type CreateGetImageDistributionJobResponse struct {
 	// Image is the image information.
 	Image Image `json:"image"`
 
@@ -295,8 +295,8 @@ type Peer struct {
 	// Hostname is the hostname of the peer.
 	Hostname string `json:"hostname"`
 
-	// Image is the image information of the peer has downloaded.
-	Image Image `json:"image"`
+	// CachedLayers is the list of layers that the peer has downloaded.
+	CachedLayers []Layer `json:"layers"`
 
 	// SchedulerClusterID is the scheduler cluster id of the peer.
 	SchedulerClusterID uint `json:"scheduler_cluster_id"`
@@ -342,7 +342,7 @@ type DeleteTaskArgs struct {
 	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
 	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
 	// the piece length will be calculated according to the file size.
-	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304"`
+	PieceLength *uint64 `json:"piece_length" binding:"omitempty,gte=4194304,lte=67108864"`
 
 	// Tag is the tag of the task.
 	Tag string `json:"tag" binding:"omitempty"`

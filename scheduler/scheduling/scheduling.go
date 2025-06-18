@@ -194,9 +194,9 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 		stream, loaded := peer.LoadAnnouncePeerStream()
 		if !loaded {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
-				msg := fmt.Sprintf("peer deletes inedges failed: %s", err.Error())
-				peer.Log.Error(msg)
-				return status.Error(codes.Internal, msg)
+				err = fmt.Errorf("peer deletes inedges failed: %w", err)
+				peer.Log.Error(err)
+				return status.Error(codes.Internal, err.Error())
 			}
 
 			peer.Log.Error("load stream failed")
@@ -215,7 +215,8 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 		// Add edge from parent to peer.
 		for _, candidateParent := range candidateParents {
 			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				peer.Log.Warnf("peer adds edge failed: %s", err.Error())
+				err = fmt.Errorf("peer adds edge failed: %w", err)
+				peer.Log.Warn(err)
 				continue
 			}
 		}
@@ -259,7 +260,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 				peer.Log.Infof("send Code_SchedNeedBackSource to peer, because of peer's NeedBackToSource is %t", peer.NeedBackToSource.Load())
 
 				if err := peer.FSM.Event(ctx, standard.PeerEventDownloadBackToSource); err != nil {
-					peer.Log.Errorf("peer fsm event failed: %s", err.Error())
+					err = fmt.Errorf("peer fsm event failed: %w", err)
+					peer.Log.Error(err)
 					return
 				}
 
@@ -267,7 +269,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 				// peer back-to-source and reset task state to TaskStateRunning.
 				if peer.Task.FSM.Is(standard.TaskStateFailed) {
 					if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
-						peer.Task.Log.Errorf("task fsm event failed: %s", err.Error())
+						err = fmt.Errorf("task fsm event failed: %w", err)
+						peer.Task.Log.Error(err)
 						return
 					}
 				}
@@ -292,7 +295,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 				peer.Log.Infof("send Code_SchedNeedBackSource to peer, because of scheduling exceeded RetryBackToSourceLimit %d", s.config.RetryBackToSourceLimit)
 
 				if err := peer.FSM.Event(ctx, standard.PeerEventDownloadBackToSource); err != nil {
-					peer.Log.Errorf("peer fsm event failed: %s", err.Error())
+					err = fmt.Errorf("peer fsm event failed: %w", err)
+					peer.Log.Error(err)
 					return
 				}
 
@@ -300,7 +304,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 				// peer back-to-source and reset task state to TaskStateRunning.
 				if peer.Task.FSM.Is(standard.TaskStateFailed) {
 					if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
-						peer.Task.Log.Errorf("task fsm event failed: %s", err.Error())
+						err = fmt.Errorf("task fsm event failed: %w", err)
+						peer.Task.Log.Error(err)
 						return
 					}
 				}
@@ -334,7 +339,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 		// Condition 1: Scheduling can find candidate parents.
 		if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 			n++
-			peer.Log.Errorf("scheduling failed in %d times, because of %s", n, err.Error())
+			err := fmt.Errorf("scheduling failed in %d times, because of %w", n, err)
+			peer.Log.Error(err)
 
 			// Sleep to avoid hot looping.
 			time.Sleep(s.config.RetryInterval)
@@ -359,7 +365,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Errorf("scheduling failed in %d times, because of loading peer stream failed", n)
 
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
-				peer.Log.Errorf("peer deletes inedges failed: %s", err.Error())
+				err = fmt.Errorf("peer deletes inedges failed: %w", err)
+				peer.Log.Error(err)
 				return
 			}
 
@@ -370,10 +377,12 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 		peer.Log.Info("send PeerPacket to peer")
 		if err := stream.Send(constructSuccessPeerPacket(peer, candidateParents[0], candidateParents[1:])); err != nil {
 			n++
-			peer.Log.Errorf("scheduling failed in %d times, because of %s", n, err.Error())
+			err = fmt.Errorf("send PeerPacket to peer failed in %d times, because of %w", n, err)
+			peer.Log.Error(err)
 
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
-				peer.Log.Errorf("peer deletes inedges failed: %s", err.Error())
+				err = fmt.Errorf("peer deletes inedges failed: %w", err)
+				peer.Log.Error(err)
 				return
 			}
 
@@ -383,7 +392,8 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 		// Add edge from parent to peer.
 		for _, candidateParent := range candidateParents {
 			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				peer.Log.Debugf("peer adds edge failed: %s", err.Error())
+				err = fmt.Errorf("peer adds edge failed: %w", err)
+				peer.Log.Debug(err)
 				continue
 			}
 		}
@@ -595,7 +605,8 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 func (s *scheduling) FindReplicatePersistentCacheHosts(ctx context.Context, task *persistentcache.Task, blocklist set.SafeSet[string]) ([]*persistentcache.Peer, []*persistentcache.Host, bool) {
 	currentPersistentReplicaCount, err := s.persistentCacheResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, task.ID)
 	if err != nil {
-		task.Log.Errorf("load current persistent replica count failed %s", err)
+		err = fmt.Errorf("load current persistent replica count failed: %w", err)
+		task.Log.Error(err)
 		return nil, nil, false
 	}
 
@@ -638,7 +649,8 @@ func (s *scheduling) FindReplicatePersistentCacheHosts(ctx context.Context, task
 	// Load all current persistent peers and add them to the blocklist to avoid scheduling the same host.
 	currentPersistentPeers, err := s.persistentCacheResource.PeerManager().LoadPersistentAllByTaskID(ctx, task.ID)
 	if err != nil {
-		task.Log.Errorf("load all persistent cache peers failed: %s", err.Error())
+		err = fmt.Errorf("load all persistent cache peers failed: %w", err)
+		task.Log.Error(err)
 		return nil, nil, false
 	}
 
@@ -701,7 +713,8 @@ func (s *scheduling) FindCandidatePersistentCacheParents(ctx context.Context, pe
 func (s *scheduling) filterCandidatePersistentCacheParents(ctx context.Context, peer *persistentcache.Peer, blocklist set.SafeSet[string]) []*persistentcache.Peer {
 	parents, err := s.persistentCacheResource.PeerManager().LoadAllByTaskID(ctx, peer.Task.ID)
 	if err != nil {
-		peer.Log.Errorf("load all persistent cache parents failed: %s", err.Error())
+		err = fmt.Errorf("load all persistent cache parents failed: %w", err)
+		peer.Log.Error(err)
 		return nil
 	}
 
@@ -740,7 +753,8 @@ func (s *scheduling) filterCandidatePersistentCacheParents(ctx context.Context, 
 func (s *scheduling) filterCachedReplicatePersistentCacheParents(ctx context.Context, task *persistentcache.Task, blocklist set.SafeSet[string]) []*persistentcache.Peer {
 	parents, err := s.persistentCacheResource.PeerManager().LoadAllByTaskID(ctx, task.ID)
 	if err != nil {
-		task.Log.Errorf("load all persistent cache parents failed: %s", err.Error())
+		err = fmt.Errorf("load all persistent cache parents failed: %w", err)
+		task.Log.Error(err)
 		return nil
 	}
 
@@ -785,7 +799,8 @@ func (s *scheduling) filterCachedReplicatePersistentCacheParents(ctx context.Con
 func (s *scheduling) filterReplicatePersistentCacheHosts(ctx context.Context, task *persistentcache.Task, count int, blocklist set.SafeSet[string]) []*persistentcache.Host {
 	hosts, err := s.persistentCacheResource.HostManager().LoadRandom(ctx, count, blocklist)
 	if err != nil {
-		task.Log.Errorf("load all persistent cache hosts failed: %s", err.Error())
+		err = fmt.Errorf("load all persistent cache hosts failed: %w", err)
+		task.Log.Error(err)
 		return nil
 	}
 

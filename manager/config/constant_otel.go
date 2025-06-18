@@ -24,7 +24,6 @@ const (
 	AttributePreheatURL   = attribute.Key("d7y.manager.preheat.url")
 	AttributeDeleteTaskID = attribute.Key("d7y.manager.delete_task.id")
 	AttributeGetTaskID    = attribute.Key("d7y.manager.get_task.id")
-	AttributeGetImageID   = attribute.Key("d7y.manager.get_image.id")
 )
 
 const (

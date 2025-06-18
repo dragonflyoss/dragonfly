@@ -220,19 +220,19 @@ func (mr *MockServiceMockRecorder) CreateGCJob(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGCJob", reflect.TypeOf((*MockService)(nil).CreateGCJob), arg0, arg1)
 }
 
-// CreateGetImageJob mocks base method.
-func (m *MockService) CreateGetImageJob(arg0 context.Context, arg1 types.CreateGetImageJobRequest) (*types.CreateGetImageJobResponse, error) {
+// CreateGetImageDistributionJob mocks base method.
+func (m *MockService) CreateGetImageDistributionJob(arg0 context.Context, arg1 types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateGetImageJob", arg0, arg1)
-	ret0, _ := ret[0].(*types.CreateGetImageJobResponse)
+	ret := m.ctrl.Call(m, "CreateGetImageDistributionJob", arg0, arg1)
+	ret0, _ := ret[0].(*types.CreateGetImageDistributionJobResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateGetImageJob indicates an expected call of CreateGetImageJob.
-func (mr *MockServiceMockRecorder) CreateGetImageJob(arg0, arg1 any) *gomock.Call {
+// CreateGetImageDistributionJob indicates an expected call of CreateGetImageDistributionJob.
+func (mr *MockServiceMockRecorder) CreateGetImageDistributionJob(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGetImageJob", reflect.TypeOf((*MockService)(nil).CreateGetImageJob), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGetImageDistributionJob", reflect.TypeOf((*MockService)(nil).CreateGetImageDistributionJob), arg0, arg1)
 }
 
 // CreateGetTaskJob mocks base method.
