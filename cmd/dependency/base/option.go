@@ -29,4 +29,6 @@ type TracingConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 	// ServiceName is the name of the service for tracing.
 	ServiceName string `yaml:"service-name" mapstructure:"service-name"`
+	// Headers are additional headers to be sent with tracing requests.
+	Headers map[string]string `yaml:"headers" mapstructure:"headers"`
 }

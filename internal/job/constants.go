@@ -46,8 +46,8 @@ const (
 // Machinery server configuration.
 const (
 	DefaultResultsExpireIn             = 86400
-	DefaultRedisMaxIdle                = 30
-	DefaultRedisMaxActive              = 50
+	DefaultRedisMaxIdle                = 70
+	DefaultRedisMaxActive              = 100
 	DefaultRedisIdleTimeout            = 30
 	DefaultRedisReadTimeout            = 60
 	DefaultRedisWriteTimeout           = 60

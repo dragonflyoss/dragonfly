@@ -150,7 +150,7 @@ func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (fu
 		return nil, fmt.Errorf("could not create gRPC connection to collector: %w", err)
 	}
 
-	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn), otlptracegrpc.WithHeaders(tracingConfig.Headers))
 	if err != nil {
 		return nil, fmt.Errorf("could not create trace exporter: %w", err)
 	}

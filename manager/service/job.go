@@ -62,6 +62,7 @@ func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest
 
 	// This is a non-block function to run the gc task, which will run the task asynchronously in the backend.
 	if err := s.gc.Run(ctx, json.Args.Type); err != nil {
+		logger.Errorf("run gc job failed: %v", err)
 		return nil, err
 	}
 
@@ -106,6 +107,7 @@ func (s *service) pollingGCJob(ctx context.Context, jobType string, userID uint,
 func (s *service) CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error {
 	schedulers, err := s.findSchedulerInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
+		logger.Errorf("find scheduler in clusters failed: %v", err)
 		return err
 	}
 
@@ -131,16 +133,19 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
+		logger.Errorf("convert preheat args to map failed: %v", err)
 		return nil, err
 	}
 
 	candidateSchedulers, err := s.findAllCandidateSchedulersInClusters(ctx, json.SchedulerClusterIDs, []string{types.SchedulerFeaturePreheat})
 	if err != nil {
+		logger.Errorf("find candidate schedulers in clusters failed: %v", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreatePreheat(ctx, candidateSchedulers, json.Args)
 	if err != nil {
+		logger.Errorf("create preheat job failed: %v", err)
 		return nil, err
 	}
 
@@ -160,6 +165,7 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
+		logger.Errorf("create preheat job failed: %v", err)
 		return nil, err
 	}
 
@@ -174,16 +180,19 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
+		logger.Errorf("convert get task args to map failed: %v", err)
 		return nil, err
 	}
 
 	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
+		logger.Errorf("find schedulers in clusters failed: %v", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreateGetTask(ctx, schedulers, json.Args)
 	if err != nil {
+		logger.Errorf("create get task job failed: %v", err)
 		return nil, err
 	}
 
@@ -203,6 +212,7 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
+		logger.Errorf("create get task job failed: %v", err)
 		return nil, err
 	}
 
@@ -212,7 +222,50 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 }
 
 func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetImageJobRequest) (*types.CreateGetImageJobResponse, error) {
-	args := types.PreheatArgs{
+	layers, err := s.getImageLayers(ctx, json)
+	if err != nil {
+		msg := fmt.Sprintf("get image layers failed: %v", err)
+		logger.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	image := types.Image{Layers: make([]types.Layer, 0, len(layers))}
+	for _, file := range layers {
+		image.Layers = append(image.Layers, types.Layer{URL: file.URL})
+	}
+
+	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
+	if err != nil {
+		logger.Errorf("find schedulers in clusters failed: %v", err)
+		return nil, err
+	}
+
+	// Create multiple get task jobs synchronously for each layer and
+	// extract peers from the jobs.
+	jobs := s.createGetTaskJobsSync(ctx, layers, json, schedulers)
+	peers, err := s.extractPeersFromJobs(jobs)
+	if err != nil {
+		msg := fmt.Sprintf("extract peers from jobs failed: %v", err)
+		logger.Error(msg)
+		return nil, errors.New(msg)
+	}
+
+	return &types.CreateGetImageJobResponse{
+		Image: image,
+		Peers: peers,
+	}, nil
+}
+
+func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageJobRequest) ([]internaljob.PreheatRequest, error) {
+	var certPool *x509.CertPool
+	if len(s.config.Job.Preheat.TLS.CACert) != 0 {
+		certPool = x509.NewCertPool()
+		if !certPool.AppendCertsFromPEM([]byte(s.config.Job.Preheat.TLS.CACert)) {
+			return nil, errors.New("invalid CA Cert")
+		}
+	}
+
+	files, err := job.GetImageLayers(ctx, types.PreheatArgs{
 		Type:                job.PreheatImageType.String(),
 		URL:                 json.Args.URL,
 		PieceLength:         json.Args.PieceLength,
@@ -223,32 +276,26 @@ func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetIma
 		Username:            json.Args.Username,
 		Password:            json.Args.Password,
 		Platform:            json.Args.Platform,
-	}
-
-	var certPool *x509.CertPool
-	if len(s.config.Job.Preheat.TLS.CACert) != 0 {
-		certPool = x509.NewCertPool()
-		if !certPool.AppendCertsFromPEM([]byte(s.config.Job.Preheat.TLS.CACert)) {
-			return nil, errors.New("invalid CA Cert")
-		}
-	}
-
-	files, err := job.GetImageLayers(ctx, args, s.config.Job.Preheat.RegistryTimeout, certPool, s.config.Job.Preheat.TLS.InsecureSkipVerify)
+	}, s.config.Job.Preheat.RegistryTimeout, certPool, s.config.Job.Preheat.TLS.InsecureSkipVerify)
 	if err != nil {
 		return nil, fmt.Errorf("get image layers failed: %w", err)
 	}
 
-	var (
-		image = types.Image{}
-		jobs  = make([]*models.Job, 0, len(files))
-		mu    sync.Mutex
-		sem   = semaphore.NewWeighted(DefaultGetImageJobConcurrentCount)
-		wg    sync.WaitGroup
-	)
-	for _, file := range files {
-		image.Layers = append(image.Layers, types.Layer{URL: file.URL})
+	if len(files) == 0 {
+		return nil, errors.New("no valid image layers found")
+	}
 
+	return files, nil
+}
+
+func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljob.PreheatRequest, json types.CreateGetImageJobRequest, schedulers []models.Scheduler) []*models.Job {
+	jobs := make([]*models.Job, 0, len(layers))
+	sem := semaphore.NewWeighted(DefaultGetImageJobConcurrentCount)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, file := range layers {
 		wg.Add(1)
+
 		go func(file internaljob.PreheatRequest) {
 			defer wg.Done()
 
@@ -269,9 +316,9 @@ func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetIma
 					FilteredQueryParams: json.Args.FilteredQueryParams,
 				},
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
-			})
+			}, schedulers)
 			if err != nil {
-				logger.Warnf("create get task job for image layer %s failed: %v", file.URL, err)
+				logger.Warnf("failed to create task job for image layer %s: %v", file.URL, err)
 				return
 			}
 
@@ -281,141 +328,15 @@ func (s *service) CreateGetImageJob(ctx context.Context, json types.CreateGetIma
 		}(file)
 	}
 	wg.Wait()
-
-	if len(jobs) == 0 {
-		logger.Errorf("no valid image layers found for URL %s", json.Args.URL)
-		return nil, errors.New("no valid image layers found")
-	}
-
-	m := map[string]*types.Peer{}
-	for _, job := range jobs {
-		if job.State == machineryv1tasks.StateSuccess {
-			jobStates, ok := job.Result["job_states"].([]any)
-			if !ok {
-				logger.Warnf("job %s has no job_states in result", job.ID)
-				continue
-			}
-
-			url, ok := job.Args["url"].(string)
-			if !ok {
-				logger.Warnf("job %s has no url in args", job.ID)
-				continue
-			}
-
-			for _, jobState := range jobStates {
-				jobState, ok := jobState.(map[string]any)
-				if !ok {
-					logger.Warnf("job %s has invalid job_state in result", job.ID)
-					continue
-				}
-
-				results, ok := jobState["results"].([]any)
-				if !ok {
-					logger.Warnf("job %s has no results in job_state", job.ID)
-					continue
-				}
-
-				for _, result := range results {
-					result, ok := result.(map[string]any)
-					if !ok {
-						logger.Warnf("job %s has invalid result in job_state", job.ID)
-						continue
-					}
-
-					schedulerClusterID, ok := result["scheduler_cluster_id"].(float64)
-					if !ok {
-						logger.Warnf("job %s has no scheduler_cluster_id in result", job.ID)
-						continue
-					}
-
-					peers, ok := result["peers"].([]any)
-					if !ok {
-						logger.Warnf("job %s has no peers in result", job.ID)
-						continue
-					}
-
-					for _, peer := range peers {
-						peer, ok := peer.(map[string]any)
-						if !ok {
-							logger.Warnf("job %s has invalid peer in result", job.ID)
-							continue
-						}
-
-						id, ok := peer["id"].(string)
-						if !ok {
-							logger.Warnf("job %s has invalid peer id in result", job.ID)
-							continue
-						}
-
-						hostType, ok := peer["host_type"].(string)
-						if !ok {
-							logger.Warnf("job %s has no host_type in result for peer %s", job.ID, id)
-							continue
-						}
-
-						// If peer is not a normal peer, skip it and ignore seed peers.
-						if hostType != pkgtypes.HostTypeNormalName {
-							continue
-						}
-
-						ip, ok := peer["ip"].(string)
-						if !ok {
-							logger.Warnf("job %s has no ip in result for peer %s", job.ID, id)
-							continue
-						}
-
-						hostname, ok := peer["hostname"].(string)
-						if !ok {
-							logger.Warnf("job %s has no hostname in result for peer %s", job.ID, id)
-							continue
-						}
-
-						hostID := idgen.HostIDV2(ip, hostname, false)
-						p, ok := m[hostID]
-						if !ok {
-							m[hostID] = &types.Peer{
-								IP:       ip,
-								Hostname: hostname,
-								Image: types.Image{
-									Layers: []types.Layer{{URL: url}},
-								},
-								SchedulerClusterID: uint(schedulerClusterID),
-							}
-						} else {
-							if slices.Contains(p.Image.Layers, types.Layer{URL: url}) {
-								continue
-							}
-
-							p.Image.Layers = append(p.Image.Layers, types.Layer{URL: url})
-						}
-					}
-				}
-			}
-		}
-	}
-
-	peers := make([]types.Peer, 0, len(m))
-	for _, peer := range m {
-		peers = append(peers, *peer)
-	}
-
-	return &types.CreateGetImageJobResponse{
-		Image: image,
-		Peers: peers,
-	}, nil
+	return jobs
 }
 
-func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGetTaskJobRequest) (*models.Job, error) {
+func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGetTaskJobRequest, schedulers []models.Scheduler) (*models.Job, error) {
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
 	}
 
 	args, err := structure.StructToMap(json.Args)
-	if err != nil {
-		return nil, err
-	}
-
-	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -452,6 +373,124 @@ func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGet
 	return &job, nil
 }
 
+func (s *service) extractPeersFromJobs(jobs []*models.Job) ([]types.Peer, error) {
+	m := make(map[string]*types.Peer, len(jobs))
+	for _, job := range jobs {
+		if job.State != machineryv1tasks.StateSuccess {
+			continue
+		}
+
+		jobStates, ok := job.Result["job_states"].([]any)
+		if !ok {
+			logger.Warnf("job %s has no job_states in result", job.ID)
+			continue
+		}
+
+		url, ok := job.Args["url"].(string)
+		if !ok {
+			logger.Warnf("job %s has no url in args", job.ID)
+			continue
+		}
+
+		for _, jobState := range jobStates {
+			jobState, ok := jobState.(map[string]any)
+			if !ok {
+				logger.Warnf("job %s has invalid job_state in result", job.ID)
+				continue
+			}
+
+			results, ok := jobState["results"].([]any)
+			if !ok {
+				logger.Warnf("job %s has no results in job_state", job.ID)
+				continue
+			}
+
+			for _, result := range results {
+				result, ok := result.(map[string]any)
+				if !ok {
+					logger.Warnf("job %s has invalid result in job_state", job.ID)
+					continue
+				}
+
+				schedulerClusterID, ok := result["scheduler_cluster_id"].(float64)
+				if !ok {
+					logger.Warnf("job %s has no scheduler_cluster_id in result", job.ID)
+					continue
+				}
+
+				peers, ok := result["peers"].([]any)
+				if !ok {
+					logger.Warnf("job %s has no peers in result", job.ID)
+					continue
+				}
+
+				for _, peer := range peers {
+					peer, ok := peer.(map[string]any)
+					if !ok {
+						logger.Warnf("job %s has invalid peer in result", job.ID)
+						continue
+					}
+
+					id, ok := peer["id"].(string)
+					if !ok {
+						logger.Warnf("job %s has invalid peer id in result", job.ID)
+						continue
+					}
+
+					hostType, ok := peer["host_type"].(string)
+					if !ok {
+						logger.Warnf("job %s has no host_type in result for peer %s", job.ID, id)
+						continue
+					}
+
+					// Only collect normal peers and skip seed peers.
+					if hostType != pkgtypes.HostTypeNormalName {
+						continue
+					}
+
+					ip, ok := peer["ip"].(string)
+					if !ok {
+						logger.Warnf("job %s has no ip in result for peer %s", job.ID, id)
+						continue
+					}
+
+					hostname, ok := peer["hostname"].(string)
+					if !ok {
+						logger.Warnf("job %s has no hostname in result for peer %s", job.ID, id)
+						continue
+					}
+
+					hostID := idgen.HostIDV2(ip, hostname, false)
+					p, found := m[hostID]
+					if !found {
+						m[hostID] = &types.Peer{
+							IP:       ip,
+							Hostname: hostname,
+							Image: types.Image{
+								Layers: []types.Layer{{URL: url}},
+							},
+							SchedulerClusterID: uint(schedulerClusterID),
+						}
+					} else {
+						if slices.Contains(p.Image.Layers, types.Layer{URL: url}) {
+							continue
+						}
+
+						p.Image.Layers = append(p.Image.Layers, types.Layer{URL: url})
+					}
+				}
+			}
+		}
+	}
+
+	peers := make([]types.Peer, 0, len(m))
+	for _, peer := range m {
+		peers = append(peers, *peer)
+	}
+
+	return peers, nil
+}
+
 func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDeleteTaskJobRequest) (*models.Job, error) {
 	if json.Args.Timeout == 0 {
 		json.Args.Timeout = types.DefaultJobTimeout
@@ -463,16 +502,19 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
+		logger.Errorf("convert delete task args to map failed: %v", err)
 		return nil, err
 	}
 
 	schedulers, err := s.findAllSchedulersInClusters(ctx, json.SchedulerClusterIDs)
 	if err != nil {
+		logger.Errorf("find schedulers in clusters failed: %v", err)
 		return nil, err
 	}
 
 	groupJobState, err := s.job.CreateDeleteTask(ctx, schedulers, json.Args)
 	if err != nil {
+		logger.Errorf("create delete task job failed: %v", err)
 		return nil, err
 	}
 
@@ -492,6 +534,7 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 	}
 
 	if err := s.db.WithContext(ctx).Create(&job).Error; err != nil {
+		logger.Errorf("create delete task job failed: %v", err)
 		return nil, err
 	}
 
