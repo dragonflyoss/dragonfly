@@ -33,6 +33,9 @@ const (
 	// GetTaskJob is the name of getting task job.
 	GetTaskJob = "get_task"
 
+	// GetImageDistributionJob is the job name of getting image distribution.
+	GetImageDistributionJob = "get_image_distribution"
+
 	// DeleteTaskJob is the name of deleting task job.
 	DeleteTaskJob = "delete_task"
 
@@ -43,8 +46,8 @@ const (
 // Machinery server configuration.
 const (
 	DefaultResultsExpireIn             = 86400
-	DefaultRedisMaxIdle                = 30
-	DefaultRedisMaxActive              = 50
+	DefaultRedisMaxIdle                = 70
+	DefaultRedisMaxActive              = 100
 	DefaultRedisIdleTimeout            = 30
 	DefaultRedisReadTimeout            = 60
 	DefaultRedisWriteTimeout           = 60

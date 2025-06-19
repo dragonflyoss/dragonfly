@@ -406,7 +406,6 @@ func New() *Config {
 			Verbose:   false,
 			PProfPort: -1,
 			Tracing: base.TracingConfig{
-				Addr:        "",
 				ServiceName: types.ManagerName,
 			},
 		},

@@ -12,17 +12,14 @@ Please refer to our [MAINTAINERS.md](MAINTAINERS.md).
 
 ## Emeritus maintainers
 
+Please refer to our [emeritus_members.yaml](https://github.com/dragonflyoss/community/blob/master/ladder/emeritus_members.yaml).
+
+## Community Managers
+
 <!-- markdownlint-disable -->
 
-|                      GitHub ID                      |     Name      |            Email             |    Company    |
-| :-------------------------------------------------: | :-----------: | :--------------------------: | :-----------: |
-|      [244372610](https://github.com/244372610)      |  Weipeng Sun  | weipeng.swp@alibaba-inc.com  | Alibaba Group |
-|          [lowzj](https://github.com/lowzj)          |   Jin Zhang   |     zj3142063@gmail.com      | Alibaba Group |
-|        [Starnop](https://github.com/Starnop)        |  Yuxing Liu   |  yuxing.lyx@alibaba-inc.com  | Alibaba Group |
-|        [inoc603](https://github.com/inoc603)        |  Eddie Huang  |      inoc603@gmail.com       |   ByteDance   |
-| [zhouhaibing089](https://github.com/zhouhaibing089) | Haibing Zhou  |   zhouhaibing089@gmail.com   |     eBay      |
-|   [chenchaobing](https://github.com/chenchaobing)   | Chaobing Chen |     chenchaobing@126.com     |     Meitu     |
-|       [bigerous](https://github.com/bigerous)       |   Dajun Cui   | cuidajun.cdj@alibaba-inc.com | Alibaba Group |
-|      [garen wen](https://github.com/garenwen)       |   Garen Wen   |     wenmxiang@gmail.com      |  Baidu Group  |
+|                 GitHub ID                 |    Name    |         Email         |  Company  |
+| :---------------------------------------: | :--------: | :-------------------: | :-------: |
+| [mingcheng](https://github.com/mingcheng) | Cheng Ming | mingcheng@outlook.com | Ant Group |
 
 <!-- markdownlint-restore -->

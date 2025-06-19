@@ -237,7 +237,8 @@ func TestPeerHostOption_Load(t *testing.T) {
 			Verbose:   true,
 			PProfPort: -1,
 			Tracing: base.TracingConfig{
-				Addr:        "foo",
+				Protocol:    "grpc",
+				Endpoint:    "localhost:4317",
 				ServiceName: "bar",
 			},
 		},

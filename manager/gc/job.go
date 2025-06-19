@@ -65,6 +65,7 @@ func (j *job) RunGC(ctx context.Context) error {
 	}
 
 	args := models.JSONMap{
+		"type":       JobGCTaskID,
 		"ttl":        ttl,
 		"batch_size": DefaultJobGCBatchSize,
 	}

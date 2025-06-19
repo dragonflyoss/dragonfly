@@ -25,8 +25,17 @@ type Options struct {
 
 // TracingConfig defines the configuration for OpenTelemetry tracing.
 type TracingConfig struct {
-	// Addr is the address of the tracing collector.
-	Addr string `yaml:"addr" mapstructure:"addr"`
+	// Protocol specifies the communication protocol for the tracing server.
+	// Supported values: "http", "https" and "grpc".
+	// This determines how tracing logs are transmitted to the server.
+	Protocol string `yaml:"protocol" mapstructure:"protocol"`
+
+	// Endpoint is the endpoint to report tracing log, example: "localhost:4317".
+	Endpoint string `yaml:"endpoint" mapstructure:"endpoint"`
+
 	// ServiceName is the name of the service for tracing.
 	ServiceName string `yaml:"service-name" mapstructure:"service-name"`
+
+	// Headers are additional headers to be sent with tracing requests.
+	Headers map[string]string `yaml:"headers" mapstructure:"headers"`
 }

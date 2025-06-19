@@ -56,6 +56,11 @@ import (
 // preheatImage is an image for preheat.
 type PreheatType string
 
+// String returns the string representation of PreheatType.
+func (p PreheatType) String() string {
+	return string(p)
+}
+
 const (
 	// PreheatImageType is image type of preheat job.
 	PreheatImageType PreheatType = "image"
@@ -81,26 +86,19 @@ type Preheat interface {
 // preheat is an implementation of Preheat.
 type preheat struct {
 	job                *internaljob.Job
-	certificateChain   [][]byte
 	rootCAs            *x509.CertPool
 	insecureSkipVerify bool
 	registryTimeout    time.Duration
 }
 
 // newPreheat creates a new Preheat.
-func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) (Preheat, error) {
-	p := &preheat{
+func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
+	return &preheat{
 		job:                job,
 		rootCAs:            rootCAs,
 		insecureSkipVerify: insecureSkipVerify,
 		registryTimeout:    registryTimeout,
 	}
-
-	if rootCAs != nil {
-		p.certificateChain = rootCAs.Subjects()
-	}
-
-	return p, nil
 }
 
 // CreatePreheat creates a preheat job.
@@ -121,7 +119,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			return nil, errors.New("invalid params: url is required")
 		}
 
-		files, err = p.getImageLayers(ctx, json)
+		files, err = GetImageLayers(ctx, json, p.registryTimeout, p.rootCAs, p.insecureSkipVerify)
 		if err != nil {
 			return nil, err
 		}
@@ -133,6 +131,11 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 
 		if json.URL != "" {
 			json.URLs = append(json.URLs, json.URL)
+		}
+
+		var certificateChain [][]byte
+		if p.rootCAs != nil {
+			certificateChain = p.rootCAs.Subjects()
 		}
 
 		for _, url := range json.URLs {
@@ -147,7 +150,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 				Percentage:                  json.Percentage,
 				Count:                       json.Count,
 				ConcurrentCount:             json.ConcurrentCount,
-				CertificateChain:            p.certificateChain,
+				CertificateChain:            certificateChain,
 				InsecureSkipVerify:          p.insecureSkipVerify,
 				Timeout:                     json.Timeout,
 				LoadToCache:                 json.LoadToCache,
@@ -211,8 +214,7 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 	}, nil
 }
 
-// getImageLayers gets layers of image.
-func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([]internaljob.PreheatRequest, error) {
+func GetImageLayers(ctx context.Context, args types.PreheatArgs, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) ([]internaljob.PreheatRequest, error) {
 	ctx, span := tracer.Start(ctx, config.SpanGetLayers, trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
@@ -232,10 +234,10 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 	}
 
 	httpClient := &http.Client{
-		Timeout: p.registryTimeout,
+		Timeout: registryTimeout,
 		Transport: &http.Transport{
 			DialContext:         nethttp.NewSafeDialer().DialContext,
-			TLSClientConfig:     &tls.Config{RootCAs: p.rootCAs, InsecureSkipVerify: p.insecureSkipVerify},
+			TLSClientConfig:     &tls.Config{RootCAs: rootCAs, InsecureSkipVerify: insecureSkipVerify},
 			MaxIdleConns:        defaultHTTPTransport.MaxIdleConns,
 			MaxIdleConnsPerHost: defaultHTTPTransport.MaxIdleConnsPerHost,
 			MaxConnsPerHost:     defaultHTTPTransport.MaxConnsPerHost,
@@ -259,7 +261,7 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 	}
 
 	// Get manifests.
-	manifests, err := p.getManifests(ctx, client, image, header.Clone(), platform)
+	manifests, err := getManifests(ctx, client, image, header.Clone(), platform)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +275,7 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 	header.Set("Authorization", client.GetAuthToken())
 
 	// parse image layers to preheat
-	layers, err := p.parseLayers(manifests, args, header.Clone(), image)
+	layers, err := parseLayers(manifests, args, header.Clone(), image, rootCAs, insecureSkipVerify)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +284,7 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 }
 
 // getManifests gets manifests of image.
-func (p *preheat) getManifests(ctx context.Context, client *imageAuthClient, image *preheatImage, header http.Header, platform specs.Platform) ([]distribution.Manifest, error) {
+func getManifests(ctx context.Context, client *imageAuthClient, image *preheatImage, header http.Header, platform specs.Platform) ([]distribution.Manifest, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, image.manifestURL(), nil)
 	if err != nil {
 		return nil, err
@@ -330,9 +332,9 @@ func (p *preheat) getManifests(ctx context.Context, client *imageAuthClient, ima
 		return []distribution.Manifest{v}, nil
 	case *manifestlist.DeserializedManifestList:
 		var result []distribution.Manifest
-		for _, v := range p.filterManifests(v.Manifests, platform) {
+		for _, v := range filterManifests(v.Manifests, platform) {
 			image.tag = v.Digest.String()
-			manifests, err := p.getManifests(ctx, client, image, header.Clone(), platform)
+			manifests, err := getManifests(ctx, client, image, header.Clone(), platform)
 			if err != nil {
 				return nil, err
 			}
@@ -347,7 +349,7 @@ func (p *preheat) getManifests(ctx context.Context, client *imageAuthClient, ima
 }
 
 // filterManifests filters manifests with platform.
-func (p *preheat) filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs.Platform) []manifestlist.ManifestDescriptor {
+func filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs.Platform) []manifestlist.ManifestDescriptor {
 	var matches []manifestlist.ManifestDescriptor
 	for _, desc := range manifests {
 		if desc.Platform.Architecture == platform.Architecture && desc.Platform.OS == platform.OS {
@@ -359,7 +361,12 @@ func (p *preheat) filterManifests(manifests []manifestlist.ManifestDescriptor, p
 }
 
 // parseLayers parses layers of image.
-func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.PreheatArgs, header http.Header, image *preheatImage) ([]internaljob.PreheatRequest, error) {
+func parseLayers(manifests []distribution.Manifest, args types.PreheatArgs, header http.Header, image *preheatImage, rootCAs *x509.CertPool, insecureSkipVerify bool) ([]internaljob.PreheatRequest, error) {
+	var certificateChain [][]byte
+	if rootCAs != nil {
+		certificateChain = rootCAs.Subjects()
+	}
+
 	var layers []internaljob.PreheatRequest
 	for _, m := range manifests {
 		for _, v := range m.References() {
@@ -375,8 +382,8 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 				Percentage:          args.Percentage,
 				Count:               args.Count,
 				ConcurrentCount:     args.ConcurrentCount,
-				CertificateChain:    p.certificateChain,
-				InsecureSkipVerify:  p.insecureSkipVerify,
+				CertificateChain:    certificateChain,
+				InsecureSkipVerify:  insecureSkipVerify,
 				Timeout:             args.Timeout,
 			}
 

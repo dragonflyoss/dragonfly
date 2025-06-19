@@ -179,7 +179,7 @@ func (o *objectStorage) initRouter(cfg *config.DaemonOption, logDir string) *gin
 	p.Use(r)
 
 	// Opentelemetry.
-	if cfg.Tracing.Addr != "" {
+	if cfg.Tracing.Protocol != "" && cfg.Tracing.Endpoint != "" {
 		r.Use(otelgin.Middleware(OtelServiceName))
 	}
 

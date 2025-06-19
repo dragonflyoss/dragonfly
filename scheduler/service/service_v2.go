@@ -441,9 +441,9 @@ func (v *V2) DeletePeer(_ctx context.Context, req *schedulerv2.DeletePeerRequest
 	}
 
 	if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-		msg := fmt.Sprintf("peer fsm event failed: %s", err.Error())
-		peer.Log.Error(msg)
-		return status.Error(codes.FailedPrecondition, msg)
+		err = fmt.Errorf("peer fsm event failed: %w", err)
+		peer.Log.Error(err)
+		return status.Error(codes.FailedPrecondition, err.Error())
 	}
 
 	return nil
@@ -537,8 +537,8 @@ func (v *V2) DeleteTask(_ctx context.Context, req *schedulerv2.DeleteTaskRequest
 
 		if peer.Task.ID == req.GetTaskId() {
 			if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-				msg := fmt.Sprintf("peer fsm event failed: %s", err.Error())
-				peer.Log.Error(msg)
+				err = fmt.Errorf("peer fsm event failed: %w", err)
+				peer.Log.Error(err)
 				return true
 			}
 		}

@@ -35,7 +35,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -101,7 +103,7 @@ func InitMonitor(ctx context.Context, pprofPort int, tracingConfig base.TracingC
 	}
 
 	// Initialize jaeger tracer if tracing address is set.
-	if tracingConfig.Addr != "" {
+	if tracingConfig.Protocol != "" && tracingConfig.Endpoint != "" {
 		shutdown, err := initJaegerTracer(ctx, tracingConfig)
 		if err != nil {
 			logger.Warnf("init jaeger tracer error: %v", err)
@@ -145,14 +147,30 @@ func startStatsView(port int) func() {
 
 // initTracer creates a new trace provider instance and registers it as global trace provider.
 func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (func(), error) {
-	conn, err := grpc.NewClient(tracingConfig.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("could not create gRPC connection to collector: %w", err)
-	}
+	var (
+		exporter *otlptrace.Exporter
+		err      error
+	)
 
-	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
-	if err != nil {
-		return nil, fmt.Errorf("could not create trace exporter: %w", err)
+	switch tracingConfig.Protocol {
+	case "http", "https":
+		addr := fmt.Sprintf("%s://%s", tracingConfig.Protocol, tracingConfig.Endpoint)
+		exporter, err = otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(addr), otlptracehttp.WithInsecure())
+		if err != nil {
+			return nil, fmt.Errorf("could not create HTTP trace exporter: %w", err)
+		}
+	case "grpc":
+		conn, err := grpc.NewClient(tracingConfig.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return nil, fmt.Errorf("could not create gRPC connection to collector: %w", err)
+		}
+
+		exporter, err = otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn), otlptracegrpc.WithHeaders(tracingConfig.Headers))
+		if err != nil {
+			return nil, fmt.Errorf("could not create gRPC trace exporter: %w", err)
+		}
+	default:
+		panic(fmt.Sprintf("unsupported tracing protocol: %s", tracingConfig.Protocol))
 	}
 
 	provider := sdktrace.NewTracerProvider(
@@ -169,7 +187,6 @@ func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (fu
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(provider)
-
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()

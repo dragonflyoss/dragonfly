@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -10,7 +11,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
-func TestPreheat_getImageLayers(t *testing.T) {
+func TestPreheat_GetImageLayers(t *testing.T) {
 	tests := []struct {
 		name   string
 		args   types.PreheatArgs
@@ -42,8 +43,7 @@ func TestPreheat_getImageLayers(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &preheat{}
-			layers, err := p.getImageLayers(context.Background(), tc.args)
+			layers, err := GetImageLayers(context.Background(), tc.args, 30*time.Second, nil, true)
 			if err != nil {
 				t.Fatal(err)
 			}

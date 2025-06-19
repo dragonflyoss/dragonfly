@@ -62,7 +62,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	p.Use(r)
 
 	// Opentelemetry.
-	if cfg.Tracing.Addr != "" {
+	if cfg.Tracing.Protocol != "" && cfg.Tracing.Endpoint != "" {
 		r.Use(otelgin.Middleware(types.ManagerName))
 	}
 
