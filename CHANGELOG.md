@@ -1,5 +1,8 @@
 <a name="unreleased"></a>
 ## [Unreleased]
+### Feat
+- improve error handling and validation in API handlers (`application.go`, `audit.go`)
+- update Swagger comments for error responses
 
 
 <a name="v2.2.0"></a>
