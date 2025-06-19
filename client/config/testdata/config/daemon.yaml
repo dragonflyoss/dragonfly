@@ -2,7 +2,8 @@ console: true
 verbose: true
 pprof-port: -1
 tracing:
-  addr: "foo"
+  protocol: "grpc"
+  endpoint: "localhost:4317"
   service-name: "bar"
 metrics: ":8000"
 aliveTime: 0s
