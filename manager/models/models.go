@@ -88,7 +88,7 @@ func (m JSONMap) GormDataType() string {
 }
 
 func (JSONMap) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "text"
+	return "longtext"
 }
 
 type Array []string
@@ -137,5 +137,5 @@ func (Array) GormDataType() string {
 }
 
 func (Array) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "text"
+	return "longtext"
 }
