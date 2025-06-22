@@ -94,7 +94,7 @@ var rootCmd = &cobra.Command{
 			MaxBackups: dfgetConfig.LogMaxBackups}
 
 		// Initialize logger
-		if err := logger.InitDfget(dfgetConfig.Verbose, dfgetConfig.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitDfget(dfgetConfig.Verbose, dfgetConfig.LogLevel, dfgetConfig.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init client dfget logger: %w", err)
 		}
 

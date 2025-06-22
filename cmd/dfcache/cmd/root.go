@@ -142,7 +142,7 @@ func runDfcacheSubcmd(ctx context.Context, cmdName string, args []string) error 
 		MaxBackups: dfcacheConfig.LogMaxBackups}
 
 	// Initialize logger
-	if err := logger.InitDfcache(dfcacheConfig.Console, d.LogDir(), rotateConfig); err != nil {
+	if err := logger.InitDfcache(dfcacheConfig.Verbose, dfcacheConfig.LogLevel, d.LogDir(), rotateConfig); err != nil {
 		return fmt.Errorf("init client dfcache logger: %w", err)
 	}
 	logger.Infof("version:\n%s", version.Version())

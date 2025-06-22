@@ -19,6 +19,7 @@ package base
 type Options struct {
 	Console   bool          `yaml:"console" mapstructure:"console"`
 	Verbose   bool          `yaml:"verbose" mapstructure:"verbose"`
+	LogLevel  string        `yaml:"log-level" mapstructure:"log-level"`
 	PProfPort int           `yaml:"pprof-port" mapstructure:"pprof-port"`
 	Tracing   TracingConfig `yaml:"tracing" mapstructure:"tracing"`
 }

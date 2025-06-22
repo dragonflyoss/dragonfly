@@ -165,6 +165,9 @@ console: false
 # Whether to enable debug level logger and enable pprof.
 verbose: true
 
+# Use specific log level(debug, info, warn, error), take precedence over verbose flag.
+# log-level: debug
+
 # Listen port for pprof, only valid when the verbose option is true, default is -1.
 pprof-port: -1
 

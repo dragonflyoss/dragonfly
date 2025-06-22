@@ -47,8 +47,8 @@ var (
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "start the client daemon of dragonfly",
-	Long: `client daemon is mainly responsible for transmitting blocks between peers 
-and putting the completed file into the specified target path. at the same time, 
+	Long: `client daemon is mainly responsible for transmitting blocks between peers
+and putting the completed file into the specified target path. at the same time,
 it supports container engine, wget and other downloading tools through proxy function.`,
 	Args:               cobra.NoArgs,
 	DisableAutoGenTag:  true,
@@ -80,7 +80,7 @@ it supports container engine, wget and other downloading tools through proxy fun
 			MaxBackups: cfg.LogMaxBackups}
 
 		// Initialize logger
-		if err := logger.InitDaemon(cfg.Verbose, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitDaemon(cfg.Verbose, cfg.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init client daemon logger: %w", err)
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.DaemonName))

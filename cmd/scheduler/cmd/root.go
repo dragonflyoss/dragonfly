@@ -41,7 +41,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "scheduler",
 	Short: "the scheduler of dragonfly",
-	Long: `Scheduler is a long-running process which receives and manages download tasks from the dfdaemon, notify the seed peer to return to the source, 
+	Long: `Scheduler is a long-running process which receives and manages download tasks from the dfdaemon, notify the seed peer to return to the source,
 generate and maintain a P2P network during the download process, and push suitable download nodes to the dfdaemon`,
 	Args:              cobra.NoArgs,
 	DisableAutoGenTag: true,
@@ -72,7 +72,7 @@ generate and maintain a P2P network during the download process, and push suitab
 			MaxBackups: cfg.Server.LogMaxBackups}
 
 		// Initialize logger.
-		if err := logger.InitScheduler(cfg.Verbose, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitScheduler(cfg.Verbose, cfg.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init scheduler logger: %w", err)
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.SchedulerName))

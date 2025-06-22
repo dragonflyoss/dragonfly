@@ -72,6 +72,7 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 		flags := cmd.PersistentFlags()
 		flags.Bool("console", false, "whether logger output records to the stdout")
 		flags.Bool("verbose", false, "whether logger use debug level")
+		flags.String("log-level", "", "use specific log level(debug, info, warn, error), take precedence over verbose flag")
 		flags.Int("pprof-port", -1, "listen port for pprof, 0 represents random port")
 		flags.String("config", "", fmt.Sprintf("the path of configuration file with yaml extension name, default is %s, it can also be set by env var: %s", filepath.Join(dfpath.DefaultConfigDir, rootName+".yaml"), strings.ToUpper(rootName+"_config")))
 

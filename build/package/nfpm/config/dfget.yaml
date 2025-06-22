@@ -26,6 +26,7 @@ scheduler:
 
 # when enabled, pprof will be enabled,
 verbose: true
+log-level: debug
 console: false
 
 # current host info used for scheduler
