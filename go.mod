@@ -12,7 +12,7 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.10.3
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/bits-and-blooms/bitset v1.22.0
-	github.com/casbin/casbin/v2 v2.81.0
+	github.com/casbin/casbin/v2 v2.108.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colinmarc/hdfs/v2 v2.3.0
@@ -80,6 +80,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.60.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0
 	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.36.0
 	go.opentelemetry.io/otel/sdk v1.36.0
@@ -124,10 +125,11 @@ require (
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
-	github.com/casbin/govaluate v1.1.0 // indirect
+	github.com/casbin/govaluate v1.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 // indirect
@@ -260,7 +262,6 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.34.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
