@@ -66,7 +66,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
 
       - name: Login Docker Hub
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
