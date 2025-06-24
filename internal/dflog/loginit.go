@@ -35,9 +35,9 @@ type logInitMeta struct {
 	setLoggerFunc        func(log *zap.Logger)
 }
 
-func InitManager(verbose bool, logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
+func InitManager(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
 	if console {
-		return createConsoleLogger(verbose, logLevel)
+		return createConsoleLogger(logLevel)
 	}
 
 	logDir := filepath.Join(dir, types.ManagerName)
@@ -64,12 +64,12 @@ func InitManager(verbose bool, logLevel string, console bool, dir string, rotate
 		},
 	}
 
-	return createFileLogger(verbose, logLevel, meta, logDir, rotateConfig)
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func InitScheduler(verbose bool, logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
+func InitScheduler(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
 	if console {
-		return createConsoleLogger(verbose, logLevel)
+		return createConsoleLogger(logLevel)
 	}
 
 	logDir := filepath.Join(dir, types.SchedulerName)
@@ -92,12 +92,12 @@ func InitScheduler(verbose bool, logLevel string, console bool, dir string, rota
 		},
 	}
 
-	return createFileLogger(verbose, logLevel, meta, logDir, rotateConfig)
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func InitDaemon(verbose bool, logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
+func InitDaemon(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
 	if console {
-		return createConsoleLogger(verbose, logLevel)
+		return createConsoleLogger(logLevel)
 	}
 
 	logDir := filepath.Join(dir, types.DaemonName)
@@ -120,12 +120,12 @@ func InitDaemon(verbose bool, logLevel string, console bool, dir string, rotateC
 		},
 	}
 
-	return createFileLogger(verbose, logLevel, meta, logDir, rotateConfig)
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func InitDfget(verbose bool, logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
+func InitDfget(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
 	if console {
-		return createConsoleLogger(verbose, logLevel)
+		return createConsoleLogger(logLevel)
 	}
 
 	logDir := filepath.Join(dir, types.DfgetName)
@@ -140,10 +140,10 @@ func InitDfget(verbose bool, logLevel string, console bool, dir string, rotateCo
 		},
 	}
 
-	return createFileLogger(verbose, logLevel, meta, logDir, rotateConfig)
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func InitDfcache(verbose bool, logLevel string, dir string, rotateConfig LogRotateConfig) error {
+func InitDfcache(logLevel string, dir string, rotateConfig LogRotateConfig) error {
 	logDir := filepath.Join(dir, types.DfcacheName)
 	var meta = []logInitMeta{
 		{
@@ -156,14 +156,13 @@ func InitDfcache(verbose bool, logLevel string, dir string, rotateConfig LogRota
 		},
 	}
 
-	return createFileLogger(verbose, logLevel, meta, logDir, rotateConfig)
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func createConsoleLogger(verbose bool, logLevel string) error {
+func createConsoleLogger(logLevel string) error {
 	levels = nil
 	config := zap.NewDevelopmentConfig()
 	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-	// Use logLevel first, then fallback to verbose flag.
 	if logLevel != "" {
 		switch strings.ToLower(logLevel) {
 		case "debug":
@@ -177,8 +176,6 @@ func createConsoleLogger(verbose bool, logLevel string) error {
 		default:
 			fmt.Printf("Warning: invalid log level '%s', using 'info' instead\n", logLevel)
 		}
-	} else if verbose {
-		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	}
 
 	log, err := config.Build(zap.AddCaller(), zap.AddStacktrace(zap.WarnLevel), zap.AddCallerSkip(1))
@@ -199,13 +196,13 @@ func createConsoleLogger(verbose bool, logLevel string) error {
 	return nil
 }
 
-func createFileLogger(verbose bool, logLevel string, meta []logInitMeta, logDir string, rotateConfig LogRotateConfig) error {
+func createFileLogger(logLevel string, meta []logInitMeta, logDir string, rotateConfig LogRotateConfig) error {
 	levels = nil
 	// create parent dir first
 	_ = os.MkdirAll(logDir, fs.FileMode(0700))
 
 	for _, m := range meta {
-		log, level, err := CreateLogger(path.Join(logDir, m.fileName), false, false, verbose, logLevel, rotateConfig)
+		log, level, err := CreateLogger(path.Join(logDir, m.fileName), false, false, logLevel, rotateConfig)
 		if err != nil {
 			return err
 		}
@@ -217,6 +214,7 @@ func createFileLogger(verbose bool, logLevel string, meta []logInitMeta, logDir 
 
 		levels = append(levels, level)
 	}
+
 	startLoggerSignalHandler()
 	return nil
 }

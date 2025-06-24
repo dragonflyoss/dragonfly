@@ -62,6 +62,7 @@ type DaemonOption struct {
 	CacheDir      string `mapstructure:"cacheDir" yaml:"cacheDir"`
 	CacheDirMode  uint32 `mapstructure:"cacheDirMode" yaml:"cacheDirMode"`
 	LogDir        string `mapstructure:"logDir" yaml:"logDir"`
+	LogLevel      string `mapstructure:"logLevel" yaml:"logLevel"`
 	LogMaxSize    int    `yaml:"logMaxSize" mapstructure:"logMaxSize"`
 	LogMaxAge     int    `yaml:"logMaxAge" mapstructure:"logMaxAge"`
 	LogMaxBackups int    `yaml:"logMaxBackups" mapstructure:"logMaxBackups"`

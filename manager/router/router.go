@@ -44,7 +44,7 @@ import (
 func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer,
 	limiter ratelimiter.JobRateLimiter, assets static.ServeFileSystem) (*gin.Engine, error) {
 	// Set mode.
-	if !cfg.Verbose {
+	if cfg.Server.LogLevel == "info" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 

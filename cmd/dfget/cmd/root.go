@@ -94,7 +94,7 @@ var rootCmd = &cobra.Command{
 			MaxBackups: dfgetConfig.LogMaxBackups}
 
 		// Initialize logger
-		if err := logger.InitDfget(dfgetConfig.Verbose, dfgetConfig.LogLevel, dfgetConfig.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitDfget(dfgetConfig.LogLevel, dfgetConfig.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init client dfget logger: %w", err)
 		}
 
@@ -177,6 +177,8 @@ func init() {
 	flagSet.String("workhome", dfgetConfig.WorkHome, "Dfget working directory")
 
 	flagSet.String("logdir", dfgetConfig.LogDir, "Dfget log directory")
+
+	flagSet.String("logLevel", dfgetConfig.LogLevel, "Dfget log level, one of: debug, info, warn, error, fatal, panic")
 
 	flagSet.String("datadir", dfgetConfig.DataDir, "Dfget data directory")
 

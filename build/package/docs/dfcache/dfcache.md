@@ -23,10 +23,8 @@ responsibility to go back to source and add file into P2P network.
       --console               whether logger output records to the stdout
   -h, --help                  help for dfcache
       --logdir string         Dfcache log directory
-      --pprof-port int        listen port for pprof(default -1)
   -t, --tag string            different tags for the same cid will be recognized as different  files in P2P network
       --timeout duration      Timeout for this cache operation, 0 is infinite
-      --verbose               whether logger use debug level
       --workhome string       Dfcache working directory
 ```
 

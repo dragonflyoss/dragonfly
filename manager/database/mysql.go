@@ -54,7 +54,7 @@ func newMysql(cfg *config.Config) (*gorm.DB, error) {
 
 	// Initialize gorm logger.
 	logLevel := gormlogger.Info
-	if !cfg.Verbose {
+	if cfg.Server.LogLevel != "info" {
 		logLevel = gormlogger.Warn
 	}
 	gormLogger := zapgorm2.New(logger.CoreLogger.Desugar()).LogMode(logLevel)

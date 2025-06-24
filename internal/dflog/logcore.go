@@ -53,8 +53,7 @@ var customCoreLevel atomic.Bool
 var grpcLevel = zap.NewAtomicLevelAt(zapcore.WarnLevel)
 var customGrpcLevel atomic.Bool
 
-func CreateLogger(filePath string, compress bool, stats bool, verbose bool, logLevel string, config LogRotateConfig) (*zap.Logger, zap.AtomicLevel, error) {
-
+func CreateLogger(filePath string, compress bool, stats bool, logLevel string, config LogRotateConfig) (*zap.Logger, zap.AtomicLevel, error) {
 	rotateConfig := &lumberjack.Logger{
 		Filename:   filePath,
 		MaxSize:    config.MaxSize,
@@ -68,7 +67,6 @@ func CreateLogger(filePath string, compress bool, stats bool, verbose bool, logL
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(encodeTimeFormat)
 	var level = zap.NewAtomicLevelAt(zap.InfoLevel)
-	// Use logLevel first, then fallback to verbose flag.
 	if logLevel != "" {
 		switch strings.ToLower(logLevel) {
 		case "debug":
@@ -82,8 +80,6 @@ func CreateLogger(filePath string, compress bool, stats bool, verbose bool, logL
 		default:
 			fmt.Printf("Warning: invalid log level '%s', using 'info' instead\n", logLevel)
 		}
-	} else if verbose {
-		level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	}
 
 	if strings.HasSuffix(filePath, GrpcLogFileName) && customGrpcLevel.Load() {
