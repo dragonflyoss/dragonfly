@@ -91,6 +91,9 @@ type ServerConfig struct {
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`
 
+	// LogLevel is log level of server, supported values are "debug", "info", "warn", "error", "panic", "fatal".
+	LogLevel string `yaml:"logLevel" mapstructure:"logLevel"`
+
 	// Maximum size in megabytes of log files before rotation (default: 1024)
 	LogMaxSize int `yaml:"logMaxSize" mapstructure:"logMaxSize"`
 
@@ -318,7 +321,6 @@ func New() *Config {
 	return &Config{
 		Options: base.Options{
 			Console:   false,
-			Verbose:   false,
 			PProfPort: -1,
 			Tracing: base.TracingConfig{
 				ServiceName: types.SchedulerName,
@@ -328,6 +330,7 @@ func New() *Config {
 			Port:          DefaultServerPort,
 			AdvertisePort: DefaultServerAdvertisePort,
 			Host:          fqdn.FQDNHostname,
+			LogLevel:      "info",
 			LogMaxSize:    DefaultLogRotateMaxSize,
 			LogMaxAge:     DefaultLogRotateMaxAge,
 			LogMaxBackups: DefaultLogRotateMaxBackups,

@@ -19,10 +19,8 @@ dfcache export <-i cid> <output>|<-O output> [flags]
       --config string         the path of configuration file with yaml extension name, default is /etc/dragonfly/dfcache.yaml, it can also be set by env var: DFCACHE_CONFIG
       --console               whether logger output records to the stdout
       --logdir string         Dfcache log directory
-      --pprof-port int        listen port for pprof(default -1)
-  -t, --tag string            different tags for the same cid will be recognized as different  files in P2P network
+  -t, --tag string            different tags for the same cid will be recognized as different  files in P3P network
       --timeout duration      Timeout for this cache operation, 0 is infinite
-      --verbose               whether logger use debug level
       --workhome string       Dfcache working directory
   -h, --help            help for export
   -l, --local           only export file from local cache

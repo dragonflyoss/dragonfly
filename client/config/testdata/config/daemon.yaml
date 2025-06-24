@@ -1,6 +1,5 @@
 console: true
-verbose: true
-pprof-port: -1
+pprofPort: -1
 tracing:
   protocol: "grpc"
   endpoint: "localhost:4317"

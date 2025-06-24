@@ -11,6 +11,7 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10432/badge)](https://www.bestpractices.dev/projects/10432)
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fdragonfly_oss)](https://twitter.com/dragonfly_oss)
 [![LICENSE](https://img.shields.io/github/license/dragonflyoss/dragonfly.svg?style=flat-square)](https://github.com/dragonflyoss/dragonfly/blob/main/LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly?ref=badge_shield&issueType=license)
 
 Provide efficient, stable and secure file distribution and image acceleration
 based on p2p technology to be the best practice and

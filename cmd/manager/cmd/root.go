@@ -41,7 +41,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "manager",
 	Short: "The central manager of dragonfly.",
-	Long: `manager is a long-running process and is mainly responsible 
+	Long: `manager is a long-running process and is mainly responsible
 for managing schedulers and seed peers, offering http apis and portal, etc.`,
 	Args:              cobra.NoArgs,
 	DisableAutoGenTag: true,
@@ -72,7 +72,7 @@ for managing schedulers and seed peers, offering http apis and portal, etc.`,
 			MaxBackups: cfg.Server.LogMaxBackups}
 
 		// Initialize logger.
-		if err := logger.InitManager(cfg.Verbose, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitManager(cfg.Server.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init manager logger: %w", err)
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.ManagerName))

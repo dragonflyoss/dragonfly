@@ -25,7 +25,6 @@ scheduler:
   scheduleTimeout: 10s
 
 # when enabled, pprof will be enabled,
-verbose: true
 console: false
 
 # current host info used for scheduler

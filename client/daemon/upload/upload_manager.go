@@ -148,9 +148,7 @@ func (um *uploadManager) Stop() error {
 // Initialize router of gin.
 func (um *uploadManager) initRouter(cfg *config.DaemonOption, logDir string) *gin.Engine {
 	// Set mode
-	if !cfg.Verbose {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()
 

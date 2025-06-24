@@ -83,6 +83,7 @@ func init() {
 	flags.Duration("timeout", dfcacheConfig.Timeout, "Timeout for this cache operation, 0 is infinite")
 	flags.String("workhome", dfcacheConfig.WorkHome, "Dfcache working directory")
 	flags.String("logdir", dfcacheConfig.LogDir, "Dfcache log directory")
+	flags.String("logLevel", dfcacheConfig.LogLevel, "Dfcache log level, one of: debug, info, warn, error, fatal, panic")
 	flags.String("daemon-sock", dfcacheConfig.DaemonSock, "Dfdaemon socket path to connect")
 
 	// Bind common flags
@@ -142,7 +143,7 @@ func runDfcacheSubcmd(ctx context.Context, cmdName string, args []string) error 
 		MaxBackups: dfcacheConfig.LogMaxBackups}
 
 	// Initialize logger
-	if err := logger.InitDfcache(dfcacheConfig.Console, d.LogDir(), rotateConfig); err != nil {
+	if err := logger.InitDfcache(dfcacheConfig.LogLevel, d.LogDir(), rotateConfig); err != nil {
 		return fmt.Errorf("init client dfcache logger: %w", err)
 	}
 	logger.Infof("version:\n%s", version.Version())

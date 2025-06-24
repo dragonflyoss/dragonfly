@@ -162,11 +162,8 @@ network:
 # Console shows log on console.
 console: false
 
-# Whether to enable debug level logger and enable pprof.
-verbose: true
-
-# Listen port for pprof, only valid when the verbose option is true, default is -1.
-pprof-port: -1
+# Listen port for pprof, default is -1 (means disabled).
+pprofPort: -1
 
 tracing:
   # Jaeger endpoint url, like: http://jaeger.dragonfly.svc:4317.

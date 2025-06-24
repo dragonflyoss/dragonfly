@@ -147,9 +147,7 @@ func (o *objectStorage) Stop() error {
 // Initialize router of gin.
 func (o *objectStorage) initRouter(cfg *config.DaemonOption, logDir string) *gin.Engine {
 	// Set mode.
-	if !cfg.Verbose {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	gin.SetMode(gin.ReleaseMode)
 
 	// Logging to a file.
 	if !cfg.Console {

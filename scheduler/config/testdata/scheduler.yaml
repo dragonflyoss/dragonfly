@@ -12,6 +12,7 @@ server:
   logDir: foo
   pluginDir: foo
   dataDir: foo
+  logLevel: debug
   logMaxSize: 512
   logMaxAge: 5
   logMaxBackups: 3

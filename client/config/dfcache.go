@@ -52,6 +52,9 @@ type CacheOption struct {
 	// LogDir is log directory of dfcache.
 	LogDir string `yaml:"logDir,omitempty" mapstructure:"logDir,omitempty"`
 
+	// LogLevel is log level of dfcache, supported values are "debug", "info", "warn", "error", "panic", "fatal".
+	LogLevel string `yaml:"logLevel,omitempty" mapstructure:"logLevel,omitempty"`
+
 	// Maximum size in megabytes of log files before rotation (default: 1024)
 	LogMaxSize int `yaml:"logMaxSize" mapstructure:"logMaxSize"`
 

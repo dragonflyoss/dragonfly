@@ -97,6 +97,7 @@ func TestConfig_Load(t *testing.T) {
 			Name:          "foo",
 			CacheDir:      "foo",
 			LogDir:        "foo",
+			LogLevel:      "debug",
 			LogMaxSize:    512,
 			LogMaxAge:     5,
 			LogMaxBackups: 3,

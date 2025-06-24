@@ -102,6 +102,7 @@ func SetGrpcLogger(log *zap.SugaredLogger) {
 	if vl, err := strconv.Atoi(vLevel); err == nil {
 		v = vl
 	}
+
 	grpclog.SetLoggerV2(&zapGrpc{GrpcLogger, v})
 }
 

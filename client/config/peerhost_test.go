@@ -234,7 +234,6 @@ func TestPeerHostOption_Load(t *testing.T) {
 	peerHostOption := &DaemonOption{
 		Options: base.Options{
 			Console:   true,
-			Verbose:   true,
 			PProfPort: -1,
 			Tracing: base.TracingConfig{
 				Protocol:    "grpc",

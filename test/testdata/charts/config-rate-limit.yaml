@@ -25,7 +25,8 @@ manager:
     enable: true
   config:
     console: false
-    verbose: true
+    server:
+      logLevel: debug
     job:
       rateLimit:
         fillInterval: 1m
@@ -63,7 +64,8 @@ scheduler:
     enableHost: true
   config:
     console: false
-    verbose: true
+    server:
+      logLevel: debug
     scheduler:
       algorithm: default
       retryBackToSourceLimit: 7
