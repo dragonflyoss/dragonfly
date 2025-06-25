@@ -1,6 +1,10 @@
 release:
   draft: true
   replace_existing_draft: true
+  footer: |
+    ## Contributors
+    
+    Thanks to all the [contributors](https://github.com/dragonflyoss/dragonfly/graphs/contributors)! ❤️
 
 before:
   hooks:
@@ -129,6 +133,21 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+  groups:
+    - title: Dependency updates
+      regexp: '^.*?(.+)\(deps\)!?:.+$'
+      order: 300
+    - title: "Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug Fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Chores"
+      order: 9999
 
 nfpms:
   - id: dfget
