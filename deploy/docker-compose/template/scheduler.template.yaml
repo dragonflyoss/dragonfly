@@ -180,7 +180,3 @@ console: false
 
 # Listen port for pprof, default is -1 (means disabled).
 pprofPort: -1
-
-tracing:
-  # Jaeger endpoint url, like: http://jaeger.dragonfly.svc:4317.
-  addr: ''

@@ -32,6 +32,9 @@ type TracingConfig struct {
 	// Endpoint is the endpoint to report tracing log, example: "localhost:4317".
 	Endpoint string `yaml:"endpoint" mapstructure:"endpoint"`
 
+	// Path is the path to the tracing server, example: "/v1/traces" if the protocol is "http" or "https".
+	Path string `yaml:"path" mapstructure:"path"`
+
 	// ServiceName is the name of the service for tracing.
 	ServiceName string `yaml:"service-name" mapstructure:"service-name"`
 

@@ -151,9 +151,13 @@ func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (fu
 	)
 
 	switch tracingConfig.Protocol {
-	case "http", "https":
-		addr := fmt.Sprintf("%s://%s", tracingConfig.Protocol, tracingConfig.Endpoint)
-		exporter, err = otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(addr), otlptracehttp.WithInsecure())
+	case "http":
+		exporter, err = otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(tracingConfig.Endpoint), otlptracehttp.WithURLPath(tracingConfig.Path), otlptracehttp.WithInsecure())
+		if err != nil {
+			return nil, fmt.Errorf("could not create HTTP trace exporter: %w", err)
+		}
+	case "https":
+		exporter, err = otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(tracingConfig.Endpoint), otlptracehttp.WithURLPath(tracingConfig.Path))
 		if err != nil {
 			return nil, fmt.Errorf("could not create HTTP trace exporter: %w", err)
 		}
