@@ -408,6 +408,7 @@ func New() *Config {
 			Console:   false,
 			PProfPort: -1,
 			Tracing: base.TracingConfig{
+				Path:        "/v1/traces",
 				ServiceName: types.ManagerName,
 			},
 		},

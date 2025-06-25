@@ -195,8 +195,3 @@ metrics:
     port: 4012
   # # ip is the listen ip of the metrics server.
   # ip: ""
-
-# # tracing is the tracing configuration for dfdaemon.
-# tracing:
-#   # addr is the address to report tracing log.
-#   addr: ""
