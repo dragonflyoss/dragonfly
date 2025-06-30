@@ -80,7 +80,7 @@ func (j *job) RunGC(ctx context.Context) error {
 		taskID = id
 	} else {
 		// Use the default task ID if taskID is not provided. (applied to background periodic execution scenarios)
-		taskID = AuditGCTaskID
+		taskID = JobGCTaskID
 	}
 
 	if err = j.recorder.Init(userID, taskID, args); err != nil {
