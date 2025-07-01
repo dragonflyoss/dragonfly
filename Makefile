@@ -16,7 +16,7 @@ PROJECT_NAME := "d7y.io/dragonfly/v2"
 DFGET_NAME := "dfget"
 DFCACHE_NAME := "dfcache"
 DFSTORE_NAME := "dfstore"
-SEMVER := "2.2.0"
+SEMVER := "2.3.0"
 VERSION_RELEASE := "1"
 PKG := "$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/ | grep -v '\(/test/\)')
@@ -34,20 +34,14 @@ build-dirs:
 .PHONY: build-dirs
 
 # Build dragonfly.
-docker-build: docker-build-dfdaemon docker-build-scheduler docker-build-manager
+docker-build: docker-build-scheduler docker-build-manager
 	@echo "Build image done."
 .PHONY: docker-build
 
 # Push dragonfly images.
-docker-push: docker-push-dfdaemon docker-push-scheduler docker-push-manager
+docker-push: docker-push-scheduler docker-push-manager
 	@echo "Push image done."
 .PHONY: docker-push
-
-# Build dfdaemon image.
-docker-build-dfdaemon:
-	@echo "Begin to use docker build dfdaemon image."
-	./hack/docker-build.sh dfdaemon
-.PHONY: docker-build-dfdaemon
 
 # Build scheduler image.
 docker-build-scheduler:
@@ -60,12 +54,6 @@ docker-build-manager:
 	@echo "Begin to use docker build manager image."
 	./hack/docker-build.sh manager
 .PHONY: docker-build-manager
-
-# Push dfdaemon image.
-docker-push-dfdaemon: docker-build-dfdaemon
-	@echo "Begin to push dfdaemon docker image."
-	./hack/docker-push.sh dfdaemon
-.PHONY: docker-push-dfdaemon
 
 # Push scheduler image.
 docker-push-scheduler: docker-build-scheduler
@@ -309,48 +297,22 @@ actions-e2e-test-coverage:
 	@cat coverprofile.out >> coverage.txt
 .PHONY: actions-e2e-test-coverage
 
-# Install E2E tests environment.
-install-e2e-test:
-	@./hack/install-e2e-test.sh
-.PHONY: install-e2e-test
-
 # Run E2E tests.
-e2e-test: install-e2e-test build-e2e-sha256sum
+e2e-test:
 	@ginkgo -v -r --race --fail-fast --cover --trace --show-node-events test/e2e
 .PHONY: e2e-test
 
 # Run E2E tests with coverage.
-e2e-test-coverage: install-e2e-test build-e2e-sha256sum
+e2e-test-coverage:
 	@ginkgo -v -r --race --fail-fast --cover --trace --show-node-events test/e2e
 	@cat coverprofile.out >> coverage.txt
 .PHONY: e2e-test-coverage
 
 # Clean E2E tests.
 clean-e2e-test: 
-	@kind delete cluster
 	@echo "cleaning log file."
 	@rm -rf test/e2e/*.log
 .PHONY: clean-e2e-test
-
-# Kind load dragonfly.
-kind-load: kind-load-scheduler kind-load-dfdaemon kind-load-manager
-	@echo "Kind load image done."
-.PHONY: kind-load
-
-# Run kind load docker scheduler.
-kind-load-scheduler:
-	@./hack/kind-load.sh scheduler
-.PHONY: kind-load-scheduler
-
-# Run kind load docker dfget.
-kind-load-dfdaemon:
-	@./hack/kind-load.sh dfdaemon
-.PHONY: kind-load-dfget
-
-# Run kind load docker manager.
-kind-load-manager:
-	@./hack/kind-load.sh manager
-.PHONY: kind-load-manager
 
 # Run code lint.
 lint: markdownlint
@@ -388,10 +350,8 @@ help:
 	@echo "make build-dirs                     prepare required folders for build"
 	@echo "make docker-build                   build dragonfly image"
 	@echo "make docker-push                    push dragonfly image"
-	@echo "make docker-build-dfdaemon          build dfdaemon image"
 	@echo "make docker-build-scheduler         build scheduler image"
 	@echo "make docker-build-manager           build manager image"
-	@echo "make docker-push-dfdaemon           push dfdaemon image"
 	@echo "make docker-push-scheduler          push scheduler image"
 	@echo "make docker-push-manager            push manager image"
 	@echo "make build                          build dragonfly"
@@ -405,7 +365,6 @@ help:
 	@echo "make build-manager                  build manager"
 	@echo "make build-manager-server           build manager server"
 	@echo "make build-manager-console          build manager console"
-	@echo "make build-e2e-sha256sum            build sha256sum test tool"
 	@echo "make install-dfget                  install dfget"
 	@echo "make install-scheduler              install scheduler"
 	@echo "make install-manager                install manager"
@@ -422,14 +381,9 @@ help:
 	@echo "make test                           run unit tests"
 	@echo "make test-coverage                  run tests with coverage"
 	@echo "make actions-e2e-test-coverage      run github actons E2E tests with coverage"
-	@echo "make install-e2e-test               install E2E tests environment"
 	@echo "make e2e-test                       run e2e tests"
 	@echo "make e2e-test-coverage              run e2e tests with coverage"
 	@echo "make clean-e2e-test                 clean e2e tests"
-	@echo "make kind-load                      kind load docker image"
-	@echo "make kind-load-scheduler            kind load scheduler docker image"
-	@echo "make kind-load-dfdaemon             kind load dfdaemon docker image"
-	@echo "make kind-load-manager              kind load manager docker image"
 	@echo "make lint                           run code lint"
 	@echo "make markdownlint                   run markdown lint"
 	@echo "make generate                       run go generate"
