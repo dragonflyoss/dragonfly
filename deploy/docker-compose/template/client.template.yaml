@@ -30,7 +30,7 @@ download:
   # rateLimit is the default rate limit of the download speed in KiB/MiB/GiB per second, default is 10GiB/s.
   rateLimit: 10GiB
   # pieceTimeout is the timeout for downloading a piece from source.
-  pieceTimeout: 60s
+  pieceTimeout: 40s
   # concurrentPieceCount is the number of concurrent pieces to download.
   concurrentPieceCount: 10
 
