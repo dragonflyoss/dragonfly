@@ -28,6 +28,7 @@ import (
 
 	"github.com/gin-contrib/static"
 	"google.golang.org/grpc"
+	"gorm.io/gorm"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/internal/ratelimiter"
@@ -168,21 +169,9 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 
 	// Initialize garbage collector.
 	gc := pkggc.New()
-	// Register job gc task.
-	if err := gc.Add(managergc.NewJobGCTask(db.DB)); err != nil {
+	if err := registerGCTasks(gc, db.DB); err != nil {
 		return nil, err
 	}
-
-	// Register audit gc task.
-	if err := gc.Add(managergc.NewAuditGCTask(db.DB)); err != nil {
-		return nil, err
-	}
-
-	// Register scheduler gc task.
-	if err := gc.Add(managergc.NewSchedulerGCTask(db.DB)); err != nil {
-		return nil, err
-	}
-
 	s.gc = gc
 
 	// Initialize REST server.
@@ -236,6 +225,30 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 
 	return s, nil
+}
+
+func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
+	// Register job gc task.
+	if err := gc.Add(managergc.NewJobGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register audit gc task.
+	if err := gc.Add(managergc.NewAuditGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register scheduler gc task.
+	if err := gc.Add(managergc.NewSchedulerGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register seed peer gc task.
+	if err := gc.Add(managergc.NewSeedPeerGCTask(db)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Serve starts the manager server.
