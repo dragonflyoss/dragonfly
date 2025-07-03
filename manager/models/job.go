@@ -25,7 +25,7 @@ type Job struct {
 	Type              string             `gorm:"column:type;type:varchar(256);comment:type" json:"type"`
 	State             string             `gorm:"column:state;type:varchar(256);not null;default:'PENDING';comment:service state" json:"state"`
 	Args              JSONMap            `gorm:"column:args;not null;comment:task request args" json:"args"`
-	Result            JSONMap            `gorm:"column:result;comment:task result" json:"result"`
+	Result            JSONMap            `gorm:"column:task_result;type:longtext;comment:task result" json:"result"`
 	UserID            uint               `gorm:"column:user_id;comment:user id" json:"user_id"`
 	User              User               `gorm:"-" json:"user"`
 	SeedPeerClusters  []SeedPeerCluster  `gorm:"many2many:job_seed_peer_cluster;" json:"seed_peer_clusters"`
