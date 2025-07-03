@@ -178,6 +178,11 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 		return nil, err
 	}
 
+	// Register scheduler gc task.
+	if err := gc.Add(managergc.NewSchedulerGCTask(db.DB)); err != nil {
+		return nil, err
+	}
+
 	s.gc = gc
 
 	// Initialize REST server.
