@@ -16,6 +16,8 @@
 
 package models
 
+import "gorm.io/gorm"
+
 type Application struct {
 	BaseModel
 	Name     string  `gorm:"column:name;type:varchar(256);index:uk_application_name,unique;not null;comment:name" json:"name"`
@@ -23,5 +25,19 @@ type Application struct {
 	BIO      string  `gorm:"column:bio;type:varchar(1024);comment:biography" json:"bio"`
 	Priority JSONMap `gorm:"column:priority;not null;comment:download priority" json:"priority"`
 	UserID   uint    `gorm:"comment:user id" json:"user_id"`
-	User     User    `json:"user"`
+	User     User    `gorm:"-" json:"user"`
+}
+
+func (a *Application) AfterFind(tx *gorm.DB) (err error) {
+	if a.UserID == 0 || a.UserID == a.User.ID {
+		return nil
+	}
+
+	var user User
+	if err := tx.First(&user, a.UserID).Error; err != nil {
+		return err
+	}
+
+	a.User = user
+	return nil
 }
