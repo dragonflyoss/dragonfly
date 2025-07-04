@@ -346,6 +346,20 @@ clean:
 	@rm -rf bin .go .cache
 .PHONY: clean
 
+fmt:
+	@echo "Begin to go fmt."
+	@go fmt ${PKG_LIST}
+.PHONY: fmt
+
+vet:
+	@echo "Begin to go vet."
+	@go vet ${PKG_LIST}
+.PHONY: vet
+
+precheck: fmt vet lint test
+	@echo "All checks passed."
+.PHONY: precheck
+
 help: 
 	@echo "make build-dirs                     prepare required folders for build"
 	@echo "make docker-build                   build dragonfly image"
@@ -390,3 +404,6 @@ help:
 	@echo "make swag                           generate swagger api docs"
 	@echo "make changelog                      generate CHANGELOG.md"
 	@echo "make clean                          clean"
+	@echo "make fmt                            run go fmt"
+	@echo "make vet                            run go vet"
+	@echo "make precheck                       run fmt, vet, lint, and test"
