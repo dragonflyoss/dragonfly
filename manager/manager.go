@@ -19,7 +19,6 @@ package manager
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -316,9 +315,10 @@ func (s *Server) Serve() error {
 	logger.Info("started gc server")
 
 	// Generate GRPC listener.
-	ip, ok := ip.FormatIP(s.config.Server.GRPC.ListenIP.String())
+	ipStr := s.config.Server.GRPC.ListenIP.String()
+	ip, ok := ip.FormatIP(ipStr)
 	if !ok {
-		return errors.New("format ip failed")
+		return fmt.Errorf("format ip failed: %s", ipStr)
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, s.config.Server.GRPC.Port.Start))

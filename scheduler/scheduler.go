@@ -18,7 +18,6 @@ package scheduler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -267,9 +266,10 @@ func (s *Server) Serve() error {
 	}()
 
 	// Generate GRPC listener.
-	ip, ok := ip.FormatIP(s.config.Server.ListenIP.String())
+	ipStr := s.config.Server.ListenIP.String()
+	ip, ok := ip.FormatIP(ipStr)
 	if !ok {
-		return errors.New("format ip failed")
+		return fmt.Errorf("format ip failed: %s", ipStr)
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, s.config.Server.Port))
