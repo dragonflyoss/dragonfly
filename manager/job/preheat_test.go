@@ -25,7 +25,7 @@ func TestPreheat_GetImageLayers(t *testing.T) {
 			},
 			expect: func(t *testing.T, layers []internaljob.PreheatRequest) {
 				assert := assert.New(t)
-				assert.Equal(2, len(layers))
+				assert.Equal(2, len(layers[0].URLs))
 			},
 		},
 		{
@@ -36,7 +36,7 @@ func TestPreheat_GetImageLayers(t *testing.T) {
 			},
 			expect: func(t *testing.T, layers []internaljob.PreheatRequest) {
 				assert := assert.New(t)
-				assert.Equal(5, len(layers))
+				assert.Equal(5, len(layers[0].URLs))
 			},
 		},
 	}

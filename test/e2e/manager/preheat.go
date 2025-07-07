@@ -59,7 +59,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  testFile.GetDownloadURL(),
+					URLs: []string{testFile.GetDownloadURL()},
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -117,7 +117,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  testFile.GetDownloadURL(),
+					URLs: []string{testFile.GetDownloadURL()},
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -175,7 +175,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  testFile.GetDownloadURL(),
+					URLs: []string{testFile.GetDownloadURL()},
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -233,7 +233,7 @@ var _ = Describe("Preheat with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type:        "file",
-					URL:         testFile.GetDownloadURL(),
+					URLs:        []string{testFile.GetDownloadURL()},
 					Scope:       "single_seed_peer",
 					LoadToCache: true,
 				},

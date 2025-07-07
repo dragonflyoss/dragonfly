@@ -31,10 +31,10 @@ const (
 
 const (
 	// DefaultPreheatConcurrentCount is the default concurrent count for preheating all peers.
-	DefaultPreheatConcurrentCount = 500
+	DefaultPreheatConcurrentCount = 1000
 
 	// DefaultJobTimeout is the default timeout for executing job.
-	DefaultJobTimeout = 30 * time.Minute
+	DefaultJobTimeout = 60 * time.Minute
 )
 
 type CreateJobRequest struct {

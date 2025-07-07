@@ -386,15 +386,15 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentCount))
-	for _, seedPeer := range seedPeers {
-		var (
-			hostname = seedPeer.Hostname
-			ip       = seedPeer.Ip
-			port     = seedPeer.Port
-		)
+	for _, url := range req.URLs {
+		for _, seedPeer := range seedPeers {
+			var (
+				hostname = seedPeer.Hostname
+				ip       = seedPeer.Ip
+				port     = seedPeer.Port
+			)
 
-		addr := fmt.Sprintf("%s:%d", ip, port)
-		for _, url := range req.URLs {
+			addr := fmt.Sprintf("%s:%d", ip, port)
 			eg.Go(func() error {
 				taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
 				hostID := idgen.HostIDV2(ip, hostname, true)
@@ -571,15 +571,15 @@ func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentCount))
-	for _, peer := range peers {
-		var (
-			hostname = peer.Hostname
-			ip       = peer.IP
-			port     = peer.Port
-		)
+	for _, url := range req.URLs {
+		for _, peer := range peers {
+			var (
+				hostname = peer.Hostname
+				ip       = peer.IP
+				port     = peer.Port
+			)
 
-		addr := fmt.Sprintf("%s:%d", ip, port)
-		for _, url := range req.URLs {
+			addr := fmt.Sprintf("%s:%d", ip, port)
 			eg.Go(func() error {
 				taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
 				hostID := idgen.HostIDV2(ip, hostname, false)
