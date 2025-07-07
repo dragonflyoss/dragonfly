@@ -124,8 +124,12 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			return nil, err
 		}
 	case PreheatFileType:
-		// File preheat supports to preheat multiple files and single file.
-		if json.URL == "" && len(json.URLs) == 0 {
+		urls := json.URLs
+		if json.URL != "" {
+			urls = append(urls, json.URL)
+		}
+
+		if len(urls) == 0 {
 			return nil, errors.New("invalid params: url or urls is required")
 		}
 
@@ -135,7 +139,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 		}
 
 		files = append(files, internaljob.PreheatRequest{
-			URLs:                append(json.URLs, json.URL),
+			URLs:                urls,
 			PieceLength:         json.PieceLength,
 			Tag:                 json.Tag,
 			Application:         json.Application,
@@ -193,13 +197,13 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 	if err != nil {
 		return nil, err
 	}
+	group.GroupUUID = groupUUID
 
 	var tasks []machineryv1tasks.Signature
 	for _, signature := range signatures {
 		tasks = append(tasks, *signature)
 	}
 
-	group.GroupUUID = groupUUID
 	logger.Infof("[preheat]: create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
 	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
 		logger.Errorf("[preheat]: create preheat group %s failed", group.GroupUUID, err)

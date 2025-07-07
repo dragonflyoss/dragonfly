@@ -57,7 +57,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  testFile.GetDownloadURL(),
+					URLs: []string{testFile.GetDownloadURL()},
 				},
 				SchedulerClusterIDs: []uint{1},
 			})
@@ -163,7 +163,7 @@ var _ = Describe("GetTask and DeleteTask with Manager", func() {
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
 					Type: "file",
-					URL:  testFile.GetDownloadURL(),
+					URLs: []string{testFile.GetDownloadURL()},
 				},
 				SchedulerClusterIDs: []uint{1},
 			})

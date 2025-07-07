@@ -296,7 +296,7 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentCount))
 
-	var preheatResp *internaljob.PreheatResponse
+	preheatResp := &internaljob.PreheatResponse{}
 	for _, url := range req.URLs {
 		eg.Go(func() error {
 			resp, err := j.preheatV2SingleSeedPeerByURL(ctx, url, req, log)
