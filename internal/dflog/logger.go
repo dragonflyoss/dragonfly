@@ -190,15 +190,45 @@ func WithHostnameAndIP(hostname, ip string) *SugaredLoggerOnWith {
 	}
 }
 
-func WithGroupAndJobID(taskID, jobID string) *SugaredLoggerOnWith {
+func WithGroupAndJobID(groupUUID, jobID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
-		withArgs: []any{"groupID", taskID, "jobID", jobID},
+		withArgs: []any{"groupUUID", groupUUID, "jobID", jobID},
 	}
 }
 
-func WithGroupAndTaskID(groupID, taskID string) *SugaredLoggerOnWith {
+func WithGroupAndTaskUUID(groupUUID, taskUUID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
-		withArgs: []any{"groupID", groupID, "taskID", taskID},
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID},
+	}
+}
+
+func WithPreheatJob(groupUUID, taskUUID string, urls []string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "urls", urls},
+	}
+}
+
+func WithPreheatJobAndHost(groupUUID, taskUUID, taskID, url string, hostID, hostname, ip string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID, "url", url, "hostID", hostID, "hostname", hostname, "ip", ip},
+	}
+}
+
+func WithGetTaskJob(groupUUID, taskUUID, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID},
+	}
+}
+
+func WithDeleteTaskJob(groupUUID, taskUUID, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID},
+	}
+}
+
+func WithDeleteTaskJobAndPeer(groupUUID, taskUUID, hostID, taskID, peerID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", "hostID", hostID, "taskID", taskID, "peerID", peerID},
 	}
 }
 

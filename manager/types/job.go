@@ -31,7 +31,7 @@ const (
 
 const (
 	// DefaultPreheatConcurrentCount is the default concurrent count for preheating all peers.
-	DefaultPreheatConcurrentCount = 50
+	DefaultPreheatConcurrentCount = 500
 
 	// DefaultJobTimeout is the default timeout for executing job.
 	DefaultJobTimeout = 30 * time.Minute
@@ -108,11 +108,10 @@ type PreheatArgs struct {
 	// Type is the preheating type, support image and file.
 	Type string `json:"type" binding:"required,oneof=image file"`
 
-	// URL is the image or file url for preheating.
+	// URL is the image manifest url for preheating.
 	URL string `json:"url" binding:"omitempty"`
 
-	// URLs is the file urls for preheating, only support file type. If URLs and URL are
-	// both set, it will combine the URLs and URL into a list to preheat.
+	// URLs is the file urls for preheating, only support file type.
 	URLs []string `json:"urls" binding:"omitempty"`
 
 	// PieceLength is the piece length(bytes) for downloading file. The value needs to
@@ -162,12 +161,6 @@ type PreheatArgs struct {
 
 	// LoadToCache is the flag for preheating content in cache storage, default is false.
 	LoadToCache bool `json:"load_to_cache" binding:"omitempty"`
-
-	// ContentForCalculatingTaskID is the content used to calculate the task id.
-	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
-	// Otherwise, calculate the task ID based on url, piece_length, tag, application,
-	// and filtered_query_params. It is only used for file preheating task.
-	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {

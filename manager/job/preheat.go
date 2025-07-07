@@ -129,34 +129,27 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			return nil, errors.New("invalid params: url or urls is required")
 		}
 
-		if json.URL != "" {
-			json.URLs = append(json.URLs, json.URL)
-		}
-
 		var certificateChain [][]byte
 		if p.rootCAs != nil {
 			certificateChain = p.rootCAs.Subjects()
 		}
 
-		for _, url := range json.URLs {
-			files = append(files, internaljob.PreheatRequest{
-				URL:                         url,
-				PieceLength:                 json.PieceLength,
-				Tag:                         json.Tag,
-				Application:                 json.Application,
-				FilteredQueryParams:         json.FilteredQueryParams,
-				Headers:                     json.Headers,
-				Scope:                       json.Scope,
-				Percentage:                  json.Percentage,
-				Count:                       json.Count,
-				ConcurrentCount:             json.ConcurrentCount,
-				CertificateChain:            certificateChain,
-				InsecureSkipVerify:          p.insecureSkipVerify,
-				Timeout:                     json.Timeout,
-				LoadToCache:                 json.LoadToCache,
-				ContentForCalculatingTaskID: json.ContentForCalculatingTaskID,
-			})
-		}
+		files = append(files, internaljob.PreheatRequest{
+			URLs:                append(json.URLs, json.URL),
+			PieceLength:         json.PieceLength,
+			Tag:                 json.Tag,
+			Application:         json.Application,
+			FilteredQueryParams: json.FilteredQueryParams,
+			Headers:             json.Headers,
+			Scope:               json.Scope,
+			Percentage:          json.Percentage,
+			Count:               json.Count,
+			ConcurrentCount:     json.ConcurrentCount,
+			CertificateChain:    certificateChain,
+			InsecureSkipVerify:  p.insecureSkipVerify,
+			Timeout:             json.Timeout,
+			LoadToCache:         json.LoadToCache,
+		})
 
 	default:
 		return nil, errors.New("unknown preheat type")
@@ -173,9 +166,14 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 
 // createGroupJob creates a group job.
 func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.PreheatRequest, queues []internaljob.Queue) (*internaljob.GroupJobState, error) {
+	groupUUID := fmt.Sprintf("group_%s", uuid.New().String())
 	var signatures []*machineryv1tasks.Signature
 	for _, queue := range queues {
 		for _, file := range files {
+			file.GroupUUID = groupUUID
+			taskUUID := fmt.Sprintf("task_%s", uuid.New().String())
+			file.TaskUUID = taskUUID
+
 			args, err := internaljob.MarshalRequest(file)
 			if err != nil {
 				logger.Errorf("[preheat]: preheat marshal request: %v, error: %v", file, err)
@@ -183,7 +181,7 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 			}
 
 			signatures = append(signatures, &machineryv1tasks.Signature{
-				UUID:       fmt.Sprintf("task_%s", uuid.New().String()),
+				UUID:       taskUUID,
 				Name:       internaljob.PreheatJob,
 				RoutingKey: queue.String(),
 				Args:       args,
@@ -201,6 +199,7 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 		tasks = append(tasks, *signature)
 	}
 
+	group.GroupUUID = groupUUID
 	logger.Infof("[preheat]: create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
 	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
 		logger.Errorf("[preheat]: create preheat group %s failed", group.GroupUUID, err)
@@ -367,31 +366,31 @@ func parseLayers(manifests []distribution.Manifest, args types.PreheatArgs, head
 		certificateChain = rootCAs.Subjects()
 	}
 
-	var layers []internaljob.PreheatRequest
+	var layerURLs []string
 	for _, m := range manifests {
 		for _, v := range m.References() {
 			header.Set("Accept", v.MediaType)
-			layer := internaljob.PreheatRequest{
-				URL:                 image.blobsURL(v.Digest.String()),
-				PieceLength:         args.PieceLength,
-				Tag:                 args.Tag,
-				Application:         args.Application,
-				FilteredQueryParams: args.FilteredQueryParams,
-				Headers:             nethttp.HeaderToMap(header),
-				Scope:               args.Scope,
-				Percentage:          args.Percentage,
-				Count:               args.Count,
-				ConcurrentCount:     args.ConcurrentCount,
-				CertificateChain:    certificateChain,
-				InsecureSkipVerify:  insecureSkipVerify,
-				Timeout:             args.Timeout,
-			}
-
-			layers = append(layers, layer)
+			layerURLs = append(layerURLs, image.blobsURL(v.Digest.String()))
 		}
 	}
 
-	return layers, nil
+	layers := internaljob.PreheatRequest{
+		URLs:                layerURLs,
+		PieceLength:         args.PieceLength,
+		Tag:                 args.Tag,
+		Application:         args.Application,
+		FilteredQueryParams: args.FilteredQueryParams,
+		Headers:             nethttp.HeaderToMap(header),
+		Scope:               args.Scope,
+		Percentage:          args.Percentage,
+		Count:               args.Count,
+		ConcurrentCount:     args.ConcurrentCount,
+		CertificateChain:    certificateChain,
+		InsecureSkipVerify:  insecureSkipVerify,
+		Timeout:             args.Timeout,
+	}
+
+	return []internaljob.PreheatRequest{layers}, nil
 }
 
 // imageAuthClientOption is an option for imageAuthClient.

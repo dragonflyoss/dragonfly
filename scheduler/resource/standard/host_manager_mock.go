@@ -82,6 +82,20 @@ func (mr *MockHostManagerMockRecorder) LoadAll() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAll", reflect.TypeOf((*MockHostManager)(nil).LoadAll))
 }
 
+// LoadAllNormals mocks base method.
+func (m *MockHostManager) LoadAllNormals() []*Host {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadAllNormals")
+	ret0, _ := ret[0].([]*Host)
+	return ret0
+}
+
+// LoadAllNormals indicates an expected call of LoadAllNormals.
+func (mr *MockHostManagerMockRecorder) LoadAllNormals() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllNormals", reflect.TypeOf((*MockHostManager)(nil).LoadAllNormals))
+}
+
 // LoadOrStore mocks base method.
 func (m *MockHostManager) LoadOrStore(arg0 *Host) (*Host, bool) {
 	m.ctrl.T.Helper()

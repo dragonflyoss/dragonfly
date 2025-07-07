@@ -22,22 +22,27 @@ import (
 
 // PreheatRequest defines the request parameters for preheating.
 type PreheatRequest struct {
-	URL                         string            `json:"url" validate:"required,url"`
-	PieceLength                 *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
-	Tag                         string            `json:"tag" validate:"omitempty"`
-	FilteredQueryParams         string            `json:"filtered_query_params" validate:"omitempty"`
-	Headers                     map[string]string `json:"headers" validate:"omitempty"`
-	Application                 string            `json:"application" validate:"omitempty"`
-	Priority                    int32             `json:"priority" validate:"omitempty"`
-	Scope                       string            `json:"scope" validate:"omitempty"`
-	Percentage                  *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
-	Count                       *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
-	ConcurrentCount             int64             `json:"concurrent_count" validate:"omitempty"`
-	CertificateChain            [][]byte          `json:"certificate_chain" validate:"omitempty"`
-	InsecureSkipVerify          bool              `json:"insecure_skip_verify" validate:"omitempty"`
-	Timeout                     time.Duration     `json:"timeout" validate:"omitempty"`
-	LoadToCache                 bool              `json:"load_to_cache" validate:"omitempty"`
-	ContentForCalculatingTaskID *string           `json:"content_for_calculating_task_id" validate:"omitempty"`
+	// DEPRECATED: Use URLs instead for V2 preheating and URL is only used for V1 preheating.
+	URL string `json:"url" validate:"omitempty,url"`
+
+	// Use for V2 preheating to support multiple URLs.
+	URLs                []string          `json:"urls" validate:"omitempty"`
+	PieceLength         *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
+	Tag                 string            `json:"tag" validate:"omitempty"`
+	FilteredQueryParams string            `json:"filtered_query_params" validate:"omitempty"`
+	Headers             map[string]string `json:"headers" validate:"omitempty"`
+	Application         string            `json:"application" validate:"omitempty"`
+	Priority            int32             `json:"priority" validate:"omitempty"`
+	Scope               string            `json:"scope" validate:"omitempty"`
+	Percentage          *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
+	Count               *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
+	ConcurrentCount     int64             `json:"concurrent_count" validate:"omitempty"`
+	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
+	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
+	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
+	LoadToCache         bool              `json:"load_to_cache" validate:"omitempty"`
+	GroupUUID           string            `json:"group_uuid" validate:"omitempty"`
+	TaskUUID            string            `json:"task_uuid" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.
@@ -64,8 +69,10 @@ type PreheatFailureTask struct {
 
 // GetTaskRequest defines the request parameters for getting task.
 type GetTaskRequest struct {
-	TaskID  string        `json:"task_id" validate:"required"`
-	Timeout time.Duration `json:"timeout" validate:"omitempty"`
+	TaskID    string        `json:"task_id" validate:"required"`
+	Timeout   time.Duration `json:"timeout" validate:"omitempty"`
+	GroupUUID string        `json:"group_uuid" validate:"omitempty"`
+	TaskUUID  string        `json:"task_uuid" validate:"omitempty"`
 }
 
 // GetTaskResponse defines the response parameters for getting task.
@@ -86,8 +93,10 @@ type Peer struct {
 
 // DeleteTaskRequest defines the request parameters for deleting task.
 type DeleteTaskRequest struct {
-	TaskID  string        `json:"task_id" validate:"required"`
-	Timeout time.Duration `json:"timeout" validate:"omitempty"`
+	TaskID    string        `json:"task_id" validate:"required"`
+	Timeout   time.Duration `json:"timeout" validate:"omitempty"`
+	GroupUUID string        `json:"group_uuid" validate:"omitempty"`
+	TaskUUID  string        `json:"task_uuid" validate:"omitempty"`
 }
 
 // DeleteTaskResponse defines the response parameters for deleting task.

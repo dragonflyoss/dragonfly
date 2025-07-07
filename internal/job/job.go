@@ -140,8 +140,8 @@ type jobState struct {
 	TTL       int64     `json:"ttl"`
 }
 
-func (t *Job) GetGroupJobState(name string, groupID string) (*GroupJobState, error) {
-	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupID, 0)
+func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, error) {
+	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupUUID, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +191,9 @@ func (t *Job) GetGroupJobState(name string, groupID string) (*GroupJobState, err
 
 	for _, taskState := range taskStates {
 		if taskState.IsFailure() {
-			logger.WithGroupAndTaskID(groupID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
+			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
 			return &GroupJobState{
-				GroupUUID: groupID,
+				GroupUUID: groupUUID,
 				State:     machineryv1tasks.StateFailure,
 				CreatedAt: taskState.CreatedAt,
 				UpdatedAt: time.Now(),
@@ -204,9 +204,9 @@ func (t *Job) GetGroupJobState(name string, groupID string) (*GroupJobState, err
 
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
-			logger.WithGroupAndTaskID(groupID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
+			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
 			return &GroupJobState{
-				GroupUUID: groupID,
+				GroupUUID: groupUUID,
 				State:     machineryv1tasks.StatePending,
 				CreatedAt: taskState.CreatedAt,
 				UpdatedAt: time.Now(),
@@ -216,7 +216,7 @@ func (t *Job) GetGroupJobState(name string, groupID string) (*GroupJobState, err
 	}
 
 	return &GroupJobState{
-		GroupUUID: groupID,
+		GroupUUID: groupUUID,
 		State:     machineryv1tasks.StateSuccess,
 		CreatedAt: taskStates[0].CreatedAt,
 		UpdatedAt: time.Now(),

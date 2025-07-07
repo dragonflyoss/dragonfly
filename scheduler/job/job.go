@@ -91,7 +91,7 @@ func New(cfg *config.Config, resource resource.Resource) (Job, error) {
 	}
 	logger.Infof("create scheduler job queue: %v", schedulerJob)
 
-	localQueue, err := internaljob.GetSchedulerQueue(cfg.Manager.SchedulerClusterID, cfg.Server.Host)
+	localQueue, err := internaljob.GetSchedulerQueue(cfg.Manager.SchedulerClusterID, cfg.Server.Host, cfg.Server.AdvertiseIP.String())
 	if err != nil {
 		logger.Errorf("get local job queue name error: %s", err.Error())
 		return nil, err
@@ -167,19 +167,12 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 	}
 
 	if err := validator.New().Struct(req); err != nil {
-		logger.Errorf("[preheat]: preheat %s validate failed: %s", req.URL, err.Error())
+		logger.Errorf("[preheat]: preheat %s validate failed: %s", req.URLs, err.Error())
 		return "", err
 	}
 
-	var taskID string
-	if req.ContentForCalculatingTaskID != nil {
-		taskID = idgen.TaskIDV2ByContent(*req.ContentForCalculatingTaskID)
-	} else {
-		taskID = idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
-	}
-
-	log := logger.WithTask(taskID, req.URL)
-	log.Infof("[preheat]: preheat %s %d request: %#v", req.URL, req.PieceLength, req)
+	log := logger.WithPreheatJob(req.GroupUUID, req.TaskUUID, append(req.URLs, req.URL))
+	log.Infof("[preheat]: preheat %s %d request: %#v", req.URLs, req.PieceLength, req)
 
 	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
 	defer cancel()
@@ -187,7 +180,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 	switch req.Scope {
 	case managertypes.SingleSeedPeerScope:
 		log.Info("[preheat]: preheat single seed peer")
-		resp, err := j.preheatSinglePeer(ctx, taskID, req, log)
+		resp, err := j.preheatSingleSeedPeer(ctx, req, log)
 		if err != nil {
 			return "", err
 		}
@@ -196,7 +189,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllSeedPeersScope:
 		log.Info("[preheat]: preheat all seed peers")
-		resp, err := j.preheatAllSeedPeers(ctx, taskID, req, log)
+		resp, err := j.preheatAllSeedPeers(ctx, req, log)
 		if err != nil {
 			return "", err
 		}
@@ -205,7 +198,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllPeersScope:
 		log.Info("[preheat]: preheat all peers")
-		resp, err := j.preheatAllPeers(ctx, taskID, req, log)
+		resp, err := j.preheatAllPeers(ctx, req, log)
 		if err != nil {
 			return "", err
 		}
@@ -214,7 +207,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return internaljob.MarshalResponse(resp)
 	default:
 		log.Warnf("[preheat]: scope is invalid %s, preheat single peer", req.Scope)
-		resp, err := j.preheatSinglePeer(ctx, taskID, req, log)
+		resp, err := j.preheatSingleSeedPeer(ctx, req, log)
 		if err != nil {
 			return "", err
 		}
@@ -225,7 +218,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 }
 
 // preheatSinglePeer preheats job by single seed peer, scheduler will trigger seed peer to download task.
-func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+func (j *job) preheatSingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	// If seed peer is disabled, return error.
 	if !j.config.SeedPeer.Enable {
 		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
@@ -238,12 +231,12 @@ func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *interna
 
 	// Preheat by v2 grpc protocol. If seed peer does not support
 	// v2 protocol, preheat by v1 grpc protocol.
-	resp, err := j.preheatV2(ctx, taskID, req, log)
+	resp, err := j.preheatV2SingleSeedPeer(ctx, req, log)
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
 		if st, ok := status.FromError(err); ok {
 			if st.Code() == codes.Unimplemented {
-				return j.preheatV1(ctx, taskID, req, log)
+				return j.preheatV1SingleSeedPeer(ctx, req, log)
 			}
 		}
 
@@ -253,10 +246,133 @@ func (j *job) preheatSinglePeer(ctx context.Context, taskID string, req *interna
 	return resp, nil
 }
 
+// preheatV1SingleSeedPeer preheats job by v1 grpc protocol.
+func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+	taskID := idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+	urlMeta := &commonv1.UrlMeta{
+		Tag:         req.Tag,
+		Filter:      req.FilteredQueryParams,
+		Header:      req.Headers,
+		Application: req.Application,
+		Priority:    commonv1.Priority(req.Priority),
+	}
+
+	// Trigger seed peer download seeds.
+	stream, err := j.resource.SeedPeer().Client().ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
+		TaskId:  taskID,
+		Url:     req.URL,
+		UrlMeta: urlMeta,
+	})
+	if err != nil {
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
+		return nil, err
+	}
+
+	for {
+		piece, err := stream.Recv()
+		if err != nil {
+			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
+			return nil, err
+		}
+
+		if piece.Done {
+			log.Info("[preheat]: preheat succeeded")
+			if host, ok := j.resource.HostManager().Load(piece.HostId); ok {
+				return &internaljob.PreheatResponse{
+					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: host.Hostname, IP: host.IP}},
+				}, nil
+			}
+
+			log.Warnf("[preheat]: host %s not found", piece.HostId)
+			return &internaljob.PreheatResponse{
+				SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
+			}, nil
+		}
+	}
+}
+
+// preheatV2SingleSeedPeer preheats job by v2 grpc protocol for single seed peer by multiple URLs.
+func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+	eg, _ := errgroup.WithContext(ctx)
+	eg.SetLimit(int(req.ConcurrentCount))
+
+	var preheatResp *internaljob.PreheatResponse
+	for _, url := range req.URLs {
+		eg.Go(func() error {
+			resp, err := j.preheatV2SingleSeedPeerByURL(ctx, url, req, log)
+			if err != nil {
+				log.Errorf("[preheat]: preheat failed for %s: %s", url, err.Error())
+				return err
+			}
+
+			preheatResp.SuccessTasks = append(preheatResp.SuccessTasks, resp.SuccessTasks...)
+			preheatResp.FailureTasks = append(preheatResp.FailureTasks, resp.FailureTasks...)
+			log.Infof("[preheat]: preheat succeeded for %s", url)
+			return nil
+		})
+	}
+
+	// Wait for all tasks to complete and print the errors.
+	if err := eg.Wait(); err != nil {
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
+	}
+
+	return preheatResp, nil
+}
+
+// preheatV2SingleSeedPeerByURL preheats job by v2 grpc protocol for single seed peer by URL.
+func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+	filteredQueryParams := strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator)
+	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
+		Download: &commonv2.Download{
+			Url:                 url,
+			PieceLength:         req.PieceLength,
+			Type:                commonv2.TaskType_STANDARD,
+			Tag:                 &req.Tag,
+			Application:         &req.Application,
+			Priority:            commonv2.Priority(req.Priority),
+			FilteredQueryParams: filteredQueryParams,
+			RequestHeader:       req.Headers,
+			CertificateChain:    req.CertificateChain,
+			LoadToCache:         req.LoadToCache,
+		}})
+	if err != nil {
+		log.Errorf("[preheat]: preheat failed: %s", err.Error())
+		return nil, err
+	}
+
+	// Wait for the download task to complete.
+	var hostID string
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				log.Info("[preheat]: preheat succeeded")
+				if host, ok := j.resource.HostManager().Load(hostID); ok {
+					return &internaljob.PreheatResponse{
+						SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: url, Hostname: host.Hostname, IP: host.IP}},
+					}, nil
+				}
+
+				log.Warnf("[preheat]: host %s not found", hostID)
+				return &internaljob.PreheatResponse{
+					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: url, Hostname: "unknow", IP: "unknow"}},
+				}, nil
+			}
+
+			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
+			return nil, err
+		}
+
+		hostID = resp.HostId
+	}
+}
+
 // preheatAllSeedPeers preheats job by all peer seed peers, only suoported by v2 protocol. Scheduler will trigger all seed peers to download task.
 // If all the seed peers download task failed, return error. If some of the seed peers download task failed, return success tasks and failure tasks.
 // Notify the client that the preheat is successful.
-func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	// If scheduler has no available seed peer, return error.
 	seedPeers, err := j.selectSeedPeers(req.Count, req.Percentage, log)
 	if err != nil {
@@ -278,71 +394,48 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 		)
 
 		addr := fmt.Sprintf("%s:%d", ip, port)
-		log := logger.WithHost(idgen.HostIDV2(ip, hostname, true), hostname, ip)
+		for _, url := range req.URLs {
+			eg.Go(func() error {
+				taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+				hostID := idgen.HostIDV2(ip, hostname, true)
+				compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
+				log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+				log.Info("[preheat]: preheat started")
 
-		eg.Go(func() error {
-			log.Info("[preheat]: preheat started")
-			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
-			if err != nil {
-				log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-					URL:         req.URL,
-					Hostname:    hostname,
-					IP:          ip,
-					Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
-				})
-
-				return err
-			}
-
-			stream, err := dfdaemonClient.DownloadTask(
-				ctx,
-				taskID,
-				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-					Url:                         req.URL,
-					PieceLength:                 req.PieceLength,
-					Type:                        commonv2.TaskType_STANDARD,
-					Tag:                         &req.Tag,
-					Application:                 &req.Application,
-					Priority:                    commonv2.Priority(req.Priority),
-					FilteredQueryParams:         strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
-					RequestHeader:               req.Headers,
-					Timeout:                     durationpb.New(req.Timeout),
-					CertificateChain:            req.CertificateChain,
-					LoadToCache:                 req.LoadToCache,
-					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
-				}})
-			if err != nil {
-				log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-					URL:         req.URL,
-					Hostname:    hostname,
-					IP:          ip,
-					Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
-				})
-
-				return err
-			}
-
-			// Wait for the download task to complete.
-			for {
-				_, err := stream.Recv()
+				dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+				dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 				if err != nil {
-					if err == io.EOF {
-						log.Info("[preheat]: preheat succeeded")
-						successTasks.Store(ip, &internaljob.PreheatSuccessTask{
-							URL:      req.URL,
-							Hostname: hostname,
-							IP:       ip,
-						})
-
-						return nil
-					}
-
 					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-					failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-						URL:         req.URL,
+					failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+						URL:         url,
+						Hostname:    hostname,
+						IP:          ip,
+						Description: fmt.Sprintf("group uuid %s failed: %s", req.GroupUUID, err.Error()),
+					})
+
+					return err
+				}
+
+				stream, err := dfdaemonClient.DownloadTask(
+					ctx,
+					taskID,
+					&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
+						Url:                 url,
+						PieceLength:         req.PieceLength,
+						Type:                commonv2.TaskType_STANDARD,
+						Tag:                 &req.Tag,
+						Application:         &req.Application,
+						Priority:            commonv2.Priority(req.Priority),
+						FilteredQueryParams: strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						RequestHeader:       req.Headers,
+						Timeout:             durationpb.New(req.Timeout),
+						CertificateChain:    req.CertificateChain,
+						LoadToCache:         req.LoadToCache,
+					}})
+				if err != nil {
+					log.Errorf("[preheat]: preheat failed: %s", err.Error())
+					failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+						URL:         url,
 						Hostname:    hostname,
 						IP:          ip,
 						Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
@@ -350,8 +443,35 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 
 					return err
 				}
-			}
-		})
+
+				// Wait for the download task to complete.
+				for {
+					_, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Info("[preheat]: preheat succeeded")
+							successTasks.Store(compositeID, &internaljob.PreheatSuccessTask{
+								URL:      url,
+								Hostname: hostname,
+								IP:       ip,
+							})
+
+							return nil
+						}
+
+						log.Errorf("[preheat]: preheat failed: %s", err.Error())
+						failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+							URL:         url,
+							Hostname:    hostname,
+							IP:          ip,
+							Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
+						})
+
+						return err
+					}
+				}
+			})
+		}
 	}
 
 	// Wait for all tasks to complete and print the errors.
@@ -390,7 +510,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, taskID string, req *inter
 
 	msg := "no error message"
 	if len(preheatResponse.FailureTasks) > 0 {
-		msg = fmt.Sprintf("%s %s %s %s", taskID, preheatResponse.FailureTasks[0].IP, preheatResponse.FailureTasks[0].Hostname,
+		msg = fmt.Sprintf("%s %s %s %s %s", req.GroupUUID, req.TaskUUID, preheatResponse.FailureTasks[0].IP, preheatResponse.FailureTasks[0].Hostname,
 			preheatResponse.FailureTasks[0].Description)
 	}
 
@@ -438,7 +558,7 @@ func (j *job) selectSeedPeers(count *uint32, percentage *uint8, log *logger.Suga
 // preheatAllPeers preheats job by all peers, only suoported by v2 protocol. Scheduler will trigger all peers to download task.
 // If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 // failure tasks. Notify the client that the preheat is successful.
-func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	peers, err := j.selectPeers(req.Count, req.Percentage, log)
 	if err != nil {
 		return nil, err
@@ -459,71 +579,20 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 		)
 
 		addr := fmt.Sprintf("%s:%d", ip, port)
-		log := logger.WithHost(peer.ID, hostname, ip)
+		for _, url := range req.URLs {
+			eg.Go(func() error {
+				taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
+				hostID := idgen.HostIDV2(ip, hostname, false)
+				compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
+				log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+				log.Info("[preheat]: preheat started")
 
-		eg.Go(func() error {
-			log.Info("[preheat]: preheat started")
-			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
-			if err != nil {
-				log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-					URL:         req.URL,
-					Hostname:    hostname,
-					IP:          ip,
-					Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
-				})
-
-				return err
-			}
-
-			stream, err := dfdaemonClient.DownloadTask(
-				ctx,
-				taskID,
-				&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-					Url:                         req.URL,
-					PieceLength:                 req.PieceLength,
-					Type:                        commonv2.TaskType_STANDARD,
-					Tag:                         &req.Tag,
-					Application:                 &req.Application,
-					Priority:                    commonv2.Priority(req.Priority),
-					FilteredQueryParams:         strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
-					RequestHeader:               req.Headers,
-					Timeout:                     durationpb.New(req.Timeout),
-					CertificateChain:            req.CertificateChain,
-					LoadToCache:                 req.LoadToCache,
-					ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
-				}})
-			if err != nil {
-				log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-					URL:         req.URL,
-					Hostname:    hostname,
-					IP:          ip,
-					Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
-				})
-
-				return err
-			}
-
-			// Wait for the download task to complete.
-			for {
-				_, err := stream.Recv()
+				dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+				dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
 				if err != nil {
-					if err == io.EOF {
-						log.Info("[preheat]: preheat succeeded")
-						successTasks.Store(ip, &internaljob.PreheatSuccessTask{
-							URL:      req.URL,
-							Hostname: hostname,
-							IP:       ip,
-						})
-
-						return nil
-					}
-
 					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-					failureTasks.Store(ip, &internaljob.PreheatFailureTask{
-						URL:         req.URL,
+					failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+						URL:         url,
 						Hostname:    hostname,
 						IP:          ip,
 						Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
@@ -531,8 +600,63 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 
 					return err
 				}
-			}
-		})
+
+				stream, err := dfdaemonClient.DownloadTask(
+					ctx,
+					taskID,
+					&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
+						Url:                 url,
+						PieceLength:         req.PieceLength,
+						Type:                commonv2.TaskType_STANDARD,
+						Tag:                 &req.Tag,
+						Application:         &req.Application,
+						Priority:            commonv2.Priority(req.Priority),
+						FilteredQueryParams: strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						RequestHeader:       req.Headers,
+						Timeout:             durationpb.New(req.Timeout),
+						CertificateChain:    req.CertificateChain,
+						LoadToCache:         req.LoadToCache,
+					}})
+				if err != nil {
+					log.Errorf("[preheat]: preheat failed: %s", err.Error())
+					failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+						URL:         url,
+						Hostname:    hostname,
+						IP:          ip,
+						Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
+					})
+
+					return err
+				}
+
+				// Wait for the download task to complete.
+				for {
+					_, err := stream.Recv()
+					if err != nil {
+						if err == io.EOF {
+							log.Info("[preheat]: preheat succeeded")
+							successTasks.Store(compositeID, &internaljob.PreheatSuccessTask{
+								URL:      url,
+								Hostname: hostname,
+								IP:       ip,
+							})
+
+							return nil
+						}
+
+						log.Errorf("[preheat]: preheat failed: %s", err.Error())
+						failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
+							URL:         url,
+							Hostname:    hostname,
+							IP:          ip,
+							Description: fmt.Sprintf("task %s failed: %s", taskID, err.Error()),
+						})
+
+						return err
+					}
+				}
+			})
+		}
 	}
 
 	// Wait for all tasks to complete and print the errors.
@@ -571,7 +695,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 
 	msg := "no error message"
 	if len(preheatResponse.FailureTasks) > 0 {
-		msg = fmt.Sprintf("%s %s %s %s", taskID, preheatResponse.FailureTasks[0].IP, preheatResponse.FailureTasks[0].Hostname,
+		msg = fmt.Sprintf("%s %s %s %s %s", req.GroupUUID, req.TaskUUID, preheatResponse.FailureTasks[0].IP, preheatResponse.FailureTasks[0].Hostname,
 			preheatResponse.FailureTasks[0].Description)
 	}
 
@@ -581,7 +705,7 @@ func (j *job) preheatAllPeers(ctx context.Context, taskID string, req *internalj
 // selectPeers selects peers by count or percentage. If count and percentage are both nil, select all peers.
 // If count and percentage are both set, use count first.
 func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
-	peers := j.resource.HostManager().LoadAll()
+	peers := j.resource.HostManager().LoadAllNormals()
 	if len(peers) == 0 {
 		return nil, fmt.Errorf("[preheat]: cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
@@ -592,7 +716,7 @@ func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredL
 			*count = uint32(len(peers))
 		}
 
-		log.Infof("[preheat]: select %d peers from %d seed peers", *count, len(peers))
+		log.Infof("[preheat]: select %d peers from %d peers", *count, len(peers))
 		return peers[:*count], nil
 	}
 
@@ -610,99 +734,6 @@ func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredL
 
 	log.Infof("[preheat]: count and percentage are both nil, select all peers, count is %d", len(peers))
 	return peers, nil
-}
-
-// preheatV1 preheats job by v1 grpc protocol.
-func (j *job) preheatV1(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	urlMeta := &commonv1.UrlMeta{
-		Tag:         req.Tag,
-		Filter:      req.FilteredQueryParams,
-		Header:      req.Headers,
-		Application: req.Application,
-		Priority:    commonv1.Priority(req.Priority),
-	}
-
-	// Trigger seed peer download seeds.
-	stream, err := j.resource.SeedPeer().Client().ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
-		TaskId:  taskID,
-		Url:     req.URL,
-		UrlMeta: urlMeta,
-	})
-	if err != nil {
-		log.Errorf("[preheat]: preheat failed: %s", err.Error())
-		return nil, err
-	}
-
-	for {
-		piece, err := stream.Recv()
-		if err != nil {
-			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
-			return nil, err
-		}
-
-		if piece.Done == true {
-			log.Info("[preheat]: preheat succeeded")
-			if host, ok := j.resource.HostManager().Load(piece.HostId); ok {
-				return &internaljob.PreheatResponse{
-					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: host.Hostname, IP: host.IP}},
-				}, nil
-			}
-
-			log.Warnf("[preheat]: host %s not found", piece.HostId)
-			return &internaljob.PreheatResponse{
-				SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
-			}, nil
-		}
-	}
-}
-
-// preheatV2 preheats job by v2 grpc protocol.
-func (j *job) preheatV2(ctx context.Context, taskID string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	filteredQueryParams := strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator)
-	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
-		Download: &commonv2.Download{
-			Url:                         req.URL,
-			PieceLength:                 req.PieceLength,
-			Type:                        commonv2.TaskType_STANDARD,
-			Tag:                         &req.Tag,
-			Application:                 &req.Application,
-			Priority:                    commonv2.Priority(req.Priority),
-			FilteredQueryParams:         filteredQueryParams,
-			RequestHeader:               req.Headers,
-			CertificateChain:            req.CertificateChain,
-			LoadToCache:                 req.LoadToCache,
-			ContentForCalculatingTaskId: req.ContentForCalculatingTaskID,
-		}})
-	if err != nil {
-		log.Errorf("[preheat]: preheat failed: %s", err.Error())
-		return nil, err
-	}
-
-	// Wait for the download task to complete.
-	var hostID string
-	for {
-		resp, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				log.Info("[preheat]: preheat succeeded")
-				if host, ok := j.resource.HostManager().Load(hostID); ok {
-					return &internaljob.PreheatResponse{
-						SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: host.Hostname, IP: host.IP}},
-					}, nil
-				}
-
-				log.Warnf("[preheat]: host %s not found", hostID)
-				return &internaljob.PreheatResponse{
-					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
-				}, nil
-			}
-
-			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
-			return nil, err
-		}
-
-		hostID = resp.HostId
-	}
 }
 
 // syncPeers is a job to sync peers.
@@ -735,7 +766,7 @@ func (j *job) getTask(ctx context.Context, data string) (string, error) {
 		return "", err
 	}
 
-	log := logger.WithTaskID(req.TaskID)
+	log := logger.WithGetTaskJob(req.GroupUUID, req.TaskUUID, req.TaskID)
 	log.Infof("get task request: %#v", req)
 
 	task, ok := j.resource.TaskManager().Load(req.TaskID)
@@ -778,7 +809,7 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 		return "", err
 	}
 
-	log := logger.WithTaskID(req.TaskID)
+	log := logger.WithDeleteTaskJob(req.GroupUUID, req.TaskUUID, req.TaskID)
 	log.Infof("delete task request: %#v", req)
 
 	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
@@ -798,7 +829,7 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 
 	finishedPeers := task.LoadFinishedPeers()
 	for _, finishedPeer := range finishedPeers {
-		log := logger.WithPeer(finishedPeer.Host.ID, finishedPeer.Task.ID, finishedPeer.ID)
+		log := logger.WithDeleteTaskJobAndPeer(req.GroupUUID, req.TaskUUID, finishedPeer.Host.ID, finishedPeer.Task.ID, finishedPeer.ID)
 
 		addr := fmt.Sprintf("%s:%d", finishedPeer.Host.IP, finishedPeer.Host.Port)
 		dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr)

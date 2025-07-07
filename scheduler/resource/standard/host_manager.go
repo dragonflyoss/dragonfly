@@ -25,6 +25,7 @@ import (
 
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
+	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -58,6 +59,9 @@ type HostManager interface {
 
 	// LoadAll loads all hosts through the Range of sync.Map.
 	LoadAll() []*Host
+
+	// LoadAllNormals loads all normal hosts through the Range of sync.Map.
+	LoadAllNormals() []*Host
 
 	// Try to reclaim host.
 	RunGC(context.Context) error
@@ -128,6 +132,27 @@ func (h *hostManager) LoadAll() []*Host {
 		host, ok := value.(*Host)
 		if !ok {
 			host.Log.Error("invalid host")
+			return true
+		}
+
+		hosts = append(hosts, host)
+		return true
+	})
+
+	return hosts
+}
+
+// LoadAllNormals loads all normal hosts through the Range of sync.Map.
+func (h *hostManager) LoadAllNormals() []*Host {
+	hosts := make([]*Host, 0)
+	h.Map.Range(func(key, value any) bool {
+		host, ok := value.(*Host)
+		if !ok {
+			host.Log.Error("invalid host")
+			return true
+		}
+
+		if host.Type != types.HostTypeNormal {
 			return true
 		}
 

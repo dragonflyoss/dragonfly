@@ -222,9 +222,28 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 }
 
 func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error) {
-	layers, err := s.getImageLayers(ctx, json)
+	imageLayers, err := s.getImageLayers(ctx, json)
 	if err != nil {
 		err = fmt.Errorf("get image layers failed: %w", err)
+		logger.Error(err)
+		return nil, err
+	}
+
+	var layers []internaljob.PreheatRequest
+	for _, imageLayer := range imageLayers {
+		for _, url := range imageLayer.URLs {
+			layers = append(layers, internaljob.PreheatRequest{
+				URL:                 url,
+				PieceLength:         imageLayer.PieceLength,
+				Tag:                 imageLayer.Tag,
+				Application:         imageLayer.Application,
+				FilteredQueryParams: imageLayer.FilteredQueryParams,
+			})
+		}
+	}
+
+	if len(layers) == 0 {
+		err = errors.New("no valid image layers found")
 		logger.Error(err)
 		return nil, err
 	}
@@ -304,7 +323,7 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 					PieceLength:         file.PieceLength,
 					Tag:                 file.Tag,
 					Application:         file.Application,
-					FilteredQueryParams: json.Args.FilteredQueryParams,
+					FilteredQueryParams: file.FilteredQueryParams,
 				},
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
 			}, schedulers)
@@ -702,13 +721,13 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 	return candidateSchedulers, nil
 }
 
-func (s *service) pollingJob(ctx context.Context, name string, id uint, groupID string, initBackoff float64, maxBackoff float64, maxAttempts int) {
+func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUID string, initBackoff float64, maxBackoff float64, maxAttempts int) {
 	var (
 		job models.Job
-		log = logger.WithGroupAndJobID(groupID, fmt.Sprint(id))
+		log = logger.WithGroupAndJobID(groupUUID, fmt.Sprint(id))
 	)
 	if _, _, err := retry.Run(ctx, initBackoff, maxBackoff, maxAttempts, func() (any, bool, error) {
-		groupJob, err := s.job.GetGroupJobState(name, groupID)
+		groupJob, err := s.job.GetGroupJobState(name, groupUUID)
 		if err != nil {
 			err = fmt.Errorf("get group job state failed: %w", err)
 			log.Error(err)

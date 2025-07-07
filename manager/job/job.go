@@ -94,7 +94,7 @@ func (j *Job) Stop() {
 func getSchedulerQueues(schedulers []models.Scheduler) ([]internaljob.Queue, error) {
 	var queues []internaljob.Queue
 	for _, scheduler := range schedulers {
-		queue, err := internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname)
+		queue, err := internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname, scheduler.IP)
 		if err != nil {
 			return nil, err
 		}
@@ -107,5 +107,5 @@ func getSchedulerQueues(schedulers []models.Scheduler) ([]internaljob.Queue, err
 
 // getSchedulerQueue gets scheduler queue.
 func getSchedulerQueue(scheduler models.Scheduler) (internaljob.Queue, error) {
-	return internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname)
+	return internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname, scheduler.IP)
 }

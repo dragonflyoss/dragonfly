@@ -68,8 +68,12 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
 	}
 
+	groupUUID := fmt.Sprintf("group_%s", uuid.New().String())
+	taskUUID := fmt.Sprintf("task_%s", uuid.New().String())
 	args, err := internaljob.MarshalRequest(internaljob.GetTaskRequest{
-		TaskID: taskID,
+		TaskID:    taskID,
+		GroupUUID: groupUUID,
+		TaskUUID:  taskUUID,
 	})
 	if err != nil {
 		logger.Errorf("get tasks marshal request: %v, error: %v", args, err)
@@ -84,7 +88,7 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 	var signatures []*machineryv1tasks.Signature
 	for _, queue := range queues {
 		signatures = append(signatures, &machineryv1tasks.Signature{
-			UUID:       fmt.Sprintf("task_%s", uuid.New().String()),
+			UUID:       taskUUID,
 			Name:       internaljob.GetTaskJob,
 			RoutingKey: queue.String(),
 			Args:       args,
@@ -95,6 +99,7 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 	if err != nil {
 		return nil, err
 	}
+	group.GroupUUID = groupUUID
 
 	var tasks []machineryv1tasks.Signature
 	for _, signature := range signatures {
@@ -128,9 +133,13 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
 	}
 
+	groupUUID := fmt.Sprintf("group_%s", uuid.New().String())
+	taskUUID := fmt.Sprintf("task_%s", uuid.New().String())
 	args, err := internaljob.MarshalRequest(internaljob.DeleteTaskRequest{
-		TaskID:  taskID,
-		Timeout: json.Timeout,
+		TaskID:    taskID,
+		Timeout:   json.Timeout,
+		GroupUUID: groupUUID,
+		TaskUUID:  taskUUID,
 	})
 	if err != nil {
 		logger.Errorf("delete task marshal request: %v, error: %v", args, err)
@@ -145,7 +154,7 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 	var signatures []*machineryv1tasks.Signature
 	for _, queue := range queues {
 		signatures = append(signatures, &machineryv1tasks.Signature{
-			UUID:       fmt.Sprintf("task_%s", uuid.New().String()),
+			UUID:       taskUUID,
 			Name:       internaljob.DeleteTaskJob,
 			RoutingKey: queue.String(),
 			Args:       args,
@@ -156,6 +165,7 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 	if err != nil {
 		return nil, err
 	}
+	group.GroupUUID = groupUUID
 
 	var tasks []machineryv1tasks.Signature
 	for _, signature := range signatures {
