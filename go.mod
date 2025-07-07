@@ -35,7 +35,7 @@ require (
 	github.com/go-echarts/statsview v0.3.4
 	github.com/go-gorm/caches/v4 v4.0.5
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
-	github.com/go-playground/validator/v10 v10.26.0
+	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
