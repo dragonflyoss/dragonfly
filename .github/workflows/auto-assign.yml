@@ -11,4 +11,4 @@ jobs:
   add-assignee:
     runs-on: ubuntu-latest
     steps:
-      - uses: kentaro-m/auto-assign-action@a558e3a7a389eae6d782d4f5ad0aaa5e36ec2e39
+      - uses: kentaro-m/auto-assign-action@db77befe126df3163e8ee988af621569f7f2b82f
