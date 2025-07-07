@@ -80,7 +80,8 @@ We wonderinng if you have any questions or suggestions, please feel free to feed
 
 ## Roadmap
 
-You can find the roadmap in the [community repository](https://github.com/dragonflyoss/community/blob/master/ROADMAP.md).
+You can find the [roadmap](https://github.com/dragonflyoss/community/blob/master/ROADMAP.md)
+in the [community repository](https://github.com/dragonflyoss/community).
 Dragonfly is a community-driven project, and we welcome contributions from everyone.
 
 ## Contributing
