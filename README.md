@@ -56,11 +56,15 @@ You can find the full documentation on the [d7y.io][d7y.io].
 ### Security Audit
 
 A third party security audit was performed by Trail of Bits,
-you can see the full report [here](docs/security/dragonfly-comprehensive-report-2023.pdf).
+you can see the [full report](docs/security/dragonfly-comprehensive-report-2023.pdf).
+
+### Security Policy
+
+If you discover a security vulnerability within Dragonfly, please report it according to our [Security Policy](https://github.com/dragonflyoss/community/blob/master/SECURITY.md).
 
 ## Community
 
-Join the conversation and help the community.
+Join the conversation and help the community. We have a number of ways for you to get involved:
 
 - **Slack Channel**: [#dragonfly](https://cloud-native.slack.com/messages/dragonfly/) on [CNCF Slack](https://slack.cncf.io/)
 - **Github Discussions**: [Dragonfly Discussion Forum][discussion]
@@ -68,6 +72,16 @@ Join the conversation and help the community.
 - **Maintainer Group**: <dragonfly-maintainers@googlegroups.com>
 - **Twitter**: [@dragonfly_oss](https://twitter.com/dragonfly_oss)
 - **DingTalk**: [22880028764](https://qr.dingtalk.com/action/joingroup?code=v1,k1,pkV9IbsSyDusFQdByPSK3HfCG61ZCLeb8b/lpQ3uUqI=&_dt_no_comment=1&origin=11)
+
+and you can also seek the main community information in the [community repository](https://github.com/dragonflyoss/community).
+In this repository, you can find the [community meeting minutes, community meeting notes, and more](https://github.com/dragonflyoss/community/tree/master/meetings).
+
+We wonderinng if you have any questions or suggestions, please feel free to feedback to us through the above channels.
+
+## Roadmap
+
+You can find the roadmap in the [community repository](https://github.com/dragonflyoss/community/blob/master/ROADMAP.md).
+Dragonfly is a community-driven project, and we welcome contributions from everyone.
 
 ## Contributing
 
