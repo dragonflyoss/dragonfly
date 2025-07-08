@@ -1,0 +1,61 @@
+# SECURITY-INSIGHTS.yml for DragonflyOSS/Dragonfly
+# This file describes the security policy and insights for the Dragonfly project.
+
+# Version of the SECURITY-INSIGHTS schema.
+version: 1.0
+
+# Basic information about the project.
+project:
+  name: Dragonfly
+  description: Dragonfly is an open source P2P-based file distribution and image acceleration system, hosted by the Cloud Native Computing Foundation (CNCF) as an Incubating Level Project.
+  homepage: https://d7y.io/
+  repository: https://github.com/dragonflyoss/Dragonfly
+
+# Security policy for the project.
+security_policy:
+  # URL or path to the project's security policy.
+  url: https://github.com/dragonflyoss/Dragonfly/blob/master/SECURITY.md
+  # Whether the project has a public security policy.
+  public: true
+
+# Supported versions and their security status.
+supported_versions:
+  - version: "2.x"
+    status: supported
+    end_of_support: null
+  - version: "1.x"
+    status: unsupported
+    end_of_support: "2023-02-27"  # Based on archived status mentioned in the repo.
+
+# Security contacts for the project.
+security_contacts:
+  - role: Security Team
+    name: Dragonfly Security Team
+    email: dragonfly-maintainers@googlegroups.com
+    preferred_contact_method: email
+
+# Information on vulnerability disclosure.
+vulnerability_disclosure:
+  policy: |
+    We encourage security researchers to report vulnerabilities to us privately before public disclosure. Please send an email to security@dragonflyoss.io with details of the vulnerability. We aim to acknowledge receipt within 48 hours and provide a detailed response within 7 days. After the issue is resolved, we will coordinate with you on public disclosure.
+  accepts_vulnerabilities: true
+  languages:
+    - English
+    - Chinese
+
+# Security features and practices implemented in the project.
+security_features:
+  # Does the project use dependency scanning?
+  dependency_scanning: true
+  # Does the project use static code analysis?
+  static_code_analysis: true
+  # Does the project use fuzzing?
+  fuzzing: true  # Based on audit information from the web.
+  # Does the project have automated tests?
+  automated_tests: true
+
+# Additional metadata or notes.
+metadata:
+  last_updated: 2025-07-08
+  notes: |
+    Dragonfly has moved significant development to Dragonfly2 repository (https://github.com/dragonflyoss/Dragonfly2). For the latest security information, please refer to the new repository.

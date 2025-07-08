@@ -62,6 +62,10 @@ you can see the [full report](docs/security/dragonfly-comprehensive-report-2023.
 
 If you discover a security vulnerability within Dragonfly, please report it according to our [Security Policy](https://github.com/dragonflyoss/community/blob/master/SECURITY.md).
 
+### Security Insights
+
+You can find the security insights on the [SECURITY-INSIGHTS.yml](SECURITY-INSIGHTS.yml) file.
+
 ## Community
 
 Join the conversation and help the community. We have a number of ways for you to get involved:
@@ -91,7 +95,17 @@ You should check out our
 
 ## Code of Conduct
 
-Please refer to our [Code of Conduct][codeconduct].
+Please refer to our [Code of Conduct][codeconduct] which applies to all Dragonfly community members.
+
+## Software bill of materials
+
+SBOMs for the following categories are produced by the Dragonfly Project:
+
+- Considering the source code repository
+- For the dragonfly project's sub-project
+
+The SBOMs can be downloaded from the following places:
+Github Release/Tag Resources Github workflow resources for more process executions.
 
 [arch]: docs/images/arch.png
 [logo-linear]: docs/images/logo/dragonfly-linear.svg
@@ -99,4 +113,3 @@ Please refer to our [Code of Conduct][codeconduct].
 [contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
 [codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
 [d7y.io]: https://d7y.io/
-[dingtalk]: docs/images/community/dingtalk-group.jpeg
