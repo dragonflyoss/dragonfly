@@ -34,6 +34,7 @@ type PreheatRequest struct {
 	Application         string            `json:"application" validate:"omitempty"`
 	Priority            int32             `json:"priority" validate:"omitempty"`
 	Scope               string            `json:"scope" validate:"omitempty"`
+	IPs                 []string          `json:"ips" validate:"omitempty"`
 	Percentage          *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
 	Count               *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
 	ConcurrentCount     int64             `json:"concurrent_count" validate:"omitempty"`

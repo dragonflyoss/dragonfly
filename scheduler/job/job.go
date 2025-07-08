@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 
@@ -374,7 +375,7 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 // Notify the client that the preheat is successful.
 func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	// If scheduler has no available seed peer, return error.
-	seedPeers, err := j.selectSeedPeers(req.Count, req.Percentage, log)
+	seedPeers, err := j.selectSeedPeers(req.IPs, req.Count, req.Percentage, log)
 	if err != nil {
 		return nil, err
 	}
@@ -517,9 +518,12 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
 }
 
-// selectSeedPeers selects seed peers by count or percentage. If count and percentage are both nil, select all seed peers.
-// If count and percentage are both set, use count first.
-func (j *job) selectSeedPeers(count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
+// selectSeedPeers selects seed peers based on provided IPs, count, or percentage, with the following priority:
+// 1. IPs: If specific IP addresses are provided, only seed peers matching those IPs are selected.
+// 2. Count: If count is provided, selects up to the specified number of seed peers. If count exceeds the number of available seed peers, all seed peers are selected.
+// 3. Percentage: If percentage is provided, selects a proportional number of seed peers (rounded down). Ensures at least one seed peer is selected if percentage > 0.
+// Priority: IPs > Count > Percentage
+func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
 	if !j.config.SeedPeer.Enable {
 		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
@@ -527,6 +531,23 @@ func (j *job) selectSeedPeers(count *uint32, percentage *uint8, log *logger.Suga
 	seedPeers := j.resource.SeedPeer().Client().SeedPeers()
 	if len(seedPeers) == 0 {
 		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	}
+
+	if len(ips) > 0 {
+		selectedSeedPeers := make([]*managerv2.SeedPeer, 0, len(ips))
+		for _, seedPeer := range seedPeers {
+			if slices.Contains(ips, seedPeer.Ip) {
+				selectedSeedPeers = append(selectedSeedPeers, seedPeer)
+				break
+			}
+		}
+
+		if len(selectedSeedPeers) == 0 {
+			return nil, fmt.Errorf("no seed peer found for ips %v", ips)
+		}
+
+		log.Infof("[preheat]: select %d seed peers from %d seed peers by ips", len(selectedSeedPeers), len(seedPeers))
+		return selectedSeedPeers, nil
 	}
 
 	if count != nil {
@@ -559,7 +580,7 @@ func (j *job) selectSeedPeers(count *uint32, percentage *uint8, log *logger.Suga
 // If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 // failure tasks. Notify the client that the preheat is successful.
 func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	peers, err := j.selectPeers(req.Count, req.Percentage, log)
+	peers, err := j.selectPeers(req.IPs, req.Count, req.Percentage, log)
 	if err != nil {
 		return nil, err
 	}
@@ -702,12 +723,32 @@ func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 	return nil, fmt.Errorf("all peers preheat failed: %s", msg)
 }
 
-// selectPeers selects peers by count or percentage. If count and percentage are both nil, select all peers.
-// If count and percentage are both set, use count first.
-func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
+// selectPeers selects peers based on provided IPs, count, or percentage, with the following priority:
+// 1. IPs: If specific IP addresses are provided, only peers matching those IPs are selected.
+// 2. Count: If count is provided, selects up to the specified number of peers. If count exceeds the number of available peers, all peers are selected.
+// 3. Percentage: If percentage is provided, selects a proportional number of peers (rounded down). Ensures at least one peer is selected if percentage > 0.
+// Priority: IPs > Count > Percentage
+func (j *job) selectPeers(ips []string, count *uint32, percentage *uint8, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
 	peers := j.resource.HostManager().LoadAllNormals()
 	if len(peers) == 0 {
 		return nil, fmt.Errorf("[preheat]: cluster %d scheduler %s has no available peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	}
+
+	if len(ips) > 0 {
+		selectedPeers := make([]*resource.Host, 0, len(ips))
+		for _, peer := range peers {
+			if slices.Contains(ips, peer.IP) {
+				selectedPeers = append(selectedPeers, peer)
+				break
+			}
+		}
+
+		if len(selectedPeers) == 0 {
+			return nil, fmt.Errorf("no peer found for ips %v", ips)
+		}
+
+		log.Infof("[preheat]: select %d peers from %d peers by ips", len(selectedPeers), len(peers))
+		return selectedPeers, nil
 	}
 
 	if count != nil {
@@ -716,7 +757,7 @@ func (j *job) selectPeers(count *uint32, percentage *uint8, log *logger.SugaredL
 			*count = uint32(len(peers))
 		}
 
-		log.Infof("[preheat]: select %d peers from %d peers", *count, len(peers))
+		log.Infof("[preheat]: select %d peers from %d seed peers", *count, len(peers))
 		return peers[:*count], nil
 	}
 

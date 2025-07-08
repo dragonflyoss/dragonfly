@@ -144,13 +144,21 @@ type PreheatArgs struct {
 	// Scope is the scope for preheating, default is single_seed_peer.
 	Scope string `json:"scope" binding:"omitempty"`
 
-	// Percentage is the percentage of peers to be preheated.
+	// IPs is a list of specific peer IPs for preheating.
+	// This field has the highest priority: if provided, both 'Count' and 'Percentage' will be ignored.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
+	IPs []string `json:"ips" binding:"omitempty"`
+
+	// Percentage is the percentage of available peers to preheat.
+	// This field has the lowest priority and is only used if both 'IPs' and 'Count' are not provided.
 	// It must be a value between 1 and 100 (inclusive) if provided.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
 	Percentage *uint8 `json:"percentage" binding:"omitempty,gte=1,lte=100"`
 
-	// Count is the number of peers to be preheated.
+	// Count is the desired number of peers to preheat.
+	// This field is used only when 'IPs' is not specified. It has priority over 'Percentage'.
 	// It must be a value between 1 and 200 (inclusive) if provided.
-	// If both Percentage and Count are provided, Count will be used.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
 	Count *uint32 `json:"count" binding:"omitempty,gte=1,lte=200"`
 
 	// BatchSize is the batch size for preheating all peers, default is 50.
