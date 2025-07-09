@@ -11,6 +11,12 @@ project:
   homepage: https://d7y.io/
   repository: https://github.com/dragonflyoss/Dragonfly
 
+contribution-policy:
+  accepts-pull-requests: true
+  accepts-automated-pull-requests: true
+  contributing-policy: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+  code-of-conduct: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
+
 # Security policy for the project.
 security_policy:
   # URL or path to the project's security policy.
