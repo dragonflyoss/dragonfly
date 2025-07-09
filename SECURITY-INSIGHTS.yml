@@ -9,12 +9,12 @@ project:
   name: Dragonfly
   description: Dragonfly is an open source P2P-based file distribution and image acceleration system, hosted by the Cloud Native Computing Foundation (CNCF) as an Incubating Level Project.
   homepage: https://d7y.io/
-  repository: https://github.com/dragonflyoss/Dragonfly
+  repository: https://github.com/dragonflyoss/dragonfly
 
 # Security policy for the project.
 security_policy:
   # URL or path to the project's security policy.
-  url: https://github.com/dragonflyoss/Dragonfly/blob/master/SECURITY.md
+  url: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
   # Whether the project has a public security policy.
   public: true
 
@@ -58,4 +58,4 @@ security_features:
 metadata:
   last_updated: 2025-07-08
   notes: |
-    Dragonfly has moved significant development to Dragonfly2 repository (https://github.com/dragonflyoss/Dragonfly2). For the latest security information, please refer to the new repository.
+    Dragonfly has moved significant development to dragonfly repository (https://github.com/dragonflyoss/dragonfly). For the latest security information, please refer to the new repository.
