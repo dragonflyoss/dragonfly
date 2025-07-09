@@ -68,26 +68,11 @@ func (t *localSubTaskStore) WritePiece(ctx context.Context, req *WritePieceReque
 	}
 	t.RUnlock()
 
-	// TODO different with localTaskStore
-	file, err := os.OpenFile(t.parent.DataFilePath, os.O_RDWR, defaultFileMode)
+	// 使用helper替换底层文件写入
+	n, err = writePieceToFile(t.parent.DataFilePath, t.Range.Start+req.Range.Start, req.Reader, req.Range.Length)
 	if err != nil {
 		return 0, err
 	}
-	defer func() {
-		if cerr := file.Close(); cerr != nil {
-			err = errors.Join(err, cerr)
-		}
-	}()
-	// TODO different with localTaskStore
-	if _, err = file.Seek(t.Range.Start+req.Range.Start, io.SeekStart); err != nil {
-		return 0, err
-	}
-
-	n, err = tryWriteWithBuffer(file, req.Reader, req.Range.Length)
-	if err != nil {
-		return 0, err
-	}
-
 	// when UnknownLength and size is align to piece num
 	if req.UnknownLength && n == 0 {
 		t.Lock()
