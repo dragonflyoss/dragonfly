@@ -1,73 +1,64 @@
-# SECURITY-INSIGHTS.yml for DragonflyOSS/Dragonfly
-# This file describes the security policy and insights for the Dragonfly project.
+ Security Insights for DragonflyOSS/Dragonfly
+# This file adheres to the OSSF Security Insights Specification v2.0.0
 
-# Version of the SECURITY-INSIGHTS schema.
-version: 1.0
+header:
+  schema-version: 2.0.0
+  last-updated: "2025-07-15"
+  last-reviewed: "2025-07-15"
+  url: https://github.com/dragonflyoss/dragonfly
+  comment: |
+    Security insights for the Dragonfly P2P-based file distribution and image acceleration system.
 
-# Basic information about the project.
 project:
   name: Dragonfly
-  description: Dragonfly is an open source P2P-based file distribution and image acceleration system, hosted by the Cloud Native Computing Foundation (CNCF) as an Incubating Level Project.
   homepage: https://d7y.io/
-  repository: https://github.com/dragonflyoss/dragonfly
+  administrators:
+    - name: Dragonfly Maintainers
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  repositories:
+    - name: dragonfly
+      url: https://github.com/dragonflyoss/dragonfly
+      comment: |
+        Main repository for Dragonfly P2P-based file distribution and image acceleration system.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    security-policy: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
+    contact:
+      name: Dragonfly Security Team
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  documentation:
+    code-of-conduct: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
 
-contribution-policy:
-  accepts-pull-requests: true
-  accepts-automated-pull-requests: true
-  contributing-policy: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
-  code-of-conduct: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
-
-contribution-policy:
-  accepts-pull-requests: true
-  accepts-automated-pull-requests: true
-  contributing-policy: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
-  code-of-conduct: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
-
-# Security policy for the project.
-security_policy:
-  # URL or path to the project's security policy.
-  url: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
-  # Whether the project has a public security policy.
-  public: true
-
-# Supported versions and their security status.
-supported_versions:
-  - version: "2.x"
-    status: supported
-    end_of_support: null
-  - version: "1.x"
-    status: unsupported
-    end_of_support: "2023-02-27"  # Based on archived status mentioned in the repo.
-
-# Security contacts for the project.
-security_contacts:
-  - role: Security Team
-    name: Dragonfly Security Team
-    email: dragonfly-maintainers@googlegroups.com
-    preferred_contact_method: email
-
-# Information on vulnerability disclosure.
-vulnerability_disclosure:
-  policy: |
-    We encourage security researchers to report vulnerabilities to us privately before public disclosure. Please send an email to security@dragonflyoss.io with details of the vulnerability. We aim to acknowledge receipt within 48 hours and provide a detailed response within 7 days. After the issue is resolved, we will coordinate with you on public disclosure.
-  accepts_vulnerabilities: true
-  languages:
-    - English
-    - Chinese
-
-# Security features and practices implemented in the project.
-security_features:
-  # Does the project use dependency scanning?
-  dependency_scanning: true
-  # Does the project use static code analysis?
-  static_code_analysis: true
-  # Does the project use fuzzing?
-  fuzzing: true  # Based on audit information from the web.
-  # Does the project have automated tests?
-  automated_tests: true
-
-# Additional metadata or notes.
-metadata:
-  last_updated: 2025-07-08
-  notes: |
-    Dragonfly has moved significant development to dragonfly repository (https://github.com/dragonflyoss/dragonfly). For the latest security information, please refer to the new repository.
+repository:
+  url: https://github.com/dragonflyoss/dragonfly
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: Dragonfly Maintainers
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  license:
+    url: https://github.com/dragonflyoss/dragonfly/blob/main/LICENSE
+    expression: Apache-2.0
+  security:
+    assessments:
+      self:
+        comment: |
+          Dragonfly undergoes regular security assessments as part of CNCF incubating project requirements.
+          The project follows CNCF security best practices and guidelines.
+        date: "2025-07-15"
+  documentation:
+    contributing-guide: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+    security-policy: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
+  release:
+    automated-pipeline: true
+    distribution-points:
+      - uri: https://github.com/dragonflyoss/dragonfly/releases
+        comment: GitHub releases page with binaries and release notes
