@@ -21,6 +21,7 @@ import (
 
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
+	"d7y.io/dragonfly/v2/pkg/structure"
 )
 
 func (s *service) CreateScheduler(ctx context.Context, json types.CreateSchedulerRequest) (*models.Scheduler, error) {
@@ -37,6 +38,15 @@ func (s *service) CreateScheduler(ctx context.Context, json types.CreateSchedule
 		Port:               json.Port,
 		Features:           features,
 		SchedulerClusterID: json.SchedulerClusterID,
+	}
+
+	if json.Config != nil {
+		config, err := structure.StructToMap(json.Config)
+		if err != nil {
+			return nil, err
+		}
+
+		scheduler.Config = config
 	}
 
 	if err := s.db.WithContext(ctx).Create(&scheduler).Error; err != nil {
@@ -60,8 +70,20 @@ func (s *service) DestroyScheduler(ctx context.Context, id uint) error {
 }
 
 func (s *service) UpdateScheduler(ctx context.Context, id uint, json types.UpdateSchedulerRequest) (*models.Scheduler, error) {
+	var (
+		config map[string]any
+		err    error
+	)
+	if json.Config != nil {
+		config, err = structure.StructToMap(json.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	scheduler := models.Scheduler{}
 	if err := s.db.WithContext(ctx).First(&scheduler, id).Updates(models.Scheduler{
+		Config:             config,
 		IDC:                json.IDC,
 		Location:           json.Location,
 		IP:                 json.IP,
