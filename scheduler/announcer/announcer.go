@@ -20,10 +20,12 @@ package announcer
 
 import (
 	"context"
+	"encoding/json"
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	managertypes "d7y.io/dragonfly/v2/manager/types"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
@@ -59,6 +61,14 @@ func New(cfg *config.Config, managerClient managerclient.V2, schedulerFeatures [
 		opt(a)
 	}
 
+	// Report scheduler configuration to manager.
+	config, err := json.Marshal(&managertypes.SchedulerConfig{
+		ManagerKeepAliveInterval: a.config.Manager.KeepAlive.Interval,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// Register to manager.
 	if _, err := a.managerClient.UpdateScheduler(context.Background(), &managerv2.UpdateSchedulerRequest{
 		SourceType:         managerv2.SourceType_SCHEDULER_SOURCE,
@@ -69,6 +79,7 @@ func New(cfg *config.Config, managerClient managerclient.V2, schedulerFeatures [
 		Location:           &a.config.Host.Location,
 		SchedulerClusterId: uint64(a.config.Manager.SchedulerClusterID),
 		Features:           schedulerFeatures,
+		Config:             config,
 	}); err != nil {
 		return nil, err
 	}

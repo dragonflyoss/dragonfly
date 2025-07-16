@@ -470,6 +470,13 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 		schedulerFeatures = req.GetFeatures()
 	}
 
+	var schedulerConfig models.JSONMap
+	if len(req.Config) > 0 {
+		if err := json.Unmarshal(req.Config, &schedulerConfig); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	if err := s.db.WithContext(ctx).Model(&scheduler).Updates(models.Scheduler{
 		IDC:                req.GetIdc(),
 		Location:           req.GetLocation(),
@@ -478,6 +485,7 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
 		Features:           schedulerFeatures,
 		LastKeepAliveAt:    time.Now(),
+		Config:             schedulerConfig,
 	}).Error; err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -516,6 +524,13 @@ func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.Up
 		schedulerFeatures = req.GetFeatures()
 	}
 
+	var schedulerConfig models.JSONMap
+	if len(req.Config) > 0 {
+		if err := json.Unmarshal(req.Config, &schedulerConfig); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	scheduler := models.Scheduler{
 		Hostname:           req.GetHostname(),
 		IDC:                req.GetIdc(),
@@ -525,6 +540,7 @@ func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.Up
 		Features:           schedulerFeatures,
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
 		LastKeepAliveAt:    time.Now(),
+		Config:             schedulerConfig,
 	}
 
 	if err := s.db.WithContext(ctx).Create(&scheduler).Error; err != nil {

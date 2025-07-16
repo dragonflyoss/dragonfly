@@ -160,6 +160,7 @@ func TestAnnouncer_Serve(t *testing.T) {
 				time.Sleep(3 * time.Second)
 			},
 			mock: func(data []byte, m *managerclientmocks.MockV2MockRecorder) {
+
 				gomock.InOrder(
 					m.UpdateScheduler(gomock.Any(), gomock.Eq(&managerv2.UpdateSchedulerRequest{
 						SourceType:         managerv2.SourceType_SCHEDULER_SOURCE,
@@ -170,6 +171,7 @@ func TestAnnouncer_Serve(t *testing.T) {
 						Location:           &mockLocation,
 						SchedulerClusterId: uint64(1),
 						Features:           managertypes.DefaultSchedulerFeatures,
+						Config:             []byte("{\"manager_keep_alive_interval\":50000000}"),
 					})).Times(1),
 					m.KeepAlive(gomock.Eq(50*time.Millisecond), gomock.Eq(&managerv2.KeepAliveRequest{
 						SourceType: managerv2.SourceType_SCHEDULER_SOURCE,
@@ -244,6 +246,7 @@ func TestAnnouncer_announceToManager(t *testing.T) {
 						Location:           &mockLocation,
 						SchedulerClusterId: uint64(1),
 						Features:           managertypes.DefaultSchedulerFeatures,
+						Config:             []byte("{\"manager_keep_alive_interval\":50000000}"),
 					})).Times(1),
 					m.KeepAlive(gomock.Eq(50*time.Millisecond), gomock.Eq(&managerv2.KeepAliveRequest{
 						SourceType: managerv2.SourceType_SCHEDULER_SOURCE,
