@@ -107,7 +107,7 @@ func (a *audit) RunGC(ctx context.Context) error {
 		}
 
 		gcResult.Purged += result.RowsAffected
-		logger.Infof("gc audit deleted %d audits", result.RowsAffected)
+		logger.Infof("audit GC deleted %d audits", result.RowsAffected)
 	}
 
 	return nil

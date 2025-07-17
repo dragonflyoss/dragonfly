@@ -104,7 +104,7 @@ func (s *seedPeer) RunGC(ctx context.Context) error {
 		}
 
 		gcResult.Purged += result.RowsAffected
-		logger.Infof("gc seed peer deleted %d inactive seed peers", result.RowsAffected)
+		logger.Infof("seed peer GC deleted %d inactive seed peers", result.RowsAffected)
 	}
 
 	return nil
