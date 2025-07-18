@@ -120,9 +120,17 @@ jobs:
           kind load docker-image dragonflyoss/client:latest
           kind load docker-image dragonflyoss/dfinit:latest
 
+      - name: Pre-download Helm dependencies
+        run: |
+          # Add bitnami repository for MySQL and Redis dependencies
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+          # Pre-download dependencies to avoid timeout during installation
+          helm dependency update ${{ env.DRAGONFLY_CHARTS_PATH }}
+
       - name: Setup dragonfly
         run: |
-          helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          helm install --wait --timeout 25m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
           mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
           kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
