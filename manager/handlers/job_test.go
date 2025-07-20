@@ -118,6 +118,16 @@ func mockJobRouter(h *Handlers) *gin.Engine {
 	ojob.PATCH(":id", h.UpdateJob)
 	ojob.GET(":id", h.GetJob)
 	ojob.GET("", h.GetJobs)
+
+	// Add standard API path for testing
+	apiv1 := r.Group("/api/v1")
+	job := apiv1.Group("/jobs")
+	job.POST("", h.CreateJob)
+	job.DELETE(":id", h.DestroyJob)
+	job.PATCH(":id", h.UpdateJob)
+	job.GET(":id", h.GetJob)
+	job.GET("", h.GetJobs)
+
 	return r
 }
 
@@ -189,6 +199,22 @@ func TestHandlers_CreateJob(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &job)
 				assert.NoError(err)
 				assert.Equal(mockDeleteTaskJobModel, &job)
+			},
+		},
+		// Test standard API path
+		{
+			name: "create preheat job success via standard API path",
+			req:  httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(mockPreheatJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreatePreheatJob(gomock.Any(), gomock.Eq(mockPreheatCreateJobRequest)).Return(mockPreheatJobModel, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				job := models.Job{}
+				err := json.Unmarshal(w.Body.Bytes(), &job)
+				assert.NoError(err)
+				assert.Equal(mockPreheatJobModel, &job)
 			},
 		},
 	}
