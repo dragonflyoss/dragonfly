@@ -119,7 +119,7 @@ func mockJobRouter(h *Handlers) *gin.Engine {
 	ojob.GET(":id", h.GetJob)
 	ojob.GET("", h.GetJobs)
 
-	// Add standard API path for testing
+	// Register standard API path routes for testing API v1 endpoints
 	apiv1 := r.Group("/api/v1")
 	job := apiv1.Group("/jobs")
 	job.POST("", h.CreateJob)
@@ -201,7 +201,7 @@ func TestHandlers_CreateJob(t *testing.T) {
 				assert.Equal(mockDeleteTaskJobModel, &job)
 			},
 		},
-		// Test standard API path
+		// Test case for standard API path endpoint
 		{
 			name: "create preheat job success via standard API path",
 			req:  httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(mockPreheatJobReqBody)),
