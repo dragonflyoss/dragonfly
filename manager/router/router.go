@@ -208,7 +208,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	config.GET(":id", h.GetConfig)
 	config.GET("", h.GetConfigs)
 
-	// Job.
+	// Job routes with JWT authentication and RBAC access control
 	job := apiv1.Group("/jobs", jwt.MiddlewareFunc(), rbac)
 	job.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	job.DELETE(":id", h.DestroyJob)
