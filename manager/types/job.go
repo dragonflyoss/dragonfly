@@ -147,7 +147,7 @@ type PreheatArgs struct {
 	// IPs is a list of specific peer IPs for preheating.
 	// This field has the highest priority: if provided, both 'Count' and 'Percentage' will be ignored.
 	// Applies to 'all_peers' and 'all_seed_peers' scopes.
-	IPs []string `json:"ips" binding:"omitempty"`
+	IPs []string `json:"ips" binding:"omitempty,gte=1,lte=100"`
 
 	// Percentage is the percentage of available peers to preheat.
 	// This field has the lowest priority and is only used if both 'IPs' and 'Count' are not provided.

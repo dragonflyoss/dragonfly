@@ -52,7 +52,7 @@ const (
 	DefaultGCJobPollingInterval = 5 * time.Second
 
 	// DefaultGetImageDistributionJobConcurrentCount is the default concurrent count for getting image distribution job.
-	DefaultGetImageDistributionJobConcurrentCount = 30
+	DefaultGetImageDistributionJobConcurrentCount = 12
 )
 
 func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest) (*models.Job, error) {
