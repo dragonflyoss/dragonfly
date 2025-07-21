@@ -568,8 +568,19 @@ func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.Up
 
 // List active schedulers configuration.
 func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
+	if req.SchedulerClusterId != 0 {
+		return s.listSchedulersByClusterID(ctx, req)
+	}
+
+	// Fallback to the legacy way to list schedulers by searcher.
+	return s.listSchedulersBySearcher(ctx, req)
+}
+
+// listSchedulersBySearcher is the legacy way to list schedulers by searcher, which will use the searcher plugin to query the schedulers
+// filter by hostname/ip/idc/location.
+func (s *managerServerV2) listSchedulersBySearcher(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
-	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
+	log.Debugf("[legacy] list schedulers, version %s, commit %s", req.Version, req.Commit)
 	metrics.SearchSchedulerClusterCount.WithLabelValues(req.Version, req.Commit).Inc()
 
 	// Cache hit.
@@ -680,6 +691,69 @@ func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.Lis
 			Features:           features,
 			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
 			SeedPeers:          seedPeers,
+		})
+	}
+
+	// If scheduler is not found, even no default scheduler is returned.
+	// It means that the scheduler has not been started,
+	// and the results are not cached, waiting for the scheduler to be ready.
+	if len(pbListSchedulersResponse.Schedulers) == 0 {
+		return &pbListSchedulersResponse, nil
+	}
+
+	// Cache data.
+	if err := s.cache.Once(&cachev9.Item{
+		Ctx:   ctx,
+		Key:   cacheKey,
+		Value: &pbListSchedulersResponse,
+		TTL:   s.cache.TTL,
+	}); err != nil {
+		log.Error(err)
+	}
+
+	return &pbListSchedulersResponse, nil
+}
+
+// listSchedulersByClusterID is the direct way to list the schedulers by the scheduler cluster id.
+func (s *managerServerV2) listSchedulersByClusterID(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
+	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
+	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
+	metrics.SearchSchedulerClusterCount.WithLabelValues(req.Version, req.Commit).Inc()
+
+	// Cache hit.
+	var pbListSchedulersResponse managerv2.ListSchedulersResponse
+	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip, req.Version)
+
+	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
+		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
+	} else {
+		log.Debugf("%s cache hit", cacheKey)
+		return &pbListSchedulersResponse, nil
+	}
+
+	var schedulers []models.Scheduler
+	if err := s.db.Find(&schedulers, "scheduler_cluster_id = ?", req.SchedulerClusterId).Error; err != nil {
+		log.Errorf("failed to get schedulers by cluster id %d: %s", req.SchedulerClusterId, err.Error())
+		return nil, err
+	}
+
+	for _, scheduler := range schedulers {
+		// Marshal features of scheduler.
+		features, err := scheduler.Features.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
+		pbListSchedulersResponse.Schedulers = append(pbListSchedulersResponse.Schedulers, &managerv2.Scheduler{
+			Id:                 uint64(scheduler.ID),
+			Hostname:           scheduler.Hostname,
+			Idc:                &scheduler.IDC,
+			Location:           &scheduler.Location,
+			Ip:                 scheduler.IP,
+			Port:               scheduler.Port,
+			State:              scheduler.State,
+			Features:           features,
+			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
 		})
 	}
 
