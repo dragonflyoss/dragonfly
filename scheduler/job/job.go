@@ -183,6 +183,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		log.Info("[preheat]: preheat single seed peer")
 		resp, err := j.preheatSingleSeedPeer(ctx, req, log)
 		if err != nil {
+			log.Errorf("[preheat]: preheat single seed peer failed: %s", err.Error())
 			return "", err
 		}
 
@@ -192,6 +193,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		log.Info("[preheat]: preheat all seed peers")
 		resp, err := j.preheatAllSeedPeers(ctx, req, log)
 		if err != nil {
+			log.Errorf("[preheat]: preheat all seed peers failed: %s", err.Error())
 			return "", err
 		}
 
@@ -201,6 +203,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		log.Info("[preheat]: preheat all peers")
 		resp, err := j.preheatAllPeers(ctx, req, log)
 		if err != nil {
+			log.Errorf("[preheat]: preheat all peers failed: %s", err.Error())
 			return "", err
 		}
 
@@ -210,6 +213,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		log.Warnf("[preheat]: scope is invalid %s, preheat single peer", req.Scope)
 		resp, err := j.preheatSingleSeedPeer(ctx, req, log)
 		if err != nil {
+			log.Errorf("[preheat]: preheat single seed peer failed: %s", err.Error())
 			return "", err
 		}
 
@@ -538,7 +542,7 @@ func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint8, lo
 		for _, seedPeer := range seedPeers {
 			if slices.Contains(ips, seedPeer.Ip) {
 				selectedSeedPeers = append(selectedSeedPeers, seedPeer)
-				break
+				continue
 			}
 		}
 
@@ -739,7 +743,7 @@ func (j *job) selectPeers(ips []string, count *uint32, percentage *uint8, log *l
 		for _, peer := range peers {
 			if slices.Contains(ips, peer.IP) {
 				selectedPeers = append(selectedPeers, peer)
-				break
+				continue
 			}
 		}
 
