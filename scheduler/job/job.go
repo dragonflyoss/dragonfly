@@ -329,6 +329,7 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator))
 	filteredQueryParams := strings.Split(req.FilteredQueryParams, idgen.FilteredQueryParamsSeparator)
+	advertiseIP := j.config.Server.AdvertiseIP.String()
 	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
 			Url:                 url,
@@ -341,6 +342,7 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 			RequestHeader:       req.Headers,
 			CertificateChain:    req.CertificateChain,
 			LoadToCache:         req.LoadToCache,
+			RemoteIp:            &advertiseIP,
 		}})
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -421,6 +423,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 					return err
 				}
 
+				advertiseIP := j.config.Server.AdvertiseIP.String()
 				stream, err := dfdaemonClient.DownloadTask(
 					ctx,
 					taskID,
@@ -436,6 +439,7 @@ func (j *job) preheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 						Timeout:             durationpb.New(req.Timeout),
 						CertificateChain:    req.CertificateChain,
 						LoadToCache:         req.LoadToCache,
+						RemoteIp:            &advertiseIP,
 					}})
 				if err != nil {
 					log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -626,6 +630,7 @@ func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 					return err
 				}
 
+				advertiseIP := j.config.Server.AdvertiseIP.String()
 				stream, err := dfdaemonClient.DownloadTask(
 					ctx,
 					taskID,
@@ -641,6 +646,7 @@ func (j *job) preheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 						Timeout:             durationpb.New(req.Timeout),
 						CertificateChain:    req.CertificateChain,
 						LoadToCache:         req.LoadToCache,
+						RemoteIp:            &advertiseIP,
 					}})
 				if err != nil {
 					log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -890,8 +896,10 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 			continue
 		}
 
+		advertiseIP := j.config.Server.AdvertiseIP.String()
 		if err = dfdaemonClient.DeleteTask(ctx, &dfdaemonv2.DeleteTaskRequest{
-			TaskId: req.TaskID,
+			TaskId:   req.TaskID,
+			RemoteIp: &advertiseIP,
 		}); err != nil {
 			log.Errorf("delete task failed: %s", err.Error())
 			failureTasks = append(failureTasks, &internaljob.DeleteFailureTask{

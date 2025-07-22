@@ -2447,7 +2447,8 @@ func (v *V2) DeletePersistentCachePeer(_ctx context.Context, req *schedulerv2.De
 		return err
 	}
 
-	if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID}); err != nil {
+	advertiseIP := v.config.Server.AdvertiseIP.String()
+	if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID, RemoteIp: &advertiseIP}); err != nil {
 		peer.Log.Errorf("delete persistent cache task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
 	}
 
@@ -2653,11 +2654,13 @@ func (v *V2) downloadPersistentCacheTaskByPeer(ctx context.Context, task *persis
 		return err
 	}
 
+	advertiseIP := v.config.Server.AdvertiseIP.String()
 	stream, err := dfdaemonClient.DownloadPersistentCacheTask(ctx, &dfdaemonv2.DownloadPersistentCacheTaskRequest{
 		TaskId:      task.ID,
 		Persistent:  true,
 		Tag:         &task.Tag,
 		Application: &task.Application,
+		RemoteIp:    &advertiseIP,
 	})
 	if err != nil {
 		task.Log.Errorf("download persistent cache task failed %s", err)
@@ -2689,9 +2692,11 @@ func (v *V2) persistPersistentCacheTaskByPeer(ctx context.Context, peer *persist
 		return err
 	}
 
+	advertiseIP := v.config.Server.AdvertiseIP.String()
 	if err := dfdaemonClient.UpdatePersistentCacheTask(ctx, &dfdaemonv2.UpdatePersistentCacheTaskRequest{
 		TaskId:     peer.Task.ID,
 		Persistent: true,
+		RemoteIp:   &advertiseIP,
 	}); err != nil {
 		peer.Log.Errorf("update persistent cache task failed %s", err)
 		return err
@@ -2826,7 +2831,8 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 			continue
 		}
 
-		if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID}); err != nil {
+		advertiseIP := v.config.Server.AdvertiseIP.String()
+		if err := dfdaemonClient.DeletePersistentCacheTask(ctx, &dfdaemonv2.DeletePersistentCacheTaskRequest{TaskId: peer.Task.ID, RemoteIp: &advertiseIP}); err != nil {
 			peer.Log.Errorf("delete persistent cache task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
 			continue
 		}
