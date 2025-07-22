@@ -66,7 +66,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159
 
       - name: Login Docker Hub
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
@@ -116,7 +116,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@181d5eefc20863364f96762470ba6f862bdef56b
+        uses: github/codeql-action/upload-sarif@d6bbdef45e766d081b84a2def353b0055f728d3e
         with:
           sarif_file: 'trivy-results.sarif'
 
