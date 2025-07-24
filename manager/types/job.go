@@ -30,8 +30,14 @@ const (
 )
 
 const (
-	// DefaultPreheatConcurrentCount is the default concurrent count for preheating all peers.
-	DefaultPreheatConcurrentCount = 1000
+	// DefaultPreheatConcurrentPeerCount is the default concurrent peer count for preheating all peers.
+	DefaultPreheatConcurrentPeerCount = 500
+
+	// DefaultPreheatConcurrentTaskCount is the default concurrent task count for preheating all peers.
+	DefaultPreheatConcurrentTaskCount = 8
+
+	// DefaultPreheatConcurrentLayerCount is the default concurrent layer count for getting image distribution.
+	DefaultPreheatConcurrentLayerCount = 8
 
 	// DefaultJobTimeout is the default timeout for executing job.
 	DefaultJobTimeout = 60 * time.Minute
@@ -161,8 +167,16 @@ type PreheatArgs struct {
 	// Applies to 'all_peers' and 'all_seed_peers' scopes.
 	Count *uint32 `json:"count" binding:"omitempty,gte=1,lte=200"`
 
-	// BatchSize is the batch size for preheating all peers, default is 50.
-	ConcurrentCount int64 `json:"concurrent_count" binding:"omitempty,gte=1,lte=500"`
+	// ConcurrentTaskCount specifies the maximum number of tasks (e.g., image layers) to preheat concurrently.
+	// For example, if preheating 100 layers with ConcurrentTaskCount set to 10, up to 10 layers are processed simultaneously.
+	// If ConcurrentPeerCount is 10 for 1000 peers, each layer is preheated by 10 peers concurrently.
+	// Default is 8, maximum is 100.
+	ConcurrentTaskCount int64 `json:"concurrent_task_count" binding:"omitempty,gte=1,lte=100"`
+
+	// ConcurrentPeerCount specifies the maximum number of peers to preheat concurrently for a single task (e.g., an image layer).
+	// For example, if preheating a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
+	// Default is 500, maximum is 1000.
+	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
 
 	// Timeout is the timeout for preheating, default is 30 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
@@ -277,6 +291,9 @@ type GetImageDistributionArgs struct {
 
 	// The image type preheating task can specify the image architecture type. eg: linux/amd64.
 	Platform string `json:"platform" binding:"omitempty"`
+
+	// ConcurrentLayerCount specifies the maximum number of layers to get concurrently.
+	ConcurrentLayerCount int64 `json:"concurrent_layer_count" binding:"omitempty,gte=1,lte=100"`
 }
 
 // CreateGetImageDistributionJobResponse is the response for creating a get image job.

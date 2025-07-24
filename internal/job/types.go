@@ -37,7 +37,8 @@ type PreheatRequest struct {
 	IPs                 []string          `json:"ips" validate:"omitempty"`
 	Percentage          *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
 	Count               *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
-	ConcurrentCount     int64             `json:"concurrent_count" validate:"omitempty"`
+	ConcurrentTaskCount int64             `json:"concurrent_task_count" validate:"omitempty"`
+	ConcurrentPeerCount int64             `json:"concurrent_peer_count" validate:"omitempty"`
 	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
 	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
 	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
