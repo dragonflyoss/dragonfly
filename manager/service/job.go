@@ -50,9 +50,6 @@ const (
 
 	// DefaultGCJobPollingInterval is the default interval for polling GC job.
 	DefaultGCJobPollingInterval = 5 * time.Second
-
-	// DefaultGetImageDistributionJobConcurrentCount is the default concurrent count for getting image distribution job.
-	DefaultGetImageDistributionJobConcurrentCount = 12
 )
 
 func (s *service) CreateGCJob(ctx context.Context, json types.CreateGCJobRequest) (*models.Job, error) {
@@ -119,8 +116,12 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 		json.Args.Scope = types.SingleSeedPeerScope
 	}
 
-	if json.Args.ConcurrentCount == 0 {
-		json.Args.ConcurrentCount = types.DefaultPreheatConcurrentCount
+	if json.Args.ConcurrentTaskCount == 0 {
+		json.Args.ConcurrentTaskCount = types.DefaultPreheatConcurrentTaskCount
+	}
+
+	if json.Args.ConcurrentPeerCount == 0 {
+		json.Args.ConcurrentPeerCount = types.DefaultPreheatConcurrentPeerCount
 	}
 
 	if json.Args.Timeout == 0 {
@@ -222,6 +223,10 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 }
 
 func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error) {
+	if json.Args.ConcurrentLayerCount == 0 {
+		json.Args.ConcurrentLayerCount = types.DefaultPreheatConcurrentLayerCount
+	}
+
 	imageLayers, err := s.getImageLayers(ctx, json)
 	if err != nil {
 		err = fmt.Errorf("get image layers failed: %w", err)
@@ -312,7 +317,7 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 	var mu sync.Mutex
 	jobs := make([]*models.Job, 0, len(layers))
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(DefaultGetImageDistributionJobConcurrentCount)
+	eg.SetLimit(int(json.Args.ConcurrentLayerCount))
 	for _, file := range layers {
 		eg.Go(func() error {
 			job, err := s.createGetTaskJobSync(ctx, types.CreateGetTaskJobRequest{
