@@ -27,6 +27,10 @@ manager:
     console: false
     server:
       logLevel: debug
+    cache:
+      ttl: 5s
+      local:
+        ttl: 3s
     job:
       rateLimit:
         fillInterval: 1m
@@ -73,6 +77,8 @@ scheduler:
       retryInterval: 800ms
       gc:
         hostGCInterval: 2m
+    dynconfig:
+      refreshInterval: 5s
 
 seedClient:
   enable: true
