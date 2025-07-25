@@ -1,5 +1,8 @@
 <a name="unreleased"></a>
 ## [Unreleased]
+### Feat
+- improve error handling and validation in API handlers (`application.go`, `audit.go`)
+- update Swagger comments for error responses
 
 ### Chore
 - update SECURITY-INSIGHTS with contribution policy details 📜 ([#4198](https://github.com/CooooolFrog/dragonfly/issues/4198))
