@@ -28,7 +28,8 @@ manager:
     server:
       logLevel: debug
     cache:
-      ttl: 5s
+      redis:
+        ttl: 5s
       local:
         ttl: 3s
     job:
@@ -106,9 +107,9 @@ seedClient:
       path: /tmp/artifact
   config:
     dynconfig:
-      refreshInterval: 1s
+      refreshInterval: 5s
     scheduler:
-      announceInterval: 1s
+      announceInterval: 10s
     log:
       level: debug
     proxy:

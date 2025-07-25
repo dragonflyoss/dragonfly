@@ -172,7 +172,7 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 		return "", err
 	}
 
-	log := logger.WithPreheatJob(req.GroupUUID, req.TaskUUID, append(req.URLs, req.URL))
+	log := logger.WithPreheatJob(req.GroupUUID, req.TaskUUID, req.URLs)
 	log.Infof("[preheat]: preheat %s %d request: %#v", req.URLs, req.PieceLength, req)
 
 	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
