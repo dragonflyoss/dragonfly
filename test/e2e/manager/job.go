@@ -42,7 +42,7 @@ func waitForDone(job *models.Job, pod *util.PodExec) bool {
 			return false
 		case <-ticker.C:
 			out, err := pod.CurlCommand("", nil, nil,
-				fmt.Sprintf("http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs/%d", job.ID)).CombinedOutput()
+				fmt.Sprintf("http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs/%d", job.ID)).CombinedOutput()
 			fmt.Println(string(out))
 			Expect(err).NotTo(HaveOccurred())
 			err = json.Unmarshal(out, job)
