@@ -23,43 +23,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/grpc/resolver"
-
-	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	"d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/scheduler/config"
-	configmocks "d7y.io/dragonfly/v2/scheduler/config/mocks"
 )
 
 func TestResource_New(t *testing.T) {
 	tests := []struct {
 		name   string
 		config *config.Config
-		mock   func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder)
+		mock   func(mg *gc.MockGCMockRecorder)
 		expect func(t *testing.T, resource Resource, err error)
 	}{
 		{
 			name:   "new resource",
 			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				gomock.InOrder(
 					mg.Add(gomock.Any()).Return(nil).Times(3),
-					md.Get().Return(&config.DynconfigData{
-						Scheduler: &managerv2.Scheduler{
-							SeedPeers: []*managerv2.SeedPeer{
-								{
-									Id: 1,
-								},
-							},
-						},
-					}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
-					md.GetResolveSeedPeerAddrs().Return([]resolver.Address{}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
-					md.GetResolveSeedPeerAddrs().Return([]resolver.Address{}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
 				)
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
@@ -71,7 +53,7 @@ func TestResource_New(t *testing.T) {
 		{
 			name:   "new resource failed because of host manager error",
 			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				mg.Add(gomock.Any()).Return(errors.New("foo")).Times(1)
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
@@ -82,7 +64,7 @@ func TestResource_New(t *testing.T) {
 		{
 			name:   "new resource failed because of task manager error",
 			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				gomock.InOrder(
 					mg.Add(gomock.Any()).Return(nil).Times(1),
 					mg.Add(gomock.Any()).Return(errors.New("foo")).Times(1),
@@ -96,7 +78,7 @@ func TestResource_New(t *testing.T) {
 		{
 			name:   "new resource failed because of peer manager error",
 			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				gomock.InOrder(
 					mg.Add(gomock.Any()).Return(nil).Times(2),
 					mg.Add(gomock.Any()).Return(errors.New("foo")).Times(1),
@@ -108,35 +90,11 @@ func TestResource_New(t *testing.T) {
 			},
 		},
 		{
-			name:   "new resource faild because of dynconfig get error",
-			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				gomock.InOrder(
-					mg.Add(gomock.Any()).Return(nil).Times(3),
-					md.Get().Return(&config.DynconfigData{}, errors.New("foo")).Times(1),
-				)
-			},
-			expect: func(t *testing.T, resource Resource, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "foo")
-			},
-		},
-		{
 			name:   "new resource faild because of seed peer list is empty",
 			config: config.New(),
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				gomock.InOrder(
 					mg.Add(gomock.Any()).Return(nil).Times(3),
-					md.Get().Return(&config.DynconfigData{
-						Scheduler: &managerv2.Scheduler{
-							SeedPeers: []*managerv2.SeedPeer{},
-						},
-					}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
-					md.GetResolveSeedPeerAddrs().Return([]resolver.Address{}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
-					md.GetResolveSeedPeerAddrs().Return([]resolver.Address{}, nil).Times(1),
-					md.Register(gomock.Any()).Return().Times(1),
 				)
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
@@ -159,7 +117,7 @@ func TestResource_New(t *testing.T) {
 					Enable: false,
 				},
 			},
-			mock: func(mg *gc.MockGCMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			mock: func(mg *gc.MockGCMockRecorder) {
 				mg.Add(gomock.Any()).Return(nil).Times(3)
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
@@ -175,10 +133,9 @@ func TestResource_New(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			gc := gc.NewMockGC(ctl)
-			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			tc.mock(gc.EXPECT(), dynconfig.EXPECT())
+			tc.mock(gc.EXPECT())
 
-			resource, err := New(tc.config, gc, dynconfig, rpc.NewInsecureCredentials())
+			resource, err := New(tc.config, gc, rpc.NewInsecureCredentials())
 			tc.expect(t, resource, err)
 		})
 	}

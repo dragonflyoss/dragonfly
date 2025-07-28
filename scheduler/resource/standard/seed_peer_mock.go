@@ -43,18 +43,19 @@ func (m *MockSeedPeer) EXPECT() *MockSeedPeerMockRecorder {
 	return m.recorder
 }
 
-// Client mocks base method.
-func (m *MockSeedPeer) Client() SeedPeerClient {
+// SelectSeedPeer mocks base method.
+func (m *MockSeedPeer) SelectSeedPeer(arg0 context.Context, arg1 string) (*Host, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Client")
-	ret0, _ := ret[0].(SeedPeerClient)
-	return ret0
+	ret := m.ctrl.Call(m, "SelectSeedPeer", arg0, arg1)
+	ret0, _ := ret[0].(*Host)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// Client indicates an expected call of Client.
-func (mr *MockSeedPeerMockRecorder) Client() *gomock.Call {
+// SelectSeedPeer indicates an expected call of SelectSeedPeer.
+func (mr *MockSeedPeerMockRecorder) SelectSeedPeer(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Client", reflect.TypeOf((*MockSeedPeer)(nil).Client))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectSeedPeer", reflect.TypeOf((*MockSeedPeer)(nil).SelectSeedPeer), arg0, arg1)
 }
 
 // Stop mocks base method.
