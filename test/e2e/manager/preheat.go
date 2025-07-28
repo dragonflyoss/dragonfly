@@ -65,7 +65,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://127.0.0.1:8080/api/v1/jobs").CombinedOutput()
+				"http://127.0.0.1:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -123,7 +123,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -181,7 +181,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -241,7 +241,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -324,7 +324,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -378,7 +378,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
@@ -438,7 +438,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
+				"http://dragonfly-manager.dragonfly-system.svc:8080/oapi/v1/jobs").CombinedOutput()
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
