@@ -39,12 +39,13 @@ import (
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
-	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	managertypes "d7y.io/dragonfly/v2/manager/types"
+	"d7y.io/dragonfly/v2/pkg/dfnet"
 	"d7y.io/dragonfly/v2/pkg/idgen"
+	cndsystemclient "d7y.io/dragonfly/v2/pkg/rpc/cdnsystem/client"
 	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
@@ -79,10 +80,11 @@ type job struct {
 	localJob     *internaljob.Job
 	resource     resource.Resource
 	config       *config.Config
+	dialOptions  []grpc.DialOption
 }
 
 // New creates a new Job.
-func New(cfg *config.Config, resource resource.Resource) (Job, error) {
+func New(cfg *config.Config, resource resource.Resource, dialOptions ...grpc.DialOption) (Job, error) {
 	redisConfig := &internaljob.Config{
 		Addrs:            cfg.Database.Redis.Addrs,
 		MasterName:       cfg.Database.Redis.MasterName,
@@ -127,6 +129,7 @@ func New(cfg *config.Config, resource resource.Resource) (Job, error) {
 		localJob:     localJob,
 		resource:     resource,
 		config:       cfg,
+		dialOptions:  dialOptions,
 	}
 
 	namedJobFuncs := map[string]any{
@@ -241,11 +244,6 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
-	// If scheduler has no available seed peer, return error.
-	if len(j.resource.SeedPeer().Client().Addrs()) == 0 {
-		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
-	}
-
 	// Preheat by v2 grpc protocol. If seed peer does not support
 	// v2 protocol, preheat by v1 grpc protocol.
 	resp, err := j.preheatV2SingleSeedPeer(ctx, req, log)
@@ -275,8 +273,23 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 		Priority:    commonv1.Priority(req.Priority),
 	}
 
+	selected, err := j.resource.SeedPeer().Select(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	log.Infof("[preheat]: selected seed peer %s", addr)
+
+	// TODO(chlins): reuse the client if we encounter the performance issue in future.
+	client, err := cndsystemclient.GetClientByAddr(ctx, dfnet.NetAddr{Type: dfnet.TCP, Addr: addr}, j.dialOptions...)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
 	// Trigger seed peer download seeds.
-	stream, err := j.resource.SeedPeer().Client().ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
+	stream, err := client.ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
 		TaskId:  taskID,
 		Url:     req.URL,
 		UrlMeta: urlMeta,
@@ -343,7 +356,23 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 	filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
 	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams)
 	advertiseIP := j.config.Server.AdvertiseIP.String()
-	stream, err := j.resource.SeedPeer().Client().DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
+
+	selected, err := j.resource.SeedPeer().Select(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	log.Infof("[preheat]: selected seed peer %s", addr)
+
+	// TODO(chlins): reuse the client if we encounter the performance issue in future.
+	client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, j.dialOptions...)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	stream, err := client.DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
 			Url:                 url,
 			PieceLength:         req.PieceLength,
@@ -410,7 +439,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 			for _, seedPeer := range seedPeers {
 				var (
 					hostname = seedPeer.Hostname
-					ip       = seedPeer.Ip
+					ip       = seedPeer.IP
 					port     = seedPeer.Port
 				)
 
@@ -554,20 +583,20 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 // 2. Count: If count is provided, selects up to the specified number of seed peers. If count exceeds the number of available seed peers, all seed peers are selected.
 // 3. Percentage: If percentage is provided, selects a proportional number of seed peers (rounded down). Ensures at least one seed peer is selected if percentage > 0.
 // Priority: IPs > Count > Percentage
-func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, log *logger.SugaredLoggerOnWith) ([]*managerv2.SeedPeer, error) {
+func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
 	if !j.config.SeedPeer.Enable {
 		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
-	seedPeers := j.resource.SeedPeer().Client().SeedPeers()
+	seedPeers := j.resource.HostManager().LoadAllSeeds()
 	if len(seedPeers) == 0 {
 		return nil, fmt.Errorf("cluster %d scheduler %s has no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
 	if len(ips) > 0 {
-		selectedSeedPeers := make([]*managerv2.SeedPeer, 0, len(ips))
+		selectedSeedPeers := make([]*resource.Host, 0, len(ips))
 		for _, seedPeer := range seedPeers {
-			if slices.Contains(ips, seedPeer.Ip) {
+			if slices.Contains(ips, seedPeer.IP) {
 				selectedSeedPeers = append(selectedSeedPeers, seedPeer)
 				continue
 			}

@@ -22,9 +22,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"stathat.com/c/consistent"
 
 	cdnsystemv1 "d7y.io/api/v2/pkg/apis/cdnsystem/v1"
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
@@ -32,16 +35,24 @@ import (
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/pkg/dfnet"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
+	cndsystemclient "d7y.io/dragonfly/v2/pkg/rpc/cdnsystem/client"
 	"d7y.io/dragonfly/v2/pkg/rpc/common"
+	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
+	healthclient "d7y.io/dragonfly/v2/pkg/rpc/health/client"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
 )
 
 const (
 	// Default value of seed peer failed timeout.
 	SeedPeerFailedTimeout = 30 * time.Minute
+
+	// SeedPeerRefreshInterval is the interval of refreshing seed peers.
+	SeedPeerRefreshInterval = 1 * time.Minute
 )
 
 // SeedPeer is the interface used for seed peer.
@@ -54,8 +65,11 @@ type SeedPeer interface {
 	// Used only in v1 version of the grpc.
 	TriggerTask(context.Context, *http.Range, *Task) (*Peer, *schedulerv1.PeerResult, error)
 
-	// Client returns grpc client of seed peer.
-	Client() SeedPeerClient
+	// Select selects a seed peer target by the task id.
+	Select(context.Context, string) (*Host, error)
+
+	// Serve serves the seed peer service.
+	Serve() error
 
 	// Stop seed peer service.
 	Stop() error
@@ -63,22 +77,34 @@ type SeedPeer interface {
 
 // seedPeer contains content for seed peer.
 type seedPeer struct {
-	// client is the dynamic client of seed peer.
-	client SeedPeerClient
-
 	// peerManager is PeerManager interface.
 	peerManager PeerManager
 
 	// hostManager is HostManager interface.
 	hostManager HostManager
+
+	// dialOpts is the options for grpc dial.
+	dialOptions []grpc.DialOption
+
+	// hosts is the list of seed peers.
+	hosts *sync.Map
+
+	// hashring is the hashring constructed from seed peers.
+	hashring *consistent.Consistent
+
+	// done is the channel to stop the seed peer service.
+	done chan struct{}
 }
 
 // New SeedPeer interface.
-func newSeedPeer(client SeedPeerClient, peerManager PeerManager, hostManager HostManager) SeedPeer {
+func newSeedPeer(peerManager PeerManager, hostManager HostManager, dialOptions ...grpc.DialOption) SeedPeer {
 	return &seedPeer{
-		client:      client,
 		peerManager: peerManager,
 		hostManager: hostManager,
+		dialOptions: dialOptions,
+		hosts:       &sync.Map{},
+		hashring:    consistent.New(),
+		done:        make(chan struct{}),
 	}
 }
 
@@ -88,7 +114,22 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 	ctx, cancel := context.WithCancel(trace.ContextWithSpan(ctx, trace.SpanFromContext(ctx)))
 	defer cancel()
 
-	stream, err := s.client.DownloadTask(ctx, taskID, req)
+	selected, err := s.Select(ctx, taskID)
+	if err != nil {
+		return err
+	}
+
+	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	logger.Infof("selected seed peer %s for task %s", addr, taskID)
+
+	// TODO(chlins): reuse the client if we encounter the performance issue in future.
+	client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, s.dialOptions...)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	stream, err := client.DownloadTask(ctx, taskID, req)
 	if err != nil {
 		return err
 	}
@@ -125,7 +166,22 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 		urlMeta.Range = rg.URLMetaString()
 	}
 
-	stream, err := s.client.ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
+	selected, err := s.Select(ctx, task.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	logger.Infof("selected seed peer %s for task %s", addr, task.ID)
+
+	// TODO(chlins): reuse the client if we encounter the performance issue in future.
+	client, err := cndsystemclient.GetClientByAddr(ctx, dfnet.NetAddr{Type: dfnet.TCP, Addr: addr}, s.dialOptions...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer client.Close()
+
+	stream, err := client.ObtainSeeds(ctx, &cdnsystemv1.SeedRequest{
 		TaskId:  task.ID,
 		Url:     task.URL,
 		UrlMeta: urlMeta,
@@ -221,6 +277,26 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 	}
 }
 
+// Select selects a seed peer by the task id.
+func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
+	// The synchronization of the hash ring is handled by the refreshSeedPeers periodically and asynchronously.
+	if len(s.hashring.Members()) == 0 {
+		return nil, fmt.Errorf("no seed peer available")
+	}
+
+	addr, err := s.hashring.Get(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to select seed peer: %w", err)
+	}
+
+	host, ok := s.hosts.Load(addr)
+	if !ok {
+		return nil, fmt.Errorf("failed to load host: %s", addr)
+	}
+
+	return host.(*Host), nil
+}
+
 // Initialize seed peer.
 func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task, hostID string, peerID string) (*Peer, error) {
 	// Load host from manager.
@@ -255,12 +331,54 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 	return peer, nil
 }
 
-// Client is seed peer grpc client.
-func (s *seedPeer) Client() SeedPeerClient {
-	return s.client
+func (s *seedPeer) refresh(ctx context.Context) error {
+	hosts := s.hostManager.LoadAllSeeds()
+	if len(hosts) == 0 {
+		return fmt.Errorf("no seed peer found in host manager")
+	}
+
+	healthyHosts := &sync.Map{}
+	// Do the health check for each seed peer.
+	for _, host := range hosts {
+		addr := fmt.Sprintf("%s:%d", host.IP, host.Port)
+		if err := healthclient.Check(ctx, addr, s.dialOptions...); err != nil {
+			logger.Errorf("failed to check the healthy for seed peer %s: %v", addr, err)
+		} else {
+			healthyHosts.Store(addr, host)
+		}
+	}
+
+	s.hosts = healthyHosts
+
+	hashring := consistent.New()
+	s.hosts.Range(func(addr, _ any) bool {
+		hashring.Add(addr.(string))
+		return true
+	})
+
+	s.hashring = hashring
+	return nil
+}
+
+// Serve serves the seed peer service.
+func (s *seedPeer) Serve() error {
+	ticker := time.NewTicker(SeedPeerRefreshInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := s.refresh(context.Background()); err != nil {
+				logger.Errorf("failed to refresh seed peers: %v", err)
+			}
+		case <-s.done:
+			return nil
+		}
+	}
 }
 
 // Stop seed peer service.
 func (s *seedPeer) Stop() error {
-	return s.client.Close()
+	close(s.done)
+	return nil
 }

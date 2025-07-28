@@ -63,6 +63,9 @@ type HostManager interface {
 	// LoadAllNormals loads all normal hosts through the Range of sync.Map.
 	LoadAllNormals() []*Host
 
+	// LoadAllSeeds loads all seed hosts through the Range of sync.Map.
+	LoadAllSeeds() []*Host
+
 	// Try to reclaim host.
 	RunGC(context.Context) error
 }
@@ -153,6 +156,27 @@ func (h *hostManager) LoadAllNormals() []*Host {
 		}
 
 		if host.Type != types.HostTypeNormal {
+			return true
+		}
+
+		hosts = append(hosts, host)
+		return true
+	})
+
+	return hosts
+}
+
+// LoadAllSeeds loads all seed hosts through the Range of sync.Map.
+func (h *hostManager) LoadAllSeeds() []*Host {
+	hosts := make([]*Host, 0)
+	h.Map.Range(func(key, value any) bool {
+		host, ok := value.(*Host)
+		if !ok {
+			host.Log.Error("invalid host")
+			return true
+		}
+
+		if host.Type == types.HostTypeNormal {
 			return true
 		}
 

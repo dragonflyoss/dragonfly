@@ -18,7 +18,6 @@ package standard
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -50,9 +49,8 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
-			client := NewMockSeedPeerClient(ctl)
 
-			tc.expect(t, newSeedPeer(client, peerManager, hostManager))
+			tc.expect(t, newSeedPeer(peerManager, hostManager))
 		})
 	}
 }
@@ -60,17 +58,13 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 	tests := []struct {
 		name   string
-		mock   func(mc *MockSeedPeerClientMockRecorder)
 		expect func(t *testing.T, err error)
 	}{
 		{
 			name: "trigger download task failed",
-			mock: func(mc *MockSeedPeerClientMockRecorder) {
-				mc.DownloadTask(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
-			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.EqualError(err, "no seed peer available")
 			},
 		},
 	}
@@ -81,10 +75,8 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
-			client := NewMockSeedPeerClient(ctl)
-			tc.mock(client.EXPECT())
 
-			seedPeer := newSeedPeer(client, peerManager, hostManager)
+			seedPeer := newSeedPeer(peerManager, hostManager)
 			tc.expect(t, seedPeer.TriggerDownloadTask(context.Background(), mockTaskID, &dfdaemonv2.DownloadTaskRequest{}))
 		})
 	}
@@ -93,17 +85,13 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 func TestSeedPeer_TriggerTask(t *testing.T) {
 	tests := []struct {
 		name   string
-		mock   func(mc *MockSeedPeerClientMockRecorder)
 		expect func(t *testing.T, peer *Peer, result *schedulerv1.PeerResult, err error)
 	}{
 		{
 			name: "start obtain seed stream failed",
-			mock: func(mc *MockSeedPeerClientMockRecorder) {
-				mc.ObtainSeeds(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
-			},
 			expect: func(t *testing.T, peer *Peer, result *schedulerv1.PeerResult, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.EqualError(err, "no seed peer available")
 			},
 		},
 	}
@@ -114,10 +102,8 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
-			client := NewMockSeedPeerClient(ctl)
-			tc.mock(client.EXPECT())
 
-			seedPeer := newSeedPeer(client, peerManager, hostManager)
+			seedPeer := newSeedPeer(peerManager, hostManager)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			peer, result, err := seedPeer.TriggerTask(context.Background(), nil, mockTask)
 			tc.expect(t, peer, result, err)

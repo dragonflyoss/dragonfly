@@ -81,6 +81,20 @@ func (mr *MockResourceMockRecorder) SeedPeer() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedPeer", reflect.TypeOf((*MockResource)(nil).SeedPeer))
 }
 
+// Serve mocks base method.
+func (m *MockResource) Serve() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Serve")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Serve indicates an expected call of Serve.
+func (mr *MockResourceMockRecorder) Serve() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockResource)(nil).Serve))
+}
+
 // Stop mocks base method.
 func (m *MockResource) Stop() error {
 	m.ctrl.T.Helper()
