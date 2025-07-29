@@ -227,7 +227,7 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 		json.Args.ConcurrentLayerCount = types.DefaultPreheatConcurrentLayerCount
 	}
 
-	imageLayers, err := s.getImageLayers(ctx, json)
+	imageLayers, err := s.createPreheatRequestsByManifestURL(ctx, json)
 	if err != nil {
 		err = fmt.Errorf("get image layers failed: %w", err)
 		logger.Error(err)
@@ -281,7 +281,7 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 	}, nil
 }
 
-func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]internaljob.PreheatRequest, error) {
+func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]internaljob.PreheatRequest, error) {
 	var certPool *x509.CertPool
 	if len(s.config.Job.Preheat.TLS.CACert) != 0 {
 		certPool = x509.NewCertPool()
@@ -290,7 +290,7 @@ func (s *service) getImageLayers(ctx context.Context, json types.CreateGetImageD
 		}
 	}
 
-	layers, err := job.GetImageLayers(ctx, types.PreheatArgs{
+	layers, err := internaljob.CreatePreheatRequestsByManifestURL(ctx, types.PreheatArgs{
 		Type:                job.PreheatImageType.String(),
 		URL:                 json.Args.URL,
 		PieceLength:         json.Args.PieceLength,

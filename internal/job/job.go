@@ -31,9 +31,13 @@ import (
 	machineryv1log "github.com/dragonflyoss/machinery/v1/log"
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
+
+// tracer is a global tracer for job.
+var tracer = otel.Tracer("job")
 
 type Config struct {
 	Addrs            []string
