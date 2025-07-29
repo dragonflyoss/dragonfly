@@ -27,7 +27,6 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -2466,7 +2465,7 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 					Digest:      mockTaskDigest.String(),
 					Tag:         mockTaskTag,
 					Range:       mockURLMetaRange,
-					Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 					Header:      mockTaskHeader,
 					Application: mockTaskApplication,
 					Priority:    commonv1.Priority_LEVEL0,
@@ -2504,7 +2503,7 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 					Digest:      mockTaskDigest.String(),
 					Tag:         mockTaskTag,
 					Range:       mockURLMetaRange,
-					Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 					Header:      mockTaskHeader,
 					Application: mockTaskApplication,
 					Priority:    commonv1.Priority_LEVEL0,
@@ -3035,7 +3034,7 @@ func TestServiceV1_storeTask(t *testing.T) {
 					Url:    mockTaskURL,
 					UrlMeta: &commonv1.UrlMeta{
 						Priority: commonv1.Priority_LEVEL0,
-						Filter:   strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						Filter:   idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 						Header:   mockTaskHeader,
 					},
 					PeerHost: mockPeerHost,
@@ -3063,7 +3062,7 @@ func TestServiceV1_storeTask(t *testing.T) {
 						Digest:      mockTaskDigest.String(),
 						Tag:         mockTaskTag,
 						Application: mockTaskApplication,
-						Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 						Header:      mockTaskHeader,
 					},
 					PeerHost: mockPeerHost,

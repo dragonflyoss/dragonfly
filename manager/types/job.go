@@ -39,6 +39,9 @@ const (
 	// DefaultPreheatConcurrentLayerCount is the default concurrent layer count for getting image distribution.
 	DefaultPreheatConcurrentLayerCount = 8
 
+	// DefaultGetTaskConcurrentPeerCount is the default concurrent peer count for getting task.
+	DefaultGetTaskConcurrentPeerCount = 500
+
 	// DefaultJobTimeout is the default timeout for executing job.
 	DefaultJobTimeout = 60 * time.Minute
 )
@@ -159,7 +162,7 @@ type PreheatArgs struct {
 	// This field has the lowest priority and is only used if both 'IPs' and 'Count' are not provided.
 	// It must be a value between 1 and 100 (inclusive) if provided.
 	// Applies to 'all_peers' and 'all_seed_peers' scopes.
-	Percentage *uint8 `json:"percentage" binding:"omitempty,gte=1,lte=100"`
+	Percentage *uint32 `json:"percentage" binding:"omitempty,gte=1,lte=100"`
 
 	// Count is the desired number of peers to preheat.
 	// This field is used only when 'IPs' is not specified. It has priority over 'Percentage'.
@@ -180,9 +183,6 @@ type PreheatArgs struct {
 
 	// Timeout is the timeout for preheating, default is 30 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
-
-	// LoadToCache is the flag for preheating content in cache storage, default is false.
-	LoadToCache bool `json:"load_to_cache" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
@@ -242,6 +242,11 @@ type GetTaskArgs struct {
 	// If ContentForCalculatingTaskID is set, use its value to calculate the task ID.
 	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
 	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
+
+	// ConcurrentPeerCount specifies the maximum number of peers stat concurrently for a single task (e.g., an image layer).
+	// For example, if stat a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
+	// Default is 500, maximum is 1000.
+	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
 }
 
 type CreateGetImageDistributionJobRequest struct {
@@ -294,6 +299,11 @@ type GetImageDistributionArgs struct {
 
 	// ConcurrentLayerCount specifies the maximum number of layers to get concurrently.
 	ConcurrentLayerCount int64 `json:"concurrent_layer_count" binding:"omitempty,gte=1,lte=100"`
+
+	// ConcurrentPeerCount specifies the maximum number of peers stat concurrently for a single task (e.g., an image layer).
+	// For example, if stat a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
+	// Default is 500, maximum is 1000.
+	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
 }
 
 // CreateGetImageDistributionJobResponse is the response for creating a get image job.

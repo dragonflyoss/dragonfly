@@ -19,8 +19,6 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
@@ -204,107 +202,6 @@ var _ = Describe("Preheat with Manager", func() {
 			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-		})
-	})
-
-	Context("10MiB file in cache", func() {
-		var (
-			testFile *util.File
-			err      error
-		)
-
-		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile).NotTo(BeNil())
-		})
-
-		AfterEach(func() {
-			err = util.GetFileServer().DeleteFile(testFile.GetInfo())
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("preheat files in cache should be ok", Label("preheat", "file", "cache"), func() {
-			managerPod, err := util.ManagerExec(0)
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-
-			req, err := structure.StructToMap(types.CreatePreheatJobRequest{
-				Type: internaljob.PreheatJob,
-				Args: types.PreheatArgs{
-					Type:        "file",
-					URLs:        []string{testFile.GetDownloadURL()},
-					Scope:       "single_seed_peer",
-					LoadToCache: true,
-				},
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Println(string(out))
-
-			job := &models.Job{}
-			err = json.Unmarshal(out, job)
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-
-			done := waitForDone(job, managerPod)
-			Expect(done).Should(BeTrue())
-
-			var preheatedSeedClient *util.PodExec
-			for i := range 3 {
-				seedClient, err := util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-
-				out, err = seedClient.Command("bash", "-c", fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/* | grep -a 'download task succeeded'", testFile.GetTaskID())).CombinedOutput()
-				if err == nil && len(out) > 0 {
-					preheatedSeedClient = seedClient
-					fmt.Printf("Found preheated seed client: %d\n", i)
-					break
-				}
-			}
-			Expect(preheatedSeedClient).NotTo(BeNil())
-
-			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{preheatedSeedClient}, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			clientPod, err := util.ClientExec()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-
-			out, err = clientPod.Command("sh", "-c", fmt.Sprintf("dfget %s --disable-back-to-source --output %s", testFile.GetDownloadURL(), testFile.GetOutputPath())).CombinedOutput()
-			fmt.Println(string(out), err)
-			Expect(err).NotTo(HaveOccurred())
-
-			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			out, err = preheatedSeedClient.Command("bash", "-c", fmt.Sprintf("grep -a '%s' /var/log/dragonfly/dfdaemon/*", testFile.GetTaskID())).CombinedOutput()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-			logs := string(out)
-			Expect(logs).To(ContainSubstring(fmt.Sprintf("put task to cache: %s", testFile.GetTaskID())))
-
-			pieceRegex := regexp.MustCompile(`pieces: \[([0-9, ]+)\]`)
-			pieceMatches := pieceRegex.FindStringSubmatch(logs)
-			Expect(pieceMatches).NotTo(BeNil())
-			pieceNumbers := strings.Split(strings.ReplaceAll(pieceMatches[1], " ", ""), ",")
-
-			for _, number := range pieceNumbers {
-				pieceID := fmt.Sprintf("%s-%s", testFile.GetTaskID(), number)
-				Expect(logs).To(ContainSubstring(fmt.Sprintf("put piece to cache: %s", pieceID)))
-				Expect(logs).To(ContainSubstring(fmt.Sprintf("get piece from cache: %s", pieceID)))
-			}
 		})
 	})
 

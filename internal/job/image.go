@@ -43,9 +43,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"d7y.io/dragonfly/v2/manager/config"
-	"d7y.io/dragonfly/v2/manager/types"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 )
+
+// defaultRegistryTimeout is the default timeout for registry requests.
+const defaultRegistryTimeout = 1 * time.Minute
 
 // defaultHTTPTransport is the default http transport.
 var defaultHTTPTransport = &http.Transport{
@@ -91,15 +93,87 @@ func parseManifestURL(url string) (*preheatImage, error) {
 	}, nil
 }
 
+type ManifestRequest struct {
+	// URL is the image manifest url for preheating.
+	URL string
+
+	// PieceLength is the piece length(bytes) for downloading file. The value needs to
+	// be greater than 4MiB (4,194,304 bytes) and less than 64MiB (67,108,864 bytes),
+	// for example: 4194304(4mib), 8388608(8mib). If the piece length is not specified,
+	// the piece length will be calculated according to the file size.
+	PieceLength *uint64
+
+	// Tag is the tag for preheating.
+	Tag string
+
+	// Application is the application string for preheating.
+	Application string
+
+	// FilteredQueryParams is the filtered query params for preheating.
+	FilteredQueryParams string
+
+	// Headers is the http headers for authentication.
+	Headers map[string]string
+
+	// Username is the username for authentication.
+	Username string
+
+	// Password is the password for authentication.
+	Password string
+
+	// The image type preheating task can specify the image architecture type. eg: linux/amd64.
+	Platform string
+
+	// Scope is the scope for preheating, default is single_seed_peer.
+	Scope string
+
+	// IPs is a list of specific peer IPs for preheating.
+	// This field has the highest priority: if provided, both 'Count' and 'Percentage' will be ignored.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
+	IPs []string
+
+	// Percentage is the percentage of available peers to preheat.
+	// This field has the lowest priority and is only used if both 'IPs' and 'Count' are not provided.
+	// It must be a value between 1 and 100 (inclusive) if provided.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
+	Percentage *uint32
+
+	// Count is the desired number of peers to preheat.
+	// This field is used only when 'IPs' is not specified. It has priority over 'Percentage'.
+	// It must be a value between 1 and 200 (inclusive) if provided.
+	// Applies to 'all_peers' and 'all_seed_peers' scopes.
+	Count *uint32
+
+	// ConcurrentTaskCount specifies the maximum number of tasks (e.g., image layers) to preheat concurrently.
+	// For example, if preheating 100 layers with ConcurrentTaskCount set to 10, up to 10 layers are processed simultaneously.
+	// If ConcurrentPeerCount is 10 for 1000 peers, each layer is preheated by 10 peers concurrently.
+	// Default is 8, maximum is 100.
+	ConcurrentTaskCount int64
+
+	// ConcurrentPeerCount specifies the maximum number of peers to preheat concurrently for a single task (e.g., an image layer).
+	// For example, if preheating a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
+	// Default is 500, maximum is 1000.
+	ConcurrentPeerCount int64
+
+	// Timeout is the timeout for preheating, default is 30 minutes.
+	Timeout time.Duration
+
+	// RootCAs is the root CAs for TLS verification.
+	RootCAs *x509.CertPool
+
+	// InsecureSkipVerify indicates whether to skip TLS verification.
+	InsecureSkipVerify bool
+}
+
 // CreatePreheatRequestsByManifestURL generates a list of preheat requests for a container image
 // by fetching and parsing its manifest from a registry. It handles authentication, platform-specific
 // manifest filtering, and layer extraction for preheating.
-func CreatePreheatRequestsByManifestURL(ctx context.Context, args types.PreheatArgs, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) ([]PreheatRequest, error) {
+func CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]PreheatRequest, error) {
 	ctx, span := tracer.Start(ctx, config.SpanGetLayers, trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
 	// Parse image manifest url.
-	image, err := parseManifestURL(args.URL)
+	image, err := parseManifestURL(req.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -107,17 +181,17 @@ func CreatePreheatRequestsByManifestURL(ctx context.Context, args types.PreheatA
 	// Background:
 	// Harbor uses the V1 preheat request and will carry the auth info in the headers.
 	options := []imageAuthClientOption{}
-	header := nethttp.MapToHeader(args.Headers)
+	header := nethttp.MapToHeader(req.Headers)
 	if token := header.Get("Authorization"); len(token) > 0 {
 		options = append(options, withIssuedToken(token))
 		header.Set("Authorization", token)
 	}
 
 	httpClient := &http.Client{
-		Timeout: registryTimeout,
+		Timeout: defaultRegistryTimeout,
 		Transport: &http.Transport{
 			DialContext:         nethttp.NewSafeDialer().DialContext,
-			TLSClientConfig:     &tls.Config{RootCAs: rootCAs, InsecureSkipVerify: insecureSkipVerify},
+			TLSClientConfig:     &tls.Config{RootCAs: req.RootCAs, InsecureSkipVerify: req.InsecureSkipVerify},
 			MaxIdleConns:        defaultHTTPTransport.MaxIdleConns,
 			MaxIdleConnsPerHost: defaultHTTPTransport.MaxIdleConnsPerHost,
 			MaxConnsPerHost:     defaultHTTPTransport.MaxConnsPerHost,
@@ -126,15 +200,15 @@ func CreatePreheatRequestsByManifestURL(ctx context.Context, args types.PreheatA
 	}
 
 	// Init docker auth client.
-	client, err := newImageAuthClient(image, httpClient, &typesregistry.AuthConfig{Username: args.Username, Password: args.Password}, options...)
+	client, err := newImageAuthClient(image, httpClient, &typesregistry.AuthConfig{Username: req.Username, Password: req.Password}, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get platform.
 	platform := platforms.DefaultSpec()
-	if args.Platform != "" {
-		platform, err = platforms.Parse(args.Platform)
+	if req.Platform != "" {
+		platform, err = platforms.Parse(req.Platform)
 		if err != nil {
 			return nil, err
 		}
@@ -155,12 +229,12 @@ func CreatePreheatRequestsByManifestURL(ctx context.Context, args types.PreheatA
 	header.Set("Authorization", client.GetAuthToken())
 
 	// Build preheat requests for container image layers from the provided manifests.
-	req, err := buildPreheatRequestFromManifests(manifests, args, header.Clone(), image, rootCAs, insecureSkipVerify)
+	preheatRequest, err := buildPreheatRequestFromManifests(manifests, req, header.Clone(), image)
 	if err != nil {
 		return nil, err
 	}
 
-	return req, nil
+	return preheatRequest, nil
 }
 
 // resolveManifests fetches and resolves container image manifests from a registry for a specified platform.
@@ -246,10 +320,10 @@ func filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs
 // buildPreheatRequestFromManifests constructs preheat requests for container image layers from
 // the provided manifests. It extracts layer URLs from the manifests and builds a PreheatRequest
 // using the specified arguments, headers, and TLS settings.
-func buildPreheatRequestFromManifests(manifests []distribution.Manifest, args types.PreheatArgs, header http.Header, image *preheatImage, rootCAs *x509.CertPool, insecureSkipVerify bool) ([]PreheatRequest, error) {
+func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *ManifestRequest, header http.Header, image *preheatImage) ([]PreheatRequest, error) {
 	var certificateChain [][]byte
-	if rootCAs != nil {
-		certificateChain = rootCAs.Subjects()
+	if req.RootCAs != nil {
+		certificateChain = req.RootCAs.Subjects()
 	}
 
 	var layerURLs []string
@@ -262,20 +336,20 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, args ty
 
 	layers := PreheatRequest{
 		URLs:                layerURLs,
-		PieceLength:         args.PieceLength,
-		Tag:                 args.Tag,
-		Application:         args.Application,
-		FilteredQueryParams: args.FilteredQueryParams,
+		PieceLength:         req.PieceLength,
+		Tag:                 req.Tag,
+		Application:         req.Application,
+		FilteredQueryParams: req.FilteredQueryParams,
 		Headers:             nethttp.HeaderToMap(header),
-		Scope:               args.Scope,
-		IPs:                 args.IPs,
-		Percentage:          args.Percentage,
-		Count:               args.Count,
-		ConcurrentTaskCount: args.ConcurrentTaskCount,
-		ConcurrentPeerCount: args.ConcurrentPeerCount,
+		Scope:               req.Scope,
+		IPs:                 req.IPs,
+		Percentage:          req.Percentage,
+		Count:               req.Count,
+		ConcurrentTaskCount: req.ConcurrentTaskCount,
+		ConcurrentPeerCount: req.ConcurrentPeerCount,
 		CertificateChain:    certificateChain,
-		InsecureSkipVerify:  insecureSkipVerify,
-		Timeout:             args.Timeout,
+		InsecureSkipVerify:  req.InsecureSkipVerify,
+		Timeout:             req.Timeout,
 	}
 
 	return []PreheatRequest{layers}, nil

@@ -63,16 +63,14 @@ type preheat struct {
 	job                *internaljob.Job
 	rootCAs            *x509.CertPool
 	insecureSkipVerify bool
-	registryTimeout    time.Duration
 }
 
 // newPreheat creates a new Preheat.
-func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
+func newPreheat(job *internaljob.Job, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
 	return &preheat{
 		job:                job,
 		rootCAs:            rootCAs,
 		insecureSkipVerify: insecureSkipVerify,
-		registryTimeout:    registryTimeout,
 	}
 }
 
@@ -94,7 +92,26 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			return nil, errors.New("invalid params: url is required")
 		}
 
-		files, err = internaljob.CreatePreheatRequestsByManifestURL(ctx, json, p.registryTimeout, p.rootCAs, p.insecureSkipVerify)
+		files, err = internaljob.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+			URL:                 json.URL,
+			PieceLength:         json.PieceLength,
+			Tag:                 json.Tag,
+			Application:         json.Application,
+			FilteredQueryParams: json.FilteredQueryParams,
+			Headers:             json.Headers,
+			Username:            json.Username,
+			Password:            json.Password,
+			Platform:            json.Platform,
+			Scope:               json.Scope,
+			IPs:                 json.IPs,
+			Percentage:          json.Percentage,
+			Count:               json.Count,
+			ConcurrentTaskCount: json.ConcurrentTaskCount,
+			ConcurrentPeerCount: json.ConcurrentPeerCount,
+			Timeout:             json.Timeout,
+			RootCAs:             p.rootCAs,
+			InsecureSkipVerify:  p.insecureSkipVerify,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +146,6 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			CertificateChain:    certificateChain,
 			InsecureSkipVerify:  p.insecureSkipVerify,
 			Timeout:             json.Timeout,
-			LoadToCache:         json.LoadToCache,
 		})
 
 	default:

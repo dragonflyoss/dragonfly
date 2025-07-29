@@ -35,14 +35,13 @@ type PreheatRequest struct {
 	Priority            int32             `json:"priority" validate:"omitempty"`
 	Scope               string            `json:"scope" validate:"omitempty"`
 	IPs                 []string          `json:"ips" validate:"omitempty"`
-	Percentage          *uint8            `json:"percentage" validate:"omitempty,gte=1,lte=100"`
+	Percentage          *uint32           `json:"percentage" validate:"omitempty,gte=1,lte=100"`
 	Count               *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
 	ConcurrentTaskCount int64             `json:"concurrent_task_count" validate:"omitempty"`
 	ConcurrentPeerCount int64             `json:"concurrent_peer_count" validate:"omitempty"`
 	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
 	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
 	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
-	LoadToCache         bool              `json:"load_to_cache" validate:"omitempty"`
 	GroupUUID           string            `json:"group_uuid" validate:"omitempty"`
 	TaskUUID            string            `json:"task_uuid" validate:"omitempty"`
 }
@@ -71,10 +70,11 @@ type PreheatFailureTask struct {
 
 // GetTaskRequest defines the request parameters for getting task.
 type GetTaskRequest struct {
-	TaskID    string        `json:"task_id" validate:"required"`
-	Timeout   time.Duration `json:"timeout" validate:"omitempty"`
-	GroupUUID string        `json:"group_uuid" validate:"omitempty"`
-	TaskUUID  string        `json:"task_uuid" validate:"omitempty"`
+	TaskID              string        `json:"task_id" validate:"required"`
+	Timeout             time.Duration `json:"timeout" validate:"omitempty"`
+	GroupUUID           string        `json:"group_uuid" validate:"omitempty"`
+	TaskUUID            string        `json:"task_uuid" validate:"omitempty"`
+	ConcurrentPeerCount int64         `json:"concurrent_peer_count" validate:"omitempty"`
 }
 
 // GetTaskResponse defines the response parameters for getting task.

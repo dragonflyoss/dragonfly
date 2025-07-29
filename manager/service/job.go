@@ -18,7 +18,6 @@ package service
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"sync"
@@ -31,13 +30,13 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	internaljob "d7y.io/dragonfly/v2/internal/job"
-	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 	"d7y.io/dragonfly/v2/pkg/retry"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/structure"
@@ -175,6 +174,14 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 }
 
 func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTaskJobRequest) (*models.Job, error) {
+	if json.Args.ConcurrentPeerCount == 0 {
+		json.Args.ConcurrentPeerCount = types.DefaultGetTaskConcurrentPeerCount
+	}
+
+	if json.Args.FilteredQueryParams == "" {
+		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	}
+
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
 	}
@@ -227,6 +234,14 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 		json.Args.ConcurrentLayerCount = types.DefaultPreheatConcurrentLayerCount
 	}
 
+	if json.Args.ConcurrentPeerCount == 0 {
+		json.Args.ConcurrentPeerCount = types.DefaultPreheatConcurrentPeerCount
+	}
+
+	if json.Args.FilteredQueryParams == "" {
+		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	}
+
 	imageLayers, err := s.createPreheatRequestsByManifestURL(ctx, json)
 	if err != nil {
 		err = fmt.Errorf("get image layers failed: %w", err)
@@ -243,6 +258,7 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 				Tag:                 imageLayer.Tag,
 				Application:         imageLayer.Application,
 				FilteredQueryParams: imageLayer.FilteredQueryParams,
+				ConcurrentPeerCount: json.Args.ConcurrentPeerCount,
 			})
 		}
 	}
@@ -282,16 +298,12 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 }
 
 func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]internaljob.PreheatRequest, error) {
-	var certPool *x509.CertPool
-	if len(s.config.Job.Preheat.TLS.CACert) != 0 {
-		certPool = x509.NewCertPool()
-		if !certPool.AppendCertsFromPEM([]byte(s.config.Job.Preheat.TLS.CACert)) {
-			return nil, errors.New("invalid CA Cert")
-		}
+	certPool, err := nettls.PEMToCertPool(s.config.Job.Preheat.TLS.CACert.ToBytes())
+	if err != nil {
+		return nil, fmt.Errorf("load ca cert failed: %w", err)
 	}
 
-	layers, err := internaljob.CreatePreheatRequestsByManifestURL(ctx, types.PreheatArgs{
-		Type:                job.PreheatImageType.String(),
+	layers, err := internaljob.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
 		URL:                 json.Args.URL,
 		PieceLength:         json.Args.PieceLength,
 		Tag:                 json.Args.Tag,
@@ -301,7 +313,9 @@ func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json t
 		Username:            json.Args.Username,
 		Password:            json.Args.Password,
 		Platform:            json.Args.Platform,
-	}, s.config.Job.Preheat.RegistryTimeout, certPool, s.config.Job.Preheat.TLS.InsecureSkipVerify)
+		RootCAs:             certPool,
+		InsecureSkipVerify:  s.config.Job.Preheat.TLS.InsecureSkipVerify,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get image layers failed: %w", err)
 	}
@@ -329,6 +343,7 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 					Tag:                 file.Tag,
 					Application:         file.Application,
 					FilteredQueryParams: file.FilteredQueryParams,
+					ConcurrentPeerCount: json.Args.ConcurrentPeerCount,
 				},
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
 			}, schedulers)
@@ -353,10 +368,6 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 }
 
 func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGetTaskJobRequest, schedulers []models.Scheduler) (*models.Job, error) {
-	if json.Args.FilteredQueryParams == "" {
-		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
-	}
-
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
 		return nil, err

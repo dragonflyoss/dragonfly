@@ -21,6 +21,7 @@ import (
 
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
+	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
@@ -32,11 +33,12 @@ func New(
 	resource standard.Resource,
 	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
+	job job.Job,
 	dynconfig config.DynconfigInterface,
 	opts ...grpc.ServerOption,
 ) *grpc.Server {
 	return server.New(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
-		newSchedulerServerV2(cfg, resource, persistentCacheResource, scheduling, dynconfig),
+		newSchedulerServerV2(cfg, resource, persistentCacheResource, scheduling, job, dynconfig),
 		opts...)
 }

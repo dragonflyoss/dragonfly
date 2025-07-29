@@ -36,12 +36,17 @@ import (
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	internaljob "d7y.io/dragonfly/v2/internal/job"
+	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
+	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
+	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
@@ -59,6 +64,9 @@ type V2 struct {
 	// Scheduling interface.
 	scheduling scheduling.Scheduling
 
+	// Async job.
+	job job.Job
+
 	// Scheduler service config.
 	config *config.Config
 
@@ -72,12 +80,14 @@ func NewV2(
 	resource standard.Resource,
 	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
+	job job.Job,
 	dynconfig config.DynconfigInterface,
 ) *V2 {
 	return &V2{
 		resource:                resource,
 		persistentCacheResource: persistentCacheResource,
 		scheduling:              scheduling,
+		job:                     job,
 		config:                  cfg,
 		dynconfig:               dynconfig,
 	}
@@ -2845,4 +2855,134 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 	}
 
 	return nil
+}
+
+// PreheatImage synchronously resolves an image manifest and triggers an asynchronous preheat task.
+//
+// This is a blocking call. The RPC will not return until the server has completed the
+// initial synchronous work: resolving the image manifest and preparing all layer URLs.
+//
+// After this call successfully returns, a scheduler on the server begins the actual
+// preheating process, instructing peers to download the layers in the background.
+//
+// A successful response (google.protobuf.Empty) confirms that the preparation is complete
+// and the asynchronous download task has been scheduled.
+func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) error {
+	log := logger.WithPreheatImage(req.Url)
+
+	certPool, err := nettls.DERToCertPool(req.CertificateChain)
+	if err != nil {
+		msg := fmt.Sprintf("failed to parse certificate chain: %v", err)
+		log.Error(msg)
+		return status.Error(codes.InvalidArgument, msg)
+	}
+
+	layers, err := internaljob.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+		URL:                 req.GetUrl(),
+		PieceLength:         req.PieceLength,
+		Tag:                 req.GetTag(),
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             req.GetHeader(),
+		Username:            req.GetUsername(),
+		Password:            req.GetPassword(),
+		Platform:            req.GetPlatform(),
+		Scope:               req.GetScope(),
+		IPs:                 req.GetIps(),
+		Percentage:          req.Percentage,
+		Count:               req.Count,
+		ConcurrentTaskCount: req.GetConcurrentTaskCount(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		Timeout:             req.GetTimeout().AsDuration(),
+		RootCAs:             certPool,
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+	})
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
+	}
+
+	if len(layers) == 0 {
+		return status.Error(codes.InvalidArgument, "no layers found in the manifest")
+	}
+
+	preheatRequest := &internaljob.PreheatRequest{
+		PieceLength:         req.PieceLength,
+		Tag:                 req.GetTag(),
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             req.GetHeader(),
+		Priority:            int32(req.GetPriority()),
+		Scope:               req.GetScope(),
+		IPs:                 req.GetIps(),
+		Percentage:          req.Percentage,
+		Count:               req.Count,
+		ConcurrentTaskCount: req.GetConcurrentTaskCount(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		CertificateChain:    req.GetCertificateChain(),
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+		Timeout:             req.GetTimeout().AsDuration(),
+	}
+
+	for _, layer := range layers {
+		preheatRequest.URLs = append(preheatRequest.URLs, layer.URL)
+	}
+
+	switch req.Scope {
+	case managertypes.SingleSeedPeerScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("[preheat]: preheat single seed peer")
+			resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("[preheat]: preheat single seed peer failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("[preheat]: preheat single seed peer finished, response: %#v", resp)
+		}()
+
+	case managertypes.AllSeedPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("[preheat]: preheat all seed peers")
+			resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("[preheat]: preheat all seed peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("[preheat]: preheat all seed peers finished, response: %#v", resp)
+		}()
+	case managertypes.AllPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("[preheat]: preheat all peers")
+			resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("[preheat]: preheat all peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("[preheat]: preheat all peers finished, response: %#v", resp)
+		}()
+	default:
+		return status.Errorf(codes.InvalidArgument, "unsupported preheat scope: %s", req.Scope)
+	}
+
+	return nil
+}
+
+// StatImage provides detailed status for a container image's distribution in peers.
+//
+// This is a blocking call that first resolves the image manifest and then queries
+// all peers to collect the image's download state across the network.
+// The response includes both layer information and the status on each peer.
+func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	return nil, nil
 }

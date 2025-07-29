@@ -96,9 +96,6 @@ const (
 )
 
 const (
-	// DefaultJobPreheatRegistryTimeout is the default timeout for requesting registry to get token and manifest.
-	DefaultJobPreheatRegistryTimeout = 1 * time.Minute
-
 	// DefaultJobSyncPeersInterval is the default interval for syncing all peers information from the scheduler.
 	DefaultJobSyncPeersInterval = 24 * time.Hour
 

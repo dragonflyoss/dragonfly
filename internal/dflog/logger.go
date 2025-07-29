@@ -232,6 +232,12 @@ func WithDeleteTaskJobAndPeer(groupUUID, taskUUID, hostID, taskID, peerID string
 	}
 }
 
+func WithPreheatImage(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
 func (log *SugaredLoggerOnWith) With(args ...any) *SugaredLoggerOnWith {
 	args = append(args, log.withArgs...)
 	return &SugaredLoggerOnWith{

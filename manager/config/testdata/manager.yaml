@@ -80,7 +80,6 @@ job:
     ttl: 1s
     batchSize: 100
   preheat:
-    registryTimeout: 1m
     tls:
       caCert: testdata/ca.crt
   syncPeers:

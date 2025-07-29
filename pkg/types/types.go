@@ -77,6 +77,10 @@ func (p *PEMContent) loadPEM(content string) error {
 	return nil
 }
 
+func (p PEMContent) ToBytes() []byte {
+	return []byte(strings.TrimSpace(string(p)))
+}
+
 // HostType is the type of host.
 type HostType int
 

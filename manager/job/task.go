@@ -78,14 +78,15 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 	for _, queue := range queues {
 		taskUUID := fmt.Sprintf("task_%s", uuid.New().String())
 		getTask := internaljob.GetTaskRequest{
-			TaskID:    taskID,
-			GroupUUID: groupUUID,
-			TaskUUID:  taskUUID,
+			TaskID:              taskID,
+			GroupUUID:           groupUUID,
+			TaskUUID:            taskUUID,
+			ConcurrentPeerCount: json.ConcurrentPeerCount,
 		}
 
 		args, err := internaljob.MarshalRequest(getTask)
 		if err != nil {
-			logger.Errorf("get tasks marshal request: %v, error: %v", args, err)
+			logger.Errorf("[get-task] get task marshal request: %v, error: %v", args, err)
 			return nil, err
 		}
 
@@ -108,9 +109,9 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 		tasks = append(tasks, *signature)
 	}
 
-	logger.Infof("create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
+	logger.Infof("[get-task] create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
 	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
-		logger.Errorf("create task group %s failed", group.GroupUUID, err)
+		logger.Errorf("[get-task] create task group %s failed", group.GroupUUID, err)
 		return nil, err
 	}
 
@@ -153,7 +154,7 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 
 		args, err := internaljob.MarshalRequest(deleteTask)
 		if err != nil {
-			logger.Errorf("delete task marshal request: %v, error: %v", args, err)
+			logger.Errorf("[delete-task] delete task marshal request: %v, error: %v", args, err)
 			return nil, err
 		}
 		signatures = append(signatures, &machineryv1tasks.Signature{
@@ -175,9 +176,9 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 		tasks = append(tasks, *signature)
 	}
 
-	logger.Infof("create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
+	logger.Infof("[delete-task] create task group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
 	if _, err := t.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
-		logger.Errorf("create preheat group %s failed", group.GroupUUID, err)
+		logger.Errorf("[delete-task] create preheat group %s failed", group.GroupUUID, err)
 		return nil, err
 	}
 
