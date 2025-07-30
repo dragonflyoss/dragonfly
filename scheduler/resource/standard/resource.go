@@ -64,7 +64,7 @@ type resource struct {
 }
 
 // New returns Resource interface.
-func New(cfg *config.Config, gc gc.GC, dynconfig config.DynconfigInterface, transportCredentials credentials.TransportCredentials) (Resource, error) {
+func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.TransportCredentials) (Resource, error) {
 	resource := &resource{config: cfg}
 
 	// Initialize host manager interface.
@@ -91,12 +91,7 @@ func New(cfg *config.Config, gc gc.GC, dynconfig config.DynconfigInterface, tran
 	// Initialize seed peer interface.
 	if cfg.SeedPeer.Enable {
 		dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
-		client, err := newSeedPeerClient(dynconfig, hostManager, dialOptions...)
-		if err != nil {
-			return nil, err
-		}
-
-		resource.seedPeer = newSeedPeer(client, peerManager, hostManager)
+		resource.seedPeer = newSeedPeer(peerManager, hostManager, dialOptions...)
 	}
 
 	return resource, nil

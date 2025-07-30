@@ -82,6 +82,20 @@ func (mr *MockHostManagerMockRecorder) LoadAll() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAll", reflect.TypeOf((*MockHostManager)(nil).LoadAll))
 }
 
+// LoadAllNonNormals mocks base method.
+func (m *MockHostManager) LoadAllNonNormals() []*Host {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadAllNonNormals")
+	ret0, _ := ret[0].([]*Host)
+	return ret0
+}
+
+// LoadAllNonNormals indicates an expected call of LoadAllNonNormals.
+func (mr *MockHostManagerMockRecorder) LoadAllNonNormals() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadAllNonNormals", reflect.TypeOf((*MockHostManager)(nil).LoadAllNonNormals))
+}
+
 // LoadAllNormals mocks base method.
 func (m *MockHostManager) LoadAllNormals() []*Host {
 	m.ctrl.T.Helper()

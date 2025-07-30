@@ -161,7 +161,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	s.dynconfig = dynconfig
 
 	// Initialize resource.
-	resource, err := standard.New(cfg, s.gc, dynconfig, seedPeerClientTransportCredentials)
+	resource, err := standard.New(cfg, s.gc, seedPeerClientTransportCredentials)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,11 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 
 	// Initialize job service.
 	if cfg.Job.Enable && rdb != nil {
-		s.job, err = job.New(cfg, resource)
+		dialOptions := []grpc.DialOption{
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+			grpc.WithTransportCredentials(seedPeerClientTransportCredentials),
+		}
+		s.job, err = job.New(cfg, resource, dialOptions...)
 		if err != nil {
 			return nil, err
 		}
