@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dragonflyoss/machinery/v1"
@@ -144,6 +145,17 @@ type jobState struct {
 	TTL       int64     `json:"ttl"`
 }
 
+// newGroupJobState 构建 GroupJobState 实例，便于主流程复用
+func newGroupJobState(groupUUID, state string, createdAt time.Time, jobStates []jobState) *GroupJobState {
+	return &GroupJobState{
+		GroupUUID: groupUUID,
+		State:     state,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now(),
+		JobStates: jobStates,
+	}
+}
+
 func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, error) {
 	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupUUID, 0)
 	if err != nil {
@@ -154,78 +166,72 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 		return nil, errors.New("empty group")
 	}
 
-	jobStates := make([]jobState, 0, len(taskStates))
-	for _, taskState := range taskStates {
-		var results []any
-		for _, result := range taskState.Results {
-			switch name {
-			case PreheatJob:
-				var resp PreheatResponse
-				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
-					return nil, err
-				}
-				results = append(results, resp)
-			case GetTaskJob:
-				var resp GetTaskResponse
-				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
-					return nil, err
-				}
-				results = append(results, resp)
-			case DeleteTaskJob:
-				var resp DeleteTaskResponse
-				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
-					return nil, err
-				}
-				results = append(results, resp)
-			default:
-				return nil, errors.New("unsupported unmarshal task result")
-			}
-		}
+	jobStates := make([]jobState, len(taskStates))
+	var (
+		wg       sync.WaitGroup
+		once     sync.Once
+		firstErr error
+	)
 
-		jobStates = append(jobStates, jobState{
-			TaskUUID:  taskState.TaskUUID,
-			TaskName:  taskState.TaskName,
-			State:     taskState.State,
-			Results:   results,
-			Error:     taskState.Error,
-			CreatedAt: taskState.CreatedAt,
-			TTL:       taskState.TTL,
-		})
+	for i, taskState := range taskStates {
+		wg.Add(1)
+		go func(i int, taskState *machineryv1tasks.TaskState) {
+			defer wg.Done()
+			var results []any
+			for _, result := range taskState.Results {
+				var err error
+				switch name {
+				case PreheatJob:
+					var resp PreheatResponse
+					err = UnmarshalTaskResult(result.Value, &resp)
+					results = append(results, resp)
+				case GetTaskJob:
+					var resp GetTaskResponse
+					err = UnmarshalTaskResult(result.Value, &resp)
+					results = append(results, resp)
+				case DeleteTaskJob:
+					var resp DeleteTaskResponse
+					err = UnmarshalTaskResult(result.Value, &resp)
+					results = append(results, resp)
+				default:
+					err = errors.New("unsupported unmarshal task result")
+				}
+				if err != nil {
+					once.Do(func() { firstErr = err })
+					return
+				}
+			}
+			jobStates[i] = jobState{
+				TaskUUID:  taskState.TaskUUID,
+				TaskName:  taskState.TaskName,
+				State:     taskState.State,
+				Results:   results,
+				Error:     taskState.Error,
+				CreatedAt: taskState.CreatedAt,
+				TTL:       taskState.TTL,
+			}
+		}(i, taskState)
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
 	}
 
 	for _, taskState := range taskStates {
 		if taskState.IsFailure() {
 			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
-			return &GroupJobState{
-				GroupUUID: groupUUID,
-				State:     machineryv1tasks.StateFailure,
-				CreatedAt: taskState.CreatedAt,
-				UpdatedAt: time.Now(),
-				JobStates: jobStates,
-			}, nil
+			return newGroupJobState(groupUUID, machineryv1tasks.StateFailure, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
 			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
-			return &GroupJobState{
-				GroupUUID: groupUUID,
-				State:     machineryv1tasks.StatePending,
-				CreatedAt: taskState.CreatedAt,
-				UpdatedAt: time.Now(),
-				JobStates: jobStates,
-			}, nil
+			return newGroupJobState(groupUUID, machineryv1tasks.StatePending, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
-	return &GroupJobState{
-		GroupUUID: groupUUID,
-		State:     machineryv1tasks.StateSuccess,
-		CreatedAt: taskStates[0].CreatedAt,
-		UpdatedAt: time.Now(),
-		JobStates: jobStates,
-	}, nil
+	return newGroupJobState(groupUUID, machineryv1tasks.StateSuccess, taskStates[0].CreatedAt, jobStates), nil
 }
 
 func MarshalResponse(v any) (string, error) {
