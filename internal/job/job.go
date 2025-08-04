@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dragonflyoss/machinery/v1"
@@ -33,6 +32,7 @@ import (
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
@@ -145,7 +145,7 @@ type jobState struct {
 	TTL       int64     `json:"ttl"`
 }
 
-// newGroupJobState 构建 GroupJobState 实例，便于主流程复用
+// newGroupJobState creates a GroupJobState instance for reuse in the main process
 func newGroupJobState(groupUUID, state string, createdAt time.Time, jobStates []jobState) *GroupJobState {
 	return &GroupJobState{
 		GroupUUID: groupUUID,
@@ -167,16 +167,12 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 	}
 
 	jobStates := make([]jobState, len(taskStates))
-	var (
-		wg       sync.WaitGroup
-		once     sync.Once
-		firstErr error
-	)
+	g, _ := errgroup.WithContext(context.Background())
 
 	for i, taskState := range taskStates {
-		wg.Add(1)
-		go func(i int, taskState *machineryv1tasks.TaskState) {
-			defer wg.Done()
+		i := i
+		taskState := taskState
+		g.Go(func() error {
 			var results []any
 			for _, result := range taskState.Results {
 				var err error
@@ -194,11 +190,10 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 					err = UnmarshalTaskResult(result.Value, &resp)
 					results = append(results, resp)
 				default:
-					err = errors.New("unsupported unmarshal task result")
+					return errors.New("unsupported unmarshal task result")
 				}
 				if err != nil {
-					once.Do(func() { firstErr = err })
-					return
+					return err
 				}
 			}
 			jobStates[i] = jobState{
@@ -210,11 +205,12 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 				CreatedAt: taskState.CreatedAt,
 				TTL:       taskState.TTL,
 			}
-		}(i, taskState)
+			return nil
+		})
 	}
-	wg.Wait()
-	if firstErr != nil {
-		return nil, firstErr
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	for _, taskState := range taskStates {
