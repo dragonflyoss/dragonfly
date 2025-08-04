@@ -181,7 +181,7 @@ type PreheatArgs struct {
 	// Default is 500, maximum is 1000.
 	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
 
-	// Timeout is the timeout for preheating, default is 30 minutes.
+	// Timeout is the timeout for preheating, default is 60 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
 }
 
@@ -247,6 +247,9 @@ type GetTaskArgs struct {
 	// For example, if stat a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
 	// Default is 500, maximum is 1000.
 	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
+
+	// Timeout is the timeout for getting task, default is 60 minutes.
+	Timeout time.Duration `json:"timeout" binding:"omitempty"`
 }
 
 type CreateGetImageDistributionJobRequest struct {
@@ -304,6 +307,9 @@ type GetImageDistributionArgs struct {
 	// For example, if stat a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
 	// Default is 500, maximum is 1000.
 	ConcurrentPeerCount int64 `json:"concurrent_peer_count" binding:"omitempty,gte=1,lte=1000"`
+
+	// Timeout is the timeout for getting image distribution, default is 60 minutes.
+	Timeout time.Duration `json:"timeout" binding:"omitempty"`
 }
 
 // CreateGetImageDistributionJobResponse is the response for creating a get image job.
@@ -381,7 +387,7 @@ type DeleteTaskArgs struct {
 	// FilteredQueryParams is the filtered query params of the task.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
 
-	// Timeout is the timeout for deleting, default is 30 minutes.
+	// Timeout is the timeout for deleting, default is 60 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
 
 	// ContentForCalculatingTaskID is the content used to calculate the task id.

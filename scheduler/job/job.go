@@ -55,6 +55,9 @@ type Job interface {
 	// Serve starts the job.
 	Serve()
 
+	// GetTask retrieves task information from all hosts in the cluster.
+	GetTask(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) (*internaljob.GetTaskResponse, error)
+
 	// PreheatSinglePeer preheats job by single seed peer, scheduler will trigger seed peer to download task.
 	PreheatSingleSeedPeer(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error)
 
@@ -200,7 +203,6 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 			return "", err
 		}
 
-		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllSeedPeersScope:
 		log.Info("[preheat]: preheat all seed peers")
@@ -210,7 +212,6 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 			return "", err
 		}
 
-		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	case managertypes.AllPeersScope:
 		log.Info("[preheat]: preheat all peers")
@@ -220,7 +221,6 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 			return "", err
 		}
 
-		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	default:
 		log.Warnf("[preheat]: scope is invalid %s, preheat single peer", req.Scope)
@@ -230,7 +230,6 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 			return "", err
 		}
 
-		resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 		return internaljob.MarshalResponse(resp)
 	}
 }
@@ -261,6 +260,7 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 		return nil, err
 	}
 
+	resp.SchedulerClusterID = j.config.Manager.SchedulerClusterID
 	return resp, nil
 }
 
@@ -513,7 +513,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 
 	// If successTasks is not empty, return success tasks and failure tasks.
 	// Notify the client that the preheat is successful.
-	var preheatResponse internaljob.PreheatResponse
+	preheatResponse := internaljob.PreheatResponse{SchedulerClusterID: j.config.Manager.SchedulerClusterID, SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}
 	failureTasks.Range(func(_, value any) bool {
 		if failureTask, ok := value.(*internaljob.PreheatFailureTask); ok {
 			preheatResponse.FailureTasks = append(preheatResponse.FailureTasks, failureTask)
@@ -731,7 +731,7 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 
 	// If successTasks is not empty, return success tasks and failure tasks.
 	// Notify the client that the preheat is successful.
-	var preheatResponse internaljob.PreheatResponse
+	preheatResponse := internaljob.PreheatResponse{SchedulerClusterID: j.config.Manager.SchedulerClusterID, SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}
 	failureTasks.Range(func(_, value any) bool {
 		if failureTask, ok := value.(*internaljob.PreheatFailureTask); ok {
 			preheatResponse.FailureTasks = append(preheatResponse.FailureTasks, failureTask)
@@ -853,11 +853,16 @@ func (j *job) getTask(ctx context.Context, data string) (string, error) {
 
 	log := logger.WithGetTaskJob(req.GroupUUID, req.TaskUUID, req.TaskID)
 	log.Infof("[get-task] get task request: %#v", req)
+
+	ctx, cancel := context.WithTimeout(ctx, req.Timeout)
+	defer cancel()
+
 	resp, err := j.GetTask(ctx, req, log)
 	if err != nil {
 		log.Errorf("[get-task] get task failed: %s", err.Error())
 		return "", err
 	}
+	log.Infof("[get-task] get length of peers: %d", len(resp.Peers))
 
 	return internaljob.MarshalResponse(resp)
 }
@@ -875,6 +880,7 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	var mu sync.Mutex
 	resp := &internaljob.GetTaskResponse{
 		SchedulerClusterID: j.config.Manager.SchedulerClusterID,
+		Peers:              make([]*internaljob.Peer, 0),
 	}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentPeerCount))

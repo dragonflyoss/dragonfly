@@ -28,7 +28,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 	tests := []struct {
 		name   string
 		req    *ManifestRequest
-		expect func(t *testing.T, layers []PreheatRequest)
+		expect func(t *testing.T, layers []*PreheatRequest)
 	}{
 		{
 			name: "get image layers with manifest url",
@@ -37,7 +37,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 				Timeout:            30 * time.Second,
 				InsecureSkipVerify: true,
 			},
-			expect: func(t *testing.T, layers []PreheatRequest) {
+			expect: func(t *testing.T, layers []*PreheatRequest) {
 				assert := assert.New(t)
 				assert.Equal(2, len(layers[0].URLs))
 			},
@@ -50,7 +50,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 				Timeout:            30 * time.Second,
 				InsecureSkipVerify: true,
 			},
-			expect: func(t *testing.T, layers []PreheatRequest) {
+			expect: func(t *testing.T, layers []*PreheatRequest) {
 				assert := assert.New(t)
 				assert.Equal(5, len(layers[0].URLs))
 			},
@@ -59,7 +59,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			layers, err := CreatePreheatRequestsByManifestURL(context.Background(), tc.req)
+			layers, err := NewImage().CreatePreheatRequestsByManifestURL(context.Background(), tc.req)
 			if err != nil {
 				t.Fatal(err)
 			}

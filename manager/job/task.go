@@ -81,6 +81,7 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 			TaskID:              taskID,
 			GroupUUID:           groupUUID,
 			TaskUUID:            taskUUID,
+			Timeout:             json.Timeout,
 			ConcurrentPeerCount: json.ConcurrentPeerCount,
 		}
 

@@ -61,14 +61,16 @@ type Preheat interface {
 // preheat is an implementation of Preheat.
 type preheat struct {
 	job                *internaljob.Job
+	internalJobImage   internaljob.Image
 	rootCAs            *x509.CertPool
 	insecureSkipVerify bool
 }
 
 // newPreheat creates a new Preheat.
-func newPreheat(job *internaljob.Job, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
+func newPreheat(job *internaljob.Job, internalJobImage internaljob.Image, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
 	return &preheat{
 		job:                job,
+		internalJobImage:   internalJobImage,
 		rootCAs:            rootCAs,
 		insecureSkipVerify: insecureSkipVerify,
 	}
@@ -83,7 +85,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 	defer span.End()
 
 	// Generate download files.
-	var files []internaljob.PreheatRequest
+	var files []*internaljob.PreheatRequest
 	var err error
 	switch PreheatType(json.Type) {
 	case PreheatImageType:
@@ -92,7 +94,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			return nil, errors.New("invalid params: url is required")
 		}
 
-		files, err = internaljob.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+		files, err = p.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
 			URL:                 json.URL,
 			PieceLength:         json.PieceLength,
 			Tag:                 json.Tag,
@@ -130,7 +132,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			certificateChain = p.rootCAs.Subjects()
 		}
 
-		files = append(files, internaljob.PreheatRequest{
+		files = append(files, &internaljob.PreheatRequest{
 			URLs:                urls,
 			PieceLength:         json.PieceLength,
 			Tag:                 json.Tag,
@@ -162,7 +164,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 }
 
 // createGroupJob creates a group job.
-func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.PreheatRequest, queues []internaljob.Queue) (*internaljob.GroupJobState, error) {
+func (p *preheat) createGroupJob(ctx context.Context, files []*internaljob.PreheatRequest, queues []internaljob.Queue) (*internaljob.GroupJobState, error) {
 	groupUUID := fmt.Sprintf("group_%s", uuid.New().String())
 	var signatures []*machineryv1tasks.Signature
 	for _, queue := range queues {

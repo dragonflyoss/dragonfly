@@ -8,18 +8,8 @@ This page lists current and emeritus maintainers. This can be used for routing P
 
 ## Maintainers
 
-Please refer to our [MAINTAINERS.md](MAINTAINERS.md).
+Please refer to our [community maintainers](https://github.com/dragonflyoss/community/blob/master/MAINTAINERS.md).
 
 ## Emeritus maintainers
 
-Please refer to our [emeritus_members.yaml](https://github.com/dragonflyoss/community/blob/master/ladder/emeritus_members.yaml).
-
-## Community Managers
-
-<!-- markdownlint-disable -->
-
-|                 GitHub ID                 |    Name    |         Email         |  Company  |
-| :---------------------------------------: | :--------: | :-------------------: | :-------: |
-| [mingcheng](https://github.com/mingcheng) | Cheng Ming | mingcheng@outlook.com | Ant Group |
-
-<!-- markdownlint-restore -->
+Please refer to our [community emeritus maintainers](https://github.com/dragonflyoss/community/blob/master/MAINTAINERS.md#emeritus-maintainers).

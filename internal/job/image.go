@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+//go:generate mockgen -destination mocks/job_mock.go -source image.go -package mocks
+
 package job
 
 import (
@@ -165,10 +167,26 @@ type ManifestRequest struct {
 	InsecureSkipVerify bool
 }
 
+// Image implements the interface for handling container images.
+type Image interface {
+	// CreatePreheatRequestsByManifestURL generates a list of preheat requests for a container image
+	// by fetching and parsing its manifest from a registry. It handles authentication, platform-specific
+	// manifest filtering, and layer extraction for preheating.
+	CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]*PreheatRequest, error)
+}
+
+// image is the implementation of the Image interface.
+type image struct{}
+
+// NewImage creates a new instance of the Image interface.
+func NewImage() Image {
+	return &image{}
+}
+
 // CreatePreheatRequestsByManifestURL generates a list of preheat requests for a container image
 // by fetching and parsing its manifest from a registry. It handles authentication, platform-specific
 // manifest filtering, and layer extraction for preheating.
-func CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]PreheatRequest, error) {
+func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]*PreheatRequest, error) {
 	ctx, span := tracer.Start(ctx, config.SpanGetLayers, trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
@@ -320,7 +338,7 @@ func filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs
 // buildPreheatRequestFromManifests constructs preheat requests for container image layers from
 // the provided manifests. It extracts layer URLs from the manifests and builds a PreheatRequest
 // using the specified arguments, headers, and TLS settings.
-func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *ManifestRequest, header http.Header, image *preheatImage) ([]PreheatRequest, error) {
+func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *ManifestRequest, header http.Header, image *preheatImage) ([]*PreheatRequest, error) {
 	var certificateChain [][]byte
 	if req.RootCAs != nil {
 		certificateChain = req.RootCAs.Subjects()
@@ -334,7 +352,7 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *Ma
 		}
 	}
 
-	layers := PreheatRequest{
+	layers := &PreheatRequest{
 		URLs:                layerURLs,
 		PieceLength:         req.PieceLength,
 		Tag:                 req.Tag,
@@ -352,7 +370,7 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *Ma
 		Timeout:             req.Timeout,
 	}
 
-	return []PreheatRequest{layers}, nil
+	return []*PreheatRequest{layers}, nil
 }
 
 // imageAuthClientOption is an option for imageAuthClient.

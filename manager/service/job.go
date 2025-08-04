@@ -178,8 +178,8 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 		json.Args.ConcurrentPeerCount = types.DefaultGetTaskConcurrentPeerCount
 	}
 
-	if json.Args.FilteredQueryParams == "" {
-		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	if json.Args.Timeout == 0 {
+		json.Args.Timeout = types.DefaultJobTimeout
 	}
 
 	if json.Args.FilteredQueryParams == "" {
@@ -238,9 +238,16 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 		json.Args.ConcurrentPeerCount = types.DefaultPreheatConcurrentPeerCount
 	}
 
+	if json.Args.Timeout == 0 {
+		json.Args.Timeout = types.DefaultJobTimeout
+	}
+
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, json.Args.Timeout)
+	defer cancel()
 
 	imageLayers, err := s.createPreheatRequestsByManifestURL(ctx, json)
 	if err != nil {
@@ -259,6 +266,7 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 				Application:         imageLayer.Application,
 				FilteredQueryParams: imageLayer.FilteredQueryParams,
 				ConcurrentPeerCount: json.Args.ConcurrentPeerCount,
+				Timeout:             json.Args.Timeout,
 			})
 		}
 	}
@@ -297,13 +305,13 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 	}, nil
 }
 
-func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]internaljob.PreheatRequest, error) {
+func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json types.CreateGetImageDistributionJobRequest) ([]*internaljob.PreheatRequest, error) {
 	certPool, err := nettls.PEMToCertPool(s.config.Job.Preheat.TLS.CACert.ToBytes())
 	if err != nil {
 		return nil, fmt.Errorf("load ca cert failed: %w", err)
 	}
 
-	layers, err := internaljob.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+	layers, err := internaljob.NewImage().CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
 		URL:                 json.Args.URL,
 		PieceLength:         json.Args.PieceLength,
 		Tag:                 json.Args.Tag,

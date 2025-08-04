@@ -62,7 +62,7 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	preheat := newPreheat(j, certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify)
+	preheat := newPreheat(j, internaljob.NewImage(), certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify)
 
 	syncPeers, err := newSyncPeers(cfg, j, gdb)
 	if err != nil {
