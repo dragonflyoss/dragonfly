@@ -827,7 +827,7 @@ func (j *job) syncPeers() (string, error) {
 	j.resource.HostManager().Range(func(key, value any) bool {
 		host, ok := value.(*resource.Host)
 		if !ok {
-			logger.Errorf("[sync-peers]invalid host %v %v", key, value)
+			logger.Errorf("[sync-peers] invalid host %v: %v", key, value)
 			return true
 		}
 
