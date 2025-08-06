@@ -457,6 +457,34 @@ var (
 		Help:      "Counter of the number of failed of the download persistent cache piece.",
 	}, []string{"host_type"})
 
+	PreheatImageCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "preheat_image_total",
+		Help:      "Counter of the number of the preheating image.",
+	})
+
+	PreheatImageFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "preheat_image_failure_total",
+		Help:      "Counter of the number of failed of the preheating image.",
+	})
+
+	StatImageCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_image_total",
+		Help:      "Counter of the number of the stating image.",
+	})
+
+	StatImageFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_image_failure_total",
+		Help:      "Counter of the number of failed of the stating image.",
+	})
+
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,

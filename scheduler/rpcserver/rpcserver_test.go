@@ -26,6 +26,7 @@ import (
 
 	"d7y.io/dragonfly/v2/scheduler/config"
 	configmocks "d7y.io/dragonfly/v2/scheduler/config/mocks"
+	jobmocks "d7y.io/dragonfly/v2/scheduler/job/mocks"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling/mocks"
@@ -62,8 +63,9 @@ func TestRPCServer_New(t *testing.T) {
 			resource := standard.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			job := jobmocks.NewMockJob(ctl)
 
-			svr := New(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentCacheResource, scheduling, dynconfig)
+			svr := New(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentCacheResource, scheduling, job, dynconfig)
 			tc.expect(t, svr)
 		})
 	}

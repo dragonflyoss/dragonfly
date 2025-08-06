@@ -19,13 +19,14 @@ package rpc
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 )
 
 // NewServerCredentials creates a new server credentials with the given ca certificate, certificate and key.
@@ -35,14 +36,14 @@ func NewServerCredentials(caCertFile string, certFile string, keyFile string) (c
 		return nil, fmt.Errorf("failed to load server certificate: %v", err)
 	}
 
-	caCertPool := x509.NewCertPool()
 	caCertBytes, err := os.ReadFile(caCertFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ca certificate: %v", err)
 	}
 
-	if !caCertPool.AppendCertsFromPEM(caCertBytes) {
-		return nil, errors.New("failed to append ca certificate")
+	caCertPool, err := nettls.PEMToCertPool(caCertBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ca certificate: %v", err)
 	}
 
 	return credentials.NewTLS(&tls.Config{
@@ -59,14 +60,14 @@ func NewClientCredentials(caCertFile string, certFile string, keyFile string) (c
 		return nil, fmt.Errorf("failed to load client certificate: %v", err)
 	}
 
-	caCertPool := x509.NewCertPool()
 	caCertBytes, err := os.ReadFile(caCertFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ca certificate: %v", err)
 	}
 
-	if !caCertPool.AppendCertsFromPEM(caCertBytes) {
-		return nil, errors.New("failed to append ca certificate")
+	caCertPool, err := nettls.PEMToCertPool(caCertBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ca certificate: %v", err)
 	}
 
 	return credentials.NewTLS(&tls.Config{

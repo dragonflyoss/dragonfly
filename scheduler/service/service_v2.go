@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -36,12 +38,17 @@ import (
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	internaljob "d7y.io/dragonfly/v2/internal/job"
+	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
+	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
+	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
@@ -59,6 +66,12 @@ type V2 struct {
 	// Scheduling interface.
 	scheduling scheduling.Scheduling
 
+	// Async job.
+	job job.Job
+
+	// Internal job image.
+	internalJobImage internaljob.Image
+
 	// Scheduler service config.
 	config *config.Config
 
@@ -72,12 +85,16 @@ func NewV2(
 	resource standard.Resource,
 	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
+	job job.Job,
+	internalJobImage internaljob.Image,
 	dynconfig config.DynconfigInterface,
 ) *V2 {
 	return &V2{
 		resource:                resource,
 		persistentCacheResource: persistentCacheResource,
 		scheduling:              scheduling,
+		job:                     job,
+		internalJobImage:        internalJobImage,
 		config:                  cfg,
 		dynconfig:               dynconfig,
 	}
@@ -2845,4 +2862,266 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 	}
 
 	return nil
+}
+
+// PreheatImage synchronously resolves an image manifest and triggers an asynchronous preheat task.
+//
+// This is a blocking call. The RPC will not return until the server has completed the
+// initial synchronous work: resolving the image manifest and preparing all layer URLs.
+//
+// After this call successfully returns, a scheduler on the server begins the actual
+// preheating process, instructing peers to download the layers in the background.
+//
+// A successful response (google.protobuf.Empty) confirms that the preparation is complete
+// and the asynchronous download task has been scheduled.
+func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) error {
+	log := logger.WithPreheatImage(req.Url)
+
+	if req.Scope == "" {
+		req.Scope = managertypes.SingleSeedPeerScope
+	}
+
+	if req.ConcurrentTaskCount == nil {
+		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
+		req.ConcurrentTaskCount = &concurrentTaskCount
+	}
+
+	if req.ConcurrentPeerCount == nil {
+		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
+		req.ConcurrentPeerCount = &concurrentPeerCount
+	}
+
+	if len(req.FilteredQueryParams) == 0 {
+		req.FilteredQueryParams = http.DefaultFilteredQueryParams
+	}
+
+	if req.Timeout == nil {
+		req.Timeout = durationpb.New(managertypes.DefaultJobTimeout)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
+	defer cancel()
+
+	certPool, err := nettls.DERToCertPool(req.CertificateChain)
+	if err != nil {
+		msg := fmt.Sprintf("failed to parse certificate chain: %v", err)
+		log.Error(msg)
+		return status.Error(codes.InvalidArgument, msg)
+	}
+
+	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+		URL:                 req.GetUrl(),
+		PieceLength:         req.PieceLength,
+		Tag:                 req.GetTag(),
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             req.GetHeader(),
+		Username:            req.GetUsername(),
+		Password:            req.GetPassword(),
+		Platform:            req.GetPlatform(),
+		Scope:               req.GetScope(),
+		IPs:                 req.GetIps(),
+		Percentage:          req.Percentage,
+		Count:               req.Count,
+		ConcurrentTaskCount: req.GetConcurrentTaskCount(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		Timeout:             req.GetTimeout().AsDuration(),
+		RootCAs:             certPool,
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+	})
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
+	}
+
+	if len(layers) != 1 {
+		return status.Errorf(codes.InvalidArgument, "expected exactly one layer, got %d", len(layers))
+	}
+
+	preheatRequest := &internaljob.PreheatRequest{
+		URLs:                layers[0].URLs,
+		PieceLength:         req.PieceLength,
+		Tag:                 req.GetTag(),
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             layers[0].Headers,
+		Priority:            int32(req.GetPriority()),
+		Scope:               req.GetScope(),
+		IPs:                 req.GetIps(),
+		Percentage:          req.Percentage,
+		Count:               req.Count,
+		ConcurrentTaskCount: req.GetConcurrentTaskCount(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		CertificateChain:    req.GetCertificateChain(),
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+		Timeout:             req.GetTimeout().AsDuration(),
+	}
+
+	switch req.Scope {
+	case managertypes.SingleSeedPeerScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat single seed peer")
+			resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat single seed peer failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat single seed peer finished, response: %#v", resp)
+		}()
+	case managertypes.AllSeedPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat all seed peers")
+			resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat all seed peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat all seed peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+		}()
+	case managertypes.AllPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat all peers")
+			resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat all peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat all peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+		}()
+	default:
+		return status.Errorf(codes.InvalidArgument, "unsupported preheat scope: %s", req.Scope)
+	}
+
+	return nil
+}
+
+// StatImage provides detailed status for a container image's distribution in peers.
+//
+// This is a blocking call that first resolves the image manifest and then queries
+// all peers to collect the image's download state across the network.
+// The response includes both layer information and the status on each peer.
+func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	log := logger.WithStatImage(req.Url)
+
+	if req.ConcurrentLayerCount == nil {
+		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
+		req.ConcurrentLayerCount = &concurrentLayerCount
+	}
+
+	if req.ConcurrentPeerCount == nil {
+		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
+		req.ConcurrentPeerCount = &concurrentPeerCount
+	}
+
+	if len(req.FilteredQueryParams) == 0 {
+		req.FilteredQueryParams = http.DefaultFilteredQueryParams
+	}
+
+	if req.Timeout == nil {
+		req.Timeout = durationpb.New(managertypes.DefaultJobTimeout)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
+	defer cancel()
+
+	certPool, err := nettls.DERToCertPool(req.CertificateChain)
+	if err != nil {
+		msg := fmt.Sprintf("failed to parse certificate chain: %v", err)
+		log.Error(msg)
+		return nil, status.Error(codes.InvalidArgument, msg)
+	}
+
+	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+		URL:                 req.GetUrl(),
+		PieceLength:         req.PieceLength,
+		Tag:                 req.GetTag(),
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             req.GetHeader(),
+		Username:            req.GetUsername(),
+		Password:            req.GetPassword(),
+		Platform:            req.GetPlatform(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		Timeout:             req.GetTimeout().AsDuration(),
+		RootCAs:             certPool,
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
+	}
+
+	if len(layers) != 1 {
+		return nil, status.Errorf(codes.InvalidArgument, "expected exactly one layer, got %d", len(layers))
+	}
+
+	resp := &schedulerv2.StatImageResponse{
+		Image: &schedulerv2.Image{Layers: make([]*schedulerv2.Layer, 0, len(layers))},
+		Peers: make([]*schedulerv2.PeerImage, 0),
+	}
+
+	var mu sync.Mutex
+	peers := map[string]*schedulerv2.PeerImage{}
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(int(req.GetConcurrentLayerCount()))
+	for _, url := range layers[0].URLs {
+		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
+		eg.Go(func() error {
+			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
+			getTaskRequest := &internaljob.GetTaskRequest{
+				TaskID:              taskID,
+				Timeout:             req.GetTimeout().AsDuration(),
+				ConcurrentPeerCount: *req.ConcurrentPeerCount,
+			}
+
+			log := logger.WithStatImageAndTaskID(url, taskID)
+			log.Infof("get task request: %#v", getTaskRequest)
+			task, err := v.job.GetTask(ctx, getTaskRequest, log)
+			if err != nil {
+				log.Errorf("get task failed: %s", err.Error())
+				return nil
+			}
+			log.Infof("get length of peers: %d", len(task.Peers))
+
+			for _, peer := range task.Peers {
+				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				mu.Lock()
+				if _, exists := peers[hostID]; !exists {
+					peers[hostID] = &schedulerv2.PeerImage{
+						Ip:           peer.IP,
+						Hostname:     peer.Hostname,
+						CachedLayers: []*schedulerv2.Layer{{Url: url}},
+					}
+				} else {
+					peers[hostID].CachedLayers = append(peers[hostID].CachedLayers, &schedulerv2.Layer{Url: url})
+				}
+				mu.Unlock()
+			}
+
+			return nil
+		})
+	}
+
+	// If any of the goroutines return an error, ignore it and continue processing.
+	if err := eg.Wait(); err != nil {
+		logger.Errorf("failed to create get task jobs: %w", err)
+	}
+
+	for _, peer := range peers {
+		resp.Peers = append(resp.Peers, peer)
+		log.Infof("stat image for peer %s, cached layers: %d", peer.Ip, len(peer.CachedLayers))
+	}
+
+	log.Infof("stat image finished, total layers: %d, total peers: %d", len(resp.Image.Layers), len(resp.Peers))
+	return resp, nil
 }

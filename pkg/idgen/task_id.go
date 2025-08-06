@@ -161,6 +161,11 @@ func ParseFilteredQueryParams(rawFilteredQueryParams string) []string {
 	return strings.Split(rawFilteredQueryParams, FilteredQueryParamsSeparator)
 }
 
+// FormatFilteredQueryParams formats a slice of strings into a filtered query params string.
+func FormatFilteredQueryParams(params []string) string {
+	return strings.Join(params, FilteredQueryParamsSeparator)
+}
+
 // TaskIDV2ByURLBased generates v2 version of task id by url based.
 func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
 	url, err := neturl.FilterQueryParams(url, filteredQueryParams)

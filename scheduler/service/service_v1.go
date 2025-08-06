@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/go-http-utils/headers"
@@ -342,7 +341,7 @@ func (v *V1) AnnounceTask(ctx context.Context, req *schedulerv1.AnnounceTaskRequ
 
 	// Piece length is not supported in Protocol V1, use default value 0.
 	task := resource.NewTask(taskID, req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(), types.TaskTypeV1ToV2(req.GetTaskType()),
-		strings.Split(req.UrlMeta.GetFilter(), idgen.FilteredQueryParamsSeparator), req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
+		idgen.ParseFilteredQueryParams(req.UrlMeta.GetFilter()), req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 	task, _ = v.resource.TaskManager().LoadOrStore(task)
 	host := v.storeHost(ctx, req.GetPeerHost())
 	peer := v.storePeer(ctx, peerID, req.UrlMeta.GetPriority(), req.UrlMeta.GetRange(), task, host)
@@ -798,8 +797,7 @@ func (v *V1) triggerSeedPeerTask(ctx context.Context, rg *http.Range, task *reso
 
 // storeTask stores a new task or reuses a previous task.
 func (v *V1) storeTask(_ context.Context, req *schedulerv1.PeerTaskRequest, typ commonv2.TaskType) *resource.Task {
-	filteredQueryParams := strings.Split(req.UrlMeta.GetFilter(), idgen.FilteredQueryParamsSeparator)
-
+	filteredQueryParams := idgen.ParseFilteredQueryParams(req.UrlMeta.GetFilter())
 	task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
 	if !loaded {
 		options := []resource.TaskOption{}

@@ -185,7 +185,6 @@ func TestConfig_Load(t *testing.T) {
 		},
 		Job: JobConfig{
 			Preheat: PreheatConfig{
-				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
 				TLS: PreheatTLSClientConfig{
 					CACert: "foo",
 				},
@@ -752,21 +751,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "local requires parameter ttl")
-			},
-		},
-		{
-			name:   "preheat requires parameter registryTimeout",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.Preheat.RegistryTimeout = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "preheat requires parameter registryTimeout")
 			},
 		},
 		{

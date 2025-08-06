@@ -93,7 +93,7 @@ func (s *syncPeers) CreateSyncPeers(ctx context.Context, schedulers []models.Sch
 			log.Error(err)
 			continue
 		}
-		log.Infof("sync peers count is %d", len(results))
+		log.Infof("[sync-peers] sync peers count is %d", len(results))
 
 		// Merge sync peer results with the data in the peer table.
 		s.mergePeers(ctx, scheduler, results, log)
@@ -116,7 +116,7 @@ func (s *syncPeers) Serve() {
 			// Find all of the scheduler clusters that has active schedulers.
 			var schedulerClusters []models.SchedulerCluster
 			if err := s.db.WithContext(ctx).Find(&schedulerClusters).Error; err != nil {
-				logger.Errorf("sync peers find scheduler clusters failed: %v", err)
+				logger.Errorf("[sync-peers] sync peers find scheduler clusters failed: %v", err)
 			}
 
 			// Find all of the schedulers that has active scheduler cluster.
@@ -130,13 +130,13 @@ func (s *syncPeers) Serve() {
 					continue
 				}
 
-				logger.Infof("sync peers find scheduler cluster %s", schedulerCluster.Name)
+				logger.Infof("[sync-peers] sync peers find scheduler cluster %s", schedulerCluster.Name)
 				schedulers = append(schedulers, scheduler)
 			}
-			logger.Infof("sync peers find schedulers count is %d", len(schedulers))
+			logger.Infof("[sync-peers] sync peers find schedulers count is %d", len(schedulers))
 
 			if err := s.CreateSyncPeers(ctx, schedulers); err != nil {
-				logger.Errorf("sync peers failed: %v", err)
+				logger.Errorf("[sync-peers] sync peers failed: %v", err)
 			}
 		case <-s.done:
 			return
@@ -169,10 +169,10 @@ func (s *syncPeers) createSyncPeers(ctx context.Context, scheduler models.Schedu
 	}
 
 	// Send sync peer task to worker.
-	logger.Infof("create sync peers in queue %v, task: %#v", queue, task)
+	logger.Infof("[sync-peers] create sync peers in queue %v, task: %#v", queue, task)
 	asyncResult, err := s.job.Server.SendTaskWithContext(ctx, task)
 	if err != nil {
-		logger.Errorf("create sync peers in queue %v failed", queue, err)
+		logger.Errorf("[sync-peers] create sync peers in queue %v failed", queue, err)
 		return nil, err
 	}
 

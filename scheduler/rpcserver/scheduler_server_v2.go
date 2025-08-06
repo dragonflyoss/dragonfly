@@ -24,7 +24,9 @@ import (
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
+	internaljob "d7y.io/dragonfly/v2/internal/job"
 	"d7y.io/dragonfly/v2/scheduler/config"
+	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
@@ -44,9 +46,10 @@ func newSchedulerServerV2(
 	resource standard.Resource,
 	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
+	job job.Job,
 	dynconfig config.DynconfigInterface,
 ) schedulerv2.SchedulerServer {
-	return &schedulerServerV2{service.NewV2(cfg, resource, persistentCacheResource, scheduling, dynconfig)}
+	return &schedulerServerV2{service.NewV2(cfg, resource, persistentCacheResource, scheduling, job, internaljob.NewImage(), dynconfig)}
 }
 
 // AnnouncePeer announces peer to scheduler.
@@ -162,6 +165,36 @@ func (s *schedulerServerV2) DeleteHost(ctx context.Context, req *schedulerv2.Del
 	return new(emptypb.Empty), nil
 }
 
+// TODO(fu220): Implement the following methods.
+// AnnounceCachePeer announces cache peer to scheduler.
+func (s *schedulerServerV2) AnnounceCachePeer(stream schedulerv2.Scheduler_AnnounceCachePeerServer) error {
+	return nil
+}
+
+// TODO(fu220): Implement the following methods.
+// Checks information of cache peer.
+func (s *schedulerServerV2) StatCachePeer(ctx context.Context, req *schedulerv2.StatCachePeerRequest) (*commonv2.CachePeer, error) {
+	return nil, nil
+}
+
+// TODO(fu220): Implement the following methods.
+// DeleteCachePeer releases cache peer in scheduler.
+func (s *schedulerServerV2) DeleteCachePeer(ctx context.Context, req *schedulerv2.DeleteCachePeerRequest) (*emptypb.Empty, error) {
+	return new(emptypb.Empty), nil
+}
+
+// TODO(fu220): Implement the following methods.
+// Checks information of cache task.
+func (s *schedulerServerV2) StatCacheTask(ctx context.Context, req *schedulerv2.StatCacheTaskRequest) (*commonv2.CacheTask, error) {
+	return nil, nil
+}
+
+// TODO(fu220): Implement the following methods.
+// DeleteCacheTask releases cache task in scheduler.
+func (s *schedulerServerV2) DeleteCacheTask(ctx context.Context, req *schedulerv2.DeleteCacheTaskRequest) (*emptypb.Empty, error) {
+	return new(emptypb.Empty), nil
+}
+
 // AnnouncePersistentCachePeer announces persistent cache peer to scheduler.
 func (s *schedulerServerV2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePersistentCachePeerServer) error {
 	// Collect AnnouncePersistentCachePeerCount metrics.
@@ -267,4 +300,44 @@ func (s *schedulerServerV2) DeletePersistentCacheTask(ctx context.Context, req *
 	}
 
 	return new(emptypb.Empty), nil
+}
+
+// PreheatImage synchronously resolves an image manifest and triggers an asynchronous preheat task.
+//
+// This is a blocking call. The RPC will not return until the server has completed the
+// initial synchronous work: resolving the image manifest and preparing all layer URLs.
+//
+// After this call successfully returns, a scheduler on the server begins the actual
+// preheating process, instructing peers to download the layers in the background.
+//
+// A successful response (google.protobuf.Empty) confirms that the preparation is complete
+// and the asynchronous download task has been scheduled.
+func (s *schedulerServerV2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) (*emptypb.Empty, error) {
+	// Collect PreheatImageCount metrics.
+	metrics.PreheatImageCount.Inc()
+	if err := s.service.PreheatImage(ctx, req); err != nil {
+		// Collect PreheatImageFailureCount metrics.
+		metrics.PreheatImageFailureCount.Inc()
+		return nil, err
+	}
+
+	return new(emptypb.Empty), nil
+}
+
+// StatImage provides detailed status for a container image's distribution in peers.
+//
+// This is a blocking call that first resolves the image manifest and then queries
+// all peers to collect the image's download state across the network.
+// The response includes both layer information and the status on each peer.
+func (s *schedulerServerV2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	// Collect StatImageCount metrics.
+	metrics.StatImageCount.Inc()
+	resp, err := s.service.StatImage(ctx, req)
+	if err != nil {
+		// Collect StatImageFailureCount metrics.
+		metrics.StatImageFailureCount.Inc()
+		return nil, err
+	}
+
+	return resp, nil
 }

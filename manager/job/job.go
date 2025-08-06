@@ -17,8 +17,6 @@
 package job
 
 import (
-	"crypto/x509"
-	"errors"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -27,6 +25,7 @@ import (
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/models"
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 )
 
 // DefaultTaskPollingInterval is the default interval for polling task.
@@ -59,13 +58,11 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 		return nil, err
 	}
 
-	var certPool *x509.CertPool
-	if len(cfg.Job.Preheat.TLS.CACert) != 0 {
-		certPool = x509.NewCertPool()
-		if !certPool.AppendCertsFromPEM([]byte(cfg.Job.Preheat.TLS.CACert)) {
-			return nil, errors.New("invalid CA Cert")
-		}
+	certPool, err := nettls.PEMToCertPool(cfg.Job.Preheat.TLS.CACert.ToBytes())
+	if err != nil {
+		return nil, err
 	}
+	preheat := newPreheat(j, internaljob.NewImage(), certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify)
 
 	syncPeers, err := newSyncPeers(cfg, j, gdb)
 	if err != nil {
@@ -74,7 +71,7 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 
 	return &Job{
 		Job:       j,
-		Preheat:   newPreheat(j, cfg.Job.Preheat.RegistryTimeout, certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify),
+		Preheat:   preheat,
 		SyncPeers: syncPeers,
 		Task:      newTask(j),
 	}, nil

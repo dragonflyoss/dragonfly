@@ -340,9 +340,6 @@ type JobConfig struct {
 }
 
 type PreheatConfig struct {
-	// RegistryTimeout is the timeout for requesting registry to get token and manifest.
-	RegistryTimeout time.Duration `yaml:"registryTimeout" mapstructure:"registryTimeout"`
-
 	// TLS client configuration.
 	TLS PreheatTLSClientConfig `yaml:"tls" mapstructure:"tls"`
 }
@@ -473,8 +470,7 @@ func New() *Config {
 		},
 		Job: JobConfig{
 			Preheat: PreheatConfig{
-				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
-				TLS:             PreheatTLSClientConfig{},
+				TLS: PreheatTLSClientConfig{},
 			},
 			SyncPeers: SyncPeersConfig{
 				Interval:  DefaultJobSyncPeersInterval,
@@ -652,10 +648,6 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Cache.Local.TTL == 0 {
 		return errors.New("local requires parameter ttl")
-	}
-
-	if cfg.Job.Preheat.RegistryTimeout == 0 {
-		return errors.New("preheat requires parameter registryTimeout")
 	}
 
 	if cfg.Job.SyncPeers.Interval <= MinJobSyncPeersInterval {
