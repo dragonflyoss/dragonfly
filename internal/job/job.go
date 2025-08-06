@@ -168,6 +168,7 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 
 	jobStates := make([]jobState, len(taskStates))
 	g, _ := errgroup.WithContext(context.Background())
+	g.SetLimit(GroupJobStateConcurrencyLimit)
 
 	for i, taskState := range taskStates {
 		i := i
@@ -175,25 +176,27 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 		g.Go(func() error {
 			var results []any
 			for _, result := range taskState.Results {
-				var err error
 				switch name {
 				case PreheatJob:
 					var resp PreheatResponse
-					err = UnmarshalTaskResult(result.Value, &resp)
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
 					results = append(results, resp)
 				case GetTaskJob:
 					var resp GetTaskResponse
-					err = UnmarshalTaskResult(result.Value, &resp)
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
 					results = append(results, resp)
 				case DeleteTaskJob:
 					var resp DeleteTaskResponse
-					err = UnmarshalTaskResult(result.Value, &resp)
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
 					results = append(results, resp)
 				default:
 					return errors.New("unsupported unmarshal task result")
-				}
-				if err != nil {
-					return err
 				}
 			}
 			jobStates[i] = jobState{
