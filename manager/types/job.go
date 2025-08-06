@@ -330,7 +330,7 @@ type Peer struct {
 	Hostname string `json:"hostname"`
 
 	// CachedLayers is the list of layers that the peer has downloaded.
-	CachedLayers []Layer `json:"layers"`
+	CachedLayers []Layer `json:"cached_layers"`
 
 	// SchedulerClusterID is the scheduler cluster id of the peer.
 	SchedulerClusterID uint `json:"scheduler_cluster_id"`
