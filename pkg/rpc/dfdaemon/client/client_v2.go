@@ -27,7 +27,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/credentials/insecure"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
@@ -35,54 +34,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
-	"d7y.io/dragonfly/v2/pkg/resolver"
-	"d7y.io/dragonfly/v2/pkg/rpc"
-	"d7y.io/dragonfly/v2/scheduler/config"
 )
-
-// GetV2 returns v2 version of the dfdaemon client.
-func GetV2(ctx context.Context, dynconfig config.DynconfigInterface, opts ...grpc.DialOption) (V2, error) {
-	// Register resolver and balancer.
-	resolver.RegisterSeedPeer(dynconfig)
-	builder, pickerBuilder := pkgbalancer.NewConsistentHashingBuilder()
-	balancer.Register(builder)
-
-	conn, err := grpc.DialContext(
-		ctx,
-		resolver.SeedPeerVirtualTarget,
-		append([]grpc.DialOption{
-			grpc.WithIdleTimeout(0),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(math.MaxInt32),
-				grpc.MaxCallSendMsgSize(math.MaxInt32),
-			),
-			grpc.WithDefaultServiceConfig(pkgbalancer.BalancerServiceConfig),
-			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-				grpc_prometheus.UnaryClientInterceptor,
-				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
-				grpc_retry.UnaryClientInterceptor(
-					grpc_retry.WithMax(maxRetries),
-					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
-				),
-				rpc.RefresherUnaryClientInterceptor(dynconfig),
-			)),
-			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-				grpc_prometheus.StreamClientInterceptor,
-				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
-				rpc.RefresherStreamClientInterceptor(dynconfig),
-			)),
-		}, opts...)...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &v2{
-		DfdaemonUploadClient:           dfdaemonv2.NewDfdaemonUploadClient(conn),
-		ClientConn:                     conn,
-		ConsistentHashingPickerBuilder: pickerBuilder,
-	}, nil
-}
 
 // GetV2ByAddr returns v2 version of the dfdaemon client by address.
 func GetV2ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V2, error) {
