@@ -41,6 +41,9 @@ const (
 
 	// GCJob is the name of gc job.
 	GCJob = "gc"
+
+	// GroupJobStateConcurrencyLimit is the concurrency limit of group job state.
+	GroupJobStateConcurrencyLimit = 10
 )
 
 // Machinery server configuration.
