@@ -85,6 +85,9 @@ type ServerConfig struct {
 	// TLS server configuration.
 	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 
+	// Server work home directory.
+	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
+
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 

@@ -57,6 +57,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/pkg/unit"
 	"d7y.io/dragonfly/v2/version"
+	manager_cfg "d7y.io/dragonfly/v2/manager/config"
 )
 
 // InitCommandAndConfig initializes flags binding and common sub cmds.
@@ -307,7 +308,8 @@ func initDecoderConfig(dc *mapstructure.DecoderConfig) {
 			reflect.TypeOf(config.URL{}),
 			reflect.TypeOf(net.IP{}),
 			reflect.TypeOf(config.CertPool{}),
-			reflect.TypeOf(config.Regexp{}):
+			reflect.TypeOf(config.Regexp{}),
+			reflect.TypeOf(manager_cfg.EncryptionKey{}):  
 
 			b, _ := yaml.Marshal(v)
 			p := reflect.New(to)

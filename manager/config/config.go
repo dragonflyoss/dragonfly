@@ -17,12 +17,14 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/slices"
@@ -56,11 +58,17 @@ type Config struct {
 
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
+
+	// Encryption configuration
+	Encryption EncryptionConfig `yaml:"encryption" mapstructure:"encryption"`
 }
 
 type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
+
+	// Server work home directory.
+	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
 
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
@@ -82,6 +90,9 @@ type ServerConfig struct {
 
 	// Server plugin directory.
 	PluginDir string `yaml:"pluginDir" mapstructure:"pluginDir"`
+
+	// Server data directory.
+	DataDir string `yaml:"dataDir" mapstructure:"dataDir"`
 
 	// GRPC server configuration.
 	GRPC GRPCConfig `yaml:"grpc" mapstructure:"grpc"`
@@ -398,6 +409,34 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
+type EncryptionKey [32]byte
+type EncryptionConfig struct {
+	Enable bool `mapstructure:"enable" yaml:"enable"`
+	// AES256 base64, optional
+	Key *EncryptionKey `mapstructure:"key" yaml:"key"`
+}
+
+// UnmarshalText Base64
+func (e *EncryptionKey) UnmarshalText(text []byte) error {
+	logger.Infof("Base64 str: %s", string(text))
+	keyBytes, err := base64.StdEncoding.DecodeString(string(text))
+	if err != nil {
+		return fmt.Errorf("invalid base64 key: %v", err)
+	}
+
+	if len(keyBytes) != 32 {
+		return fmt.Errorf("key must be 32 bytes, got %d", len(keyBytes))
+	}
+
+	copy(e[:], keyBytes)
+	return nil
+}
+
+// MarshalText Base64
+func (e EncryptionKey) MarshalText() ([]byte, error) {
+	return []byte(base64.StdEncoding.EncodeToString(e[:])), nil
+}
+
 // New config instance.
 func New() *Config {
 	return &Config{
@@ -488,6 +527,9 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
+		},
+		Encryption: EncryptionConfig{
+			Enable: false,
 		},
 	}
 }
@@ -685,6 +727,8 @@ func (cfg *Config) Validate() error {
 			return errors.New("metrics requires parameter addr")
 		}
 	}
+
+	// TODO: validate key
 
 	return nil
 }

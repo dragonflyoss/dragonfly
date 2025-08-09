@@ -101,6 +101,10 @@ func init() {
 // initDfpath initializes dfpath.
 func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	var options []dfpath.Option
+	if cfg.WorkHome != "" {
+		options = append(options, dfpath.WithWorkHome(cfg.WorkHome))
+	}
+
 	if cfg.LogDir != "" {
 		options = append(options, dfpath.WithLogDir(cfg.LogDir))
 	}
@@ -111,6 +115,10 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 
 	if cfg.PluginDir != "" {
 		options = append(options, dfpath.WithPluginDir(cfg.PluginDir))
+	}
+
+	if cfg.DataDir != "" {
+		options = append(options, dfpath.WithDataDir(cfg.DataDir))
 	}
 
 	return dfpath.New(options...)

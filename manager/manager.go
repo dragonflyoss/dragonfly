@@ -18,7 +18,11 @@ package manager
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -29,6 +33,8 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
+	"bytes"
+
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/internal/ratelimiter"
 	"d7y.io/dragonfly/v2/manager/cache"
@@ -37,6 +43,7 @@ import (
 	managergc "d7y.io/dragonfly/v2/manager/gc"
 	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
+	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 	"d7y.io/dragonfly/v2/manager/router"
 	"d7y.io/dragonfly/v2/manager/rpcserver"
@@ -48,6 +55,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"gorm.io/plugin/soft_delete"
 )
 
 const (
@@ -120,6 +128,16 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	db, err := database.New(cfg)
 	if err != nil {
 		return nil, err
+	}
+
+	// Initialize encryption key
+	if cfg.Encryption.Enable {
+		logger.Infof("Encryption enabled")
+		if err := initializeEncryptionKey(cfg, db.DB); err != nil {
+			return nil, err
+		}
+	} else {
+		logger.Infof("Encryption disabled")
 	}
 
 	// Initialize enforcer.
@@ -247,6 +265,104 @@ func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
 		return err
 	}
 
+	return nil
+}
+
+// initializeEncryptionKey
+func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
+	// db.Delete(&models.EncryptionKey{}, "1 = 1")
+
+	var existingKey models.EncryptionKey
+	hasDBKey := false
+	if err := db.First(&existingKey).Error; err == nil {
+		hasDBKey = true
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to check encryption key: %v", err)
+	}
+
+	if cfg.Encryption.Key != nil {
+		configKey := cfg.Encryption.Key
+		keyBytes := configKey[:]
+		if hasDBKey {
+			// compare key in config with key in db
+			if bytes.Equal(existingKey.Key, keyBytes) {
+				logger.Infof(
+					"encryption key in config file is the same as in database, key(hex): %s, key(base64): %s",
+					hex.EncodeToString(keyBytes),
+					base64.StdEncoding.EncodeToString(keyBytes),
+				)
+				return nil
+			}
+			// key in config is different from key in db, overwrite db
+			oldKeyHex := hex.EncodeToString(existingKey.Key)
+			oldKeyBase64 := base64.StdEncoding.EncodeToString(existingKey.Key)
+			newKeyHex := hex.EncodeToString(keyBytes)
+			newKeyBase64 := base64.StdEncoding.EncodeToString(keyBytes)
+
+			if err := db.Model(&existingKey).Update("key", keyBytes).Error; err != nil {
+				return fmt.Errorf("failed to update encryption key in database: %v", err)
+			}
+
+			logger.Infof(
+				"encryption key in database is overwritten by config file, old key(hex): %s, old key(base64): %s, new key(hex): %s, new key(base64): %s",
+				oldKeyHex, oldKeyBase64, newKeyHex, newKeyBase64,
+			)
+			return nil
+		} else {
+			// config has key, but db has no key, write it into db
+			// check soft delete
+			var oldKey models.EncryptionKey
+			if err := db.Unscoped().Where("`key` = ?", keyBytes).First(&oldKey).Error; err == nil {
+				if oldKey.IsDel != soft_delete.DeletedAt(soft_delete.FlagActived) {
+					// restore the key soft deleted
+					db.Unscoped().Model(&oldKey).Update("is_del", soft_delete.FlagActived)
+					logger.Infof("Restore the key which was soft deleted before")
+				} else {
+					logger.Fatalf("key should be soft deleted in this situation")
+				}
+			} else if errors.Is(err, gorm.ErrRecordNotFound) {
+				// insert new key
+				if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
+					return fmt.Errorf("failed to save encryption key to database: %v", err)
+				}
+			} else {
+				// return fmt.Errorf("unknow failed when update encryption key in database: %v", err)
+				logger.Fatalf("unknow failed when update encryption key in database: %v", err)
+				// panic(err)
+			}
+
+			logger.Infof(
+				"encryption key from config file is saved to database, key(hex): %s, key(base64): %s",
+				hex.EncodeToString(keyBytes),
+				base64.StdEncoding.EncodeToString(keyBytes),
+			)
+			return nil
+		}
+	}
+
+	// config has no key and db has key
+	if hasDBKey {
+		logger.Infof(
+			"encryption key loaded from database, key(hex): %s, key(base64): %s",
+			hex.EncodeToString(existingKey.Key),
+			base64.StdEncoding.EncodeToString(existingKey.Key),
+		)
+		return nil
+	}
+
+	// config and db both have no key, generate one
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return fmt.Errorf("failed to generate random encryption key: %v", err)
+	}
+	if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
+		return fmt.Errorf("failed to save random encryption key to database: %v", err)
+	}
+	logger.Infof(
+		"generated random encryption key and saved to database, key(hex): %s, key(base64): %s",
+		hex.EncodeToString(keyBytes),
+		base64.StdEncoding.EncodeToString(keyBytes),
+	)
 	return nil
 }
 
