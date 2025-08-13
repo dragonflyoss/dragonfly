@@ -190,6 +190,12 @@ func WithHostnameAndIP(hostname, ip string) *SugaredLoggerOnWith {
 	}
 }
 
+func WithGroupUUID(groupUUID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID},
+	}
+}
+
 func WithGroupAndJobID(groupUUID, jobID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
 		withArgs: []any{"groupUUID", groupUUID, "jobID", jobID},

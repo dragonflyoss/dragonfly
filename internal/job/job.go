@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dragonflyoss/machinery/v1"
@@ -145,17 +146,6 @@ type jobState struct {
 	TTL       int64     `json:"ttl"`
 }
 
-// newGroupJobState creates a GroupJobState instance for reuse in the main process
-func newGroupJobState(groupUUID, state string, createdAt time.Time, jobStates []jobState) *GroupJobState {
-	return &GroupJobState{
-		GroupUUID: groupUUID,
-		State:     state,
-		CreatedAt: createdAt,
-		UpdatedAt: time.Now(),
-		JobStates: jobStates,
-	}
-}
-
 func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, error) {
 	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupUUID, 0)
 	if err != nil {
@@ -166,14 +156,12 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 		return nil, errors.New("empty group")
 	}
 
+	var mu sync.Mutex
 	jobStates := make([]jobState, len(taskStates))
-	g, _ := errgroup.WithContext(context.Background())
-	g.SetLimit(GroupJobStateConcurrencyLimit)
-
-	for i, taskState := range taskStates {
-		i := i
-		taskState := taskState
-		g.Go(func() error {
+	eg, _ := errgroup.WithContext(context.Background())
+	eg.SetLimit(GroupJobStateConcurrencyLimit)
+	for _, taskState := range taskStates {
+		eg.Go(func() error {
 			var results []any
 			for _, result := range taskState.Results {
 				switch name {
@@ -182,24 +170,29 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
 						return err
 					}
+
 					results = append(results, resp)
 				case GetTaskJob:
 					var resp GetTaskResponse
 					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
 						return err
 					}
+
 					results = append(results, resp)
 				case DeleteTaskJob:
 					var resp DeleteTaskResponse
 					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
 						return err
 					}
+
 					results = append(results, resp)
 				default:
 					return errors.New("unsupported unmarshal task result")
 				}
 			}
-			jobStates[i] = jobState{
+
+			mu.Lock()
+			jobStates = append(jobStates, jobState{
 				TaskUUID:  taskState.TaskUUID,
 				TaskName:  taskState.TaskName,
 				State:     taskState.State,
@@ -207,30 +200,42 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 				Error:     taskState.Error,
 				CreatedAt: taskState.CreatedAt,
 				TTL:       taskState.TTL,
-			}
+			})
+			mu.Unlock()
 			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
+	if err := eg.Wait(); err != nil {
+		logger.WithGroupUUID(groupUUID).Errorf("failed to get group job state: %v", err)
 		return nil, err
 	}
 
 	for _, taskState := range taskStates {
 		if taskState.IsFailure() {
 			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
-			return newGroupJobState(groupUUID, machineryv1tasks.StateFailure, taskState.CreatedAt, jobStates), nil
+			return constructGroupJobState(groupUUID, machineryv1tasks.StateFailure, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
 			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
-			return newGroupJobState(groupUUID, machineryv1tasks.StatePending, taskState.CreatedAt, jobStates), nil
+			return constructGroupJobState(groupUUID, machineryv1tasks.StatePending, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
-	return newGroupJobState(groupUUID, machineryv1tasks.StateSuccess, taskStates[0].CreatedAt, jobStates), nil
+	return constructGroupJobState(groupUUID, machineryv1tasks.StateSuccess, taskStates[0].CreatedAt, jobStates), nil
+}
+
+func constructGroupJobState(groupUUID, state string, createdAt time.Time, jobStates []jobState) *GroupJobState {
+	return &GroupJobState{
+		GroupUUID: groupUUID,
+		State:     state,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now(),
+		JobStates: jobStates,
+	}
 }
 
 func MarshalResponse(v any) (string, error) {
