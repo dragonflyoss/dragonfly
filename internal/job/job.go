@@ -157,7 +157,7 @@ func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, e
 	}
 
 	var mu sync.Mutex
-	jobStates := make([]jobState, len(taskStates))
+	jobStates := make([]jobState, 0, len(taskStates))
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.SetLimit(GroupJobStateConcurrencyLimit)
 	for _, taskState := range taskStates {

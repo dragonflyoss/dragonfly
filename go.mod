@@ -21,7 +21,7 @@ require (
 	github.com/distribution/distribution/v3 v3.0.0-20220620080156-3e4f8a0ab147
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v28.1.1+incompatible
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.6.0
 	github.com/docker/go-units v0.4.0
 	github.com/dragonflyoss/machinery v1.10.14
 	github.com/elastic/go-freelru v0.16.0
@@ -65,7 +65,7 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.0
-	github.com/redis/go-redis/v9 v9.11.0
+	github.com/redis/go-redis/v9 v9.12.1
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/soheilhy/cmux v0.1.5
@@ -88,7 +88,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.40.0
+	golang.org/x/crypto v0.41.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
@@ -267,11 +267,11 @@ require (
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.17.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/term v0.33.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
-	golang.org/x/tools v0.34.0 // indirect
+	golang.org/x/term v0.34.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0 // indirect
