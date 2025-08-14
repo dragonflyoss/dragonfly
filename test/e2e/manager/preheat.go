@@ -232,10 +232,9 @@ var _ = Describe("Preheat with Manager", func() {
 			req, err := structure.StructToMap(types.CreatePreheatJobRequest{
 				Type: internaljob.PreheatJob,
 				Args: types.PreheatArgs{
-					Type:        "file",
-					URLs:        []string{testFile.GetDownloadURL()},
-					Scope:       "single_seed_peer",
-					LoadToCache: true,
+					Type:  "file",
+					URLs:  []string{testFile.GetDownloadURL()},
+					Scope: "single_seed_peer",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
