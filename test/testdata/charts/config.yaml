@@ -119,6 +119,8 @@ seedClient:
       rules:
       - regex: blobs/sha256.*
       - regxe: file-server.*
+    host:
+      schedulerClusterID: 1
 
 client:
   enable: true
@@ -178,6 +180,8 @@ client:
       rules:
       - regex: blobs/sha256.*
       - regxe: file-server.*
+    host:
+      schedulerClusterID: 1
 
 dfdaemon:
   enable: false
