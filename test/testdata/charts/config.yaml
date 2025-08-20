@@ -106,6 +106,8 @@ seedClient:
     hostPath:
       path: /tmp/artifact
   config:
+    host:
+      schedulerClusterID: 1
     dynconfig:
       refreshInterval: 5s
     scheduler:
@@ -165,6 +167,8 @@ client:
               serverAddr: https://ghcr.io
               capabilities: ["pull", "resolve"]
   config:
+    host:
+      schedulerClusterID: 1
     dynconfig:
       refreshInterval: 1s
     scheduler:
