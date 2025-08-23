@@ -65,3 +65,5 @@ deploy/docker-compose/log
 deploy/docker-compose/config
 test/e2e/v1/*.log
 test/e2e/*.log
+# Exclude build artifacts
+bin/
