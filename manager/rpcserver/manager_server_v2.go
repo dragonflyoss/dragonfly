@@ -596,8 +596,26 @@ func (s *managerServerV2) listSchedulersBySearcher(ctx context.Context, req *man
 
 	// Cache miss and search scheduler cluster.
 	var schedulerClusters []models.SchedulerCluster
-	if err := s.db.WithContext(ctx).Preload("SeedPeerClusters.SeedPeers", "state = ?", "active").Preload("Schedulers", "state = ?", "active").Find(&schedulerClusters).Error; err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	
+	// Check if the requesting host is a seedpeer to restrict scheduler clusters accordingly
+	var seedPeer models.SeedPeer
+	isSeedPeer := s.db.WithContext(ctx).Preload("SeedPeerCluster.SchedulerClusters.Schedulers", "state = ?", "active").
+		Preload("SeedPeerCluster.SchedulerClusters.SeedPeerClusters.SeedPeers", "state = ?", "active").
+		First(&seedPeer, models.SeedPeer{
+			Hostname: req.Hostname,
+			IP:       req.Ip,
+			State:    models.SeedPeerStateActive,
+		}).Error == nil
+	
+	if isSeedPeer {
+		// If requesting host is a seedpeer, only return scheduler clusters associated with its seedpeer cluster
+		log.Debugf("requesting host %s is a seedpeer in cluster %d, filtering scheduler clusters", req.Hostname, seedPeer.SeedPeerClusterID)
+		schedulerClusters = seedPeer.SeedPeerCluster.SchedulerClusters
+	} else {
+		// If not a seedpeer (regular peer), load all scheduler clusters
+		if err := s.db.WithContext(ctx).Preload("SeedPeerClusters.SeedPeers", "state = ?", "active").Preload("Schedulers", "state = ?", "active").Find(&schedulerClusters).Error; err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	// Remove schedulers which not have schedule feature. As OceanBase does not support JSON type,
