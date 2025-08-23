@@ -27,10 +27,14 @@ import (
 
 const (
 	// defaultCacheSize is the default size of the cache.
-	defaultCacheSize = 1024
+	// Increased from 1024 to 10240 to handle higher workloads and reduce cache thrashing
+	// that causes high CPU usage in go-freelru.findKey after long-running periods.
+	defaultCacheSize = 10240
 
 	// defaultTTL is the default TTL of the cache.
-	defaultTTL = 30 * time.Second
+	// Increased from 30 seconds to 5 minutes to reduce cache churn and database load,
+	// improving performance for frequently accessed scheduler data.
+	defaultTTL = 5 * time.Minute
 )
 
 // cacher is a cache implementation using LRU for gorm.
