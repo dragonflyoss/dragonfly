@@ -378,6 +378,7 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 		Ip:              peer.Host.IP,
 		Port:            peer.Host.Port,
 		DownloadPort:    peer.Host.DownloadPort,
+		ProxyPort:       peer.Host.ProxyPort,
 		Os:              peer.Host.OS,
 		Platform:        peer.Host.Platform,
 		PlatformFamily:  peer.Host.PlatformFamily,
@@ -414,10 +415,10 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 			UploadTcpConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
 			Location:                 &peer.Host.Network.Location,
 			Idc:                      &peer.Host.Network.IDC,
-			DownloadRate:             peer.Host.Network.DownloadRate,
-			DownloadRateLimit:        peer.Host.Network.DownloadRateLimit,
-			UploadRate:               peer.Host.Network.UploadRate,
-			UploadRateLimit:          peer.Host.Network.UploadRateLimit,
+			RxBandwidth:              &peer.Host.Network.RxBandwidth,
+			MaxRxBandwidth:           peer.Host.Network.MaxRxBandwidth,
+			TxBandwidth:              &peer.Host.Network.TxBandwidth,
+			MaxTxBandwidth:           peer.Host.Network.MaxTxBandwidth,
 		},
 		Disk: &commonv2.Disk{
 			Total:             peer.Host.Disk.Total,
@@ -638,10 +639,10 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
 				Location:                 req.Host.Network.GetLocation(),
 				IDC:                      req.Host.Network.GetIdc(),
-				DownloadRate:             req.Host.Network.GetDownloadRate(),
-				DownloadRateLimit:        req.Host.Network.GetDownloadRateLimit(),
-				UploadRate:               req.Host.Network.GetUploadRate(),
-				UploadRateLimit:          req.Host.Network.GetUploadRateLimit(),
+				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
 			}))
 		}
 
@@ -675,7 +676,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 		host = standard.NewHost(
 			req.Host.GetId(), req.Host.GetIp(), req.Host.GetHostname(),
-			req.Host.GetPort(), req.Host.GetDownloadPort(), types.HostType(req.Host.GetType()),
+			req.Host.GetPort(), req.Host.GetDownloadPort(), req.Host.GetProxyPort(), types.HostType(req.Host.GetType()),
 			options...,
 		)
 
@@ -685,6 +686,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		// Host already exists and updates properties.
 		host.Port = req.Host.GetPort()
 		host.DownloadPort = req.Host.GetDownloadPort()
+		host.ProxyPort = req.Host.GetProxyPort()
 		host.Type = types.HostType(req.Host.GetType())
 		host.DisableShared = req.Host.GetDisableShared()
 		host.OS = req.Host.GetOs()
@@ -736,10 +738,10 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
 				Location:                 req.Host.Network.GetLocation(),
 				IDC:                      req.Host.Network.GetIdc(),
-				DownloadRate:             req.Host.Network.GetDownloadRate(),
-				DownloadRateLimit:        req.Host.Network.GetDownloadRateLimit(),
-				UploadRate:               req.Host.Network.GetUploadRate(),
-				UploadRateLimit:          req.Host.Network.GetUploadRateLimit(),
+				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
 			}
 		}
 
@@ -782,7 +784,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 	if !loaded {
 		persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
 			req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
-			req.Host.GetDownloadPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
+			req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
 			persistentcache.CPU{
 				LogicalCount:   req.Host.Cpu.GetLogicalCount(),
 				PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
@@ -814,10 +816,10 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
 				Location:                 req.Host.Network.GetLocation(),
 				IDC:                      req.Host.Network.GetIdc(),
-				DownloadRate:             req.Host.Network.GetDownloadRate(),
-				DownloadRateLimit:        req.Host.Network.GetDownloadRateLimit(),
-				UploadRate:               req.Host.Network.GetUploadRate(),
-				UploadRateLimit:          req.Host.Network.GetUploadRateLimit(),
+				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
 			},
 			persistentcache.Disk{
 				Total:             req.Host.Disk.GetTotal(),
@@ -852,6 +854,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		// persistentCacheHost already exists and updates properties.
 		persistentCacheHost.Port = req.Host.GetPort()
 		persistentCacheHost.DownloadPort = req.Host.GetDownloadPort()
+		persistentCacheHost.ProxyPort = req.Host.GetProxyPort()
 		persistentCacheHost.Type = types.HostType(req.Host.GetType())
 		persistentCacheHost.DisableShared = req.Host.GetDisableShared()
 		persistentCacheHost.SchedulerClusterID = req.Host.GetSchedulerClusterId()
@@ -900,10 +903,10 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
 				Location:                 req.Host.Network.GetLocation(),
 				IDC:                      req.Host.Network.GetIdc(),
-				DownloadRate:             req.Host.Network.GetDownloadRate(),
-				DownloadRateLimit:        req.Host.Network.GetDownloadRateLimit(),
-				UploadRate:               req.Host.Network.GetUploadRate(),
-				UploadRateLimit:          req.Host.Network.GetUploadRateLimit(),
+				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
 			}
 		}
 
@@ -963,6 +966,7 @@ func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, err
 			Ip:              host.IP,
 			Port:            host.Port,
 			DownloadPort:    host.DownloadPort,
+			ProxyPort:       host.ProxyPort,
 			Os:              host.OS,
 			Platform:        host.Platform,
 			PlatformFamily:  host.PlatformFamily,
@@ -999,6 +1003,10 @@ func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, err
 				UploadTcpConnectionCount: host.Network.UploadTCPConnectionCount,
 				Location:                 &host.Network.Location,
 				Idc:                      &host.Network.IDC,
+				RxBandwidth:              &host.Network.RxBandwidth,
+				MaxRxBandwidth:           host.Network.MaxRxBandwidth,
+				TxBandwidth:              &host.Network.TxBandwidth,
+				MaxTxBandwidth:           host.Network.MaxTxBandwidth,
 			},
 			Disk: &commonv2.Disk{
 				Total:             host.Disk.Total,
@@ -1909,6 +1917,7 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 					Ip:              parent.Host.IP,
 					Port:            parent.Host.Port,
 					DownloadPort:    parent.Host.DownloadPort,
+					ProxyPort:       parent.Host.ProxyPort,
 					Os:              parent.Host.OS,
 					Platform:        parent.Host.Platform,
 					PlatformFamily:  parent.Host.PlatformFamily,
@@ -1945,10 +1954,10 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 						UploadTcpConnectionCount: parent.Host.Network.UploadTCPConnectionCount,
 						Location:                 &parent.Host.Network.Location,
 						Idc:                      &parent.Host.Network.IDC,
-						DownloadRate:             parent.Host.Network.DownloadRate,
-						DownloadRateLimit:        parent.Host.Network.DownloadRateLimit,
-						UploadRate:               parent.Host.Network.UploadRate,
-						UploadRateLimit:          parent.Host.Network.UploadRateLimit,
+						RxBandwidth:              &parent.Host.Network.RxBandwidth,
+						MaxRxBandwidth:           parent.Host.Network.MaxRxBandwidth,
+						TxBandwidth:              &parent.Host.Network.TxBandwidth,
+						MaxTxBandwidth:           parent.Host.Network.MaxTxBandwidth,
 					},
 					Disk: &commonv2.Disk{
 						Total:             parent.Host.Disk.Total,
@@ -2104,6 +2113,7 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 				Ip:              parent.Host.IP,
 				Port:            parent.Host.Port,
 				DownloadPort:    parent.Host.DownloadPort,
+				ProxyPort:       parent.Host.ProxyPort,
 				Os:              parent.Host.OS,
 				Platform:        parent.Host.Platform,
 				PlatformFamily:  parent.Host.PlatformFamily,
@@ -2140,10 +2150,10 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 					UploadTcpConnectionCount: parent.Host.Network.UploadTCPConnectionCount,
 					Location:                 &parent.Host.Network.Location,
 					Idc:                      &parent.Host.Network.IDC,
-					DownloadRate:             parent.Host.Network.DownloadRate,
-					DownloadRateLimit:        parent.Host.Network.DownloadRateLimit,
-					UploadRate:               parent.Host.Network.UploadRate,
-					UploadRateLimit:          parent.Host.Network.UploadRateLimit,
+					RxBandwidth:              &parent.Host.Network.RxBandwidth,
+					MaxRxBandwidth:           parent.Host.Network.MaxRxBandwidth,
+					TxBandwidth:              &parent.Host.Network.TxBandwidth,
+					MaxTxBandwidth:           parent.Host.Network.MaxTxBandwidth,
 				},
 				Disk: &commonv2.Disk{
 					Total:             parent.Host.Disk.Total,
@@ -2366,6 +2376,7 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 			Ip:              peer.Host.IP,
 			Port:            peer.Host.Port,
 			DownloadPort:    peer.Host.DownloadPort,
+			ProxyPort:       peer.Host.ProxyPort,
 			Os:              peer.Host.OS,
 			Platform:        peer.Host.Platform,
 			PlatformFamily:  peer.Host.PlatformFamily,
@@ -2402,10 +2413,10 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 				UploadTcpConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
 				Location:                 &peer.Host.Network.Location,
 				Idc:                      &peer.Host.Network.IDC,
-				DownloadRate:             peer.Host.Network.DownloadRate,
-				DownloadRateLimit:        peer.Host.Network.DownloadRateLimit,
-				UploadRate:               peer.Host.Network.UploadRate,
-				UploadRateLimit:          peer.Host.Network.UploadRateLimit,
+				RxBandwidth:              &peer.Host.Network.RxBandwidth,
+				MaxRxBandwidth:           peer.Host.Network.MaxRxBandwidth,
+				TxBandwidth:              &peer.Host.Network.TxBandwidth,
+				MaxTxBandwidth:           peer.Host.Network.MaxTxBandwidth,
 			},
 			Disk: &commonv2.Disk{
 				Total:             peer.Host.Disk.Total,

@@ -235,17 +235,17 @@ type PersistentCacheHost struct {
 		// IDC is network idc.
 		IDC string `json:"idc" binding:"omitempty"`
 
-		// DownloadRate is download rate.
-		DownloadRate uint64 `json:"download_rate" binding:"omitempty"`
+		// RxBandwidth is download rate.
+		RxBandwidth uint64 `json:"rx_bandwidth" binding:"omitempty"`
 
-		// DownloadRateLimit is download rate limit.
-		DownloadRateLimit uint64 `json:"download_rate_limit" binding:"omitempty"`
+		// MaxRxBandwidth is download rate limit.
+		MaxRxBandwidth uint64 `json:"max_rx_bandwidth" binding:"omitempty"`
 
-		// UploadRate is upload rate.
-		UploadRate uint64 `json:"upload_rate" binding:"omitempty"`
+		// TxBandwidth is upload rate.
+		TxBandwidth uint64 `json:"tx_bandwidth" binding:"omitempty"`
 
-		// UploadRateLimit is upload rate limit.
-		UploadRateLimit uint64 `json:"upload_rate_limit" binding:"omitempty"`
+		// MaxTxBandwidth is upload rate limit.
+		MaxTxBandwidth uint64 `json:"max_tx_bandwidth" binding:"omitempty"`
 	} `json:"network" binding:"omitempty"`
 
 	// Disk contains disk information.

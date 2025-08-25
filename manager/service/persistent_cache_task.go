@@ -477,29 +477,29 @@ func (s *service) loadHost(ctx context.Context, schedulerClusterID uint, id stri
 	host.Network.Location = rawHost["location"]
 	host.Network.IDC = rawHost["idc"]
 
-	downloadRate, err := strconv.ParseUint(rawHost["download_rate"], 10, 64)
+	rxBandwidth, err := strconv.ParseUint(rawHost["rx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	host.Network.DownloadRate = downloadRate
+	host.Network.RxBandwidth = rxBandwidth
 
-	downloadRateLimit, err := strconv.ParseUint(rawHost["download_rate_limit"], 10, 64)
+	maxRxBandwidth, err := strconv.ParseUint(rawHost["max_rx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	host.Network.DownloadRateLimit = downloadRateLimit
+	host.Network.MaxRxBandwidth = maxRxBandwidth
 
-	uploadRate, err := strconv.ParseUint(rawHost["upload_rate"], 10, 64)
+	txBandwidth, err := strconv.ParseUint(rawHost["tx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	host.Network.UploadRate = uploadRate
+	host.Network.TxBandwidth = txBandwidth
 
-	uploadRateLimit, err := strconv.ParseUint(rawHost["upload_rate_limit"], 10, 64)
+	maxTxBandwidth, err := strconv.ParseUint(rawHost["max_tx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	host.Network.UploadRateLimit = uploadRateLimit
+	host.Network.MaxTxBandwidth = maxTxBandwidth
 
 	// Parse Disk information.
 	diskTotal, err := strconv.ParseUint(rawHost["disk_total"], 10, 64)

@@ -4430,6 +4430,9 @@ const docTemplate = `{
                 "port": {
                     "type": "integer"
                 },
+                "proxy_port": {
+                    "type": "integer"
+                },
                 "scheduler_cluster": {
                     "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.SchedulerCluster"
                 },
@@ -4494,6 +4497,9 @@ const docTemplate = `{
         "d7y_io_dragonfly_v2_manager_models.Scheduler": {
             "type": "object",
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -4517,6 +4523,9 @@ const docTemplate = `{
                 },
                 "is_del": {
                     "type": "integer"
+                },
+                "last_keep_alive_at": {
+                    "type": "string"
                 },
                 "location": {
                     "type": "string"
@@ -4980,6 +4989,7 @@ const docTemplate = `{
                 "host_name",
                 "ip",
                 "port",
+                "proxy_port",
                 "scheduler_cluster_id",
                 "type"
             ],
@@ -5027,6 +5037,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "port": {
+                    "type": "integer"
+                },
+                "proxy_port": {
                     "type": "integer"
                 },
                 "scheduler_cluster_id": {
@@ -5136,6 +5149,9 @@ const docTemplate = `{
                 "scheduler_cluster_id"
             ],
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig"
+                },
                 "features": {
                     "type": "array",
                     "items": {
@@ -5547,14 +5563,6 @@ const docTemplate = `{
                     "description": "Network contains network information.",
                     "type": "object",
                     "properties": {
-                        "download_rate": {
-                            "description": "DownloadRate is download rate.",
-                            "type": "integer"
-                        },
-                        "download_rate_limit": {
-                            "description": "DownloadRateLimit is download rate limit.",
-                            "type": "integer"
-                        },
                         "idc": {
                             "description": "IDC is network idc.",
                             "type": "string"
@@ -5563,16 +5571,24 @@ const docTemplate = `{
                             "description": "Location is network location.",
                             "type": "string"
                         },
+                        "max_rx_bandwidth": {
+                            "description": "MaxRxBandwidth is download rate limit.",
+                            "type": "integer"
+                        },
+                        "max_tx_bandwidth": {
+                            "description": "MaxTxBandwidth is upload rate limit.",
+                            "type": "integer"
+                        },
+                        "rx_bandwidth": {
+                            "description": "RxBandwidth is download rate.",
+                            "type": "integer"
+                        },
                         "tcp_connection_count": {
                             "description": "TCPConnectionCount is tcp connection count.",
                             "type": "integer"
                         },
-                        "upload_rate": {
-                            "description": "UploadRate is upload rate.",
-                            "type": "integer"
-                        },
-                        "upload_rate_limit": {
-                            "description": "UploadRateLimit is upload rate limit.",
+                        "tx_bandwidth": {
+                            "description": "TxBandwidth is upload rate.",
                             "type": "integer"
                         },
                         "upload_tcp_connection_count": {
@@ -5819,6 +5835,17 @@ const docTemplate = `{
                 },
                 "location": {
                     "type": "string"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_types.SchedulerConfig": {
+            "type": "object",
+            "required": [
+                "manager_keep_alive_interval"
+            ],
+            "properties": {
+                "manager_keep_alive_interval": {
+                    "$ref": "#/definitions/time.Duration"
                 }
             }
         },
@@ -6084,6 +6111,9 @@ const docTemplate = `{
         "d7y_io_dragonfly_v2_manager_types.UpdateSchedulerRequest": {
             "type": "object",
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig"
+                },
                 "features": {
                     "type": "array",
                     "items": {

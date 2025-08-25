@@ -194,6 +194,8 @@ definitions:
         type: string
       port:
         type: integer
+      proxy_port:
+        type: integer
       scheduler_cluster:
         $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.SchedulerCluster'
       scheduler_cluster_id:
@@ -236,6 +238,8 @@ definitions:
     type: object
   d7y_io_dragonfly_v2_manager_models.Scheduler:
     properties:
+      config:
+        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap'
       created_at:
         type: string
       features:
@@ -252,6 +256,8 @@ definitions:
         type: string
       is_del:
         type: integer
+      last_keep_alive_at:
+        type: string
       location:
         type: string
       port:
@@ -590,6 +596,8 @@ definitions:
         type: string
       port:
         type: integer
+      proxy_port:
+        type: integer
       scheduler_cluster_id:
         type: integer
       state:
@@ -609,6 +617,7 @@ definitions:
     - host_name
     - ip
     - port
+    - proxy_port
     - scheduler_cluster_id
     - type
     type: object
@@ -666,6 +675,8 @@ definitions:
     type: object
   d7y_io_dragonfly_v2_manager_types.CreateSchedulerRequest:
     properties:
+      config:
+        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig'
       features:
         items:
           type: string
@@ -960,26 +971,26 @@ definitions:
       network:
         description: Network contains network information.
         properties:
-          download_rate:
-            description: DownloadRate is download rate.
-            type: integer
-          download_rate_limit:
-            description: DownloadRateLimit is download rate limit.
-            type: integer
           idc:
             description: IDC is network idc.
             type: string
           location:
             description: Location is network location.
             type: string
+          max_rx_bandwidth:
+            description: MaxRxBandwidth is download rate limit.
+            type: integer
+          max_tx_bandwidth:
+            description: MaxTxBandwidth is upload rate limit.
+            type: integer
+          rx_bandwidth:
+            description: RxBandwidth is download rate.
+            type: integer
           tcp_connection_count:
             description: TCPConnectionCount is tcp connection count.
             type: integer
-          upload_rate:
-            description: UploadRate is upload rate.
-            type: integer
-          upload_rate_limit:
-            description: UploadRateLimit is upload rate limit.
+          tx_bandwidth:
+            description: TxBandwidth is upload rate.
             type: integer
           upload_tcp_connection_count:
             description: UploadTCPConnectionCount is upload tcp connection count.
@@ -1151,6 +1162,13 @@ definitions:
         type: string
       location:
         type: string
+    type: object
+  d7y_io_dragonfly_v2_manager_types.SchedulerConfig:
+    properties:
+      manager_keep_alive_interval:
+        $ref: '#/definitions/time.Duration'
+    required:
+    - manager_keep_alive_interval
     type: object
   d7y_io_dragonfly_v2_manager_types.SeedPeerClusterConfig:
     properties:
@@ -1328,6 +1346,8 @@ definitions:
     type: object
   d7y_io_dragonfly_v2_manager_types.UpdateSchedulerRequest:
     properties:
+      config:
+        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig'
       features:
         items:
           type: string

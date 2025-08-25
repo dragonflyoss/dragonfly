@@ -43,6 +43,9 @@ type Host struct {
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
+	// ProxyPort is the proxy server port.
+	ProxyPort int32
+
 	// DisableShared is whether the host is disabled for
 	// shared with other peers.
 	DisableShared bool
@@ -179,17 +182,17 @@ type Network struct {
 	// IDC where the peer host is located
 	IDC string
 
-	// Download rate of the host, unit is byte/s.
-	DownloadRate uint64
+	// RxBandwidth of the host, unit is byte/s.
+	RxBandwidth uint64
 
-	// Download rate limit of the host, unit is byte/s.
-	DownloadRateLimit uint64
+	// MaxRxBandwidth of the host, unit is byte/s.
+	MaxRxBandwidth uint64
 
-	// Upload rate of the host, unit is byte/s.
-	UploadRate uint64
+	// TxBandwidth of the host, unit is byte/s.
+	TxBandwidth uint64
 
-	// Upload rate limit of the host, unit is byte/s.
-	UploadRateLimit uint64
+	// MaxTxBandwidth of the host, unit is byte/s.
+	MaxTxBandwidth uint64
 }
 
 // Build contains content for build.
@@ -245,7 +248,7 @@ type Disk struct {
 
 // NewHost returns a new host.
 func NewHost(
-	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort int32,
+	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort, proxyPort int32,
 	schedulerClusterId uint64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
 	build Build, announceInterval time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith,
 ) *Host {
@@ -256,6 +259,7 @@ func NewHost(
 		IP:                 ip,
 		Port:               port,
 		DownloadPort:       downloadPort,
+		ProxyPort:          proxyPort,
 		DisableShared:      disableShared,
 		OS:                 os,
 		Platform:           platform,

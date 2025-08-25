@@ -57,6 +57,7 @@ type announcer struct {
 	hostID                  string
 	daemonPort              int32
 	daemonDownloadPort      int32
+	daemonProxyPort         int32
 	daemonObjectStoragePort int32
 	schedulerClient         schedulerclient.V1
 	managerClient           managerclient.V1
@@ -81,13 +82,14 @@ func WithObjectStoragePort(port int32) Option {
 }
 
 // New returns a new Announcer interface.
-func New(cfg *config.DaemonOption, dynconfig config.Dynconfig, hostID string, daemonPort int32, daemonDownloadPort int32, schedulerClient schedulerclient.V1, options ...Option) Announcer {
+func New(cfg *config.DaemonOption, dynconfig config.Dynconfig, hostID string, daemonPort int32, daemonDownloadPort, daemonProxyPort int32, schedulerClient schedulerclient.V1, options ...Option) Announcer {
 	a := &announcer{
 		config:             cfg,
 		dynconfig:          dynconfig,
 		hostID:             hostID,
 		daemonPort:         daemonPort,
 		daemonDownloadPort: daemonDownloadPort,
+		daemonProxyPort:    daemonProxyPort,
 		schedulerClient:    schedulerClient,
 		done:               make(chan struct{}),
 	}
@@ -242,6 +244,7 @@ func (a *announcer) newAnnounceHostRequest() (*schedulerv1.AnnounceHostRequest, 
 		Ip:                a.config.Host.AdvertiseIP.String(),
 		Port:              a.daemonPort,
 		DownloadPort:      a.daemonDownloadPort,
+		ProxyPort:         a.daemonProxyPort,
 		ObjectStoragePort: objectStoragePort,
 		Os:                h.OS,
 		Platform:          h.Platform,

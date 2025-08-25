@@ -156,6 +156,9 @@ type Host struct {
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
+	// ProxyPort is proxy server port.
+	ProxyPort int32
+
 	// ObjectStoragePort is object storage port.
 	ObjectStoragePort int32
 
@@ -313,17 +316,17 @@ type Network struct {
 	// IDC where the peer host is located
 	IDC string
 
-	// Download rate of the host, unit is byte/s.
-	DownloadRate uint64
+	// RxBandwidth is download rate of the host, unit is byte/s.
+	RxBandwidth uint64
 
-	// Download rate limit of the host, unit is byte/s.
-	DownloadRateLimit uint64
+	// MaxRxBandwidth is max download rate of the host, unit is byte/s.
+	MaxRxBandwidth uint64
 
-	// Upload rate of the host, unit is byte/s.
-	UploadRate uint64
+	// TxBandwidth is upload rate of the host, unit is byte/s.
+	TxBandwidth uint64
 
-	// Upload rate limit of the host, unit is byte/s.
-	UploadRateLimit uint64
+	// MaxTxBandwidth is max upload rate of the host, unit is byte/s.
+	MaxTxBandwidth uint64
 }
 
 // Build contains content for build.
@@ -376,7 +379,7 @@ type Disk struct {
 
 // New host instance.
 func NewHost(
-	id, ip, hostname string, port, downloadPort int32,
+	id, ip, hostname string, port, downloadPort, proxyPort int32,
 	typ types.HostType, options ...HostOption,
 ) *Host {
 	// Calculate default of the concurrent upload limit by host type.
@@ -392,6 +395,7 @@ func NewHost(
 		Hostname:              hostname,
 		Port:                  port,
 		DownloadPort:          downloadPort,
+		ProxyPort:             proxyPort,
 		DisableShared:         false,
 		ConcurrentUploadLimit: atomic.NewInt32(int32(concurrentUploadLimit)),
 		ConcurrentUploadCount: atomic.NewInt32(0),

@@ -35,6 +35,7 @@ func TestAnnouncer_New(t *testing.T) {
 		hostID             string
 		deamonPort         int32
 		deamonDownloadPort int32
+		daemonProxyPort    int32
 		expect             func(t *testing.T, announcer Announcer)
 	}{
 		{
@@ -43,6 +44,7 @@ func TestAnnouncer_New(t *testing.T) {
 			hostID:             "foo",
 			deamonPort:         8000,
 			deamonDownloadPort: 8001,
+			daemonProxyPort:    8002,
 			expect: func(t *testing.T, a Announcer) {
 				assert := assert.New(t)
 				instance := a.(*announcer)
@@ -67,6 +69,7 @@ func TestAnnouncer_New(t *testing.T) {
 				assert.Equal(instance.hostID, "")
 				assert.Equal(instance.daemonPort, int32(0))
 				assert.Equal(instance.daemonDownloadPort, int32(0))
+				assert.Equal(instance.daemonProxyPort, int32(0))
 				assert.NotNil(instance.managerClient)
 				assert.NotNil(instance.schedulerClient)
 			},
@@ -80,7 +83,7 @@ func TestAnnouncer_New(t *testing.T) {
 			mockManagerClient := managerclientmocks.NewMockV1(ctl)
 			mockSchedulerClient := schedulerclientmocks.NewMockV1(ctl)
 			mockDynconfig := configmocks.NewMockDynconfig(ctl)
-			tc.expect(t, New(tc.config, mockDynconfig, tc.hostID, tc.deamonPort, tc.deamonDownloadPort, mockSchedulerClient, WithManagerClient(mockManagerClient)))
+			tc.expect(t, New(tc.config, mockDynconfig, tc.hostID, tc.deamonPort, tc.deamonDownloadPort, tc.daemonProxyPort, mockSchedulerClient, WithManagerClient(mockManagerClient)))
 		})
 	}
 }

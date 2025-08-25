@@ -111,6 +111,12 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
+	proxyPort, err := strconv.ParseInt(rawHost["proxy_port"], 10, 32)
+	if err != nil {
+		log.Errorf("parsing proxy port failed: %v", err)
+		return nil, false
+	}
+
 	// Set cpu fields from raw host.
 	schedulerClusterID, err := strconv.ParseUint(rawHost["scheduler_cluster_id"], 10, 64)
 	if err != nil {
@@ -288,25 +294,25 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
-	downloadRate, err := strconv.ParseUint(rawHost["network_download_rate"], 10, 64)
+	rxBandwidth, err := strconv.ParseUint(rawHost["network_rx_bandwidth"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing download rate failed: %v", err)
 		return nil, false
 	}
 
-	downloadRateLimit, err := strconv.ParseUint(rawHost["network_download_rate_limit"], 10, 64)
+	maxRxBandwidth, err := strconv.ParseUint(rawHost["network_max_rx_bandwidth"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing download rate limit failed: %v", err)
 		return nil, false
 	}
 
-	uploadRate, err := strconv.ParseUint(rawHost["network_upload_rate"], 10, 64)
+	txBandwidth, err := strconv.ParseUint(rawHost["network_tx_bandwidth"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing upload rate failed: %v", err)
 		return nil, false
 	}
 
-	uploadRateLimit, err := strconv.ParseUint(rawHost["network_upload_rate_limit"], 10, 64)
+	maxTxBandwidth, err := strconv.ParseUint(rawHost["network_max_tx_bandwidth"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing upload rate limit failed: %v", err)
 		return nil, false
@@ -317,10 +323,10 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		UploadTCPConnectionCount: uint32(networkUploadTCPConnectionCount),
 		Location:                 rawHost["network_location"],
 		IDC:                      rawHost["network_idc"],
-		DownloadRate:             downloadRate,
-		DownloadRateLimit:        downloadRateLimit,
-		UploadRate:               uploadRate,
-		UploadRateLimit:          uploadRateLimit,
+		RxBandwidth:              rxBandwidth,
+		MaxRxBandwidth:           maxRxBandwidth,
+		TxBandwidth:              txBandwidth,
+		MaxTxBandwidth:           maxTxBandwidth,
 	}
 
 	// Set disk fields from raw host.
@@ -434,6 +440,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		rawHost["kernel_version"],
 		int32(port),
 		int32(downloadPort),
+		int32(proxyPort),
 		uint64(schedulerClusterID),
 		disableShared,
 		pkgtypes.ParseHostType(rawHost["type"]),
@@ -464,58 +471,59 @@ local hostname = ARGV[3]
 local ip = ARGV[4]
 local port = ARGV[5]
 local download_port = ARGV[6]
-local disable_shared = tonumber(ARGV[7])
-local os = ARGV[8]
-local platform = ARGV[9]
-local platform_family = ARGV[10]
-local platform_version = ARGV[11]
-local kernel_version = ARGV[12]
-local cpu_logical_count = ARGV[13]
-local cpu_physical_count = ARGV[14]
-local cpu_percent = ARGV[15]
-local cpu_process_percent = ARGV[16]
-local cpu_times_user = ARGV[17]
-local cpu_times_system = ARGV[18]
-local cpu_times_idle = ARGV[19]
-local cpu_times_nice = ARGV[20]
-local cpu_times_iowait = ARGV[21]
-local cpu_times_irq = ARGV[22]
-local cpu_times_softirq = ARGV[23]
-local cpu_times_steal = ARGV[24]
-local cpu_times_guest = ARGV[25]
-local cpu_times_guest_nice = ARGV[26]
-local memory_total = ARGV[27]
-local memory_available = ARGV[28]
-local memory_used = ARGV[29]
-local memory_used_percent = ARGV[30]
-local memory_process_used_percent = ARGV[31]
-local memory_free = ARGV[32]
-local network_tcp_connection_count = ARGV[33]
-local network_upload_tcp_connection_count = ARGV[34]
-local network_location = ARGV[35]
-local network_idc = ARGV[36]
-local network_download_rate = ARGV[37]
-local network_download_rate_limit = ARGV[38]
-local network_upload_rate = ARGV[39]
-local network_upload_rate_limit = ARGV[40]
-local disk_total = ARGV[41]
-local disk_free = ARGV[42]
-local disk_used = ARGV[43]
-local disk_used_percent = ARGV[44]
-local disk_inodes_total = ARGV[45]
-local disk_inodes_used = ARGV[46]
-local disk_inodes_free = ARGV[47]
-local disk_inodes_used_percent = ARGV[48]
-local disk_write_bandwidth = ARGV[49]
-local disk_read_bandwidth = ARGV[50]
-local build_git_version = ARGV[51]
-local build_git_commit = ARGV[52]
-local build_go_version = ARGV[53]
-local build_platform = ARGV[54]
-local scheduler_cluster_id = ARGV[55]
-local announce_interval = ARGV[56]
-local created_at = ARGV[57]
-local updated_at = ARGV[58]
+local proxy_port = ARGV[7]
+local disable_shared = tonumber(ARGV[8])
+local os = ARGV[9]
+local platform = ARGV[10]
+local platform_family = ARGV[11]
+local platform_version = ARGV[12]
+local kernel_version = ARGV[13]
+local cpu_logical_count = ARGV[14]
+local cpu_physical_count = ARGV[15]
+local cpu_percent = ARGV[16]
+local cpu_process_percent = ARGV[17]
+local cpu_times_user = ARGV[18]
+local cpu_times_system = ARGV[19]
+local cpu_times_idle = ARGV[20]
+local cpu_times_nice = ARGV[21]
+local cpu_times_iowait = ARGV[22]
+local cpu_times_irq = ARGV[23]
+local cpu_times_softirq = ARGV[24]
+local cpu_times_steal = ARGV[25]
+local cpu_times_guest = ARGV[26]
+local cpu_times_guest_nice = ARGV[27]
+local memory_total = ARGV[28]
+local memory_available = ARGV[29]
+local memory_used = ARGV[30]
+local memory_used_percent = ARGV[31]
+local memory_process_used_percent = ARGV[32]
+local memory_free = ARGV[33]
+local network_tcp_connection_count = ARGV[34]
+local network_upload_tcp_connection_count = ARGV[35]
+local network_location = ARGV[36]
+local network_idc = ARGV[37]
+local network_rx_bandwidth = ARGV[38]
+local network_max_rx_bandwidth = ARGV[39]
+local network_tx_bandwidth = ARGV[40]
+local network_max_tx_bandwidth = ARGV[41]
+local disk_total = ARGV[42]
+local disk_free = ARGV[43]
+local disk_used = ARGV[44]
+local disk_used_percent = ARGV[45]
+local disk_inodes_total = ARGV[46]
+local disk_inodes_used = ARGV[47]
+local disk_inodes_free = ARGV[48]
+local disk_inodes_used_percent = ARGV[49]
+local disk_write_bandwidth = ARGV[50]
+local disk_read_bandwidth = ARGV[51]
+local build_git_version = ARGV[52]
+local build_git_commit = ARGV[53]
+local build_go_version = ARGV[54]
+local build_platform = ARGV[55]
+local scheduler_cluster_id = ARGV[56]
+local announce_interval = ARGV[57]
+local created_at = ARGV[58]
+local updated_at = ARGV[59]
 
 -- Perform HSET operation
 redis.call("HSET", host_key,
@@ -525,6 +533,7 @@ redis.call("HSET", host_key,
     "ip", ip,
     "port", port,
     "download_port", download_port,
+    "proxy_port", proxy_port,
     "disable_shared", disable_shared,
     "os", os,
     "platform", platform,
@@ -555,10 +564,10 @@ redis.call("HSET", host_key,
     "network_upload_tcp_connection_count", network_upload_tcp_connection_count,
     "network_location", network_location,
     "network_idc", network_idc,
-    "network_download_rate", network_download_rate,
-    "network_download_rate_limit", network_download_rate_limit,
-    "network_upload_rate", network_upload_rate,
-    "network_upload_rate_limit", network_upload_rate_limit,
+    "network_rx_bandwidth", network_rx_bandwidth,
+    "network_max_rx_bandwidth", network_max_rx_bandwidth,
+    "network_tx_bandwidth", network_tx_bandwidth,
+    "network_max_tx_bandwidth", network_max_tx_bandwidth,
     "disk_total", disk_total,
     "disk_free", disk_free,
     "disk_used", disk_used,
@@ -601,6 +610,7 @@ return true
 		host.IP,
 		host.Port,
 		host.DownloadPort,
+		host.ProxyPort,
 		host.DisableShared,
 		host.OS,
 		host.Platform,
@@ -631,10 +641,10 @@ return true
 		host.Network.UploadTCPConnectionCount,
 		host.Network.Location,
 		host.Network.IDC,
-		host.Network.DownloadRate,
-		host.Network.DownloadRateLimit,
-		host.Network.UploadRate,
-		host.Network.UploadRateLimit,
+		host.Network.RxBandwidth,
+		host.Network.MaxRxBandwidth,
+		host.Network.TxBandwidth,
+		host.Network.MaxTxBandwidth,
 		host.Disk.Total,
 		host.Disk.Free,
 		host.Disk.Used,

@@ -38,6 +38,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -59,6 +60,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -106,10 +108,10 @@ var (
 		UploadTCPConnectionCount: 1,
 		Location:                 mockHostLocation,
 		IDC:                      mockHostIDC,
-		DownloadRate:             100,
-		DownloadRateLimit:        200,
-		UploadRate:               100,
-		UploadRateLimit:          200,
+		RxBandwidth:              100,
+		MaxRxBandwidth:           200,
+		TxBandwidth:              100,
+		MaxTxBandwidth:           200,
 	}
 
 	mockDisk = Disk{
@@ -156,6 +158,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.SchedulerClusterID, uint64(0))
 				assert.Equal(host.AnnounceInterval, time.Duration(0))
@@ -181,6 +184,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawSeedHost.IP)
 				assert.Equal(host.Port, mockRawSeedHost.Port)
 				assert.Equal(host.DownloadPort, mockRawSeedHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawSeedHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.SchedulerClusterID, uint64(0))
 				assert.Equal(host.AnnounceInterval, time.Duration(0))
@@ -207,6 +211,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.SchedulerClusterID, uint64(1))
 				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
 				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
@@ -231,6 +236,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(1))
 				assert.Equal(host.SchedulerClusterID, uint64(0))
 				assert.Equal(host.AnnounceInterval, time.Duration(0))
@@ -257,6 +263,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.SchedulerClusterID, uint64(0))
 				assert.Equal(host.AnnounceInterval, time.Duration(0))
@@ -283,6 +290,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.OS, "linux")
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -310,6 +318,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.Platform, "ubuntu")
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -337,6 +346,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.PlatformFamily, "debian")
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -364,6 +374,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.PlatformVersion, "22.04")
 				assert.Equal(host.AnnounceInterval, time.Duration(0))
@@ -390,6 +401,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.KernelVersion, "5.15.0-27-generic")
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -417,6 +429,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.EqualValues(host.CPU, mockCPU)
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -444,6 +457,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.EqualValues(host.Memory, mockMemory)
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -471,6 +485,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.EqualValues(host.Network, mockNetwork)
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -498,6 +513,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.EqualValues(host.Disk, mockDisk)
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -525,6 +541,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.EqualValues(host.Build, mockBuild)
 				assert.Equal(host.SchedulerClusterID, uint64(0))
@@ -552,6 +569,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.ObjectStoragePort, int32(0))
 				assert.Equal(host.SchedulerClusterID, uint64(0))
 				assert.Equal(host.AnnounceInterval, 5*time.Minute)
@@ -572,7 +590,7 @@ func TestHost_NewHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type,
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type,
 				tc.options...))
 		})
 	}
@@ -619,7 +637,7 @@ func TestHost_LoadPeer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type)
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -664,7 +682,7 @@ func TestHost_StorePeer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type)
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(tc.peerID, mockTask, host)
 
@@ -710,7 +728,7 @@ func TestHost_DeletePeer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type)
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -762,7 +780,7 @@ func TestHost_LeavePeers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type)
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -814,7 +832,7 @@ func TestHost_FreeUploadCount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
 				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.Type)
+				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 

@@ -537,6 +537,7 @@ func (cd *clientDaemon) Serve() error {
 			cd.ProxyManager.Watch(daemon.Proxy)
 		})
 	}
+	cd.schedPeerHost.ProxyPort = int32(proxyPort)
 
 	if cd.Option.IsSupportPeerExchange() {
 		go func() {
@@ -599,7 +600,7 @@ func (cd *clientDaemon) Serve() error {
 	}
 
 	cd.announcer = announcer.New(&cd.Option, cd.dynconfig, cd.schedPeerHost.Id, cd.schedPeerHost.RpcPort,
-		cd.schedPeerHost.DownPort, cd.schedulerClient, announcerOptions...)
+		cd.schedPeerHost.DownPort, cd.schedPeerHost.ProxyPort, cd.schedulerClient, announcerOptions...)
 	go func() {
 		logger.Info("serve announcer")
 		if err := cd.announcer.Serve(); err != nil {

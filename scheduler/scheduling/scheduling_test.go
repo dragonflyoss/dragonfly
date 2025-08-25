@@ -70,6 +70,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -91,6 +92,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -138,10 +140,10 @@ var (
 		UploadTCPConnectionCount: 1,
 		Location:                 mockHostLocation,
 		IDC:                      mockHostIDC,
-		DownloadRate:             100,
-		DownloadRateLimit:        200,
-		UploadRate:               100,
-		UploadRateLimit:          200,
+		RxBandwidth:              100,
+		MaxRxBandwidth:           200,
+		TxBandwidth:              100,
+		MaxTxBandwidth:           200,
 	}
 
 	mockDisk = standard.Disk{
@@ -438,12 +440,12 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 			mockSeedHost := standard.NewHost(
 				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
-				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)
+				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			seedPeer := standard.NewPeer(mockSeedPeerID, mockTask, mockSeedHost)
 			blocklist := set.NewSafeSet[string]()
 
@@ -709,12 +711,12 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 			mockSeedHost := standard.NewHost(
 				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
-				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)
+				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			seedPeer := standard.NewPeer(mockSeedPeerID, mockTask, mockSeedHost)
 			blocklist := set.NewSafeSet[string]()
 
@@ -1038,7 +1040,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
@@ -1046,7 +1048,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
-					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
@@ -1356,7 +1358,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
@@ -1364,7 +1366,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
-					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
@@ -1618,7 +1620,7 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
@@ -1626,7 +1628,7 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 			for i := range 11 {
 				mockHost := standard.NewHost(
 					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Hostname,
-					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
@@ -1687,6 +1689,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 									Ip:              candidateParents[0].Host.IP,
 									Port:            candidateParents[0].Host.Port,
 									DownloadPort:    candidateParents[0].Host.DownloadPort,
+									ProxyPort:       candidateParents[0].Host.ProxyPort,
 									Os:              candidateParents[0].Host.OS,
 									Platform:        candidateParents[0].Host.Platform,
 									PlatformFamily:  candidateParents[0].Host.PlatformFamily,
@@ -1723,10 +1726,10 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 										UploadTcpConnectionCount: candidateParents[0].Host.Network.UploadTCPConnectionCount,
 										Location:                 &candidateParents[0].Host.Network.Location,
 										Idc:                      &candidateParents[0].Host.Network.IDC,
-										DownloadRate:             candidateParents[0].Host.Network.DownloadRate,
-										DownloadRateLimit:        candidateParents[0].Host.Network.DownloadRateLimit,
-										UploadRate:               candidateParents[0].Host.Network.UploadRate,
-										UploadRateLimit:          candidateParents[0].Host.Network.UploadRateLimit,
+										RxBandwidth:              &candidateParents[0].Host.Network.RxBandwidth,
+										MaxRxBandwidth:           candidateParents[0].Host.Network.MaxRxBandwidth,
+										TxBandwidth:              &candidateParents[0].Host.Network.TxBandwidth,
+										MaxTxBandwidth:           candidateParents[0].Host.Network.MaxTxBandwidth,
 									},
 									Disk: &commonv2.Disk{
 										Total:             candidateParents[0].Host.Disk.Total,
@@ -1762,7 +1765,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 			defer ctl.Finish()
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost, standard.WithRange(nethttp.Range{
 				Start:  1,
@@ -1812,7 +1815,7 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 			defer ctl.Finish()
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
