@@ -28,6 +28,7 @@ type CreatePeerRequest struct {
 	IP                 string `json:"ip" binding:"required"`
 	Port               int32  `json:"port" binding:"required"`
 	DownloadPort       int32  `json:"download_port" binding:"required"`
+	ProxyPort          int32  `json:"proxy_port" binding:"required"`
 	ObjectStoragePort  int32  `json:"object_storage_port" binding:"omitempty"`
 	State              string `json:"state" binding:"omitempty,oneof=active inactive"`
 	OS                 string `json:"os" binding:"omitempty"`
@@ -49,6 +50,7 @@ type GetPeersQuery struct {
 	IP                 string `form:"ip" binding:"omitempty"`
 	Port               int32  `form:"port" binding:"omitempty"`
 	DownloadPort       int32  `form:"download_port" binding:"omitempty"`
+	ProxyPort          int32  `form:"proxy_port" binding:"omitempty"`
 	ObjectStoragePort  int32  `form:"object_storage_port" binding:"omitempty"`
 	State              string `form:"state" binding:"omitempty,oneof=active inactive"`
 	OS                 string `form:"os" binding:"omitempty"`

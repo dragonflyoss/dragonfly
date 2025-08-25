@@ -35,6 +35,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -57,6 +58,7 @@ var (
 		IP:              "127.0.0.1",
 		Port:            8003,
 		DownloadPort:    8001,
+		ProxyPort:       8004,
 		OS:              "darwin",
 		Platform:        "darwin",
 		PlatformFamily:  "Standalone Workstation",
@@ -150,6 +152,7 @@ func TestNewHost(t *testing.T) {
 		kernelVersion      string
 		port               int32
 		downloadPort       int32
+		proxyPort          int32
 		schedulerClusterId uint64
 		disableShared      bool
 		typ                types.HostType
@@ -175,6 +178,7 @@ func TestNewHost(t *testing.T) {
 			kernelVersion:      "5.10.0",
 			port:               8002,
 			downloadPort:       8001,
+			proxyPort:          8004,
 			schedulerClusterId: 1,
 			disableShared:      false,
 			typ:                types.HostTypeNormal,
@@ -243,7 +247,7 @@ func TestNewHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := NewHost(
 				tc.id, tc.hostname, tc.ip, tc.os, tc.platform, tc.platformFamily, tc.platformVersion,
-				tc.kernelVersion, tc.port, tc.downloadPort, tc.schedulerClusterId, tc.disableShared,
+				tc.kernelVersion, tc.port, tc.downloadPort, tc.proxyPort, tc.schedulerClusterId, tc.disableShared,
 				tc.typ, tc.cpu, tc.memory, tc.network, tc.disk, tc.build, tc.announceInterval,
 				tc.createdAt, tc.updatedAt, tc.log,
 			)
@@ -258,6 +262,7 @@ func TestNewHost(t *testing.T) {
 			assert.Equal(t, tc.kernelVersion, got.KernelVersion)
 			assert.Equal(t, tc.port, got.Port)
 			assert.Equal(t, tc.downloadPort, got.DownloadPort)
+			assert.Equal(t, tc.proxyPort, got.ProxyPort)
 			assert.Equal(t, tc.schedulerClusterId, got.SchedulerClusterID)
 			assert.Equal(t, tc.disableShared, got.DisableShared)
 			assert.Equal(t, tc.typ, got.Type)

@@ -111,6 +111,12 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
+	proxyPort, err := strconv.ParseInt(rawHost["proxy_port"], 10, 32)
+	if err != nil {
+		log.Errorf("parsing proxy port failed: %v", err)
+		return nil, false
+	}
+
 	// Set cpu fields from raw host.
 	schedulerClusterID, err := strconv.ParseUint(rawHost["scheduler_cluster_id"], 10, 64)
 	if err != nil {
@@ -434,6 +440,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		rawHost["kernel_version"],
 		int32(port),
 		int32(downloadPort),
+		int32(proxyPort),
 		uint64(schedulerClusterID),
 		disableShared,
 		pkgtypes.ParseHostType(rawHost["type"]),
