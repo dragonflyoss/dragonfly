@@ -156,6 +156,9 @@ type Host struct {
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
+	// ProxyPort is proxy server port.
+	ProxyPort int32
+
 	// ObjectStoragePort is object storage port.
 	ObjectStoragePort int32
 
@@ -376,7 +379,7 @@ type Disk struct {
 
 // New host instance.
 func NewHost(
-	id, ip, hostname string, port, downloadPort int32,
+	id, ip, hostname string, port, downloadPort, proxyPort int32,
 	typ types.HostType, options ...HostOption,
 ) *Host {
 	// Calculate default of the concurrent upload limit by host type.
@@ -392,6 +395,7 @@ func NewHost(
 		Hostname:              hostname,
 		Port:                  port,
 		DownloadPort:          downloadPort,
+		ProxyPort:             proxyPort,
 		DisableShared:         false,
 		ConcurrentUploadLimit: atomic.NewInt32(int32(concurrentUploadLimit)),
 		ConcurrentUploadCount: atomic.NewInt32(0),

@@ -43,6 +43,9 @@ type Host struct {
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
+	// ProxyPort is the proxy server port.
+	ProxyPort int32
+
 	// DisableShared is whether the host is disabled for
 	// shared with other peers.
 	DisableShared bool
@@ -245,7 +248,7 @@ type Disk struct {
 
 // NewHost returns a new host.
 func NewHost(
-	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort int32,
+	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort, proxyPort int32,
 	schedulerClusterId uint64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
 	build Build, announceInterval time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith,
 ) *Host {
@@ -256,6 +259,7 @@ func NewHost(
 		IP:                 ip,
 		Port:               port,
 		DownloadPort:       downloadPort,
+		ProxyPort:          proxyPort,
 		DisableShared:      disableShared,
 		OS:                 os,
 		Platform:           platform,

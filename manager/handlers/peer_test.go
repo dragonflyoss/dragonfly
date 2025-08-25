@@ -36,6 +36,7 @@ var (
 	mockPeerReqBody = `
 		{
 			"download_port": 8001,
+			"proxy_port": 8004,
 			"host_name": "foo",
 			"ip": "127.0.0.1",
 			"port": 8003,
@@ -48,6 +49,7 @@ var (
 		IP:                 "127.0.0.1",
 		Port:               8003,
 		DownloadPort:       8001,
+		ProxyPort:          8004,
 		SchedulerClusterID: 2,
 	}
 	mockPeerModel = &models.Peer{
@@ -57,6 +59,7 @@ var (
 		IP:                 "127.0.0.1",
 		Port:               8003,
 		DownloadPort:       8001,
+		ProxyPort:          8004,
 		SchedulerClusterID: 2,
 	}
 )
