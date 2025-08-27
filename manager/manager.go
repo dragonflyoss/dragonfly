@@ -132,12 +132,12 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 
 	// Initialize encryption key
 	if cfg.Encryption.Enable {
-		logger.Infof("Encryption enabled")
+		logger.Infof("encryption enabled")
 		if err := initializeEncryptionKey(cfg, db.DB); err != nil {
 			return nil, err
 		}
 	} else {
-		logger.Infof("Encryption disabled")
+		logger.Infof("encryption disabled")
 	}
 
 	// Initialize enforcer.
@@ -272,6 +272,8 @@ func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
 func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
 	// db.Delete(&models.EncryptionKey{}, "1 = 1")
 
+	// TODO: manually use cache or gorm auto cache?
+	// TODO: avoid printing key
 	var existingKey models.EncryptionKey
 	hasDBKey := false
 	if err := db.First(&existingKey).Error; err == nil {
@@ -280,86 +282,91 @@ func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
 		return fmt.Errorf("failed to check encryption key: %v", err)
 	}
 
-	if cfg.Encryption.Key != nil {
-		configKey := cfg.Encryption.Key
-		keyBytes := configKey[:]
+	// 1. no key in config
+	if cfg.Encryption.Key == nil {
+		// 1.1 config has no key and db has key
 		if hasDBKey {
-			// compare key in config with key in db
-			if bytes.Equal(existingKey.Key, keyBytes) {
-				logger.Infof(
-					"encryption key in config file is the same as in database, key(hex): %s, key(base64): %s",
-					hex.EncodeToString(keyBytes),
-					base64.StdEncoding.EncodeToString(keyBytes),
-				)
-				return nil
-			}
-			// key in config is different from key in db, overwrite db
-			oldKeyHex := hex.EncodeToString(existingKey.Key)
-			oldKeyBase64 := base64.StdEncoding.EncodeToString(existingKey.Key)
-			newKeyHex := hex.EncodeToString(keyBytes)
-			newKeyBase64 := base64.StdEncoding.EncodeToString(keyBytes)
-
-			if err := db.Model(&existingKey).Update("key", keyBytes).Error; err != nil {
-				return fmt.Errorf("failed to update encryption key in database: %v", err)
-			}
-
 			logger.Infof(
-				"encryption key in database is overwritten by config file, old key(hex): %s, old key(base64): %s, new key(hex): %s, new key(base64): %s",
-				oldKeyHex, oldKeyBase64, newKeyHex, newKeyBase64,
+				"encryption key loaded from database, key(hex): %s, key(base64): %s",
+				hex.EncodeToString(existingKey.Key),
+				base64.StdEncoding.EncodeToString(existingKey.Key),
 			)
 			return nil
-		} else {
-			// config has key, but db has no key, write it into db
-			// check soft delete
-			var oldKey models.EncryptionKey
-			if err := db.Unscoped().Where("`key` = ?", keyBytes).First(&oldKey).Error; err == nil {
-				if oldKey.IsDel != soft_delete.DeletedAt(soft_delete.FlagActived) {
-					// restore the key soft deleted
-					db.Unscoped().Model(&oldKey).Update("is_del", soft_delete.FlagActived)
-					logger.Infof("Restore the key which was soft deleted before")
-				} else {
-					logger.Fatalf("key should be soft deleted in this situation")
-				}
-			} else if errors.Is(err, gorm.ErrRecordNotFound) {
-				// insert new key
-				if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
-					return fmt.Errorf("failed to save encryption key to database: %v", err)
-				}
-			} else {
-				// return fmt.Errorf("unknow failed when update encryption key in database: %v", err)
-				logger.Fatalf("unknow failed when update encryption key in database: %v", err)
-				// panic(err)
-			}
+		}
 
+		// 1.2 config and db both have no key, generate one
+		keyBytes := make([]byte, 32)
+		if _, err := rand.Read(keyBytes); err != nil {
+			return fmt.Errorf("failed to generate random encryption key: %v", err)
+		}
+		if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
+			return fmt.Errorf("failed to save random encryption key to database: %v", err)
+		}
+		logger.Infof(
+			"generated random encryption key and saved to database, key(hex): %s, key(base64): %s",
+			hex.EncodeToString(keyBytes),
+			base64.StdEncoding.EncodeToString(keyBytes),
+		)
+		return nil
+	}
+
+	configKey := cfg.Encryption.Key
+	keyBytes := configKey[:]
+	// 2. have key in config
+	// 2.1 have key in db
+	if hasDBKey {
+		// compare key in config with key in db
+		if bytes.Equal(existingKey.Key, keyBytes) {
 			logger.Infof(
-				"encryption key from config file is saved to database, key(hex): %s, key(base64): %s",
+				"encryption key in config file is the same as in database, key(hex): %s, key(base64): %s",
 				hex.EncodeToString(keyBytes),
 				base64.StdEncoding.EncodeToString(keyBytes),
 			)
 			return nil
 		}
-	}
+		// key in config is different from key in db, update config key into db
+		oldKeyHex := hex.EncodeToString(existingKey.Key)
+		oldKeyBase64 := base64.StdEncoding.EncodeToString(existingKey.Key)
+		newKeyHex := hex.EncodeToString(keyBytes)
+		newKeyBase64 := base64.StdEncoding.EncodeToString(keyBytes)
 
-	// config has no key and db has key
-	if hasDBKey {
+		if err := db.Model(&existingKey).Update("key", keyBytes).Error; err != nil {
+			return fmt.Errorf("failed to update encryption key in database: %v", err)
+		}
+
 		logger.Infof(
-			"encryption key loaded from database, key(hex): %s, key(base64): %s",
-			hex.EncodeToString(existingKey.Key),
-			base64.StdEncoding.EncodeToString(existingKey.Key),
+			"encryption key in database is overwritten by config file, old key(hex): %s, old key(base64): %s, new key(hex): %s, new key(base64): %s",
+			oldKeyHex, oldKeyBase64, newKeyHex, newKeyBase64,
 		)
 		return nil
 	}
 
-	// config and db both have no key, generate one
-	keyBytes := make([]byte, 32)
-	if _, err := rand.Read(keyBytes); err != nil {
-		return fmt.Errorf("failed to generate random encryption key: %v", err)
+	// 2.2 db has no key(may soft-deleted), config has key, write config's key into db
+	var oldKey models.EncryptionKey
+	// check soft-deleted old same key
+	err := db.Unscoped().Where("`key` = ?", keyBytes).First(&oldKey).Error
+	// old same key not found
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Fatalf("unknow failed when update encryption key in database: %v", err)
+		}
+		// not find same old key, so we can insert a new key
+		if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
+			return fmt.Errorf("failed to save encryption key to database: %v", err)
+		}
+	} else {
+		// find old same key
+		// if it is not sofe-deleted, that is fatal
+		if oldKey.IsDel == soft_delete.DeletedAt(soft_delete.FlagActived) {
+			logger.Fatalf("key should be soft deleted in this situation")
+		}
+		// restore old key
+		db.Unscoped().Model(&oldKey).Update("is_del", soft_delete.FlagActived)
+		logger.Infof("restore the key which was soft deleted before")
 	}
-	if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
-		return fmt.Errorf("failed to save random encryption key to database: %v", err)
-	}
+
 	logger.Infof(
-		"generated random encryption key and saved to database, key(hex): %s, key(base64): %s",
+		"encryption key from config file is saved to database, key(hex): %s, key(base64): %s",
 		hex.EncodeToString(keyBytes),
 		base64.StdEncoding.EncodeToString(keyBytes),
 	)
