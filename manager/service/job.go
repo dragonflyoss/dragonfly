@@ -352,6 +352,7 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 					Application:         file.Application,
 					FilteredQueryParams: file.FilteredQueryParams,
 					ConcurrentPeerCount: json.Args.ConcurrentPeerCount,
+					Timeout:             json.Args.Timeout,
 				},
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
 			}, schedulers)
@@ -405,7 +406,7 @@ func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGet
 		return nil, err
 	}
 
-	s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 3, 5, 4)
+	s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 3, 5, 60)
 	if err := s.db.WithContext(ctx).Preload("SeedPeerClusters").Preload("SchedulerClusters").First(&job, job.ID).Error; err != nil {
 		return nil, err
 	}
