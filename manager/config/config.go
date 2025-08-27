@@ -418,7 +418,8 @@ type EncryptionConfig struct {
 
 // UnmarshalText Base64
 func (e *EncryptionKey) UnmarshalText(text []byte) error {
-	logger.Infof("Base64 str: %s", string(text))
+	// TODO: avoid printing key
+	logger.Infof("base64 key str: %s", string(text))
 	keyBytes, err := base64.StdEncoding.DecodeString(string(text))
 	if err != nil {
 		return fmt.Errorf("invalid base64 key: %v", err)
