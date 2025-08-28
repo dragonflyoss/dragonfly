@@ -219,7 +219,7 @@ func TestPersistentCacheTaskIDbyContent(t *testing.T) {
 			content: "This is a test file",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "107352521")
+				assert.Equal(d, "e2d0fe1585a63ec6009c8016ff8dda8b17719a637405a4e23c0ff81339148249")
 			},
 		},
 	}
