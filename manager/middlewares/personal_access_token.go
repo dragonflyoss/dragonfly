@@ -41,20 +41,28 @@ var (
 
 func PersonalAccessToken(gdb *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get bearer token from Authorization header.
-		authorization := c.GetHeader(headers.Authorization)
-		tokenFields := strings.Fields(authorization)
-		if len(tokenFields) != 2 || tokenFields[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, ErrorResponse{
-				Message: http.StatusText(http.StatusUnauthorized),
-			})
+		// Extract personal access token from either query parameter or Authorization header.
+		// First, try to get the token from the "access_token" query parameter.
+		// If not found, extract it from the "Authorization" header using Bearer token format,
+		// return 401 Unauthorized if the Authorization header format is invalid.
+		var personalAccessToken string
+		if accessToken := strings.TrimSpace(c.Query("access_token")); accessToken != "" {
+			personalAccessToken = accessToken
+		} else {
+			authorization := c.GetHeader(headers.Authorization)
+			tokenFields := strings.Fields(authorization)
+			if len(tokenFields) != 2 || !strings.EqualFold(tokenFields[0], "Bearer") {
+				c.JSON(http.StatusUnauthorized, ErrorResponse{
+					Message: http.StatusText(http.StatusUnauthorized),
+				})
 
-			c.Abort()
-			return
+				c.Abort()
+				return
+			}
+
+			personalAccessToken = tokenFields[1]
 		}
 
-		// Check if the personal access token is valid.
-		personalAccessToken := tokenFields[1]
 		var token models.PersonalAccessToken
 		if err := gdb.WithContext(c).Where("token = ?", personalAccessToken).First(&token).Error; err != nil {
 			logger.Errorf("invalid personal access token attempt: %s, error: %v", c.Request.URL.Path, err)
