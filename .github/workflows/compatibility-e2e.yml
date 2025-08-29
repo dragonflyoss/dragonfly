@@ -41,12 +41,12 @@ jobs:
             skip: "Rate Limit | preheat files in cache"
           - module: client
             image: client
-            image-tag: v1.0.12
+            image-tag: v1.0.15
             chart-name: client
             skip: "Rate Limit"
           - module: seed-client
             image: client
-            image-tag: v1.0.12
+            image-tag: v1.0.15
             chart-name: seed-client
             skip: "Rate Limit"
 
