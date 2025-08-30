@@ -55,7 +55,41 @@ func newEvaluatorBase() Evaluator {
 	return &evaluatorBase{}
 }
 
-// EvaluateParents sort parents by evaluating multiple feature scores.
+// Weights for persistent cache parent evaluation
+type scoreWeights struct {
+	FinishedPiece           float64
+	ParentHostUploadSuccess float64
+	FreeUpload              float64
+	HostType                float64
+	IDCAffinity             float64
+	LocationAffinity        float64
+}
+
+// Default weights
+var defaultScoreWeights = scoreWeights{
+	FinishedPiece:           0.2,
+	ParentHostUploadSuccess: 0.2,
+	FreeUpload:              0.15,
+	HostType:                0.15,
+	IDCAffinity:             0.15,
+	LocationAffinity:        0.15,
+}
+
+// PersistentCache Weights
+type persistentCacheScoreWeights struct {
+	FinishedPiece    float64
+	IDCAffinity      float64
+	LocationAffinity float64
+}
+
+// Default PersistentCache weights
+var defaultPersistentCacheScoreWeights = persistentCacheScoreWeights{
+	FinishedPiece:    0.2,
+	IDCAffinity:      0.4,
+	LocationAffinity: 0.4,
+}
+
+// EvaluateParents sorts parents by evaluating multiple feature scores.
 func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standard.Peer, totalPieceCount uint32) []*standard.Peer {
 	sort.Slice(
 		parents,
@@ -67,22 +101,28 @@ func (e *evaluatorBase) EvaluateParents(parents []*standard.Peer, child *standar
 	return parents
 }
 
-// evaluateParents sort parents by evaluating multiple feature scores.
+// evaluateParents calculates the total score for a parent node, step by step for readability.
 func (e *evaluatorBase) evaluateParents(parent *standard.Peer, child *standard.Peer, totalPieceCount uint32) float64 {
-	parentLocation := parent.Host.Network.Location
-	parentIDC := parent.Host.Network.IDC
-	childLocation := child.Host.Network.Location
-	childIDC := child.Host.Network.IDC
+	w := defaultScoreWeights
 
-	return finishedPieceWeight*e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount) +
-		parentHostUploadSuccessWeight*e.calculateParentHostUploadSuccessScore(parent.Host.UploadCount.Load(), parent.Host.UploadFailedCount.Load()) +
-		freeUploadWeight*e.calculateFreeUploadScore(parent.Host) +
-		hostTypeWeight*e.calculateHostTypeScore(parent) +
-		idcAffinityWeight*e.calculateIDCAffinityScore(parentIDC, childIDC) +
-		locationAffinityWeight*e.calculateMultiElementAffinityScore(parentLocation, childLocation)
+	pieceScore := e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount)
+	uploadSuccessScore := e.calculateParentHostUploadSuccessScore(parent.Host.UploadCount.Load(), parent.Host.UploadFailedCount.Load())
+	freeUploadScore := e.calculateFreeUploadScore(parent.Host)
+	hostTypeScore := e.calculateHostTypeScore(parent)
+	idcAffinityScore := e.calculateIDCAffinityScore(parent.Host.Network.IDC, child.Host.Network.IDC)
+	locationAffinityScore := e.calculateMultiElementAffinityScore(parent.Host.Network.Location, child.Host.Network.Location)
+
+	totalScore := w.FinishedPiece*pieceScore +
+		w.ParentHostUploadSuccess*uploadSuccessScore +
+		w.FreeUpload*freeUploadScore +
+		w.HostType*hostTypeScore +
+		w.IDCAffinity*idcAffinityScore +
+		w.LocationAffinity*locationAffinityScore
+
+	return totalScore
 }
 
-// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
+// EvaluatePersistentCacheParents sorts persistent cache parents by evaluating multiple feature scores.
 func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, totalPieceCount uint32) []*persistentcache.Peer {
 	sort.Slice(
 		parents,
@@ -94,16 +134,19 @@ func (e *evaluatorBase) EvaluatePersistentCacheParents(parents []*persistentcach
 	return parents
 }
 
-// evaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
+// evaluatePersistentCacheParents calculates the total score for a persistent cache parent, step by step for readability.
 func (e *evaluatorBase) evaluatePersistentCacheParents(parent *persistentcache.Peer, child *persistentcache.Peer, totalPieceCount uint32) float64 {
-	parentLocation := parent.Host.Network.Location
-	parentIDC := parent.Host.Network.IDC
-	childLocation := child.Host.Network.Location
-	childIDC := child.Host.Network.IDC
+	w := defaultPersistentCacheScoreWeights
 
-	return finishedPieceWeight*e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount) +
-		idcAffinityWeight*e.calculateIDCAffinityScore(parentIDC, childIDC) +
-		locationAffinityWeight*e.calculateMultiElementAffinityScore(parentLocation, childLocation)
+	pieceScore := e.calculatePieceScore(parent.FinishedPieces.Count(), child.FinishedPieces.Count(), totalPieceCount)
+	idcAffinityScore := e.calculateIDCAffinityScore(parent.Host.Network.IDC, child.Host.Network.IDC)
+	locationAffinityScore := e.calculateMultiElementAffinityScore(parent.Host.Network.Location, child.Host.Network.Location)
+
+	totalScore := w.FinishedPiece*pieceScore +
+		w.IDCAffinity*idcAffinityScore +
+		w.LocationAffinity*locationAffinityScore
+
+	return totalScore
 }
 
 // calculatePieceScore 0.0~unlimited larger and better.
@@ -174,7 +217,7 @@ func (e *evaluatorBase) calculateIDCAffinityScore(dst, src string) float64 {
 	return minScore
 }
 
-// calculateMultiElementAffinityScore 0.0~1.0 larger and better.
+// calculateMultiElementAffinityScore returns a score between 0.0 and 1.0, higher is better.
 func (e *evaluatorBase) calculateMultiElementAffinityScore(dst, src string) float64 {
 	if dst == "" || src == "" {
 		return minScore
@@ -184,20 +227,18 @@ func (e *evaluatorBase) calculateMultiElementAffinityScore(dst, src string) floa
 		return maxScore
 	}
 
-	// Calculate the number of multi-element matches divided by "|".
-	var score, elementLen int
+	// Calculate the number of multi-level elements (separated by |) that match.
+	score := 0
 	dstElements := strings.Split(dst, types.AffinitySeparator)
 	srcElements := strings.Split(src, types.AffinitySeparator)
-	elementLen = min(len(dstElements), len(srcElements))
-
+	elementLen := min(len(dstElements), len(srcElements))
 	// Maximum element length is 5.
 	elementLen = min(elementLen, maxElementLen)
 
-	for i := range elementLen {
+	for i := 0; i < elementLen; i++ {
 		if !strings.EqualFold(dstElements[i], srcElements[i]) {
 			break
 		}
-
 		score++
 	}
 
