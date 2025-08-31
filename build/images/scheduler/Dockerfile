@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=alpine:3.20
 
-FROM golang:1.23.8-alpine3.20 AS builder
+FROM golang:1.25-alpine3.20 AS builder
 
 ARG GOPROXY
 ARG GOTAGS
@@ -12,7 +12,7 @@ RUN apk --no-cache add bash make gcc libc-dev git
 
 COPY . /go/src/d7y.io/dragonfly/v2
 
-RUN make build-scheduler && make install-scheduler
+RUN make && make install-scheduler
 
 FROM ${BASE_IMAGE} AS health
 

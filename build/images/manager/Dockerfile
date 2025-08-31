@@ -12,7 +12,7 @@ COPY ./manager/console /build
 
 RUN yarn build
 
-FROM golang:1.23.8-alpine3.20 AS server-builder
+FROM golang:1.25-alpine3.20 AS builder
 
 ARG GOPROXY
 ARG GOTAGS
