@@ -585,17 +585,17 @@ func (ts *trafficShaperTestSpec) run(assert *testifyassert.Assertions, require *
 		ptcs[i] = ptc
 	}
 
-	var wg = &sync.WaitGroup{}
-	wg.Add(ptcCount)
+	var wg sync.WaitGroup
 
 	var result = make([]bool, ptcCount)
 
 	for i, ptc := range ptcs {
-		go func(ptc *peerTaskConductor, i int) {
+		wg.Go(func() {
+			i := i // capture loop variable
+			ptc := ptc // capture loop variable
 			time.Sleep(ts.taskDelays[i])
 			require.Nil(ptc.start(), "peerTaskConductor start should be ok")
 			start := time.Now()
-			defer wg.Done()
 			select {
 			case <-time.After(5 * time.Minute):
 				ptc.Fail()
@@ -607,7 +607,7 @@ func (ts *trafficShaperTestSpec) run(assert *testifyassert.Assertions, require *
 			case <-ptc.failCh:
 				return
 			}
-		}(ptc, i)
+		})
 	}
 
 	wg.Wait()

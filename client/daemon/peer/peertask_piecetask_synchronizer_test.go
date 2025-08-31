@@ -85,12 +85,10 @@ func Test_watchdog(t *testing.T) {
 			}
 			watchdog.mainPeer.Store(peer)
 
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func(interval time.Duration) {
+			var wg sync.WaitGroup
+			wg.Go(func() {
 				watchdog.watch(3 * interval)
-				wg.Done()
-			}(interval)
+			})
 
 			time.Sleep(10 * interval)
 			// exit watch dog

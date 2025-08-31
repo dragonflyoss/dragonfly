@@ -528,18 +528,16 @@ func benchmarkCacheGetConcurrent(b *testing.B, exp time.Duration) {
 	b.StopTimer()
 	tc := New(exp, 0)
 	tc.Set(v1, v2, DefaultExpiration)
-	wg := new(sync.WaitGroup)
+	var wg sync.WaitGroup
 	workers := runtime.NumCPU()
 	each := b.N / workers
-	wg.Add(workers)
 	b.StartTimer()
 	for range workers {
-		go func() {
+		wg.Go(func() {
 			for range each {
 				tc.Get(v1)
 			}
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -550,20 +548,18 @@ func BenchmarkRWMutexMapGetConcurrent(b *testing.B) {
 		v1: v2,
 	}
 	mu := sync.RWMutex{}
-	wg := new(sync.WaitGroup)
+	var wg sync.WaitGroup
 	workers := runtime.NumCPU()
 	each := b.N / workers
-	wg.Add(workers)
 	b.StartTimer()
 	for range workers {
-		go func() {
+		wg.Go(func() {
 			for range each {
 				mu.RLock()
 				_, _ = m[v1]
 				mu.RUnlock()
 			}
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -590,15 +586,14 @@ func benchmarkCacheGetManyConcurrent(b *testing.B, exp time.Duration) {
 		tc.Set(k, v2, DefaultExpiration)
 	}
 	each := b.N / n
-	wg := new(sync.WaitGroup)
-	wg.Add(n)
+	var wg sync.WaitGroup
 	for _, v := range keys {
-		go func(k string) {
+		v := v // capture loop variable
+		wg.Go(func() {
 			for range each {
-				tc.Get(k)
+				tc.Get(v)
 			}
-			wg.Done()
-		}(v)
+		})
 	}
 	b.StartTimer()
 	wg.Wait()

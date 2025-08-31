@@ -826,8 +826,7 @@ func (pm *pieceManager) concurrentDownloadSourceByPieceGroup(
 	var downloadError atomic.Value
 	downloadedPieces := mapset.NewSet[int32]()
 
-	wg := sync.WaitGroup{}
-	wg.Add(con)
+	var wg sync.WaitGroup
 
 	minPieceCountPerGroup := pieceCountToDownload / int32(con)
 	reminderPieces := pieceCountToDownload % int32(con)
@@ -840,7 +839,8 @@ func (pm *pieceManager) concurrentDownloadSourceByPieceGroup(
 	//   worker 3: 1
 	//   worker 4: 1
 	for i := int32(0); i < int32(con); i++ {
-		go func(i int32) {
+		wg.Go(func() {
+			i := i // capture loop variable
 			pg := newPieceGroup(i, reminderPieces, startPieceNum, minPieceCountPerGroup, pieceSize, parsedRange)
 			log.Infof("concurrent worker %d start to download piece %d-%d, byte %d-%d", i, pg.start, pg.end, pg.startByte, pg.endByte)
 			_, _, retryErr := retry.Run(ctx,
@@ -859,8 +859,7 @@ func (pm *pieceManager) concurrentDownloadSourceByPieceGroup(
 				log.Infof("concurrent worker %d failed to download piece group after %d retries, last error: %s",
 					i, pm.concurrentOption.MaxAttempts, retryErr.Error())
 			}
-			wg.Done()
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -928,13 +927,13 @@ func (pm *pieceManager) concurrentDownloadSourceByPiece(
 	var downloadError atomic.Value
 	var pieceCh = make(chan int32, con)
 
-	wg := sync.WaitGroup{}
-	wg.Add(int(pieceCountToDownload))
+	var wg sync.WaitGroup
 
 	downloadedPieceCount := atomic.NewInt32(startPieceNum)
 
 	for i := range con {
-		go func(i int) {
+		wg.Go(func() {
+			i := i // capture loop variable
 			for {
 				select {
 				case <-ctx.Done():
@@ -963,10 +962,9 @@ func (pm *pieceManager) concurrentDownloadSourceByPiece(
 						log.Infof("concurrent worker %d failed to download piece %d after %d retries, last error: %s",
 							i, pieceNum, pm.concurrentOption.MaxAttempts, retryErr.Error())
 					}
-					wg.Done()
 				}
 			}
-		}(i)
+		})
 	}
 
 	for i := startPieceNum; i < pieceCount; i++ {

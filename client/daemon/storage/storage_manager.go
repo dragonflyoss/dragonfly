@@ -721,8 +721,7 @@ func (s *storageManager) ReloadPersistentTask(gcCallback GCCallback) {
 		return
 	}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(len(dirs))
+	var wg sync.WaitGroup
 	dirCh := make(chan string, 1000)
 	done := make(chan struct{})
 
@@ -730,17 +729,16 @@ func (s *storageManager) ReloadPersistentTask(gcCallback GCCallback) {
 	reloadGoroutineCount = min(reloadGoroutineCount, count)
 
 	for range reloadGoroutineCount {
-		go func() {
+		wg.Go(func() {
 			for {
 				select {
 				case taskID := <-dirCh:
 					s.reloadPersistentTaskByTaskDir(gcCallback, taskID)
-					wg.Done()
 				case <-done:
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	logger.Infof("start to reload task data from disk, count: %d", len(dirs))
