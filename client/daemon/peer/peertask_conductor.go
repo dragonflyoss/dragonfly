@@ -990,10 +990,9 @@ func (pt *peerTaskConductor) updateMetadata(piecePacket *commonv1.PiecePacket) {
 		pt.Debugf("update content length: %d, dst peer %s", piecePacket.ContentLength, piecePacket.DstPid)
 	} else if piecePacket.ContentLength > -1 && piecePacket.ContentLength != pt.GetContentLength() {
 		// corrupt data check
-		reason := fmt.Sprintf("corrupt data - content length did not match, current: %d, from piece packet: %d",
+		pt.Errorf("corrupt data - content length did not match, current: %d, from piece packet: %d",
 			pt.GetContentLength(), piecePacket.ContentLength)
-		pt.Errorf(reason)
-		pt.cancel(commonv1.Code_ClientError, reason)
+		pt.cancel(commonv1.Code_ClientError, "corrupt data - content length did not match")
 		return
 	}
 
@@ -1191,10 +1190,9 @@ func (pt *peerTaskConductor) isCompleted() bool {
 
 	// corrupt data check and avoid hang for mismatch completed length
 	if pt.readyPieces.Settled() == pt.totalPiece.Load() {
-		msg := fmt.Sprintf("corrupt data - ready piece count %d seems finished, but completed length %d is not match with content length: %d",
+		pt.Errorf("corrupt data - ready piece count %d seems finished, but completed length %d is not match with content length: %d",
 			pt.totalPiece.Load(), pt.completedLength.Load(), pt.GetContentLength())
-		pt.Errorf(msg)
-		pt.cancel(commonv1.Code_ClientError, msg)
+		pt.cancel(commonv1.Code_ClientError, "corrupt data - ready piece count seems finished but completed length does not match")
 		return true
 	}
 
