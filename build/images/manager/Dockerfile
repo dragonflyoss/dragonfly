@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=alpine3.22
+ARG BASE_IMAGE=alpine3.20
 
 FROM node:20-alpine AS console-builder
 
