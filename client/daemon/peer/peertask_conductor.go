@@ -746,14 +746,14 @@ loop:
 			}
 			pt.Errorf("receive peer packet with error: %d", peerPacket.Code)
 			if pt.isExitPeerPacketCode(peerPacket) {
-				pt.Errorf(pt.failedReason)
+				pt.Errorf("peer task failed: %s", pt.failedReason)
 				pt.cancel(pt.failedCode, pt.failedReason)
 				if !firstPacketReceived {
-					firstPeerSpan.RecordError(fmt.Errorf(pt.failedReason))
+					firstPeerSpan.RecordError(fmt.Errorf("peer task failed: %s", pt.failedReason))
 				}
 				pt.span.AddEvent("receive exit peer packet",
 					trace.WithAttributes(config.AttributePeerPacketCode.Int(int(peerPacket.Code))))
-				pt.span.RecordError(fmt.Errorf(pt.failedReason))
+				pt.span.RecordError(fmt.Errorf("peer task failed: %s", pt.failedReason))
 				break
 			} else {
 				pt.span.AddEvent("receive not success peer packet",
@@ -896,7 +896,7 @@ func (pt *peerTaskConductor) isExitPeerPacketCode(pp *schedulerv1.PeerPacket) bo
 		st := status.Newf(codes.Aborted, "source response is not valid")
 		st, err := st.WithDetails(pp.GetSourceError())
 		if err != nil {
-			pt.Errorf("convert source error details error: %s", err.Error())
+			pt.Errorf("convert source error details error: %s", err)
 			return false
 		}
 
@@ -1035,7 +1035,7 @@ func (pt *peerTaskConductor) waitFirstPeerPacket(done chan bool) {
 			pt.cancel(commonv1.Code_ClientScheduleTimeout, reasonBackSourceDisabled)
 			err := fmt.Errorf("%s, auto back source disabled", pt.failedReason)
 			pt.span.RecordError(err)
-			pt.Errorf(err.Error())
+			pt.Errorf("%s, auto back source disabled", pt.failedReason)
 			return
 		}
 		pt.Warnf("start download from source due to %s", reasonScheduleTimeout)

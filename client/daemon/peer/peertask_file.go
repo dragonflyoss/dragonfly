@@ -128,7 +128,7 @@ func (f *fileTask) syncProgress() {
 			f.storeToOutput()
 			return
 		case <-f.peerTaskConductor.failCh:
-			f.span.RecordError(fmt.Errorf(f.peerTaskConductor.failedReason))
+			f.span.RecordError(fmt.Errorf("peer task failed: %s", f.peerTaskConductor.failedReason))
 			f.sendFailProgress(f.peerTaskConductor.failedCode, f.peerTaskConductor.failedReason)
 			return
 		case <-f.ctx.Done():
