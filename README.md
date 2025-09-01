@@ -77,12 +77,14 @@ Join the conversation and help the community. We have a number of ways for you t
 - **Developer Group**: <dragonfly-developers@googlegroups.com>
 - **Maintainer Group**: <dragonfly-maintainers@googlegroups.com>
 - **Twitter**: [@dragonfly_oss](https://twitter.com/dragonfly_oss)
-- **DingTalk**: [22880028764](https://qr.dingtalk.com/action/joingroup?code=v1,k1,pkV9IbsSyDusFQdByPSK3HfCG61ZCLeb8b/lpQ3uUqI=&_dt_no_comment=1&origin=11)
+- **DingTalk**: If you would like to join the DingTalk group, please scan this code below:
+
+  ![DingTalk QRCode](docs/images/community/dingtalk-group.jpeg)
 
 and you can also seek the main community information in the [community repository](https://github.com/dragonflyoss/community).
 In this repository, you can find the [community meeting minutes, community meeting notes, and more](https://github.com/dragonflyoss/community/tree/master/meetings).
 
-We wonderinng if you have any questions or suggestions, please feel free to feedback to us through the above channels.
+We wondering if you have any questions or suggestions, please feel free to feedback to us through the above channels.
 
 ## Roadmap
 
