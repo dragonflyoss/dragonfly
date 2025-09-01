@@ -132,10 +132,10 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 
 	// Initialize encryption key
 	if cfg.Encryption.Enable {
-		logger.Infof("encryption enabled")
 		if err := initializeEncryptionKey(cfg, db.DB); err != nil {
 			return nil, err
 		}
+		logger.Infof("encryption enabled")
 	} else {
 		logger.Infof("encryption disabled")
 	}
@@ -270,10 +270,6 @@ func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
 
 // initializeEncryptionKey
 func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
-	// db.Delete(&models.EncryptionKey{}, "1 = 1")
-
-	// TODO: manually use cache or gorm auto cache?
-	// TODO: avoid printing key
 	var existingKey models.EncryptionKey
 	hasDBKey := false
 	if err := db.First(&existingKey).Error; err == nil {
