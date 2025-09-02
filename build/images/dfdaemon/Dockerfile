@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=alpine3.20
 
-FROM golang:1.25-alpine3.20 AS builder
+FROM golang:1.25.0 AS builder
 
 
 ARG GOPROXY
