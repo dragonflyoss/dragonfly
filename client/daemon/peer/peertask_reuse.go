@@ -161,7 +161,7 @@ func (ptm *peerTaskManager) tryReuseFilePeerTask(ctx context.Context,
 		// KeepOriginalOffset case
 		if length > 0 && stat.Size() == 0 {
 			err = fmt.Errorf("reuse failed, output file size is zero, but target length %d is not zero", length)
-			log.Errorf(err.Error())
+			log.Errorf("reuse failed, output file size is zero, but target length %d is not zero", length)
 			span.SetAttributes(config.AttributePeerTaskSuccess.Bool(false))
 			span.RecordError(err)
 			return nil, false
@@ -169,7 +169,7 @@ func (ptm *peerTaskManager) tryReuseFilePeerTask(ctx context.Context,
 	} else if length != stat.Size() {
 		// normal case
 		err = fmt.Errorf("reuse failed, output file size %d is not same with target length %d", stat.Size(), length)
-		log.Errorf(err.Error())
+		log.Errorf("reuse failed, output file size %d is not same with target length %d", stat.Size(), length)
 		span.SetAttributes(config.AttributePeerTaskSuccess.Bool(false))
 		span.RecordError(err)
 		return nil, false

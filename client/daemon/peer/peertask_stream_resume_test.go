@@ -209,11 +209,9 @@ func TestStreamPeerTask_Resume(t *testing.T) {
 		PeerHost: &schedulerv1.PeerHost{},
 	}
 	ctx := context.Background()
-	wg := &sync.WaitGroup{}
+	var wg sync.WaitGroup
 
 	// set up parent task
-	wg.Add(1)
-
 	pt, err := ptm.newStreamTask(ctx, taskID, req, nil)
 	assert.Nil(err, "new parent stream peer task")
 
@@ -222,12 +220,11 @@ func TestStreamPeerTask_Resume(t *testing.T) {
 
 	ptc := pt.peerTaskConductor
 
-	go func() {
+	wg.Go(func() {
 		outputBytes, err := io.ReadAll(rc)
 		assert.Nil(err, "load read data")
 		assert.Equal(testBytes, outputBytes, "output and desired output must match")
-		wg.Done()
-	}()
+	})
 
 	ranges := []*http.Range{
 		{
@@ -252,9 +249,9 @@ func TestStreamPeerTask_Resume(t *testing.T) {
 		},
 	}
 
-	wg.Add(len(ranges))
 	for _, rg := range ranges {
-		go func(rg *http.Range) {
+		rg := rg // capture loop variable
+		wg.Go(func() {
 			pt := ptm.newResumeStreamTask(ctx, ptc, rg)
 			assert.NotNil(pt, "new stream peer task")
 
@@ -272,8 +269,7 @@ func TestStreamPeerTask_Resume(t *testing.T) {
 			assert.Nil(err, "load read data")
 			assert.Equal(len(testBytes[rg.Start:rg.Start+rg.Length]), len(outputBytes), "output and desired output length must match")
 			assert.Equal(string(testBytes[rg.Start:rg.Start+rg.Length]), string(outputBytes), "output and desired output must match")
-			wg.Done()
-		}(rg)
+		})
 	}
 
 	wg.Wait()

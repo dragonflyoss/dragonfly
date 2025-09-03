@@ -69,12 +69,10 @@ func TestSafeSetAdd_Concurrent(t *testing.T) {
 	nums := rand.Perm(N)
 
 	var wg sync.WaitGroup
-	wg.Add(len(nums))
 	for i := range len(nums) {
-		go func(i int) {
+		wg.Go(func() {
 			s.Add(i)
-			wg.Done()
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -130,12 +128,11 @@ func TestSafeSetDelete_Concurrent(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(nums))
 	for _, v := range nums {
-		go func(i int) {
-			s.Delete(i)
-			wg.Done()
-		}(v)
+		v := v // capture loop variable
+		wg.Go(func() {
+			s.Delete(v)
+		})
 	}
 	wg.Wait()
 
@@ -190,11 +187,9 @@ func TestSafeSetContains_Concurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range nums {
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			s.Contains(interfaces...)
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -235,8 +230,7 @@ func TestSafeSetLen_Concurrent(t *testing.T) {
 	s := NewSafeSet[int]()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		elems := s.Len()
 		for range N {
 			newElems := s.Len()
@@ -244,8 +238,7 @@ func TestSafeSetLen_Concurrent(t *testing.T) {
 				t.Errorf("Len shrunk from %v to %v", elems, newElems)
 			}
 		}
-		wg.Done()
-	}()
+	})
 
 	for range N {
 		s.Add(rand.Int())
@@ -299,8 +292,7 @@ func TestSafeSetValues_Concurrent(t *testing.T) {
 	s := NewSafeSet[int]()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		elems := s.Values()
 		for range N {
 			newElems := s.Values()
@@ -308,8 +300,7 @@ func TestSafeSetValues_Concurrent(t *testing.T) {
 				t.Errorf("Values shrunk from %v to %v", elems, newElems)
 			}
 		}
-		wg.Done()
-	}()
+	})
 
 	for i := range N {
 		s.Add(i)

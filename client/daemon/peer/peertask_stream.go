@@ -164,7 +164,7 @@ func (s *streamTask) Start(ctx context.Context) (io.ReadCloser, map[string]strin
 		return nil, attr, ctx.Err()
 	case <-s.peerTaskConductor.failCh:
 		err := s.peerTaskConductor.getFailedError()
-		s.Errorf("wait first piece failed due to %s", err.Error())
+		s.Errorf("wait first piece failed due to %s", err)
 		return nil, attr, err
 	case <-s.peerTaskConductor.successCh:
 		if s.peerTaskConductor.GetContentLength() != -1 {
@@ -174,7 +174,7 @@ func (s *streamTask) Start(ctx context.Context) (io.ReadCloser, map[string]strin
 		}
 		exa, err := s.peerTaskConductor.storage.GetExtendAttribute(ctx, nil)
 		if err != nil {
-			s.Errorf("read extend attribute error due to %s ", err.Error())
+			s.Errorf("read extend attribute error due to %s ", err)
 			return nil, attr, err
 		}
 		if exa != nil {
@@ -255,13 +255,14 @@ func (s *streamTask) writeToPipe(desired int32, piece *PieceInfo, pw *io.PipeWri
 			return
 		case <-s.ctx.Done():
 			err = fmt.Errorf("context done due to: %s", s.ctx.Err())
-			s.Errorf(err.Error())
+			s.Errorf("context done due to: %s", s.ctx.Err())
 			s.closeWithError(pw, err)
 			return
 		case <-s.peerTaskConductor.failCh:
 			err = fmt.Errorf("stream close with peer task fail: %d/%s",
 				s.peerTaskConductor.failedCode, s.peerTaskConductor.failedReason)
-			s.Errorf(err.Error())
+			s.Errorf("stream close with peer task fail: %d/%s",
+				s.peerTaskConductor.failedCode, s.peerTaskConductor.failedReason)
 			s.closeWithError(pw, err)
 			return
 		}
@@ -352,7 +353,7 @@ func (s *resumeStreamTask) Start(ctx context.Context) (io.ReadCloser, map[string
 			return nil, attr, ctx.Err()
 		case <-s.peerTaskConductor.failCh:
 			err := s.peerTaskConductor.getFailedError()
-			s.Errorf("wait next piece failed due to %s", err.Error())
+			s.Errorf("wait next piece failed due to %s", err)
 			return nil, attr, err
 		case <-s.peerTaskConductor.successCh:
 			goto pieceReady
@@ -366,7 +367,7 @@ func (s *resumeStreamTask) Start(ctx context.Context) (io.ReadCloser, map[string
 pieceReady:
 	exa, err := s.peerTaskConductor.storage.GetExtendAttribute(ctx, nil)
 	if err != nil {
-		s.Errorf("read extend attribute error due to %s ", err.Error())
+		s.Errorf("read extend attribute error due to %s ", err)
 		return nil, attr, err
 	}
 	if exa != nil {
@@ -400,13 +401,14 @@ pieceReady:
 			n, err := s.writePartialPiece(pw, nextPiece, skipBytesInNextPiece)
 			if err != nil {
 				err = fmt.Errorf("write partial piece %d to pipe failed: %s", nextPiece, err.Error())
-				s.Errorf(err.Error())
+				s.Errorf("write partial piece %d to pipe failed: %s", nextPiece, err)
 				s.closeWithError(pw, err)
 				return
 			} else if n < int64(pieceSize)-skipBytesInNextPiece {
 				err = fmt.Errorf("write partial piece %d to pipe failed: short write, desire: %d, actual: %d",
 					nextPiece, int64(pieceSize)-skipBytesInNextPiece, n)
-				s.Errorf(err.Error())
+				s.Errorf("write partial piece %d to pipe failed: short write, desire: %d, actual: %d",
+					nextPiece, int64(pieceSize)-skipBytesInNextPiece, n)
 				s.closeWithError(pw, err)
 				return
 			}
