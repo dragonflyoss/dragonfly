@@ -126,6 +126,11 @@ func MakeSchedulersKeyForPeerInManager(hostname, ip, version string) string {
 	return MakeKeyInManager(PeersNamespace, fmt.Sprintf("%s-%s-%s:schedulers", hostname, ip, version))
 }
 
+// MakeSchedulersByClusterIDKeyForPeerInManager make schedulers by cluster ID key for peer in manager.
+func MakeSchedulersByClusterIDKeyForPeerInManager(schedulerClusterID uint) string {
+	return MakeKeyInManager(SchedulerClustersNamespace, fmt.Sprintf("%d:schedulers", schedulerClusterID))
+}
+
 // MakeSchedulerClusterKeyInManager make distributed rate limiter key in manager.
 func MakeDistributedRateLimiterKeyInManager(key string) string {
 	return MakeKeyInManager(RateLimitersNamespace, key)

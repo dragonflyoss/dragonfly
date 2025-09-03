@@ -722,7 +722,7 @@ func (s *managerServerV2) listSchedulersByClusterID(ctx context.Context, req *ma
 
 	// Cache hit.
 	var pbListSchedulersResponse managerv2.ListSchedulersResponse
-	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip, req.Version)
+	cacheKey := pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(req.SchedulerClusterId))
 
 	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
 		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
