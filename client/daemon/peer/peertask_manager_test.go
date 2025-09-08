@@ -843,13 +843,11 @@ func (ts *testSpec) runConductorTest(assert *testifyassert.Assertions, require *
 	assert.True(created, "should create a new peerTaskConductor")
 
 	var ptcCount = 100
-	var wg = &sync.WaitGroup{}
-	wg.Add(ptcCount + 1)
+	var wg sync.WaitGroup
 
 	var result = make([]bool, ptcCount)
 
-	go func(ptc *peerTaskConductor) {
-		defer wg.Done()
+	wg.Go(func() {
 		select {
 		case <-time.After(5 * time.Minute):
 			ptc.Fail()
@@ -858,11 +856,10 @@ func (ts *testSpec) runConductorTest(assert *testifyassert.Assertions, require *
 		case <-ptc.failCh:
 			return
 		}
-	}(ptc)
+	})
 
 	syncFunc := func(i int, ptc *peerTaskConductor) {
 		pieceCh := ptc.broker.Subscribe()
-		defer wg.Done()
 		for {
 			select {
 			case <-pieceCh:

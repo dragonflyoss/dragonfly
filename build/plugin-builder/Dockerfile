@@ -1,4 +1,4 @@
-FROM golang:1.23.8-alpine3.20
+FROM golang:1.25.0  AS builder
 
 ARG GOPROXY
 ARG GOTAGS

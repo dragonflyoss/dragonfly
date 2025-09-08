@@ -129,7 +129,7 @@ func (proxy *Proxy) handleTLSConn(clientConn net.Conn, port int) {
 	}
 
 	// We have to wait until the connection is closed
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	wg.Add(1)
 	// NOTE: http.Serve always returns a non-nil error
 	err = http.Serve(&singleUseListener{&customCloseConn{tlsConn, wg.Done}}, rp)

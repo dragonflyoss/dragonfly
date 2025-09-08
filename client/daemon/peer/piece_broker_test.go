@@ -106,7 +106,7 @@ func TestBroker(t *testing.T) {
 			done := make(chan struct{})
 			var received []*PieceInfo
 
-			wg := sync.WaitGroup{}
+			var wg sync.WaitGroup
 			wg.Add(len(tc.pubSeq))
 			go func() {
 				for {

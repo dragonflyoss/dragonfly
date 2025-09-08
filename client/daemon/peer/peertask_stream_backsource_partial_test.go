@@ -153,7 +153,7 @@ func setupBackSourcePartialComponents(ctrl *gomock.Controller, testBytes []byte,
 	// 2. setup a scheduler
 	pps := schedulerv1mocks.NewMockScheduler_ReportPieceResultClient(ctrl)
 	var (
-		wg             = sync.WaitGroup{}
+		wg             sync.WaitGroup
 		backSourceSent = atomic.Bool{}
 	)
 	wg.Add(1)

@@ -554,7 +554,7 @@ func (proxy *Proxy) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// We have to wait until the connection is closed
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	wg.Add(1)
 	// NOTE: http.Serve always returns a non-nil error
 	err = http.Serve(&singleUseListener{&customCloseConn{sConn, wg.Done}}, rp)
@@ -734,15 +734,13 @@ func tunnelHTTPS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	var wg sync.WaitGroup
+	wg.Go(func() {
 		if _, err := io.Copy(dst, clientConn); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			logger.Errorf("copy hijacked stream from client to destination error: %s", err)
 		}
-		wg.Done()
-	}()
+	})
 
 	if _, err := io.Copy(clientConn, dst); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

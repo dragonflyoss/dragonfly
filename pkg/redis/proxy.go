@@ -94,10 +94,10 @@ func (p *proxy) handleConn(conn net.Conn) {
 	}
 	defer rConn.Close()
 
-	wg := &sync.WaitGroup{}
+	var wg sync.WaitGroup
 	wg.Add(2)
-	go p.copy(rConn, conn, wg)
-	go p.copyReader(reader, rConn, wg)
+	go p.copy(rConn, conn, &wg)
+	go p.copyReader(reader, rConn, &wg)
 	wg.Wait()
 }
 
