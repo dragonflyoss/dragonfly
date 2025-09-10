@@ -981,8 +981,9 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 func (s *managerServerV2) RequestEncryptionKey(ctx context.Context, req *managerv2.RequestEncryptionKeyRequest) (*managerv2.RequestEncryptionKeyResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	if !s.config.Encryption.Enable {
-		// TODO: new error code in drgonfly-api?
-		return nil, status.Error(codes.Unavailable, "encryption is disabled")
+		return &managerv2.RequestEncryptionKeyResponse{
+			Status: managerv2.EncryptionStatus_ENCRYPTION_DISABLED,
+		}, nil
 	}
 	// Get key from db
 	var encKey models.EncryptionKey
@@ -992,6 +993,7 @@ func (s *managerServerV2) RequestEncryptionKey(ctx context.Context, req *manager
 	}
 
 	return &managerv2.RequestEncryptionKeyResponse{
+		Status:        managerv2.EncryptionStatus_ENCRYPTION_ENABLED,
 		EncryptionKey: encKey.Key,
 	}, nil
 }
