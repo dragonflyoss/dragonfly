@@ -77,16 +77,17 @@ func TestPeerManager_Load(t *testing.T) {
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "nohost"),
 				).SetVal(map[string]string{
-					"id":              "nohost",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "nohost",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			expectedPeer:   nil,
@@ -110,16 +111,17 @@ func TestPeerManager_Load(t *testing.T) {
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "notask"),
 				).SetVal(map[string]string{
-					"id":              "notask",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "notask",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			expectedPeer:   nil,
@@ -137,16 +139,17 @@ func TestPeerManager_Load(t *testing.T) {
 				}
 
 				mockData := map[string]string{
-					"id":              "goodpeer",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "127.0.0.1-foo",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "goodpeer",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "127.0.0.1-foo",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				}
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "goodpeer"),
@@ -181,6 +184,7 @@ func TestPeerManager_Load(t *testing.T) {
 				time.Now(),
 				time.Now(),
 				logger.WithPeer("host1", "task1", "goodpeer"),
+				WithConcurrentPieceCount(1),
 			),
 			expectedLoaded: true,
 		},
@@ -220,6 +224,7 @@ func TestPeerManager_Load(t *testing.T) {
 				assert.Equal(t, tt.expectedPeer.ID, got.ID)
 				assert.Equal(t, tt.expectedPeer.FSM.Current(), got.FSM.Current())
 				assert.Equal(t, tt.expectedPeer.Persistent, got.Persistent)
+				assert.Equal(t, tt.expectedPeer.ConcurrentPieceCount, got.ConcurrentPieceCount)
 				assert.Equal(t, tt.expectedPeer.FinishedPieces, got.FinishedPieces)
 				assert.Equal(t, tt.expectedPeer.BlockParents, got.BlockParents)
 				assert.Equal(t, tt.expectedPeer.Task.ID, got.Task.ID)
@@ -281,16 +286,17 @@ func TestPeerManager_LoadAll(t *testing.T) {
 
 				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentCachePeersInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:peer1", pkgredis.MakePersistentCachePeersInScheduler(42))}, 0)
 				mock.ExpectHGetAll(pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1")).SetVal(map[string]string{
-					"id":              "peer1",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "peer1",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			mock: func(hostManager *MockHostManager, mockHostManager *MockHostManagerMockRecorder, taskManager *MockTaskManager, mockTaskManager *MockTaskManagerMockRecorder) {
@@ -323,6 +329,7 @@ func TestPeerManager_LoadAll(t *testing.T) {
 					time.Now(),
 					time.Now(),
 					logger.WithPeer("host1", "task1", "peer1"),
+					WithConcurrentPieceCount(1),
 				),
 			},
 			expectedErr: false,
@@ -429,16 +436,17 @@ func TestPeerManager_LoadAllByTaskID(t *testing.T) {
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1"),
 				).SetVal(map[string]string{
-					"id":              "peer1",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "peer1",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			mock: func(hostManager *MockHostManager, mockHostManager *MockHostManagerMockRecorder, taskManager *MockTaskManager, mockTaskManager *MockTaskManagerMockRecorder) {
@@ -471,6 +479,7 @@ func TestPeerManager_LoadAllByTaskID(t *testing.T) {
 					time.Now(),
 					time.Now(),
 					logger.WithPeer("host1", "task1", "peer1"),
+					WithConcurrentPieceCount(1),
 				),
 			},
 			expectedErr: false,
@@ -654,16 +663,17 @@ func TestPeerManager_LoadPersistentAllByTaskID(t *testing.T) {
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1"),
 				).SetVal(map[string]string{
-					"id":              "peer1",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "peer1",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			mock: func(hostManager *MockHostManager, mockHostManager *MockHostManagerMockRecorder, taskManager *MockTaskManager, mockTaskManager *MockTaskManagerMockRecorder) {
@@ -696,6 +706,7 @@ func TestPeerManager_LoadPersistentAllByTaskID(t *testing.T) {
 					time.Now(),
 					time.Now(),
 					logger.WithPeer("host1", "task1", "peer1"),
+					WithConcurrentPieceCount(1),
 				),
 			},
 			expectedErr: false,
@@ -868,16 +879,17 @@ func TestPeerManager_LoadAllByHostID(t *testing.T) {
 				mock.ExpectHGetAll(
 					pkgredis.MakePersistentCachePeerKeyInScheduler(42, "peer1"),
 				).SetVal(map[string]string{
-					"id":              "peer1",
-					"state":           PeerStateSucceeded,
-					"persistent":      "true",
-					"finished_pieces": string(finishedPieces),
-					"block_parents":   `["parent1", "parent2"]`,
-					"task_id":         "task1",
-					"host_id":         "host1",
-					"cost":            strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
-					"created_at":      time.Now().Format(time.RFC3339),
-					"updated_at":      time.Now().Format(time.RFC3339),
+					"id":                     "peer1",
+					"state":                  PeerStateSucceeded,
+					"persistent":             "true",
+					"concurrent_piece_count": "1",
+					"finished_pieces":        string(finishedPieces),
+					"block_parents":          `["parent1", "parent2"]`,
+					"task_id":                "task1",
+					"host_id":                "host1",
+					"cost":                   strconv.FormatUint(uint64(time.Second.Nanoseconds()), 10),
+					"created_at":             time.Now().Format(time.RFC3339),
+					"updated_at":             time.Now().Format(time.RFC3339),
 				})
 			},
 			mock: func(hostManager *MockHostManager, mockHostManager *MockHostManagerMockRecorder, taskManager *MockTaskManager, mockTaskManager *MockTaskManagerMockRecorder) {
@@ -910,6 +922,7 @@ func TestPeerManager_LoadAllByHostID(t *testing.T) {
 					time.Now(),
 					time.Now(),
 					logger.WithPeer("host1", "task1", "peer1"),
+					WithConcurrentPieceCount(1),
 				),
 			},
 			expectedErr: false,

@@ -277,13 +277,14 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 	}
 
 	resp := &commonv2.Peer{
-		Id:               peer.ID,
-		Priority:         peer.Priority,
-		Cost:             durationpb.New(peer.Cost.Load()),
-		State:            peer.FSM.Current(),
-		NeedBackToSource: peer.NeedBackToSource.Load(),
-		CreatedAt:        timestamppb.New(peer.CreatedAt.Load()),
-		UpdatedAt:        timestamppb.New(peer.UpdatedAt.Load()),
+		Id:                   peer.ID,
+		Priority:             peer.Priority,
+		ConcurrentPieceCount: peer.ConcurrentPieceCount,
+		Cost:                 durationpb.New(peer.Cost.Load()),
+		State:                peer.FSM.Current(),
+		NeedBackToSource:     peer.NeedBackToSource.Load(),
+		CreatedAt:            timestamppb.New(peer.CreatedAt.Load()),
+		UpdatedAt:            timestamppb.New(peer.UpdatedAt.Load()),
 	}
 
 	// Set range to response.
@@ -1598,6 +1599,10 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			options = append(options, standard.WithRange(http.Range{Start: int64(download.Range.GetStart()), Length: int64(download.Range.GetLength())}))
 		}
 
+		if download.ConcurrentPieceCount != nil {
+			options = append(options, standard.WithConcurrentPieceCount(download.GetConcurrentPieceCount()))
+		}
+
 		peer = standard.NewPeer(peerID, task, host, options...)
 		v.resource.PeerManager().Store(peer)
 	}
@@ -1712,7 +1717,7 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_RegisterPersistentCachePeerRequest:
 			registerPersistentCachePeerRequest := announcePersistentCachePeerRequest.RegisterPersistentCachePeerRequest
 			log.Info("receive RegisterPersistentCachePeerRequest")
-			if err := v.handleRegisterPersistentCachePeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPersistentCachePeerRequest.GetPersistent()); err != nil {
+			if err := v.handleRegisterPersistentCachePeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPersistentCachePeerRequest.GetPersistent(), registerPersistentCachePeerRequest.ConcurrentPieceCount); err != nil {
 				// If the peer register failed, and set the peer state to failed. Peer will not need to report
 				// the message of the peer download failed.
 				if err := v.handleDownloadPersistentCachePeerFailedRequest(ctx, req.GetPeerId()); err != nil {
@@ -1802,7 +1807,7 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 }
 
 // handleRegisterPersistentCachePeerRequest handles RegisterPersistentCachePeerRequest of AnnouncePersistentCachePeerRequest.
-func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentCachePeerServer, hostID, taskID, peerID string, persistent bool) error {
+func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentCachePeerServer, hostID, taskID, peerID string, persistent bool, concurrentPieceCount *uint32) error {
 	host, loaded := v.persistentCacheResource.HostManager().Load(ctx, hostID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "host %s not found", hostID)
@@ -1813,7 +1818,12 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 		return status.Errorf(codes.NotFound, "task %s not found", taskID)
 	}
 
-	peer := persistentcache.NewPeer(peerID, persistentcache.PeerStatePending, persistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID))
+	options := []persistentcache.PeerOption{}
+	if concurrentPieceCount != nil {
+		options = append(options, persistentcache.WithConcurrentPieceCount(*concurrentPieceCount))
+	}
+
+	peer := persistentcache.NewPeer(peerID, persistentcache.PeerStatePending, persistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
 
 	// Collect RegisterPersistentCachePeerCount metrics.
 	metrics.RegisterPersistentCachePeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()
@@ -1891,10 +1901,11 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 		candidateParents := make([]*commonv2.PersistentCachePeer, 0, len(parents))
 		for _, parent := range parents {
 			candidateParents = append(candidateParents, &commonv2.PersistentCachePeer{
-				Id:         parent.ID,
-				Persistent: parent.Persistent,
-				Cost:       durationpb.New(parent.Cost),
-				State:      parent.FSM.Current(),
+				Id:                   parent.ID,
+				Persistent:           parent.Persistent,
+				ConcurrentPieceCount: parent.ConcurrentPieceCount,
+				Cost:                 durationpb.New(parent.Cost),
+				State:                parent.FSM.Current(),
 				Task: &commonv2.PersistentCacheTask{
 					Id:                            parent.Task.ID,
 					PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
@@ -2087,10 +2098,11 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 	candidateParents := make([]*commonv2.PersistentCachePeer, 0, len(parents))
 	for _, parent := range parents {
 		candidateParents = append(candidateParents, &commonv2.PersistentCachePeer{
-			Id:         parent.ID,
-			Persistent: parent.Persistent,
-			Cost:       durationpb.New(parent.Cost),
-			State:      parent.FSM.Current(),
+			Id:                   parent.ID,
+			Persistent:           parent.Persistent,
+			ConcurrentPieceCount: parent.ConcurrentPieceCount,
+			Cost:                 durationpb.New(parent.Cost),
+			State:                parent.FSM.Current(),
 			Task: &commonv2.PersistentCacheTask{
 				Id:                            parent.Task.ID,
 				PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
@@ -2348,12 +2360,13 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 	}
 
 	return &commonv2.PersistentCachePeer{
-		Id:         peer.ID,
-		Persistent: peer.Persistent,
-		State:      peer.FSM.Current(),
-		Cost:       durationpb.New(peer.Cost),
-		CreatedAt:  timestamppb.New(peer.CreatedAt),
-		UpdatedAt:  timestamppb.New(peer.UpdatedAt),
+		Id:                   peer.ID,
+		Persistent:           peer.Persistent,
+		ConcurrentPieceCount: peer.ConcurrentPieceCount,
+		State:                peer.FSM.Current(),
+		Cost:                 durationpb.New(peer.Cost),
+		CreatedAt:            timestamppb.New(peer.CreatedAt),
+		UpdatedAt:            timestamppb.New(peer.UpdatedAt),
 		Task: &commonv2.PersistentCacheTask{
 			Id:                            peer.Task.ID,
 			PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
