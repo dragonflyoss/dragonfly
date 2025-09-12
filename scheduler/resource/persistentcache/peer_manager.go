@@ -157,6 +157,12 @@ func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 		return nil, false
 	}
 
+	concurrentPieceCount, err := strconv.ParseUint(rawPeer["concurrent_piece_count"], 10, 32)
+	if err != nil {
+		log.Errorf("parsing concurrent piece count failed: %v", err)
+		return nil, false
+	}
+
 	return NewPeer(
 		rawPeer["id"],
 		rawPeer["state"],
@@ -169,6 +175,7 @@ func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 		createdAt,
 		updatedAt,
 		logger.WithPeer(host.ID, task.ID, rawPeer["id"]),
+		WithConcurrentPieceCount(uint32(concurrentPieceCount)),
 	), true
 }
 
@@ -211,6 +218,7 @@ local cost = ARGV[8]
 local created_at = ARGV[9]
 local updated_at = ARGV[10]
 local ttl_seconds = tonumber(ARGV[11])
+local concurrent_piece_count = ARGV[12]
 
 -- Store peer information
 redis.call("HSET", peer_key,
@@ -223,7 +231,8 @@ redis.call("HSET", peer_key,
     "host_id", host_id,
     "cost", cost,
     "created_at", created_at,
-    "updated_at", updated_at)
+    "updated_at", updated_at,
+		"concurrent_piece_count", concurrent_piece_count)
 
 -- Set expiration for the peer key
 redis.call("EXPIRE", peer_key, ttl_seconds)
@@ -268,6 +277,7 @@ return true
 		peer.Cost.Nanoseconds(),
 		peer.CreatedAt.Format(time.RFC3339),
 		peer.UpdatedAt.Format(time.RFC3339),
+		peer.ConcurrentPieceCount,
 		remainingTTLSeconds,
 	}
 

@@ -46,6 +46,10 @@ import (
 const (
 	// Download tiny file timeout.
 	downloadTinyFileContextTimeout = 30 * time.Second
+
+	// defaultConcurrentPieceCount is the fallback value for concurrent pieces per peer
+	// when ConcurrentPieceCount is not reported by the client.
+	defaultConcurrentPieceCount uint32 = 8
 )
 
 const (
@@ -133,6 +137,13 @@ func WithRange(rg nethttp.Range) PeerOption {
 	}
 }
 
+// WithConcurrentPieceCount set ConcurrentPieceCount for peer.
+func WithConcurrentPieceCount(count uint32) PeerOption {
+	return func(p *Peer) {
+		p.ConcurrentPieceCount = count
+	}
+}
+
 // Peer contains content for peer.
 type Peer struct {
 	// ID is peer id.
@@ -163,6 +174,9 @@ type Peer struct {
 	// AnnouncePeerStream is the grpc stream of Scheduler_AnnouncePeerServer,
 	// Used only in v2 version of the grpc.
 	AnnouncePeerStream *atomic.Value
+
+	// ConcurrentPieceCount is the number of pieces that can be downloaded concurrently.
+	ConcurrentPieceCount uint32
 
 	// Peer state machine.
 	FSM *fsm.FSM
@@ -201,6 +215,7 @@ func NewPeer(id string, task *Task, host *Host, options ...PeerOption) *Peer {
 	p := &Peer{
 		ID:                      id,
 		Priority:                commonv2.Priority_LEVEL0,
+		ConcurrentPieceCount:    defaultConcurrentPieceCount,
 		Pieces:                  &sync.Map{},
 		FinishedPieces:          &bitset.BitSet{},
 		pieceCosts:              []time.Duration{},
