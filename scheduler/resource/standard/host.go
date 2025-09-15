@@ -153,12 +153,6 @@ type Host struct {
 	// Port is grpc service port.
 	Port int32
 
-	// Port is tcp service port.
-	TCPPort int32
-
-	// Port is quic service port.
-	QUICPort int32
-
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
@@ -234,6 +228,12 @@ type Host struct {
 
 	// Host log.
 	Log *logger.SugaredLoggerOnWith
+
+	// Port is tcp service port.
+	TCPPort int32
+
+	// Port is quic service port.
+	QUICPort int32
 }
 
 // CPU contains content for cpu.
