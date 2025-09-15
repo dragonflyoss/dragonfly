@@ -230,10 +230,10 @@ type Host struct {
 	Log *logger.SugaredLoggerOnWith
 
 	// Port is tcp service port.
-	TCPPort int32
+	DownloadTCPPort int32
 
 	// Port is quic service port.
-	QUICPort int32
+	DownloadQUICPort int32
 }
 
 // CPU contains content for cpu.
