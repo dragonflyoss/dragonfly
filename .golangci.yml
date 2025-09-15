@@ -1,9 +1,8 @@
 version: "2"
 run:
   modules-download-mode: readonly
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - goconst
@@ -11,33 +10,48 @@ linters:
     - govet
     - misspell
     - staticcheck
-    - gci
-    - gofmt
-
-linters-settings:
-  gocyclo:
-    min-complexity: 100
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(d7y.io/api)
-      - prefix(d7y.io/dragonfly/v2)
-
+  settings:
+    gocyclo:
+      min-complexity: 100
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: 'SA1019:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
   new: true
-  exclude-rules:
-    - linters:
-        - staticcheck
-      text: 'SA1019:'
-  exclude-dirs:
-    - third_party
-    - builtin
-    - examples
+formatters:
+  enable:
+    - gci
+    - gofmt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(d7y.io/api)
+        - prefix(d7y.io/dragonfly/v2)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 
 output:
   formats:
-    - format: tab
+    text:
       path: stdout
-  print-linter-name: true
-  print-issued-lines: true
+      print-linter-name: true
+      print-issued-lines: true
+      colors: true
