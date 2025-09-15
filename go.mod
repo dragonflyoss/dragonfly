@@ -1,9 +1,9 @@
 module d7y.io/dragonfly/v2
 
-go 1.23.8
+go 1.24.0
 
 require (
-	cloud.google.com/go/storage v1.50.0
+	cloud.google.com/go/storage v1.53.0
 	d7y.io/api/v2 v2.1.60
 	github.com/MysteriousPotato/go-lockable v1.0.0
 	github.com/Showmax/go-fqdn v1.0.0
@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/dragonflyoss/machinery v1.10.14
 	github.com/elastic/go-freelru v0.16.0
-	github.com/fsouza/fake-gcs-server v1.52.2
+	github.com/fsouza/fake-gcs-server v1.52.3
 	github.com/gaius-qi/ping v1.0.0
 	github.com/gammazero/deque v1.1.0
 	github.com/gin-contrib/gzip v1.2.3
@@ -109,17 +109,18 @@ require (
 
 require (
 	cel.dev/expr v0.24.0 // indirect
-	cloud.google.com/go v0.120.0 // indirect
+	cloud.google.com/go v0.121.1 // indirect
 	cloud.google.com/go/auth v0.16.5 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.8.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
 	cloud.google.com/go/monitoring v1.24.2 // indirect
 	cloud.google.com/go/pubsub v1.49.0 // indirect
+	cloud.google.com/go/pubsub/v2 v2.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.29.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.50.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.50.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.51.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.51.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/hcsshim v0.9.12 // indirect
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
