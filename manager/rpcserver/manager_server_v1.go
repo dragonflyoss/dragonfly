@@ -546,7 +546,7 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 
 	// Cache miss and search scheduler cluster.
 	var schedulerClusters []models.SchedulerCluster
-	
+
 	// Check if the requesting host is a seedpeer to restrict scheduler clusters accordingly
 	var seedPeer models.SeedPeer
 	isSeedPeer := s.db.WithContext(ctx).Preload("SeedPeerCluster.SchedulerClusters.Schedulers", "state = ?", "active").
@@ -556,7 +556,7 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 			IP:       req.Ip,
 			State:    models.SeedPeerStateActive,
 		}).Error == nil
-	
+
 	if isSeedPeer {
 		// If requesting host is a seedpeer, only return scheduler clusters associated with its seedpeer cluster
 		log.Debugf("requesting host %s is a seedpeer in cluster %d, filtering scheduler clusters", req.Hostname, seedPeer.SeedPeerClusterID)
