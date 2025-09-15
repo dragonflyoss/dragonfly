@@ -41,10 +41,10 @@ type Host struct {
 	Port int32
 
 	// Port is tcp service port.
-	TcpPort int32
+	TCPPort int32
 
 	// Port is quic service port.
-	QuicPort int32
+	QUICPort int32
 
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
