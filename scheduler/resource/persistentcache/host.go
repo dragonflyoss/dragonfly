@@ -95,10 +95,10 @@ type Host struct {
 	// Host log.
 	Log *logger.SugaredLoggerOnWith
 
-	// Port is tcp service port.
+	// Port is tcp download service port.
 	DownloadTCPPort int32
 
-	// Port is quic service port.
+	// Port is quic download service port.
 	DownloadQUICPort int32
 }
 
