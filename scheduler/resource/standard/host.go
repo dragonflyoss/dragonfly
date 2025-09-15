@@ -153,6 +153,12 @@ type Host struct {
 	// Port is grpc service port.
 	Port int32
 
+	// Port is tcp service port.
+	TcpPort int32
+
+	// Port is quic service port.
+	QuicPort int32
+
 	// DownloadPort is piece downloading port.
 	DownloadPort int32
 
