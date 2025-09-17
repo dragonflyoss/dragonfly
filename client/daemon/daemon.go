@@ -269,7 +269,7 @@ func New(opt *config.DaemonOption, d dfpath.Dfpath) (Daemon, error) {
 		PerPeerRateLimit:      opt.Download.PerPeerRateLimit.Limit,
 		TotalRateLimit:        opt.Download.TotalRateLimit.Limit,
 		TrafficShaperType:     opt.Download.TrafficShaperType,
-		Multiplex:             opt.Storage.Multiplex,
+		Reuse:                 opt.Storage.Reuse,
 		Prefetch:              opt.Download.Prefetch,
 		GetPiecesMaxRetry:     opt.Download.GetPiecesMaxRetry,
 		SplitRunningTasks:     opt.Download.SplitRunningTasks,

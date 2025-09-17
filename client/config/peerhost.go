@@ -591,8 +591,8 @@ type StorageOption struct {
 	// DiskGCThresholdPercent indicates the threshold to gc the oldest tasks according the disk usage
 	// Eg, DiskGCThresholdPercent=80, when the disk usage is above 80%, start to gc the oldest tasks
 	DiskGCThresholdPercent float64 `mapstructure:"diskGCThresholdPercent" yaml:"diskGCThresholdPercent"`
-	// Multiplex indicates reusing underlying storage for same task id
-	Multiplex     bool          `mapstructure:"multiplex" yaml:"multiplex"`
+	// Reuse indicates reusing underlying storage for same task id
+	Reuse     bool          `mapstructure:"multiplex" yaml:"multiplex"`
 	StoreStrategy StoreStrategy `mapstructure:"strategy" yaml:"strategy"`
 	// WriteBufferSize indicates the buffer size when read from source, same usage with io.Copy
 	// for some resource plugins, bigger buffer size with better performance, on the other hand, bigger buffer size cost huge memory
