@@ -15,80 +15,59 @@
 [![LFX Health Score](https://img.shields.io/static/v1?label=Health%20Score&message=Healthy&color=A7F3D0&logo=linuxfoundation&logoColor=white&style=flat)](https://insights.linuxfoundation.org/project/d7y)
 [![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/dragonfly/badge)](https://clomonitor.io/projects/cncf/dragonfly)
 
-Provide efficient, stable and secure file distribution and image acceleration
-based on p2p technology to be the best practice and
-standard solution in cloud native architectures.
-
 ## Introduction
 
-Dragonfly is an open source P2P-based file distribution and
-image acceleration system. It is hosted by the
-Cloud Native Computing Foundation ([CNCF](https://cncf.io/)) as
-an Incubating Level Project.
-Its goal is to tackle all distribution problems in cloud native architectures.
-Currently Dragonfly focuses on being:
-
-- **Simple**: Well-defined user-facing API (HTTP), non-invasive to all container engines;
-- **Efficient**: Seed peer support, P2P based file distribution to save enterprise bandwidth;
-- **Intelligent**: Host-level speed limit, intelligent flow control due to host detection;
-- **Secure**: Block transmission encryption, HTTPS connection support.
-
-## Architecture
-
-![alt][arch]
-
-**Manager:** Maintain the relationship between each P2P cluster, dynamic configuration management and RBAC.
-It also includes a front-end console, which is convenient for users to visually operate the cluster.
-
-**Scheduler:** Select the optimal download parent peer for the download peer. Exceptions control Dfdaemon's back-to-source.
-
-**Seed Peer**: Dfdaemon turns on the Seed Peer mode can be used as
-a back-to-source download peer in a P2P cluster,
-which is the root peer for download in the entire cluster.
-
-**Peer**: Deploy with dfdaemon, based on the C/S architecture, it provides the `dfget` command download tool,
-and the `dfget daemon` running daemon to provide task download capabilities.
+Delivers efficient, stable, and secure data distribution and acceleration powered by P2P technology.
+It aims to be the best practice and standard solution in cloud native architectures.
+Designed to improve the performance of large‑scale delivery across files, container images,
+OCI artifacts, AI models, caches, logs, dependencies, etc.
 
 ## Documentation
 
 You can find the full documentation on the [d7y.io][d7y.io].
 
-## Security
-
-### Security Audit
-
-A third party security audit was performed by Trail of Bits,
-you can see the [full report](docs/security/dragonfly-comprehensive-report-2023.pdf).
-
-### Security Policy
-
-If you discover a security vulnerability within Dragonfly, please report it according to our [Security Policy](https://github.com/dragonflyoss/community/blob/master/SECURITY.md).
-
-### Security Insights
-
-You can find the security insights on the [SECURITY-INSIGHTS.yml](SECURITY-INSIGHTS.yml) file.
-
 ## Community
 
-Join the conversation and help the community. We have a number of ways for you to get involved:
+Join the conversation and help the community grow. Here are the ways to get involved:
 
 - **Slack Channel**: [#dragonfly](https://cloud-native.slack.com/messages/dragonfly/) on [CNCF Slack](https://slack.cncf.io/)
 - **Github Discussions**: [Dragonfly Discussion Forum][discussion]
 - **Developer Group**: <dragonfly-developers@googlegroups.com>
-- **Maintainer Group**: <dragonfly-maintainers@googlegroups.com>
+- **Mailing Lists**:
+  - **Developers**: <dragonfly-developers@googlegroups.com>
+  - **Maintainers**: <dragonfly-maintainers@googlegroups.com>
 - **Twitter**: [@dragonfly_oss](https://twitter.com/dragonfly_oss)
 - **DingTalk Group**: `22880028764`
 
-and you can also seek the main community information in the [community repository](https://github.com/dragonflyoss/community).
-In this repository, you can find the [community meeting minutes, community meeting notes, and more](https://github.com/dragonflyoss/community/tree/master/meetings).
-
-We wonderinng if you have any questions or suggestions, please feel free to feedback to us through the above channels.
+You can also find community information in the [community repository](https://github.com/dragonflyoss/community).
 
 ## Roadmap
 
 You can find the [roadmap](https://github.com/dragonflyoss/community/blob/master/ROADMAP.md)
 in the [community repository](https://github.com/dragonflyoss/community).
-Dragonfly is a community-driven project, and we welcome contributions from everyone.
+
+## Security
+
+### Security Audit
+
+A third-party security audit of Dragonfly was performed by Trail of Bits, with the full report available at
+[Dragonfly Comprehensive Report](docs/security/dragonfly-comprehensive-report-2023.pdf).
+
+### Reporting security vulnerabilities
+
+If you discover a vulnerability, please report it per our Security Policy at [Security Policy](https://github.com/dragonflyoss/community/blob/master/SECURITY.md),
+and security insights are detailed in [SECURITY-INSIGHTS.yml](SECURITY-INSIGHTS.yml).
+
+## Software bill of materials
+
+We publish SBOMs with all of our releases. You can find them in Github release assets.
+
+[arch]: docs/images/arch.png
+[logo-linear]: docs/images/logo/dragonfly-linear.svg
+[discussion]: https://github.com/dragonflyoss/dragonfly/discussions
+[contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+[codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
+[d7y.io]: https://d7y.io/
 
 ## Contributing
 
@@ -98,20 +77,3 @@ You should check out our
 ## Code of Conduct
 
 Please refer to our [Code of Conduct][codeconduct] which applies to all Dragonfly community members.
-
-## Software bill of materials
-
-SBOMs for the following categories are produced by the Dragonfly Project:
-
-- Considering the source code repository
-- For the dragonfly project's sub-project
-
-The SBOMs can be downloaded from the following places:
-Github Release/Tag Resources Github workflow resources for more process executions.
-
-[arch]: docs/images/arch.png
-[logo-linear]: docs/images/logo/dragonfly-linear.svg
-[discussion]: https://github.com/dragonflyoss/dragonfly/discussions
-[contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
-[codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
-[d7y.io]: https://d7y.io/
