@@ -139,7 +139,7 @@ var peerHostConfig = func() *DaemonOption {
 				Duration: DefaultTaskExpireTime,
 			},
 			StoreStrategy:          SimpleLocalTaskStoreStrategy,
-			Multiplex:              false,
+			Reuse:                  false,
 			DiskGCThresholdPercent: 95,
 			ReloadGoroutineCount:   64,
 		},
