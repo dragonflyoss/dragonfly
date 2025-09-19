@@ -155,7 +155,8 @@ var (
 		Platform:   "darwin",
 	}
 
-	mockInterval = durationpb.New(5 * time.Minute).AsDuration()
+	mockInterval                    = durationpb.New(5 * time.Minute).AsDuration()
+	mockConcurrentPieceCount uint32 = 5
 
 	mockRawPersistentCacheHost = persistentcache.Host{
 		ID:                 mockHostID,
@@ -305,7 +306,8 @@ func TestServiceV2_StatPeer(t *testing.T) {
 						Start:  uint64(peer.Range.Start),
 						Length: uint64(peer.Range.Length),
 					},
-					Priority: peer.Priority,
+					Priority:             peer.Priority,
+					ConcurrentPieceCount: mockConcurrentPieceCount,
 					Pieces: []*commonv2.Piece{
 						{
 							Number:      uint32(mockPiece.Number),
@@ -439,7 +441,7 @@ func TestServiceV2_StatPeer(t *testing.T) {
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
-			peer := standard.NewPeer(mockSeedPeerID, mockTask, mockHost, standard.WithRange(mockPeerRange))
+			peer := standard.NewPeer(mockSeedPeerID, mockTask, mockHost, standard.WithRange(mockPeerRange), standard.WithConcurrentPieceCount(mockConcurrentPieceCount))
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
 			tc.mock(peer, peerManager, resource.EXPECT(), peerManager.EXPECT())
