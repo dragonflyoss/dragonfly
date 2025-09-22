@@ -8,8 +8,8 @@ This page lists current and emeritus maintainers. This can be used for routing P
 
 ## Maintainers
 
-Please refer to our [community maintainers](https://github.com/dragonflyoss/community/blob/master/MAINTAINERS.md).
+Please refer to our [community maintainers](https://github.com/dragonflyoss/community/blob/master/roles/Maintainers.md).
 
 ## Emeritus maintainers
 
-Please refer to our [community emeritus maintainers](https://github.com/dragonflyoss/community/blob/master/MAINTAINERS.md#emeritus-maintainers).
+Please refer to our [community emeritus maintainers](https://github.com/dragonflyoss/community/blob/master/roles/Maintainers.md#emeritus-maintainers).
