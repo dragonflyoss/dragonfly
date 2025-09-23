@@ -54,6 +54,14 @@ type HostManager interface {
 	// If f returns false, range stops the iteration.
 	Range(f func(any, any) bool)
 
+	// RangeNormals calls f sequentially for each key and value present in the map.
+	// If f returns false, range stops the iteration.
+	RangeNormals(f func(any, any) bool)
+
+	// RangeSeeds calls f sequentially for each key and value present in the map.
+	// If f returns false, range stops the iteration.
+	RangeSeeds(f func(any, any) bool)
+
 	// LoadRandom loads host randomly through the Range of sync.Map.
 	LoadRandom(int, set.SafeSet[string]) []*Host
 
@@ -72,14 +80,22 @@ type HostManager interface {
 
 // hostManager contains content for host manager.
 type hostManager struct {
-	// Host sync map.
+	// all host map.
 	*sync.Map
+
+	// normals host map.
+	normals *sync.Map
+
+	// seeds host map.
+	seeds *sync.Map
 }
 
 // New host manager interface.
 func newHostManager(cfg *config.GCConfig, gc pkggc.GC) (HostManager, error) {
 	h := &hostManager{
-		Map: &sync.Map{},
+		Map:     &sync.Map{},
+		normals: &sync.Map{},
+		seeds:   &sync.Map{},
 	}
 
 	if err := gc.Add(pkggc.Task{
@@ -106,6 +122,13 @@ func (h *hostManager) Load(key string) (*Host, bool) {
 
 // Store sets host.
 func (h *hostManager) Store(host *Host) {
+	switch host.Type {
+	case types.HostTypeNormal:
+		h.normals.Store(host.ID, host)
+	case types.HostTypeSuperSeed:
+		h.seeds.Store(host.ID, host)
+	}
+
 	h.Map.Store(host.ID, host)
 }
 
@@ -113,12 +136,21 @@ func (h *hostManager) Store(host *Host) {
 // Otherwise, it stores and returns the given host.
 // The loaded result is true if the host was loaded, false if stored.
 func (h *hostManager) LoadOrStore(host *Host) (*Host, bool) {
+	switch host.Type {
+	case types.HostTypeNormal:
+		h.normals.LoadOrStore(host.ID, host)
+	case types.HostTypeSuperSeed:
+		h.seeds.LoadOrStore(host.ID, host)
+	}
+
 	rawHost, loaded := h.Map.LoadOrStore(host.ID, host)
 	return rawHost.(*Host), loaded
 }
 
 // Delete deletes host for a key.
 func (h *hostManager) Delete(key string) {
+	h.normals.Delete(key)
+	h.seeds.Delete(key)
 	h.Map.Delete(key)
 }
 
@@ -126,6 +158,18 @@ func (h *hostManager) Delete(key string) {
 // If f returns false, range stops the iteration.
 func (h *hostManager) Range(f func(key, value any) bool) {
 	h.Map.Range(f)
+}
+
+// RangeNormals calls f sequentially for each key and value present in the map.
+// If f returns false, range stops the iteration.
+func (h *hostManager) RangeNormals(f func(key, value any) bool) {
+	h.normals.Range(f)
+}
+
+// RangeSeeds calls f sequentially for each key and value present in the map.
+// If f returns false, range stops the iteration.
+func (h *hostManager) RangeSeeds(f func(key, value any) bool) {
+	h.seeds.Range(f)
 }
 
 // LoadAll loads all hosts through the Range of sync.Map.
@@ -148,14 +192,10 @@ func (h *hostManager) LoadAll() []*Host {
 // LoadAllNormals loads all normal hosts through the Range of sync.Map.
 func (h *hostManager) LoadAllNormals() []*Host {
 	hosts := make([]*Host, 0)
-	h.Map.Range(func(key, value any) bool {
+	h.normals.Range(func(key, value any) bool {
 		host, ok := value.(*Host)
 		if !ok {
-			host.Log.Error("invalid host")
-			return true
-		}
-
-		if host.Type != types.HostTypeNormal {
+			host.Log.Error("invalid normal host")
 			return true
 		}
 
@@ -169,14 +209,10 @@ func (h *hostManager) LoadAllNormals() []*Host {
 // LoadAllSeeds loads all seed hosts through the Range of sync.Map.
 func (h *hostManager) LoadAllSeeds() []*Host {
 	hosts := make([]*Host, 0)
-	h.Map.Range(func(key, value any) bool {
+	h.seeds.Range(func(key, value any) bool {
 		host, ok := value.(*Host)
 		if !ok {
-			host.Log.Error("invalid host")
-			return true
-		}
-
-		if host.Type == types.HostTypeNormal {
+			host.Log.Error("invalid seed host")
 			return true
 		}
 
@@ -214,6 +250,52 @@ func (h *hostManager) LoadRandom(n int, blocklist set.SafeSet[string]) []*Host {
 
 // RunGC tries to reclaim host.
 func (h *hostManager) RunGC(ctx context.Context) error {
+	h.normals.Range(func(_, value any) bool {
+		host, ok := value.(*Host)
+		if !ok {
+			host.Log.Error("invalid normal host")
+			return true
+		}
+
+		// If the host's elapsed exceeds twice the announcing interval,
+		// then leave peers in host.
+		elapsed := time.Since(host.UpdatedAt.Load())
+		if host.AnnounceInterval > 0 && elapsed > host.AnnounceInterval*2 {
+			host.Log.Info("host elapsed exceeds twice the announce interval, causing the host to leave peers")
+			host.LeavePeers()
+			// Directly reclaim the host,
+			// as host's ConcurrentUploadCount may not be 0 when the host exits abnormally.
+			host.Log.Info("host has been reclaimed")
+			h.normals.Delete(host.ID)
+			return true
+		}
+
+		return true
+	})
+
+	h.seeds.Range(func(_, value any) bool {
+		host, ok := value.(*Host)
+		if !ok {
+			host.Log.Error("invalid seed host")
+			return true
+		}
+
+		// If the host's elapsed exceeds twice the announcing interval,
+		// then leave peers in host.
+		elapsed := time.Since(host.UpdatedAt.Load())
+		if host.AnnounceInterval > 0 && elapsed > host.AnnounceInterval*2 {
+			host.Log.Info("host elapsed exceeds twice the announce interval, causing the host to leave peers")
+			host.LeavePeers()
+			// Directly reclaim the host,
+			// as host's ConcurrentUploadCount may not be 0 when the host exits abnormally.
+			host.Log.Info("host has been reclaimed")
+			h.seeds.Delete(host.ID)
+			return true
+		}
+
+		return true
+	})
+
 	h.Map.Range(func(_, value any) bool {
 		host, ok := value.(*Host)
 		if !ok {
@@ -230,7 +312,7 @@ func (h *hostManager) RunGC(ctx context.Context) error {
 			// Directly reclaim the host,
 			// as host's ConcurrentUploadCount may not be 0 when the host exits abnormally.
 			host.Log.Info("host has been reclaimed")
-			h.Delete(host.ID)
+			h.Map.Delete(host.ID)
 			return true
 		}
 

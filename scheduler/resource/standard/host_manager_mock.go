@@ -151,6 +151,30 @@ func (mr *MockHostManagerMockRecorder) Range(f any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Range", reflect.TypeOf((*MockHostManager)(nil).Range), f)
 }
 
+// RangeNormals mocks base method.
+func (m *MockHostManager) RangeNormals(f func(any, any) bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RangeNormals", f)
+}
+
+// RangeNormals indicates an expected call of RangeNormals.
+func (mr *MockHostManagerMockRecorder) RangeNormals(f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RangeNormals", reflect.TypeOf((*MockHostManager)(nil).RangeNormals), f)
+}
+
+// RangeSeeds mocks base method.
+func (m *MockHostManager) RangeSeeds(f func(any, any) bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RangeSeeds", f)
+}
+
+// RangeSeeds indicates an expected call of RangeSeeds.
+func (mr *MockHostManagerMockRecorder) RangeSeeds(f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RangeSeeds", reflect.TypeOf((*MockHostManager)(nil).RangeSeeds), f)
+}
+
 // RunGC mocks base method.
 func (m *MockHostManager) RunGC(arg0 context.Context) error {
 	m.ctrl.T.Helper()
