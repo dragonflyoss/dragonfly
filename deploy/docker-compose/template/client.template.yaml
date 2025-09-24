@@ -24,6 +24,10 @@ server:
   cacheDir: /var/cache/dragonfly/dfdaemon/
 
 download:
+  # Protocol that peers use to download piece (e.g., "tcp", "quic").
+  # When dfdaemon acts as a parent, it announces this protocol so downstream
+  # peers fetch pieces using it.
+  protocol: tcp
   server:
     # socketPath is the unix socket path for dfdaemon GRPC service.
     socketPath: /var/run/dragonfly/dfdaemon.sock
@@ -122,6 +126,11 @@ dynconfig:
   refreshInterval: 1m
 
 storage:
+  server:
+    # port is the port to the tcp server.
+    tcpPort: 4005
+    # port is the port to the quic server.
+    quicPort: 4006
   # dir is the directory to store task's metadata and content.
   dir: /var/lib/dragonfly/
   # keep indicates whether keep the task's metadata and content when the dfdaemon restarts.
