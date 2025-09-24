@@ -724,7 +724,11 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	// TODO: validate key
+	if cfg.Encryption.Enable {
+		if cfg.Encryption.Key == nil {
+			return errors.New("encryption requires parameter key")
+		}
+	}
 
 	return nil
 }
