@@ -265,7 +265,7 @@ func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
 	return nil
 }
 
-// initializeEncryptionKey
+// Initialize encryption key
 func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
 	// 1. try get key from db
 	var existingKey models.EncryptionKey

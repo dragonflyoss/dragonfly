@@ -67,9 +67,6 @@ type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
 
-	// Server work home directory.
-	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
-
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 
@@ -90,9 +87,6 @@ type ServerConfig struct {
 
 	// Server plugin directory.
 	PluginDir string `yaml:"pluginDir" mapstructure:"pluginDir"`
-
-	// Server data directory.
-	DataDir string `yaml:"dataDir" mapstructure:"dataDir"`
 
 	// GRPC server configuration.
 	GRPC GRPCConfig `yaml:"grpc" mapstructure:"grpc"`
@@ -409,8 +403,10 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
+// AES256 base64 key is 32 bytes.
 type EncryptionKey [32]byte
 type EncryptionConfig struct {
+	// Enable encryption.
 	Enable bool `mapstructure:"enable" yaml:"enable"`
 	// AES256 base64, optional
 	Key *EncryptionKey `mapstructure:"key" yaml:"key"`
@@ -418,8 +414,7 @@ type EncryptionConfig struct {
 
 // UnmarshalText Base64
 func (e *EncryptionKey) UnmarshalText(text []byte) error {
-	// TODO: avoid printing key
-	logger.Infof("base64 key str: %s", string(text))
+	logger.Debugf("base64 key str: %s", string(text))
 	keyBytes, err := base64.StdEncoding.DecodeString(string(text))
 	if err != nil {
 		return fmt.Errorf("invalid base64 key: %v", err)

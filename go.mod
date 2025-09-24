@@ -280,6 +280,3 @@ require (
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
 )
-
-// use local api repo
-replace d7y.io/api/v2 => ../api_fork
