@@ -1558,7 +1558,7 @@ func TestServiceV2_ListHosts(t *testing.T) {
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
 			tc.mock(host, hostManager, resource.EXPECT(), hostManager.EXPECT())
-			resp, err := svc.ListHosts(context.Background())
+			resp, err := svc.ListHosts(context.Background(), &schedulerv2.ListHostsRequest{})
 			tc.expect(t, host, resp.Hosts, err)
 		})
 	}

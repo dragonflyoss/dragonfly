@@ -31,7 +31,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
@@ -155,7 +154,7 @@ type V2 interface {
 	AnnounceHost(context.Context, *schedulerv2.AnnounceHostRequest, ...grpc.CallOption) error
 
 	// ListHosts lists hosts in scheduler.
-	ListHosts(ctx context.Context, taskID string, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error)
+	ListHosts(ctx context.Context, taskID string, req *schedulerv2.ListHostsRequest, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error)
 
 	// DeleteHost releases host in scheduler.
 	DeleteHost(context.Context, *schedulerv2.DeleteHostRequest, ...grpc.CallOption) error
@@ -263,13 +262,13 @@ func (v *v2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 }
 
 // ListHosts lists host in all schedulers.
-func (v *v2) ListHosts(ctx context.Context, taskID string, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error) {
+func (v *v2) ListHosts(ctx context.Context, taskID string, req *schedulerv2.ListHostsRequest, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
 	return v.SchedulerClient.ListHosts(
 		context.WithValue(ctx, pkgbalancer.ContextKey, taskID),
-		new(emptypb.Empty),
+		req,
 		opts...,
 	)
 }

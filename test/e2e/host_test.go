@@ -26,6 +26,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
+
 	schedulerclient "d7y.io/dragonfly/v2/pkg/rpc/scheduler/client"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/test/e2e/util"
@@ -104,7 +106,7 @@ var _ = Describe("Clients Leaving", func() {
 })
 
 func calculateNormalHostCountFromScheduler(schedulerClient schedulerclient.V2) (hostCount int) {
-	resp, err := schedulerClient.ListHosts(context.Background(), "")
+	resp, err := schedulerClient.ListHosts(context.Background(), "", &schedulerv2.ListHostsRequest{})
 	fmt.Println(resp, err)
 	Expect(err).NotTo(HaveOccurred())
 

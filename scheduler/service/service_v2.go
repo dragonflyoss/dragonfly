@@ -949,9 +949,9 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 }
 
 // ListHosts lists hosts in scheduler.
-func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, error) {
+func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
 	hosts := []*commonv2.Host{}
-	v.resource.HostManager().Range(func(_ any, value any) bool {
+	constructHosts := func(value any) bool {
 		host, ok := value.(*standard.Host)
 		if !ok {
 			// Continue to next host.
@@ -1031,7 +1031,30 @@ func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, err
 		})
 
 		return true
-	})
+	}
+
+	// Return all hosts if no type specified.
+	if req.Type == nil {
+		v.resource.HostManager().Range(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+
+		return &schedulerv2.ListHostsResponse{
+			Hosts: hosts,
+		}, nil
+	}
+
+	// Filter hosts by type.
+	switch types.HostType(*req.Type) {
+	case types.HostTypeNormal:
+		v.resource.HostManager().RangeNormals(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+	case types.HostTypeSuperSeed:
+		v.resource.HostManager().RangeSeeds(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+	}
 
 	return &schedulerv2.ListHostsResponse{
 		Hosts: hosts,
