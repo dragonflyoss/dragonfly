@@ -104,6 +104,9 @@ type V2 interface {
 	// DeletePersistentCacheTask deletes persistent cache task from p2p network.
 	DeletePersistentCacheTask(context.Context, *dfdaemonv2.DeletePersistentCacheTaskRequest, ...grpc.CallOption) error
 
+	// DownloadCacheTask downloads cache task from p2p network.
+	DownloadCacheTask(context.Context, string, *dfdaemonv2.DownloadCacheTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadCacheTaskClient, error)
+
 	// Close tears down the ClientConn and all underlying connections.
 	Close() error
 }
@@ -194,6 +197,15 @@ func (v *v2) DeletePersistentCacheTask(ctx context.Context, req *dfdaemonv2.Dele
 
 	_, err := v.DfdaemonUploadClient.DeletePersistentCacheTask(ctx, req, opts...)
 	return err
+}
+
+// DownloadCacheTask downloads cache task from p2p network.
+func (v *v2) DownloadCacheTask(ctx context.Context, taskID string, req *dfdaemonv2.DownloadCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadCacheTaskClient, error) {
+	return v.DfdaemonUploadClient.DownloadCacheTask(
+		context.WithValue(ctx, pkgbalancer.ContextKey, taskID),
+		req,
+		opts...,
+	)
 }
 
 // ListTaskEntries lists task entries from p2p network.
