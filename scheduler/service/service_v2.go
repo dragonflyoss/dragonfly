@@ -445,25 +445,10 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 
 // DeletePeer releases peer in scheduler.
 func (v *V2) DeletePeer(_ctx context.Context, req *schedulerv2.DeletePeerRequest) error {
-	// Context use background to avoid the context canceled by the client and
-	// the peer deletion operation is not completed.
-	ctx := context.Background()
 	log := logger.WithTaskAndPeerID(req.GetTaskId(), req.GetPeerId())
 	log.Infof("delete peer request: %#v", req)
 
-	peer, loaded := v.resource.PeerManager().Load(req.GetPeerId())
-	if !loaded {
-		msg := fmt.Sprintf("peer %s not found", req.GetPeerId())
-		log.Error(msg)
-		return status.Error(codes.NotFound, msg)
-	}
-
-	if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-		err = fmt.Errorf("peer fsm event failed: %w", err)
-		peer.Log.Error(err)
-		return status.Error(codes.FailedPrecondition, err.Error())
-	}
-
+	v.resource.PeerManager().Delete(req.GetPeerId())
 	return nil
 }
 
@@ -533,9 +518,6 @@ func (v *V2) StatTask(ctx context.Context, req *schedulerv2.StatTaskRequest) (*c
 
 // DeleteTask releases task in scheduler.
 func (v *V2) DeleteTask(_ctx context.Context, req *schedulerv2.DeleteTaskRequest) error {
-	// Context use background to avoid the context canceled by the client and
-	// the task deletion operation is not completed.
-	ctx := context.Background()
 	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
 	log.Infof("delete task request: %#v", req)
 
@@ -554,11 +536,7 @@ func (v *V2) DeleteTask(_ctx context.Context, req *schedulerv2.DeleteTaskRequest
 		}
 
 		if peer.Task.ID == req.GetTaskId() {
-			if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-				err = fmt.Errorf("peer fsm event failed: %w", err)
-				peer.Log.Error(err)
-				return true
-			}
+			v.resource.PeerManager().Delete(peer.ID)
 		}
 
 		return true
@@ -1046,15 +1024,15 @@ func (v *V2) DeleteHost(_ctx context.Context, req *schedulerv2.DeleteHostRequest
 	log := logger.WithHostID(req.GetHostId())
 	log.Infof("delete host request: %#v", req)
 
-	host, loaded := v.resource.HostManager().Load(req.GetHostId())
+	_, loaded := v.resource.HostManager().Load(req.GetHostId())
 	if !loaded {
 		msg := fmt.Sprintf("host %s not found", req.GetHostId())
 		log.Error(msg)
 		return status.Error(codes.NotFound, msg)
 	}
 
-	// Leave peers in host.
-	host.LeavePeers()
+	// Delete all peers belong to the host.
+	v.resource.PeerManager().DeleteAllByHostID(req.GetHostId())
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(req.GetHostId())

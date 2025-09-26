@@ -436,23 +436,11 @@ func (v *V1) StatTask(ctx context.Context, req *schedulerv1.StatTaskRequest) (*s
 }
 
 // LeaveTask releases peer in scheduler.
-func (v *V1) LeaveTask(ctx context.Context, req *schedulerv1.PeerTarget) error {
+func (v *V1) LeaveTask(_ctx context.Context, req *schedulerv1.PeerTarget) error {
 	log := logger.WithTaskAndPeerID(req.GetTaskId(), req.GetPeerId())
 	log.Infof("leave task request: %#v", req)
 
-	peer, loaded := v.resource.PeerManager().Load(req.GetPeerId())
-	if !loaded {
-		msg := fmt.Sprintf("peer %s not found", req.GetPeerId())
-		log.Error(msg)
-		return dferrors.New(commonv1.Code_SchedPeerNotFound, msg)
-	}
-
-	if err := peer.FSM.Event(ctx, resource.PeerEventLeave); err != nil {
-		msg := fmt.Sprintf("peer fsm event failed: %s", err.Error())
-		peer.Log.Error(msg)
-		return dferrors.New(commonv1.Code_SchedTaskStatusError, msg)
-	}
-
+	v.resource.PeerManager().Delete(req.GetPeerId())
 	return nil
 }
 
@@ -639,7 +627,7 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 }
 
 // LeaveHost releases host in scheduler.
-func (v *V1) LeaveHost(ctx context.Context, req *schedulerv1.LeaveHostRequest) error {
+func (v *V1) LeaveHost(_ctx context.Context, req *schedulerv1.LeaveHostRequest) error {
 	log := logger.WithHostID(req.GetId())
 	log.Infof("leave host request: %#v", req)
 
@@ -650,8 +638,8 @@ func (v *V1) LeaveHost(ctx context.Context, req *schedulerv1.LeaveHostRequest) e
 		return dferrors.New(commonv1.Code_BadRequest, msg)
 	}
 
-	// Leave peers in host.
-	host.LeavePeers()
+	// Delete peers in host.
+	v.resource.PeerManager().DeleteAllByHostID(host.ID)
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(host.ID)

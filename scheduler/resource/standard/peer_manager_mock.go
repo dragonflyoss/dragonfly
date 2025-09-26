@@ -52,6 +52,18 @@ func (mr *MockPeerManagerMockRecorder) Delete(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockPeerManager)(nil).Delete), arg0)
 }
 
+// DeleteAllByHostID mocks base method.
+func (m *MockPeerManager) DeleteAllByHostID(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteAllByHostID", arg0)
+}
+
+// DeleteAllByHostID indicates an expected call of DeleteAllByHostID.
+func (mr *MockPeerManagerMockRecorder) DeleteAllByHostID(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAllByHostID", reflect.TypeOf((*MockPeerManager)(nil).DeleteAllByHostID), arg0)
+}
+
 // Load mocks base method.
 func (m *MockPeerManager) Load(arg0 string) (*Peer, bool) {
 	m.ctrl.T.Helper()

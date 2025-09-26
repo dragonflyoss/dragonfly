@@ -1588,7 +1588,7 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 	tests := []struct {
 		name   string
 		mock   func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder)
-		expect func(t *testing.T, peer *resource.Peer, err error)
+		expect func(t *testing.T, err error)
 	}{
 		{
 			name: "peer state is PeerStateLeave",
@@ -1596,15 +1596,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 				peer.FSM.SetState(resource.PeerStateLeave)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				dferr, ok := err.(*dferrors.DfError)
-				assert.True(ok)
-				assert.Equal(dferr.Code, commonv1.Code_SchedTaskStatusError)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
+				assert.NoError(err)
 			},
 		},
 		{
@@ -1612,14 +1609,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(nil, false).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				dferr, ok := err.(*dferrors.DfError)
-				assert.True(ok)
-				assert.Equal(dferr.Code, commonv1.Code_SchedPeerNotFound)
+				assert.NoError(err)
 			},
 		},
 		{
@@ -1628,134 +1623,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 				peer.FSM.SetState(resource.PeerStatePending)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedEmpty",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedEmpty)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedTiny",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedTiny)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedSmall",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedSmall)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedNormal",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedNormal)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(len(peer.Children()), 0)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateRunning",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateRunning)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateBackToSource",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateBackToSource)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateFailed",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateFailed)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateSucceeded",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateSucceeded)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
 			},
 		},
 	}
@@ -1776,7 +1649,7 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.mock(peer, peerManager, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT())
-			tc.expect(t, peer, svc.LeaveTask(context.Background(), &schedulerv1.PeerTarget{}))
+			tc.expect(t, svc.LeaveTask(context.Background(), &schedulerv1.PeerTarget{}))
 		})
 	}
 }
@@ -2210,12 +2083,12 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 func TestServiceV1_LeaveHost(t *testing.T) {
 	tests := []struct {
 		name   string
-		mock   func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder)
+		mock   func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder)
 		expect func(t *testing.T, peer *resource.Peer, err error)
 	}{
 		{
 			name: "host not found",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
@@ -2228,10 +2101,12 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 		},
 		{
 			name: "host has not peers",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.DeleteAllByHostID(gomock.Any()).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Delete(gomock.Any()).Return().Times(1),
 				)
@@ -2243,12 +2118,14 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 		},
 		{
 			name: "peer state is PeerStateLeave",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				host.Peers.Store(mockPeer.ID, mockPeer)
 				mockPeer.FSM.SetState(resource.PeerStateLeave)
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.DeleteAllByHostID(gomock.Any()).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Delete(gomock.Any()).Return().Times(1),
 				)
@@ -2256,168 +2133,6 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 			expect: func(t *testing.T, peer *resource.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-			},
-		},
-		{
-			name: "peer state is PeerStatePending",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStatePending)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedEmpty",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedEmpty)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedTiny",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedTiny)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedSmall",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedSmall)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedNormal",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedNormal)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateRunning",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateRunning)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateBackToSource",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateBackToSource)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateSucceeded",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateSucceeded)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateFailed",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateFailed)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Delete(gomock.Any()).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
 			},
 		},
 	}
@@ -2430,6 +2145,7 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
+			peerManager := resource.NewMockPeerManager(ctl)
 			host := resource.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
@@ -2437,7 +2153,7 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 			mockPeer := resource.NewPeer(mockSeedPeerID, mockTask, host)
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
-			tc.mock(host, mockPeer, hostManager, scheduling.EXPECT(), res.EXPECT(), hostManager.EXPECT())
+			tc.mock(host, mockPeer, peerManager, hostManager, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
 			tc.expect(t, mockPeer, svc.LeaveHost(context.Background(), &schedulerv1.LeaveHostRequest{
 				Id: idgen.HostIDV2(host.IP, host.Hostname, true),
 			}))

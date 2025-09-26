@@ -48,6 +48,9 @@ type PeerManager interface {
 	// Delete deletes peer for a key.
 	Delete(string)
 
+	// DeleteAllByHostID deletes all peers by host id.
+	DeleteAllByHostID(string)
+
 	// Range calls f sequentially for each key and value present in the map.
 	// If f returns false, range stops the iteration.
 	Range(f func(any, any) bool)
@@ -142,6 +145,22 @@ func (p *peerManager) Delete(key string) {
 		peer.Task.DeletePeer(key)
 		peer.Host.DeletePeer(key)
 	}
+}
+
+// DeleteAllByHostID deletes all peers by host id.
+func (p *peerManager) DeleteAllByHostID(hostID string) {
+	p.Map.Range(func(_, value any) bool {
+		peer, ok := value.(*Peer)
+		if !ok {
+			return true
+		}
+
+		if peer.Host.ID == hostID {
+			p.Delete(peer.ID)
+		}
+
+		return true
+	})
 }
 
 // Range calls f sequentially for each key and value present in the map.
