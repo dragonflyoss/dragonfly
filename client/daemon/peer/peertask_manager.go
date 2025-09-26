@@ -133,8 +133,8 @@ type TaskManagerOption struct {
 	PerPeerRateLimit  rate.Limit
 	TotalRateLimit    rate.Limit
 	TrafficShaperType string
-	// Multiplex indicates to reuse the data of completed peer tasks
-	Multiplex bool
+	// Reuse indicates to reuse the data of completed peer tasks
+	Reuse bool
 	// Prefetch indicates to prefetch the whole files of ranged requests
 	Prefetch          bool
 	GetPiecesMaxRetry int
@@ -329,7 +329,7 @@ func (ptm *peerTaskManager) StartFileTask(ctx context.Context, req *FileTaskRequ
 	if req.KeepOriginalOffset && !ptm.Prefetch {
 		return nil, fmt.Errorf("please enable prefetch when use original offset feature")
 	}
-	if ptm.Multiplex {
+	if ptm.Reuse {
 		progress, ok := ptm.tryReuseFilePeerTask(ctx, req)
 		if ok {
 			metrics.PeerTaskCacheHitCount.Add(1)
@@ -365,7 +365,7 @@ func (ptm *peerTaskManager) StartStreamTask(ctx context.Context, req *StreamTask
 
 	taskID := req.TaskID()
 
-	if ptm.Multiplex {
+	if ptm.Reuse {
 		// try breakpoint resume for task has range header
 		if req.Range != nil && !ptm.SplitRunningTasks {
 			// find running parent task

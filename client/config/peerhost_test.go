@@ -409,7 +409,7 @@ func TestPeerHostOption_Load(t *testing.T) {
 			StoreStrategy:          StoreStrategy("io.d7y.storage.v2.simple"),
 			DiskGCThreshold:        60 * unit.MB,
 			DiskGCThresholdPercent: 0.6,
-			Multiplex:              true,
+			Reuse:                  true,
 		},
 		Health: &HealthOption{
 			Path: "/health",
