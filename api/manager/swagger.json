@@ -5050,8 +5050,6 @@
                     "type": "string",
                     "enum": [
                         "super",
-                        "strong",
-                        "weak",
                         "normal"
                     ]
                 }
@@ -5228,9 +5226,7 @@
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }
@@ -6175,9 +6171,7 @@
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }

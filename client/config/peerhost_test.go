@@ -272,7 +272,7 @@ func TestPeerHostOption_Load(t *testing.T) {
 				RefreshInterval: 5 * time.Minute,
 				SeedPeer: SeedPeerOption{
 					Enable:    false,
-					Type:      types.HostTypeStrongSeedName,
+					Type:      types.HostTypeSuperSeedName,
 					ClusterID: 2,
 					KeepAlive: KeepAliveOption{
 						Interval: 10 * time.Second,

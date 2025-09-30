@@ -22,7 +22,7 @@ type PeerParams struct {
 
 type CreatePeerRequest struct {
 	Hostname           string `json:"host_name" binding:"required"`
-	Type               string `json:"type" binding:"required,oneof=super strong weak normal"`
+	Type               string `json:"type" binding:"required,oneof=super normal"`
 	IDC                string `json:"idc" binding:"omitempty"`
 	Location           string `json:"location" binding:"omitempty"`
 	IP                 string `json:"ip" binding:"required"`
@@ -44,7 +44,7 @@ type CreatePeerRequest struct {
 
 type GetPeersQuery struct {
 	Hostname           string `form:"host_name" binding:"omitempty"`
-	Type               string `form:"type" binding:"omitempty,oneof=super strong weak"`
+	Type               string `form:"type" binding:"omitempty,oneof=super"`
 	IDC                string `form:"idc" binding:"omitempty"`
 	Location           string `form:"location" binding:"omitempty"`
 	IP                 string `form:"ip" binding:"omitempty"`

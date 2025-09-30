@@ -556,7 +556,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		if clientConfig, err := v.dynconfig.GetSchedulerClusterClientConfig(); err == nil {
 			concurrentUploadLimit = int32(clientConfig.LoadLimit)
 		}
-	case types.HostTypeSuperSeed, types.HostTypeStrongSeed, types.HostTypeWeakSeed:
+	case types.HostTypeSuperSeed:
 		if seedPeerConfig, err := v.dynconfig.GetSeedPeerClusterConfig(); err == nil {
 			concurrentUploadLimit = int32(seedPeerConfig.LoadLimit)
 		}
@@ -1631,7 +1631,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 
 		fallthrough
 	case commonv2.Priority_LEVEL5:
-		// Strong peer is first triggered to download back-to-source.
+		// Super peer is first triggered to download back-to-source.
 		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
@@ -1648,7 +1648,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 
 		fallthrough
 	case commonv2.Priority_LEVEL4:
-		// Weak peer is first triggered to download back-to-source.
+		// Super peer is first triggered to download back-to-source.
 		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())

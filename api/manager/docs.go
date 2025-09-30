@@ -5056,8 +5056,6 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "super",
-                        "strong",
-                        "weak",
                         "normal"
                     ]
                 }
@@ -5234,9 +5232,7 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }
@@ -6181,9 +6177,7 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }

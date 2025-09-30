@@ -608,8 +608,6 @@ definitions:
       type:
         enum:
         - super
-        - strong
-        - weak
         - normal
         type: string
     required:
@@ -732,8 +730,6 @@ definitions:
       type:
         enum:
         - super
-        - strong
-        - weak
         type: string
     required:
     - download_port
@@ -1393,8 +1389,6 @@ definitions:
       type:
         enum:
         - super
-        - strong
-        - weak
         type: string
     type: object
   d7y_io_dragonfly_v2_manager_types.UpdateUserRequest:
