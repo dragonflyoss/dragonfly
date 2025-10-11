@@ -446,25 +446,10 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 
 // DeletePeer releases peer in scheduler.
 func (v *V2) DeletePeer(_ctx context.Context, req *schedulerv2.DeletePeerRequest) error {
-	// Context use background to avoid the context canceled by the client and
-	// the peer deletion operation is not completed.
-	ctx := context.Background()
 	log := logger.WithTaskAndPeerID(req.GetTaskId(), req.GetPeerId())
 	log.Infof("delete peer request: %#v", req)
 
-	peer, loaded := v.resource.PeerManager().Load(req.GetPeerId())
-	if !loaded {
-		msg := fmt.Sprintf("peer %s not found", req.GetPeerId())
-		log.Error(msg)
-		return status.Error(codes.NotFound, msg)
-	}
-
-	if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-		err = fmt.Errorf("peer fsm event failed: %w", err)
-		peer.Log.Error(err)
-		return status.Error(codes.FailedPrecondition, err.Error())
-	}
-
+	v.resource.PeerManager().Delete(req.GetPeerId())
 	return nil
 }
 
@@ -534,9 +519,6 @@ func (v *V2) StatTask(ctx context.Context, req *schedulerv2.StatTaskRequest) (*c
 
 // DeleteTask releases task in scheduler.
 func (v *V2) DeleteTask(_ctx context.Context, req *schedulerv2.DeleteTaskRequest) error {
-	// Context use background to avoid the context canceled by the client and
-	// the task deletion operation is not completed.
-	ctx := context.Background()
 	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
 	log.Infof("delete task request: %#v", req)
 
@@ -555,11 +537,7 @@ func (v *V2) DeleteTask(_ctx context.Context, req *schedulerv2.DeleteTaskRequest
 		}
 
 		if peer.Task.ID == req.GetTaskId() {
-			if err := peer.FSM.Event(ctx, standard.PeerEventLeave); err != nil {
-				err = fmt.Errorf("peer fsm event failed: %w", err)
-				peer.Log.Error(err)
-				return true
-			}
+			v.resource.PeerManager().Delete(peer.ID)
 		}
 
 		return true
@@ -579,7 +557,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		if clientConfig, err := v.dynconfig.GetSchedulerClusterClientConfig(); err == nil {
 			concurrentUploadLimit = int32(clientConfig.LoadLimit)
 		}
-	case types.HostTypeSuperSeed, types.HostTypeStrongSeed, types.HostTypeWeakSeed:
+	case types.HostTypeSuperSeed:
 		if seedPeerConfig, err := v.dynconfig.GetSeedPeerClusterConfig(); err == nil {
 			concurrentUploadLimit = int32(seedPeerConfig.LoadLimit)
 		}
@@ -950,9 +928,9 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 }
 
 // ListHosts lists hosts in scheduler.
-func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, error) {
+func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
 	hosts := []*commonv2.Host{}
-	v.resource.HostManager().Range(func(_ any, value any) bool {
+	constructHosts := func(value any) bool {
 		host, ok := value.(*standard.Host)
 		if !ok {
 			// Continue to next host.
@@ -1032,7 +1010,30 @@ func (v *V2) ListHosts(ctx context.Context) (*schedulerv2.ListHostsResponse, err
 		})
 
 		return true
-	})
+	}
+
+	// Return all hosts if no type specified.
+	if req.Type == nil {
+		v.resource.HostManager().Range(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+
+		return &schedulerv2.ListHostsResponse{
+			Hosts: hosts,
+		}, nil
+	}
+
+	// Filter hosts by type.
+	switch types.HostType(*req.Type) {
+	case types.HostTypeNormal:
+		v.resource.HostManager().RangeNormals(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+	case types.HostTypeSuperSeed:
+		v.resource.HostManager().RangeSeeds(func(_ any, value any) bool {
+			return constructHosts(value)
+		})
+	}
 
 	return &schedulerv2.ListHostsResponse{
 		Hosts: hosts,
@@ -1047,15 +1048,15 @@ func (v *V2) DeleteHost(_ctx context.Context, req *schedulerv2.DeleteHostRequest
 	log := logger.WithHostID(req.GetHostId())
 	log.Infof("delete host request: %#v", req)
 
-	host, loaded := v.resource.HostManager().Load(req.GetHostId())
+	_, loaded := v.resource.HostManager().Load(req.GetHostId())
 	if !loaded {
 		msg := fmt.Sprintf("host %s not found", req.GetHostId())
 		log.Error(msg)
 		return status.Error(codes.NotFound, msg)
 	}
 
-	// Leave peers in host.
-	host.LeavePeers()
+	// Delete all peers belong to the host.
+	v.resource.PeerManager().DeleteAllByHostID(req.GetHostId())
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(req.GetHostId())
@@ -1635,7 +1636,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 
 		fallthrough
 	case commonv2.Priority_LEVEL5:
-		// Strong peer is first triggered to download back-to-source.
+		// Super peer is first triggered to download back-to-source.
 		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
@@ -1652,7 +1653,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 
 		fallthrough
 	case commonv2.Priority_LEVEL4:
-		// Weak peer is first triggered to download back-to-source.
+		// Super peer is first triggered to download back-to-source.
 		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())

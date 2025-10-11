@@ -318,6 +318,71 @@ func TestPeerManager_Delete(t *testing.T) {
 	}
 }
 
+func TestPeerManager_DeleteAllByHostID(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(m *gc.MockGCMockRecorder)
+		expect func(t *testing.T, peerManager PeerManager, mockPeer1, mockPeer2 *Peer, hostID string)
+	}{
+		{
+			name: "delete all peers by host id",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockPeer, mockSeedPeer *Peer, hostID string) {
+				assert := assert.New(t)
+				peerManager.Store(mockPeer)
+				peerManager.Store(mockSeedPeer)
+				peerManager.DeleteAllByHostID(hostID)
+				_, loadedPeer := peerManager.Load(mockPeer.ID)
+				_, loadedSeedPeer := peerManager.Load(mockSeedPeer.ID)
+				assert.Equal(loadedPeer, false)
+				assert.Equal(loadedSeedPeer, false)
+			},
+		},
+		{
+			name: "delete all peers with non-existent host id",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockPeer, mockSeedPeer *Peer, hostID string) {
+				assert := assert.New(t)
+				peerManager.Store(mockPeer)
+				peerManager.Store(mockSeedPeer)
+				peerManager.DeleteAllByHostID("non-existent-host-id")
+				_, loadedPeer := peerManager.Load(mockPeer.ID)
+				_, loadedSeedPeer := peerManager.Load(mockSeedPeer.ID)
+				assert.Equal(loadedPeer, true)
+				assert.Equal(loadedSeedPeer, true)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			gc := gc.NewMockGC(ctl)
+			tc.mock(gc.EXPECT())
+
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication,
+				commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader,
+				mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
+			peerManager, err := newPeerManager(mockPeerGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			mockPeer := NewPeer(mockPeerID, mockTask, mockHost)
+			mockSeedPeer := NewPeer(mockSeedPeerID, mockTask, mockHost)
+			tc.expect(t, peerManager, mockPeer, mockSeedPeer, mockHost.ID)
+		})
+	}
+}
+
 func TestPeerManager_RunGC(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -43,10 +43,10 @@ import (
 
 const (
 	// DefaultQPS is default qps of grpc server.
-	DefaultQPS = 1000
+	DefaultQPS = 5000
 
 	// DefaultBurst is default burst of grpc server.
-	DefaultBurst = 1000
+	DefaultBurst = 5000
 
 	// DefaultMaxConnectionIdle is default max connection idle of grpc keepalive.
 	DefaultMaxConnectionIdle = 10 * time.Minute

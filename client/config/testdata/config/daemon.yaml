@@ -28,7 +28,7 @@ scheduler:
     refreshInterval: 5m
     seedPeer:
       enable: false
-      type: strong
+      type: super
       clusterID: 2
       keepAlive:
         interval: 10s

@@ -82,7 +82,7 @@ func TestDynconfig_Get(t *testing.T) {
 						{
 							Id:           1,
 							Hostname:     "bar",
-							Type:         types.HostTypeStrongSeedName,
+							Type:         types.HostTypeSuperSeedName,
 							Idc:          &mockIDC,
 							Location:     &mockLocation,
 							Ip:           "127.0.0.1",
@@ -137,7 +137,7 @@ func TestDynconfig_Get(t *testing.T) {
 							{
 								Id:           1,
 								Hostname:     "bar",
-								Type:         types.HostTypeStrongSeedName,
+								Type:         types.HostTypeSuperSeedName,
 								Idc:          &mockIDC,
 								Location:     &mockLocation,
 								Ip:           "127.0.0.1",

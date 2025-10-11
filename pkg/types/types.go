@@ -90,12 +90,6 @@ const (
 
 	// HostTypeSuperSeed is the super seed type of host.
 	HostTypeSuperSeed
-
-	// HostTypeStrongSeed is the strong seed type of host.
-	HostTypeStrongSeed
-
-	// HostTypeWeakSeed is the weak seed type of host.
-	HostTypeWeakSeed
 )
 
 const (
@@ -104,12 +98,6 @@ const (
 
 	// HostTypeSuperSeedName is the name of super host type.
 	HostTypeSuperSeedName = "super"
-
-	// HostTypeStrongSeedName is the name of strong host type.
-	HostTypeStrongSeedName = "strong"
-
-	// HostTypeWeakSeedName is the name of weak host type.
-	HostTypeWeakSeedName = "weak"
 )
 
 // Name returns the name of host type.
@@ -117,10 +105,8 @@ func (h HostType) Name() string {
 	switch h {
 	case HostTypeSuperSeed:
 		return HostTypeSuperSeedName
-	case HostTypeStrongSeed:
-		return HostTypeStrongSeedName
-	case HostTypeWeakSeed:
-		return HostTypeWeakSeedName
+	case HostTypeNormal:
+		return HostTypeNormalName
 	}
 
 	return HostTypeNormalName
@@ -131,10 +117,8 @@ func ParseHostType(name string) HostType {
 	switch name {
 	case HostTypeSuperSeedName:
 		return HostTypeSuperSeed
-	case HostTypeStrongSeedName:
-		return HostTypeStrongSeed
-	case HostTypeWeakSeedName:
-		return HostTypeWeakSeed
+	case HostTypeNormalName:
+		return HostTypeNormal
 	}
 
 	return HostTypeNormal
