@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.23.8
+go 1.24.0
 
 require (
 	cloud.google.com/go/storage v1.50.0
@@ -40,7 +40,7 @@ require (
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/go-sql-driver/mysql v1.9.2
-	github.com/gofrs/flock v0.8.1
+	github.com/gofrs/flock v0.13.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/gomodule/redigo v1.9.2
 	github.com/google/go-github v17.0.0+incompatible
@@ -92,7 +92,7 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.37.0
 	golang.org/x/time v0.12.0
 	google.golang.org/api v0.248.0
 	google.golang.org/grpc v1.75.0
