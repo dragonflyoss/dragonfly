@@ -7,14 +7,14 @@ on:
     tags:
       - v*
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
   push_image_to_registry:
     name: Push Image
     permissions: write-all
-    runs-on: ubuntu-latest
+    runs-on: oracle-vm-24cpu-96gb-x86-64
     strategy:
       matrix:
         module: ["manager", "scheduler", "dfdaemon"]
@@ -132,10 +132,10 @@ jobs:
         run: |
           docker buildx imagetools inspect dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker pull dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
-          cosign verify --key env://COSIGN_PUBLIC_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }} 
+          cosign verify --key env://COSIGN_PUBLIC_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker buildx imagetools inspect ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker pull ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
-          cosign verify --key env://COSIGN_PUBLIC_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }} 
+          cosign verify --key env://COSIGN_PUBLIC_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
         env:
           COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
 

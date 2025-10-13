@@ -23,7 +23,7 @@ env:
 
 jobs:
   compatibility_e2e_tests:
-    runs-on: ubuntu-latest
+    runs-on: oracle-vm-24cpu-96gb-x86-64
     timeout-minutes: 60
     strategy:
       matrix:
@@ -136,6 +136,9 @@ jobs:
           kind load docker-image dragonflyoss/scheduler:latest
           kind load docker-image dragonflyoss/client:latest
           kind load docker-image dragonflyoss/dfinit:latest
+
+      - name: Setup Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
 
       - name: Setup dragonfly
         run: |
