@@ -163,17 +163,11 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			}
 		}
 
-		// Scheduling will return schedule failed.
-		//
-		// Condition 1: Scheduling exceeds the RetryLimit.
 		if n >= s.config.RetryLimit {
 			peer.Log.Errorf("scheduling failed, because of scheduling exceeded RetryLimit %d", s.config.RetryLimit)
 			return status.Error(codes.FailedPrecondition, "scheduling exceeded RetryLimit")
 		}
 
-		// Scheduling will send NormalTaskResponse to peer.
-		//
-		// Condition 1: Scheduling can find candidate parents.
 		if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 			peer.Log.Error(err)
 			return status.Error(codes.Internal, err.Error())
@@ -314,9 +308,6 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			}
 		}
 
-		// Scheduling will send Code_SchedTaskStatusError to peer.
-		//
-		// Condition 1: Scheduling exceeds the RetryLimit.
 		if n >= s.config.RetryLimit {
 			stream, loaded := peer.LoadReportPieceResultStream()
 			if !loaded {
@@ -334,9 +325,6 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			return
 		}
 
-		// Scheduling will send PeerPacket to peer.
-		//
-		// Condition 1: Scheduling can find candidate parents.
 		if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 			n++
 			err := fmt.Errorf("scheduling failed in %d times, because of %w", n, err)
@@ -421,8 +409,7 @@ func (s *scheduling) FindCandidateParents(ctx context.Context, peer *standard.Pe
 	}
 
 	// Sort candidate parents by evaluation score.
-	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, uint32(taskTotalPieceCount))
+	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer)
 
 	// Get the parents with candidateParentLimit.
 	candidateParentLimit := config.DefaultSchedulerCandidateParentLimit
@@ -463,8 +450,7 @@ func (s *scheduling) FindParentAndCandidateParents(ctx context.Context, peer *st
 	}
 
 	// Sort candidate parents by evaluation score.
-	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer, uint32(taskTotalPieceCount))
+	candidateParents = s.evaluator.EvaluateParents(candidateParents, peer)
 
 	// Get the parents with candidateParentLimit.
 	candidateParentLimit := config.DefaultSchedulerCandidateParentLimit
@@ -512,9 +498,7 @@ func (s *scheduling) FindSuccessParent(ctx context.Context, peer *standard.Peer,
 	}
 
 	// Sort candidate parents by evaluation score.
-	taskTotalPieceCount := peer.Task.TotalPieceCount.Load()
-	successParents = s.evaluator.EvaluateParents(successParents, peer, uint32(taskTotalPieceCount))
-
+	successParents = s.evaluator.EvaluateParents(successParents, peer)
 	peer.Log.Infof("scheduling success parent is %s", successParents[0].ID)
 	return successParents[0], true
 }
@@ -686,7 +670,7 @@ func (s *scheduling) FindCandidatePersistentCacheParents(ctx context.Context, pe
 	}
 
 	// Sort candidate parents by evaluation score.
-	candidateParents = s.evaluator.EvaluatePersistentCacheParents(candidateParents, peer, peer.Task.TotalPieceCount)
+	candidateParents = s.evaluator.EvaluatePersistentCacheParents(candidateParents, peer)
 
 	// Get the parents with candidateParentLimit.
 	candidateParentLimit := config.DefaultSchedulerCandidateParentLimit

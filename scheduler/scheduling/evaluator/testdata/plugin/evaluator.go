@@ -24,7 +24,7 @@ import (
 type evaluator struct{}
 
 // EvaluateParents sort parents by evaluating multiple feature scores.
-func (e *evaluator) EvaluateParents(parents []*standard.Peer, child *standard.Peer, taskPieceCount uint32) []*standard.Peer {
+func (e *evaluator) EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer {
 	return []*standard.Peer{&standard.Peer{}}
 }
 
@@ -34,7 +34,7 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 }
 
 // EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
-func (e *evaluator) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount uint32) []*persistentcache.Peer {
+func (e *evaluator) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer {
 	return []*persistentcache.Peer{&persistentcache.Peer{}}
 }
 

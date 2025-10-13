@@ -341,3 +341,13 @@ func (s *schedulerServerV2) StatImage(ctx context.Context, req *schedulerv2.Stat
 
 	return resp, nil
 }
+
+// TODO(EvanCley): Implement the following methods.
+func (s *schedulerServerV2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) (*emptypb.Empty, error) {
+	return new(emptypb.Empty), nil
+}
+
+// TODO(EvanCley): Implement the following methods.
+func (s *schedulerServerV2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
+	return nil, nil
+}

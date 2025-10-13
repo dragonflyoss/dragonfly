@@ -30,9 +30,6 @@ const (
 	// DefaultAlgorithm is a rule-based scheduling algorithm.
 	DefaultAlgorithm = "default"
 
-	// MLAlgorithm is a machine learning scheduling algorithm.
-	MLAlgorithm = "ml"
-
 	// PluginAlgorithm is a scheduling algorithm based on plugin extension.
 	PluginAlgorithm = "plugin"
 )
@@ -60,16 +57,45 @@ const (
 
 // Evaluator is an interface that evaluates the parents.
 type Evaluator interface {
-	// EvaluateParents sort parents by evaluating multiple feature scores.
-	EvaluateParents(parents []*standard.Peer, child *standard.Peer, taskPieceCount uint32) []*standard.Peer
+	// EvaluateParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	//
+	// This function evaluates each parent peer using multiple metrics including load quality (bandwidth
+	// usage, sustained load, and concurrency), IDC affinity, location affinity, and host
+	// type. The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
+	// parents appearing first in the returned slice.
+	EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer
 
-	// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+	// IsBadParent determines whether a peer is unsuitable to be selected as a parent
+	// for downloading pieces. It evaluates peers based on their current state and historical
+	// download performance metrics.
+	//
+	// A peer is considered a bad parent if:
+	//  1. It is in an unsuitable state (Failed, Leave, Pending, or any Received* state).
+	//  2. Its recent download costs indicate poor performance based on statistical analysis.
+	//
+	// For performance evaluation, the function uses two strategies:
+	//   - If sample size is small (< normalDistributionLen): Uses a simple threshold check
+	//     where the last cost must not exceed 20 times the mean of previous costs.
+	//   - If sample size is sufficient (>= normalDistributionLen): Applies the three-sigma rule
+	//     where costs beyond mean + 3*standard_deviation are considered bad.
 	IsBadParent(peer *standard.Peer) bool
 
-	// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
-	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer, taskPieceCount uint32) []*persistentcache.Peer
+	// EvaluatePersistentCacheParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	//
+	// This function evaluates each parent peer using multiple metrics including IDC affinity and location affinity.
+	// The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
+	// parents appearing first in the returned slice.
+	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer
 
-	// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+	// IsBadPersistentCacheParent checks if a persistent cache peer is unsuitable to be a parent.
+	// It returns true if the peer is in any of the following states:
+	// - PeerStatePending: peer is waiting to start.
+	// - PeerStateUploading: peer is currently uploading data.
+	// - PeerStateReceivedEmpty: peer has received an empty response.
+	// - PeerStateReceivedNormal: peer has received normal data but not yet completed.
+	// - PeerStateFailed: peer has failed.
 	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool
 }
 
@@ -83,15 +109,26 @@ func New(algorithm string, pluginDir string) Evaluator {
 		if plugin, err := LoadPlugin(pluginDir); err == nil {
 			return plugin
 		}
-	// TODO Implement MLAlgorithm.
-	case MLAlgorithm, DefaultAlgorithm:
-		return newEvaluatorBase()
+	case DefaultAlgorithm:
+		return newEvaluatorDefault()
 	}
 
-	return newEvaluatorBase()
+	return newEvaluatorDefault()
 }
 
-// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+// IsBadParent determines whether a peer is unsuitable to be selected as a parent
+// for downloading pieces. It evaluates peers based on their current state and historical
+// download performance metrics.
+//
+// A peer is considered a bad parent if:
+//  1. It is in an unsuitable state (Failed, Leave, Pending, or any Received* state).
+//  2. Its recent download costs indicate poor performance based on statistical analysis.
+//
+// For performance evaluation, the function uses two strategies:
+//   - If sample size is small (< normalDistributionLen): Uses a simple threshold check
+//     where the last cost must not exceed 20 times the mean of previous costs.
+//   - If sample size is sufficient (>= normalDistributionLen): Applies the three-sigma rule
+//     where costs beyond mean + 3*standard_deviation are considered bad.
 func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	if peer.FSM.Is(standard.PeerStateFailed) || peer.FSM.Is(standard.PeerStateLeave) || peer.FSM.Is(standard.PeerStatePending) ||
 		peer.FSM.Is(standard.PeerStateReceivedTiny) || peer.FSM.Is(standard.PeerStateReceivedSmall) ||
@@ -130,7 +167,13 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	return isBadParent
 }
 
-// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+// IsBadPersistentCacheParent checks if a persistent cache peer is unsuitable to be a parent.
+// It returns true if the peer is in any of the following states:
+// - PeerStatePending: peer is waiting to start.
+// - PeerStateUploading: peer is currently uploading data.
+// - PeerStateReceivedEmpty: peer has received an empty response.
+// - PeerStateReceivedNormal: peer has received normal data but not yet completed.
+// - PeerStateFailed: peer has failed.
 func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
 	if peer.FSM.Is(persistentcache.PeerStatePending) || peer.FSM.Is(persistentcache.PeerStateUploading) || peer.FSM.Is(persistentcache.PeerStateReceivedEmpty) ||
 		peer.FSM.Is(persistentcache.PeerStateReceivedNormal) || peer.FSM.Is(persistentcache.PeerStateFailed) {

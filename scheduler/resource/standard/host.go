@@ -202,6 +202,18 @@ type Host struct {
 	// AnnounceInterval is the interval between host announces to scheduler.
 	AnnounceInterval time.Duration
 
+	// TxBandwidth is transmit rate of the host, unit is bps. The transmit bandwidth calculated
+	// by the scheduler. When the task is uploading, the host's transmit bandwidth will be increased.
+	TxBandwidth *atomic.Uint64
+
+	// UploadContentLength is the total content length of tasks currently being uploaded by
+	// this host, unit is byte.
+	UploadContentLength *atomic.Uint64
+
+	// ConcurrentPieceCount is concurrent piece count of tasks currently being uploaded by
+	// this host.
+	ConcurrentUploadPieceCount *atomic.Uint64
+
 	// ConcurrentUploadLimit is concurrent upload limit count.
 	ConcurrentUploadLimit *atomic.Int32
 
@@ -316,16 +328,20 @@ type Network struct {
 	// IDC where the peer host is located
 	IDC string
 
-	// RxBandwidth is download rate of the host, unit is byte/s.
+	// RxBandwidth is receive rate of the host, unit is bps. The receive bandwidth based on
+	// reported data from host.
 	RxBandwidth uint64
 
-	// MaxRxBandwidth is max download rate of the host, unit is byte/s.
+	// MaxRxBandwidth is max receive rate of the host, unit is bps. The max receive bandwidth based on
+	// reported data from host.
 	MaxRxBandwidth uint64
 
-	// TxBandwidth is upload rate of the host, unit is byte/s.
+	// TxBandwidth is transmit rate of the host, unit is bps. The transmit bandwidth based on
+	// reported data from host.
 	TxBandwidth uint64
 
-	// MaxTxBandwidth is max upload rate of the host, unit is byte/s.
+	// MaxTxBandwidth is max transmit rate of the host, unit is bps. The max transmit bandwidth based on
+	// reported data from host.
 	MaxTxBandwidth uint64
 }
 
@@ -389,23 +405,26 @@ func NewHost(
 	}
 
 	h := &Host{
-		ID:                    id,
-		Type:                  typ,
-		IP:                    ip,
-		Hostname:              hostname,
-		Port:                  port,
-		DownloadPort:          downloadPort,
-		ProxyPort:             proxyPort,
-		DisableShared:         false,
-		ConcurrentUploadLimit: atomic.NewInt32(int32(concurrentUploadLimit)),
-		ConcurrentUploadCount: atomic.NewInt32(0),
-		UploadCount:           atomic.NewInt64(0),
-		UploadFailedCount:     atomic.NewInt64(0),
-		Peers:                 &sync.Map{},
-		PeerCount:             atomic.NewInt32(0),
-		CreatedAt:             atomic.NewTime(time.Now()),
-		UpdatedAt:             atomic.NewTime(time.Now()),
-		Log:                   logger.WithHost(id, hostname, ip),
+		ID:                         id,
+		Type:                       typ,
+		IP:                         ip,
+		Hostname:                   hostname,
+		Port:                       port,
+		DownloadPort:               downloadPort,
+		ProxyPort:                  proxyPort,
+		DisableShared:              false,
+		TxBandwidth:                atomic.NewUint64(0),
+		UploadContentLength:        atomic.NewUint64(0),
+		ConcurrentUploadPieceCount: atomic.NewUint64(0),
+		ConcurrentUploadLimit:      atomic.NewInt32(int32(concurrentUploadLimit)),
+		ConcurrentUploadCount:      atomic.NewInt32(0),
+		UploadCount:                atomic.NewInt64(0),
+		UploadFailedCount:          atomic.NewInt64(0),
+		Peers:                      &sync.Map{},
+		PeerCount:                  atomic.NewInt32(0),
+		CreatedAt:                  atomic.NewTime(time.Now()),
+		UpdatedAt:                  atomic.NewTime(time.Now()),
+		Log:                        logger.WithHost(id, hostname, ip),
 	}
 
 	for _, opt := range options {

@@ -2226,14 +2226,12 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 
 	tests := []struct {
 		name string
-		req  *schedulerv2.DownloadPeerBackToSourceFinishedRequest
-		run  func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+		run  func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 			mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder)
 	}{
 		{
 			name: "peer can not be loaded",
-			req:  &schedulerv2.DownloadPeerBackToSourceFinishedRequest{},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2241,17 +2239,13 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
-				assert.Equal(peer.Task.ContentLength.Load(), int64(-1))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
+				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID), status.Errorf(codes.NotFound, "peer %s not found", peer.ID))
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStatePending)
 			},
 		},
 		{
 			name: "peer state is PeerStateSucceeded",
-			req:  &schedulerv2.DownloadPeerBackToSourceFinishedRequest{},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2261,18 +2255,14 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				peer.FSM.SetState(standard.PeerStateSucceeded)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req), status.Error(codes.Internal, "event DownloadSucceeded inappropriate in current state Succeeded"))
+				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID), status.Error(codes.Internal, "event DownloadSucceeded inappropriate in current state Succeeded"))
 				assert.NotEqual(peer.Cost.Load(), 0)
-				assert.Equal(peer.Task.ContentLength.Load(), int64(-1))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStatePending)
 			},
 		},
 		{
 			name: "peer has range",
-			req:  &schedulerv2.DownloadPeerBackToSourceFinishedRequest{},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2284,19 +2274,15 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				peer.Range = &nethttp.Range{}
 
 				assert := assert.New(t)
-				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req))
+				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID))
 				assert.NotEqual(peer.Cost.Load(), 0)
 				assert.Equal(peer.FSM.Current(), standard.PeerStateSucceeded)
-				assert.Equal(peer.Task.ContentLength.Load(), int64(-1))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStatePending)
 			},
 		},
 		{
 			name: "task state is TaskStateSucceeded",
-			req:  &schedulerv2.DownloadPeerBackToSourceFinishedRequest{},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2308,22 +2294,15 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				peer.Task.FSM.SetState(standard.TaskStateSucceeded)
 
 				assert := assert.New(t)
-				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req))
+				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID))
 				assert.NotEqual(peer.Cost.Load(), 0)
 				assert.Equal(peer.FSM.Current(), standard.PeerStateSucceeded)
-				assert.Equal(peer.Task.ContentLength.Load(), int64(-1))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStateSucceeded)
 			},
 		},
 		{
 			name: "task state is TaskStatePending",
-			req: &schedulerv2.DownloadPeerBackToSourceFinishedRequest{
-				ContentLength: 1024,
-				PieceCount:    10,
-			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2334,22 +2313,15 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				peer.Task.FSM.SetState(standard.TaskStatePending)
 
 				assert := assert.New(t)
-				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req), status.Error(codes.Internal, "event DownloadSucceeded inappropriate in current state Pending"))
+				assert.ErrorIs(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID), status.Error(codes.Internal, "event DownloadSucceeded inappropriate in current state Pending"))
 				assert.NotEqual(peer.Cost.Load(), 0)
 				assert.Equal(peer.FSM.Current(), standard.PeerStateSucceeded)
-				assert.Equal(peer.Task.ContentLength.Load(), int64(1024))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(10))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStatePending)
 			},
 		},
 		{
 			name: "task state is TaskStateRunning",
-			req: &schedulerv2.DownloadPeerBackToSourceFinishedRequest{
-				ContentLength: 1024,
-				PieceCount:    10,
-			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
+			run: func(t *testing.T, svc *V2, peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder,
 				mp *standard.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -2361,12 +2333,9 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 				peer.Task.FSM.SetState(standard.TaskStateRunning)
 
 				assert := assert.New(t)
-				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID, req))
+				assert.NoError(svc.handleDownloadPeerBackToSourceFinishedRequest(context.Background(), peer.ID))
 				assert.NotEqual(peer.Cost.Load(), 0)
 				assert.Equal(peer.FSM.Current(), standard.PeerStateSucceeded)
-				assert.Equal(peer.Task.ContentLength.Load(), int64(1024))
-				assert.Equal(peer.Task.TotalPieceCount.Load(), int32(10))
-				assert.Equal(len(peer.Task.DirectPiece), 0)
 				assert.Equal(peer.Task.FSM.Current(), standard.TaskStateSucceeded)
 			},
 		},
@@ -2409,7 +2378,7 @@ func TestServiceV2_handleDownloadPeerBackToSourceFinishedRequest(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
-			tc.run(t, svc, tc.req, peer, peerManager, resource.EXPECT(), peerManager.EXPECT(), dynconfig.EXPECT())
+			tc.run(t, svc, peer, peerManager, resource.EXPECT(), peerManager.EXPECT(), dynconfig.EXPECT())
 		})
 	}
 }

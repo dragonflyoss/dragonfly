@@ -19,6 +19,7 @@ package standard
 import (
 	"context"
 	"errors"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/graph/dag"
+	pkgmath "d7y.io/dragonfly/v2/pkg/math"
 	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
@@ -94,6 +96,20 @@ func WithDigest(d *digest.Digest) TaskOption {
 	}
 }
 
+// WithPieceLength set PieceLength for task.
+func WithPieceLength(pieceLength int64) TaskOption {
+	return func(t *Task) {
+		t.PieceLength = pieceLength
+	}
+}
+
+// WithConcurrentPieceCount set ConcurrentPieceCount for task.
+func WithConcurrentPieceCount(concurrentPieceCount int32) TaskOption {
+	return func(t *Task) {
+		t.ConcurrentPieceCount = concurrentPieceCount
+	}
+}
+
 // Task contains content for task.
 type Task struct {
 	// ID is task id.
@@ -125,6 +141,12 @@ type Task struct {
 
 	// ContentLength is task total content length.
 	ContentLength *atomic.Int64
+
+	// PieceLength is piece length.
+	PieceLength int64
+
+	// ConcurrentPieceCount is concurrent piece count.
+	ConcurrentPieceCount int32
 
 	// TotalPieceCount is total piece count.
 	TotalPieceCount *atomic.Int32
@@ -265,7 +287,9 @@ func (t *Task) LoadFinishedPeers() []*Peer {
 
 // StorePeer set peer.
 func (t *Task) StorePeer(peer *Peer) {
-	t.DAG.AddVertex(peer.ID, peer) // nolint: errcheck
+	if err := t.DAG.AddVertex(peer.ID, peer); err != nil {
+		t.Log.Error(err)
+	}
 }
 
 // DeletePeer deletes peer for a key.
@@ -294,7 +318,23 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 
 	fromPeer.Host.UploadCount.Inc()
 	fromPeer.Host.ConcurrentUploadCount.Inc()
-	t.Log.Infof("increment %s concurrent upload count, because of add edge from %s to %s", fromPeer.Host.ID, fromPeer.ID, toPeer.ID)
+	fromPeer.Host.TxBandwidth.Add(t.PeakBandwidthUsage())
+	fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(t.ConcurrentPieceCount))
+	contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
+	fromPeer.Host.UploadContentLength.Add(contentLength)
+	t.Log.Debugf("increment host %s metrics on adding edge %s -> %s: "+
+		"UploadCount=%d(+1), ConcurrentUploadCount=%d(+1), "+
+		"TxBandwidth=%d(+%d), ConcurrentUploadPieceCount=%d(+%d), "+
+		"UploadContentLength=%d(+%d)",
+		fromPeer.Host.ID,
+		fromPeer.ID, toPeer.ID,
+		fromPeer.Host.UploadCount.Load(),
+		fromPeer.Host.ConcurrentUploadCount.Load(),
+		fromPeer.Host.TxBandwidth.Load(), t.PeakBandwidthUsage(),
+		fromPeer.Host.ConcurrentUploadPieceCount.Load(), t.ConcurrentPieceCount,
+		fromPeer.Host.UploadContentLength.Load(), contentLength,
+	)
+
 	return nil
 }
 
@@ -311,7 +351,20 @@ func (t *Task) DeletePeerInEdges(key string) error {
 		}
 
 		parent.Value.Host.ConcurrentUploadCount.Dec()
-		t.Log.Infof("decrement %s concurrent upload count, because of delete edge from %s to %s", parent.Value.Host.ID, parent.Value.ID, key)
+		pkgmath.SafeSubAtomicUint64(parent.Value.Host.TxBandwidth, t.PeakBandwidthUsage())
+		pkgmath.SafeSubAtomicUint64(parent.Value.Host.ConcurrentUploadPieceCount, uint64(t.ConcurrentPieceCount))
+		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
+		pkgmath.SafeSubAtomicUint64(parent.Value.Host.UploadContentLength, contentLength)
+		t.Log.Debugf("decrement host %s metrics on deleting edge %s -> %s: "+
+			"ConcurrentUploadCount=%d(-1), TxBandwidth=%d(-%d),"+
+			"ConcurrentUploadPieceCount=%d(-%d), UploadContentLength=%d(-%d)",
+			parent.Value.Host.ID,
+			parent.Value.ID, key,
+			parent.Value.Host.ConcurrentUploadCount.Load(),
+			parent.Value.Host.TxBandwidth.Load(), t.PeakBandwidthUsage(),
+			parent.Value.Host.ConcurrentUploadPieceCount.Load(), t.ConcurrentPieceCount,
+			parent.Value.Host.UploadContentLength.Load(), contentLength,
+		)
 	}
 
 	if err := t.DAG.DeleteVertexInEdges(key); err != nil {
@@ -332,8 +385,37 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 	if peer == nil {
 		return errors.New("vertex value is nil")
 	}
+
+	var (
+		totalTxBandwidth           uint64
+		totalConcurrentUploadPiece uint64
+		totalUploadContentLength   uint64
+	)
+	for _, child := range vertex.Children.Values() {
+		if child.Value == nil {
+			continue
+		}
+
+		totalTxBandwidth += t.PeakBandwidthUsage()
+		totalConcurrentUploadPiece += uint64(t.ConcurrentPieceCount)
+		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
+		totalUploadContentLength += contentLength
+	}
+
 	peer.Host.ConcurrentUploadCount.Sub(int32(vertex.Children.Len()))
-	t.Log.Infof("decrement %s concurrent upload count %d, because of delete out edge from %s", peer.Host.ID, vertex.Children.Len(), key)
+	pkgmath.SafeSubAtomicUint64(peer.Host.TxBandwidth, totalTxBandwidth)
+	pkgmath.SafeSubAtomicUint64(peer.Host.ConcurrentUploadPieceCount, totalConcurrentUploadPiece)
+	pkgmath.SafeSubAtomicUint64(peer.Host.UploadContentLength, totalUploadContentLength)
+	t.Log.Debugf("decrement host %s metrics on deleting out-edges of peer %s: "+
+		"ConcurrentUploadCount=%d(-%d), TxBandwidth=%d(-%d),"+
+		"ConcurrentUploadPieceCount=%d(-%d), UploadContentLength=%d(-%d)",
+		peer.Host.ID,
+		key,
+		peer.Host.ConcurrentUploadCount.Load(), vertex.Children.Len(),
+		peer.Host.TxBandwidth.Load(), totalTxBandwidth,
+		peer.Host.ConcurrentUploadPieceCount.Load(), totalConcurrentUploadPiece,
+		peer.Host.UploadContentLength.Load(), totalUploadContentLength,
+	)
 
 	if err := t.DAG.DeleteVertexOutEdges(key); err != nil {
 		return err
@@ -448,6 +530,11 @@ func (t *Task) LoadPiece(key int32) (*Piece, bool) {
 // StorePiece set piece.
 func (t *Task) StorePiece(piece *Piece) {
 	t.Pieces.Store(piece.Number, piece)
+}
+
+// PeakBandwidthUsage returns peak bandwidth usage of the task, uinit is bps.
+func (t *Task) PeakBandwidthUsage() uint64 {
+	return uint64(t.PieceLength) * uint64(t.ConcurrentPieceCount) * 8
 }
 
 // DeletePiece deletes piece for a key.

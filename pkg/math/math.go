@@ -15,3 +15,22 @@
  */
 
 package math
+
+import "go.uber.org/atomic"
+
+func SafeSubAtomicUint64(counter *atomic.Uint64, delta uint64) {
+	for {
+		old := counter.Load()
+		if old < delta {
+			if counter.CompareAndSwap(old, 0) {
+				return
+			}
+
+			continue
+		}
+
+		if counter.CompareAndSwap(old, old-delta) {
+			return
+		}
+	}
+}

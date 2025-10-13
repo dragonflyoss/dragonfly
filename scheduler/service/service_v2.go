@@ -189,8 +189,7 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				return err
 			}
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerFinishedRequest:
-			downloadPeerFinishedRequest := announcePeerRequest.DownloadPeerFinishedRequest
-			log.Infof("receive DownloadPeerFinishedRequest, content length: %d, piece count: %d", downloadPeerFinishedRequest.GetContentLength(), downloadPeerFinishedRequest.GetPieceCount())
+			log.Info("receive DownloadPeerFinishedRequest")
 			if err := v.handleDownloadPeerFinishedRequest(ctx, req.GetPeerId()); err != nil {
 				log.Error(err)
 				return err
@@ -199,9 +198,8 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			// If the task is succeeded, return nil directly and close the stream.
 			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPeerBackToSourceFinishedRequest:
-			downloadPeerBackToSourceFinishedRequest := announcePeerRequest.DownloadPeerBackToSourceFinishedRequest
-			log.Infof("receive DownloadPeerBackToSourceFinishedRequest, content length: %d, piece count: %d", downloadPeerBackToSourceFinishedRequest.GetContentLength(), downloadPeerBackToSourceFinishedRequest.GetPieceCount())
-			if err := v.handleDownloadPeerBackToSourceFinishedRequest(ctx, req.GetPeerId(), downloadPeerBackToSourceFinishedRequest); err != nil {
+			log.Info("receive DownloadPeerBackToSourceFinishedRequest")
+			if err := v.handleDownloadPeerBackToSourceFinishedRequest(ctx, req.GetPeerId()); err != nil {
 				log.Error(err)
 
 				// If the peer started back-to-source failed, and set the peer state to failed. Peer will not need to report
@@ -1309,7 +1307,7 @@ func (v *V2) handleDownloadPeerFinishedRequest(ctx context.Context, peerID strin
 }
 
 // handleDownloadPeerBackToSourceFinishedRequest handles DownloadPeerBackToSourceFinishedRequest of AnnouncePeerRequest.
-func (v *V2) handleDownloadPeerBackToSourceFinishedRequest(ctx context.Context, peerID string, req *schedulerv2.DownloadPeerBackToSourceFinishedRequest) error {
+func (v *V2) handleDownloadPeerBackToSourceFinishedRequest(ctx context.Context, peerID string) error {
 	peer, loaded := v.resource.PeerManager().Load(peerID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
@@ -1324,8 +1322,6 @@ func (v *V2) handleDownloadPeerBackToSourceFinishedRequest(ctx context.Context, 
 	// Handle task with peer back-to-source finished request, peer can only represent
 	// a successful task after downloading the complete task.
 	if peer.Range == nil && !peer.Task.FSM.Is(standard.TaskStateSucceeded) {
-		peer.Task.ContentLength.Store(int64(req.GetContentLength()))
-		peer.Task.TotalPieceCount.Store(int32(req.GetPieceCount()))
 		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownloadSucceeded); err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
@@ -1571,7 +1567,10 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 	// Store new task or update task.
 	task, loaded := v.resource.TaskManager().Load(taskID)
 	if !loaded {
-		options := []standard.TaskOption{}
+		options := []standard.TaskOption{
+			standard.WithPieceLength(int64(download.GetActualPieceLength())),
+			standard.WithConcurrentPieceCount(int32(download.GetConcurrentPieceCount())),
+		}
 		if download.GetDigest() != "" {
 			d, err := digest.Parse(download.GetDigest())
 			if err != nil {
@@ -1584,6 +1583,8 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 
 		task = standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
+		task.ContentLength.Store(int64(download.GetActualContentLength()))
+		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
 		v.resource.TaskManager().Store(task)
 	} else {
 		task.URL = download.GetUrl()
