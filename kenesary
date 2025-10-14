@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кенесары хан</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        nav {
+            background-color: #34495e;
+            padding: 0.8rem;
+        }
+        
+        nav ul {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+        }
+        
+        nav li {
+            margin: 0 15px;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: #2c3e50;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            padding: 3rem 1rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            border-radius: 5px;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        
+        .main-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar {
+            background-color: white;
+            padding: 25px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        p {
+            margin-bottom: 1.2rem;
+            font-size: 1.1rem;
+        }
+        
+        .timeline {
+            margin: 20px 0;
+        }
+        
+        .timeline-item {
+            margin-bottom: 20px;
+            padding-left: 20px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .timeline-year {
+            font-weight: bold;
+            color: #3498db;
+            font-size: 1.2rem;
+        }
+        
+        ul {
+            margin-left: 20px;
+            margin-bottom: 1rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .fact-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .quote {
+            font-style: italic;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            nav li {
+                margin: 5px 0;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Кенесары хан</h1>
+        <p>Қазақ хандығының соңғы ханы (1802-1847)</p>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="#about">Өмірбаяны</a></li>
+            <li><a href="#rebellion">Көтеріліс</a></li>
+            <li><a href="#legacy">Мұра</a></li>
+            <li><a href="#facts">Деректер</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container">
+        <section class="hero">
+            <h2>Қазақ халқының батыр баласы</h2>
+            <p>Ресей империясы мен Коканд хандығына қарсы күресті басқарған қазақ ханы</p>
+        </section>
+        
+        <div class="content">
+            <main class="main-content">
+                <section id="about">
+                    <h2>Өмірбаяны</h2>
+                    <p>Кенесары Қасымұлы (1802-1847) - қазақ хандығының соңғы ханы. Ол Абылай ханның немересі және Қасым ханның ұлы болған.</p>
+                    
+                    <div class="fact-box">
+                        <p>Кенесары хан Ресей империясы мен Коканд хандығына қарсы күресті басқарды. Ол қазақ даласындағы ең ірі көтерілістердің бірін ұйымдастырды.</p>
+                    </div>
+                    
+                    <p>Кенесары хан 1802 жылы дүниеге келген. Оның әкесі Қасым хан - Абылай ханның ұлы, анасы - Айқын ханым. Кенесары бала кезінен-ақ әскери істерге қызығушылық танытқан.</p>
+                </section>
+                
+                <section id="rebellion">
+                    <h2>Кенесары хан көтерілісі</h2>
+                    <p>1837-1847 жылдар аралығында болған көтеріліс Ресей империясының отаршылдық саясатына қарсы бағытталған болатын.</p>
+                    
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <span class="timeline-year">1837</span>
+                            <p>Кенесары хан Ресей әкімшілігіне қарсы көтеріліс бастады. Ол қазақ даласындағы барлық руларды біріктіруге тырысты.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-year">1841</span>
+                            <p>Қазақ ақсүйектері Кенесарыны хан деп жариялады. Ол бүкіл қазақ даласының ханы болып танылды.</p>
+                        </div>
+                        <div class="timeline-item">
+                            <span class="timeline-year">1847</span>
+                            <p>Кенесары хан қырғыз билеушілерімен болған шайқаста қаза тапты. Оның өлімімен қазақ хандығының тарихи дәуірі аяқталды.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="quote">
+                        <p>"Мен қазақ елінің тәуелсіздігі үшін күресемін. Біздің еліміз ешқандай отаршылдыққа тәуелді болмауы керек."</p>
+                        <p>- Кенесары хан</p>
+                    </div>
+                </section>
+                
+                <section id="legacy">
+                    <h2>Мұрасы</h2>
+                    <p>Кенесары хан қазақ тарихындағы маңызды тұлға ретінде қалды. Оның көтерілісі қазақ халқының тәуелсіздік үшін күресінің символына айналды.</p>
+                    
+                    <p>Қазіргі уақытта оның есімі көптеген көшелерге, мектептерге берілген және ескерткіштер орнатылған. Кенесары хан қазақтардың ұлттық бірлігі мен тәуелсіздік идеяларын бейнелейді.</p>
+                    
+                    <h3>Тарихи маңызы</h3>
+                    <ul>
+                        <li>Қазақ хандығының соңғы ханы</li>
+                        <li>Ұлт-азаттық көтерілісінің көшбасшысы</li>
+                        <li>Қазақ даласын біріктіруге тырысқан тұлға</li>
+                        <li>Қазақтардың тәуелсіздік идеясының тарихи тамыры</li>
+                    </ul>
+                </section>
+            </main>
+            
+            <aside class="sidebar">
+                <section id="facts">
+                    <h3>Негізгі деректер</h3>
+                    <div class="fact-box">
+                        <ul>
+                            <li><strong>Туған жылы:</strong> 1802</li>
+                            <li><strong>Қайтыс болған жылы:</strong> 1847</li>
+                            <li><strong>Әкесі:</strong> Қасым хан</li>
+                            <li><strong>Анасы:</strong> Айқын ханым</li>
+                            <li><strong>Билік жылдары:</strong> 1841-1847</li>
+                            <li><strong>Әскери жетістіктері:</strong> 50-ден астам шайқас</li>
+                        </ul>
+                    </div>
+                </section>
+                
+                <section>
+                    <h3>Отбасы</h3>
+                    <p>Кенесары ханның бірнеше әйелі болған. Оның балалары:</p>
+                    <ul>
+                        <li>Сыздық сұлтан</li>
+                        <li>Ахмет сұлтан</li>
+                        <li>Есім сұлтан</li>
+                    </ul>
+                </section>
+                
+                <section>
+                    <h3>Әскери тактикасы</h3>
+                    <p>Кенесары хан партизандық соғыс әдістерін кеңінен қолданды:</p>
+                    <ul>
+                        <li>Кеністен таралған шабуылдар</li>
+                        <li>Жедел қозғалатын әскер бөлімдері</li>
+                        <li>Жергілікті жерді жақсы білу</li>
+                        <li>Күтпеген жерден шабуыл жасау</li>
+                    </ul>
+                </section>
+            </aside>
+        </div>
+    </div>
+    
+    <footer>
+        <p>&copy; 2023 Кенесары хан туралы ақпараттық сайт</p>
+        <p>Бұл сайт жаңадан бастаған веб-әзірлеушілер үшін үлгі ретінде жасалған</p>
+    </footer>
+</body>
+</html>
