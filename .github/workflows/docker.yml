@@ -14,7 +14,7 @@ jobs:
   push_image_to_registry:
     name: Push Image
     permissions: write-all
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         module: ["manager", "scheduler", "dfdaemon"]
