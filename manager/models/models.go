@@ -88,7 +88,16 @@ func (m JSONMap) GormDataType() string {
 }
 
 func (JSONMap) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "longtext"
+	switch db.Name() {
+	case "postgres":
+		return "text"
+	case "sqlite":
+		return "TEXT"
+	case "sqlserver":
+		return "NVARCHAR(MAX)"
+	default:
+		return "longtext"
+	}
 }
 
 type Array []string
@@ -137,5 +146,14 @@ func (Array) GormDataType() string {
 }
 
 func (Array) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "longtext"
+	switch db.Name() {
+	case "postgres":
+		return "text"
+	case "sqlite":
+		return "TEXT"
+	case "sqlserver":
+		return "NVARCHAR(MAX)"
+	default:
+		return "longtext"
+	}
 }
