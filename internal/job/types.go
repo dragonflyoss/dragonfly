@@ -18,6 +18,11 @@ package job
 
 import (
 	"time"
+
+	"google.golang.org/protobuf/types/known/durationpb"
+
+	v2 "d7y.io/api/v2/pkg/apis/common/v2"
+	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
 )
 
 // PreheatRequest defines the request parameters for preheating.
@@ -81,6 +86,24 @@ type GetTaskRequest struct {
 type GetTaskResponse struct {
 	Peers              []*Peer `json:"peers"`
 	SchedulerClusterID uint    `json:"scheduler_cluster_id"`
+}
+
+// ListTaskEntriesRequest defines the request parameters for listing task entries.
+type ListTaskEntriesRequest struct {
+	TaskID           string               `json:"task_id" validate:"required"`
+	Url              string               `json:"url" validate:"omitempty"`
+	Timeout          *durationpb.Duration `json:"timeout" validate:"omitempty"`
+	Header           map[string]string    `json:"header" validate:"omitempty"`
+	CertificateChain [][]byte             `json:"certificate_chain" validate:"omitempty"`
+	ObjectStorage    *v2.ObjectStorage    `json:"object_storage" validate:"omitempty"`
+	Hdfs             *v2.HDFS             `json:"hdfs" validate:"omitempty"`
+}
+
+// ListTaskEntriesResponse defines the response parameters for listing task entries.
+type ListTaskEntriesResponse struct {
+	Entries     []*dfdaemonv2.Entry `json:"entries"`
+	Recursive   bool                `json:"recursive"`
+	SchedulerID uint                `json:"scheduler_id"`
 }
 
 // Peer represents the peer information.

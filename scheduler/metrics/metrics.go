@@ -485,6 +485,34 @@ var (
 		Help:      "Counter of the number of failed of the stating image.",
 	})
 
+	PreheatFileCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "preheat_file_total",
+		Help:      "Counter of the total preheat file.",
+	})
+
+	PreheatFileFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "preheat_file_failure_total",
+		Help:      "Counter of the total preheat file failure.",
+	})
+
+	StatFileCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_file_total",
+		Help:      "Counter of the number of the stating file.",
+	})
+
+	StatFileFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_file_failure_total",
+		Help:      "Counter of the number of failed of the stating file.",
+	})
+
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,

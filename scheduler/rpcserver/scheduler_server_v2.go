@@ -342,12 +342,42 @@ func (s *schedulerServerV2) StatImage(ctx context.Context, req *schedulerv2.Stat
 	return resp, nil
 }
 
-// TODO(EvanCley): Implement the following methods.
+// PreheatFile synchronously triggers an asynchronous preheat task for a file.
+//
+// This is a blocking call. The RPC will not return until the server has completed the
+// initial synchronous work: preparing the file URL.
+//
+// After this call successfully returns, a scheduler on the server begins the actual
+// preheating process, instructing peers to download the file in the background.
+//
+// A successful response (google.protobuf.Empty) confirms that the preparation is complete
+// and the asynchronous download task has been scheduled.
 func (s *schedulerServerV2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) (*emptypb.Empty, error) {
+	// Collect PreheatFileCount metrics.
+	metrics.PreheatFileCount.Inc()
+	if err := s.service.PreheatFile(ctx, req); err != nil {
+		// Collect PreheatFileFailureCount metrics.
+		metrics.PreheatFileFailureCount.Inc()
+		return nil, err
+	}
+
 	return new(emptypb.Empty), nil
 }
 
-// TODO(EvanCley): Implement the following methods.
+// StatFile provides detailed status for files distribution in peers.
+//
+// This is a blocking call that first queries the file/dir entries and then queries
+// all peers to collect the file's download state across the network.
+// The response includes the file status on each peer.
 func (s *schedulerServerV2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
-	return nil, nil
+	// Collect StatFileCount metrics.
+	metrics.StatFileCount.Inc()
+	resp, err := s.service.StatFile(ctx, req)
+	if err != nil {
+		// Collect StatFileFailureCount metrics.
+		metrics.StatFileFailureCount.Inc()
+		return nil, err
+	}
+
+	return resp, nil
 }

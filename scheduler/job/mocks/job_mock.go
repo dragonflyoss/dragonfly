@@ -57,6 +57,21 @@ func (mr *MockJobMockRecorder) GetTask(arg0, arg1, arg2 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTask", reflect.TypeOf((*MockJob)(nil).GetTask), arg0, arg1, arg2)
 }
 
+// ListTaskEntries mocks base method.
+func (m *MockJob) ListTaskEntries(arg0 context.Context, arg1 *job.ListTaskEntriesRequest, arg2 *logger.SugaredLoggerOnWith) (*job.ListTaskEntriesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTaskEntries", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.ListTaskEntriesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTaskEntries indicates an expected call of ListTaskEntries.
+func (mr *MockJobMockRecorder) ListTaskEntries(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskEntries", reflect.TypeOf((*MockJob)(nil).ListTaskEntries), arg0, arg1, arg2)
+}
+
 // PreheatAllPeers mocks base method.
 func (m *MockJob) PreheatAllPeers(arg0 context.Context, arg1 *job.PreheatRequest, arg2 *logger.SugaredLoggerOnWith) (*job.PreheatResponse, error) {
 	m.ctrl.T.Helper()

@@ -59,6 +59,9 @@ type Job interface {
 	// GetTask retrieves task information from all hosts in the cluster.
 	GetTask(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) (*internaljob.GetTaskResponse, error)
 
+	// ListTaskEntries lists all task entries.
+	ListTaskEntries(context.Context, *internaljob.ListTaskEntriesRequest, *logger.SugaredLoggerOnWith) (*internaljob.ListTaskEntriesResponse, error)
+
 	// PreheatSinglePeer preheats job by single seed peer, scheduler will trigger seed peer to download task.
 	PreheatSingleSeedPeer(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error)
 
@@ -1035,4 +1038,48 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 		FailureTasks:       failureTasks,
 		SchedulerClusterID: j.config.Manager.SchedulerClusterID,
 	})
+}
+
+func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntriesRequest, log *logger.SugaredLoggerOnWith) (*internaljob.ListTaskEntriesResponse, error) {
+	advertiseIP := j.config.Server.AdvertiseIP.String()
+
+	selected, err := j.resource.SeedPeer().Select(ctx, req.TaskID)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	log.Infof("selected seed peer %s for task %s", addr, req.TaskID)
+
+	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, j.dialOptions...)
+	if err != nil {
+		log.Errorf("[list-task-entries] get dfdaemon client failed: %s", err)
+		return nil, err
+	}
+
+	res, err := dfdaemonClient.ListTaskEntries(ctx, &dfdaemonv2.ListTaskEntriesRequest{
+		TaskId:           req.TaskID,
+		Url:              req.Url,
+		RequestHeader:    req.Header,
+		Timeout:          req.Timeout,
+		CertificateChain: req.CertificateChain,
+		ObjectStorage:    req.ObjectStorage,
+		Hdfs:             req.Hdfs,
+		RemoteIp:         &advertiseIP,
+	})
+	if err != nil {
+		log.Errorf("[list-task-entries]list task entries failed: %s", err)
+		return nil, err
+	}
+
+	var recursive bool
+	if len(res.Entries) > 1 {
+		recursive = true
+	}
+
+	return &internaljob.ListTaskEntriesResponse{
+		Recursive:   recursive,
+		Entries:     res.Entries,
+		SchedulerID: j.config.Manager.SchedulerClusterID,
+	}, nil
 }

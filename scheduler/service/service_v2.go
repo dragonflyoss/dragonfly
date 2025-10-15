@@ -3150,3 +3150,220 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	log.Infof("stat image finished, total layers: %d, total peers: %d", len(resp.Image.Layers), len(resp.Peers))
 	return resp, nil
 }
+
+// PreheatFile synchronously triggers an asynchronous preheat task for a file.
+//
+// This is a blocking call. The RPC will not return until the server has completed the
+// initial synchronous work: preparing the file URL.
+//
+// After this call successfully returns, a scheduler on the server begins the actual
+// preheating process, instructing peers to download the file in the background.
+//
+// A successful response (google.protobuf.Empty) confirms that the preparation is complete
+// and the asynchronous download task has been scheduled.
+func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) error {
+	log := logger.WithPreheatFile(req.Url)
+
+	if req.Scope == "" {
+		req.Scope = managertypes.SingleSeedPeerScope
+	}
+
+	if req.ConcurrentTaskCount == nil {
+		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
+		req.ConcurrentTaskCount = &concurrentTaskCount
+	}
+
+	if req.ConcurrentPeerCount == nil {
+		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
+		req.ConcurrentPeerCount = &concurrentPeerCount
+	}
+
+	if len(req.FilteredQueryParams) == 0 {
+		req.FilteredQueryParams = http.DefaultFilteredQueryParams
+	}
+
+	if req.Timeout == nil {
+		req.Timeout = durationpb.New(managertypes.DefaultJobTimeout)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
+	defer cancel()
+
+	// For files preheating, we get entries from client first
+	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
+		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams),
+		Url:              req.GetUrl(),
+		Timeout:          req.GetTimeout(),
+		Header:           req.GetHeader(),
+		CertificateChain: req.GetCertificateChain(),
+		ObjectStorage:    req.GetObjectStorage(),
+		Hdfs:             req.GetHdfs(),
+	}, log)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
+	}
+
+	var urls []string
+	for _, entry := range listResp.Entries {
+		urls = append(urls, entry.Url)
+	}
+
+	// Create a preheat request for the job queue.
+	preheatRequest := &internaljob.PreheatRequest{
+		URLs:                urls,
+		Application:         req.GetApplication(),
+		FilteredQueryParams: idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+		Headers:             req.GetHeader(),
+		PieceLength:         req.PieceLength,
+		Priority:            int32(req.GetPriority()),
+		Scope:               req.GetScope(),
+		IPs:                 req.GetIps(),
+		Count:               req.Count,
+		Percentage:          req.Percentage,
+		ConcurrentTaskCount: req.GetConcurrentTaskCount(),
+		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
+		Timeout:             req.GetTimeout().AsDuration(),
+		CertificateChain:    req.GetCertificateChain(),
+		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+	}
+
+	switch req.GetScope() {
+	case managertypes.SingleSeedPeerScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat single seed peer")
+			resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat single seed peer failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat single seed peer finished, response: %#v", resp)
+		}()
+	case managertypes.AllSeedPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat all seed peers")
+			resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat all seed peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat all seed peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+		}()
+	case managertypes.AllPeersScope:
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), req.GetTimeout().AsDuration())
+			defer cancel()
+
+			log.Info("preheat all peers")
+			resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
+			if err != nil {
+				log.Errorf("preheat all peers failed: %s", err.Error())
+				return
+			}
+
+			log.Infof("preheat all peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+		}()
+	default:
+		return status.Errorf(codes.InvalidArgument, "unsupported preheat scope: %s", req.Scope)
+	}
+
+	return nil
+}
+
+// StatFile provides detailed status for files distribution in peers.
+//
+// This is a blocking call that first queries the file/dir entries and then queries
+// all peers to collect the file's download state across the network.
+// The response includes the file status on each peer.
+func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
+	log := logger.WithStatFile(req.Url)
+
+	if req.ConcurrentPeerCount == nil {
+		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
+		req.ConcurrentPeerCount = &concurrentPeerCount
+	}
+
+	if len(req.FilteredQueryParams) == 0 {
+		req.FilteredQueryParams = http.DefaultFilteredQueryParams
+	}
+
+	if req.Timeout == nil {
+		req.Timeout = durationpb.New(managertypes.DefaultJobTimeout)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
+	defer cancel()
+
+	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
+		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams),
+		Url:              req.GetUrl(),
+		Timeout:          req.GetTimeout(),
+		Header:           req.GetHeader(),
+		CertificateChain: req.GetCertificateChain(),
+		ObjectStorage:    req.GetObjectStorage(),
+		Hdfs:             req.GetHdfs(),
+	}, log)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
+	}
+
+	resp := &schedulerv2.StatFileResponse{
+		Peers: make([]*schedulerv2.PeerFile, 0),
+	}
+
+	var mu sync.Mutex
+	peers := map[string]*schedulerv2.PeerFile{}
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, entry := range listResp.Entries {
+		eg.Go(func() error {
+			taskID := idgen.TaskIDV2ByURLBased(entry.Url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
+			getTaskRequest := &internaljob.GetTaskRequest{
+				TaskID:              taskID,
+				Timeout:             req.GetTimeout().AsDuration(),
+				ConcurrentPeerCount: *req.ConcurrentPeerCount,
+			}
+
+			log := logger.WithStatFileAndTaskID(entry.Url, taskID)
+			log.Infof("get task request: %#v", getTaskRequest)
+			task, err := v.job.GetTask(ctx, getTaskRequest, log)
+			if err != nil {
+				log.Errorf("get task failed: %s", err.Error())
+				return nil
+			}
+			log.Infof("get length of peers: %d", len(task.Peers))
+
+			for _, peer := range task.Peers {
+				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				mu.Lock()
+				if _, exists := peers[hostID]; !exists {
+					peers[hostID] = &schedulerv2.PeerFile{
+						Ip:       peer.IP,
+						Hostname: peer.Hostname,
+					}
+				}
+				mu.Unlock()
+			}
+			return nil
+		})
+	}
+
+	// If any of the goroutines return an error, ignore it and continue processing.
+	if err := eg.Wait(); err != nil {
+		logger.Errorf("failed to create get task jobs: %w", err)
+	}
+
+	for _, peer := range peers {
+		resp.Peers = append(resp.Peers, peer)
+		log.Infof("stat file for peer %s", peer.Ip)
+	}
+
+	log.Infof("stat file finished, total files: %d, total peers: %d", len(listResp.Entries), len(resp.Peers))
+	return resp, nil
+}
