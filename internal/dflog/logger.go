@@ -256,6 +256,24 @@ func WithStatImageAndTaskID(url, taskID string) *SugaredLoggerOnWith {
 	}
 }
 
+func WithPreheatFile(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatFile(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatFileAndTaskID(url, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url, "taskID", taskID},
+	}
+}
+
 func (log *SugaredLoggerOnWith) With(args ...any) *SugaredLoggerOnWith {
 	args = append(args, log.withArgs...)
 	return &SugaredLoggerOnWith{
