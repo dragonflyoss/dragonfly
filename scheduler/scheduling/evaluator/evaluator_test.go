@@ -38,7 +38,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "default",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 		{
@@ -46,7 +46,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "plugin",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 	}

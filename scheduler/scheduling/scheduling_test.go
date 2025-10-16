@@ -860,24 +860,18 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
-				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 		{
-			name: "find seed peer parent",
+			name: "find normal parent",
 			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
@@ -886,12 +880,8 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.StorePeer(mockPeers[2])
-				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				mockPeers[0].Host.Type = pkgtypes.HostTypeNormal
 				mockPeers[1].Host.Type = pkgtypes.HostTypeSuperSeed
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
@@ -906,21 +896,16 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[1].FSM.SetState(standard.PeerStateSucceeded)
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 		{
@@ -929,6 +914,10 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
 				mockPeers[1].FSM.SetState(standard.PeerStateRunning)
+				mockPeers[2].FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeNormal
+				mockPeers[1].Host.Type = pkgtypes.HostTypeNormal
+				mockPeers[2].Host.Type = pkgtypes.HostTypeSuperSeed
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
@@ -941,36 +930,12 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
-
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
-			},
-		},
-		{
-			name: "find parent with same host",
-			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				peer.FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
-				mockPeers[1].FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].Host = peer.Host
-				peer.Task.StorePeer(peer)
-				peer.Task.StorePeer(mockPeers[0])
-				peer.Task.StorePeer(mockPeers[1])
-				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
-			},
-			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
-				assert := assert.New(t)
-				assert.True(ok)
-				assert.Equal(mockPeers[0].ID, parents[0].ID)
+				assert.Equal(mockPeers[2].ID, parents[0].ID)
 			},
 		},
 		{
@@ -986,10 +951,6 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
 				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
 					CandidateParentLimit: 3,
@@ -1011,13 +972,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
-				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
 					CandidateParentLimit: 1,
@@ -1027,7 +982,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 				assert := assert.New(t)
 				assert.True(ok)
 				assert.Equal(len(parents), 1)
-				assert.Equal(parents[0].ID, mockPeers[1].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 	}
@@ -1153,22 +1108,6 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			},
 		},
 		{
-			name: "parent free upload load is zero",
-			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				peer.FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
-				peer.Task.StorePeer(peer)
-				peer.Task.StorePeer(mockPeers[0])
-				mockPeers[0].Host.ConcurrentUploadLimit.Store(0)
-
-				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
-			},
-			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
-				assert := assert.New(t)
-				assert.False(ok)
-			},
-		},
-		{
 			name: "find back-to-source parent",
 			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				peer.FSM.SetState(standard.PeerStateRunning)
@@ -1178,24 +1117,18 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
-				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 		{
-			name: "find seed peer parent",
+			name: "find normal parent",
 			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
@@ -1203,20 +1136,15 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
-				peer.Task.StorePeer(mockPeers[2])
 				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
-				mockPeers[1].Host.Type = pkgtypes.HostTypeSuperSeed
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
+				mockPeers[1].Host.Type = pkgtypes.HostTypeNormal
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 		{
@@ -1228,10 +1156,8 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				mockPeers[1].Host.Type = pkgtypes.HostTypeNormal
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
@@ -1247,6 +1173,10 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
 				mockPeers[1].FSM.SetState(standard.PeerStateRunning)
+				mockPeers[2].FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeNormal
+				mockPeers[1].Host.Type = pkgtypes.HostTypeNormal
+				mockPeers[2].Host.Type = pkgtypes.HostTypeSuperSeed
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
@@ -1259,36 +1189,12 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
-
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parents[0].ID)
-			},
-		},
-		{
-			name: "find parent with same host",
-			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				peer.FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateRunning)
-				mockPeers[1].FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].Host = peer.Host
-				peer.Task.StorePeer(peer)
-				peer.Task.StorePeer(mockPeers[0])
-				peer.Task.StorePeer(mockPeers[1])
-				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
-			},
-			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
-				assert := assert.New(t)
-				assert.True(ok)
-				assert.Equal(mockPeers[0].ID, parents[0].ID)
+				assert.Equal(mockPeers[2].ID, parents[0].ID)
 			},
 		},
 		{
@@ -1304,10 +1210,6 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
 				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
 					CandidateParentLimit: 3,
@@ -1329,13 +1231,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
-				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
 					CandidateParentLimit: 1,
@@ -1345,7 +1241,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 				assert := assert.New(t)
 				assert.True(ok)
 				assert.Equal(len(parents), 1)
-				assert.Equal(parents[0].ID, mockPeers[1].ID)
+				assert.Equal(mockPeers[0].ID, parents[0].ID)
 			},
 		},
 	}
@@ -1494,24 +1390,18 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
 				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
-				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[1].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parent *standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parent.ID)
+				assert.Equal(mockPeers[0].ID, parent.ID)
 			},
 		},
 		{
-			name: "find seed peer parent",
+			name: "find normal parent",
 			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
@@ -1519,20 +1409,15 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
-				peer.Task.StorePeer(mockPeers[2])
-				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				mockPeers[0].Host.Type = pkgtypes.HostTypeNormal
 				mockPeers[1].Host.Type = pkgtypes.HostTypeSuperSeed
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parent *standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parent.ID)
+				assert.Equal(mockPeers[0].ID, parent.ID)
 			},
 		},
 		{
@@ -1541,6 +1426,10 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 				peer.FSM.SetState(standard.PeerStateRunning)
 				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
 				mockPeers[1].FSM.SetState(standard.PeerStateSucceeded)
+				mockPeers[2].FSM.SetState(standard.PeerStateSucceeded)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				mockPeers[1].Host.Type = pkgtypes.HostTypeSuperSeed
+				mockPeers[2].Host.Type = pkgtypes.HostTypeNormal
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(mockPeers[0])
 				peer.Task.StorePeer(mockPeers[1])
@@ -1553,35 +1442,12 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
-
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parent *standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(mockPeers[1].ID, parent.ID)
-			},
-		},
-		{
-			name: "find parent with same host",
-			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				peer.FSM.SetState(standard.PeerStateRunning)
-				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[1].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[1].Host = peer.Host
-				peer.Task.StorePeer(peer)
-				peer.Task.StorePeer(mockPeers[0])
-				peer.Task.StorePeer(mockPeers[1])
-				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
-			},
-			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parent *standard.Peer, ok bool) {
-				assert := assert.New(t)
-				assert.True(ok)
-				assert.Equal(mockPeers[0].ID, parent.ID)
+				assert.Equal(mockPeers[2].ID, parent.ID)
 			},
 		},
 		{
@@ -1595,10 +1461,6 @@ func TestScheduling_FindSuccessParent(t *testing.T) {
 				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
 				mockPeers[0].FSM.SetState(standard.PeerStateSucceeded)
 				mockPeers[1].FSM.SetState(standard.PeerStateSucceeded)
-				mockPeers[0].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(0)
-				mockPeers[1].FinishedPieces.Set(1)
-				mockPeers[1].FinishedPieces.Set(2)
 
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
 					FilterParentLimit: 3,

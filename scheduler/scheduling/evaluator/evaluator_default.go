@@ -76,9 +76,6 @@ func newEvaluatorDefault() Evaluator {
 // type. The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
 // parents appearing first in the returned slice.
 func (e *evaluatorDefault) EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer {
-	score := e.evaluateParents(parents[0], child)
-	child.Log.Debugf("[evaluator] evaluate parents: %v", score)
-
 	sort.Slice(
 		parents,
 		func(i, j int) bool {
@@ -233,7 +230,6 @@ func (e *evaluatorDefault) calculateBandwidthDurationScore(parent *standard.Peer
 //
 // The calculation assumes:
 // - Piece length sets to 16 MiB is an empirical value for efficient I/O throughput.
-// - Concurrent piece count sets to 16 is an empirical value.
 // - PieceCountNeeded represents the number of pieces that can fully saturate the bandwidth.
 //
 // Formula:
@@ -250,10 +246,9 @@ func (e *evaluatorDefault) calculateConcurrencyScore(parent *standard.Peer) floa
 	}
 
 	const (
-		concurrentPieceCount = 16
-		pieceLength          = 16 * 1024 * 1024
+		pieceLength = 16 * 1024 * 1024
 	)
-	pieceCountNeeded := float64(maxTxBandwidth) / pieceLength * 8 / concurrentPieceCount
+	pieceCountNeeded := float64(maxTxBandwidth) / pieceLength / 8
 	if pieceCountNeeded <= 1.0 {
 		return minScore
 	}

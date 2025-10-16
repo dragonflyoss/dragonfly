@@ -32,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	candidateParents := e.EvaluateParents([]*standard.Peer{&standard.Peer{}}, &standard.Peer{}, uint32(0))
+	candidateParents := e.EvaluateParents([]*standard.Peer{&standard.Peer{}}, &standard.Peer{})
 	if len(candidateParents) != 1 {
 		fmt.Println("EvaluateParents failed")
 		os.Exit(1)
@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	candidatePersistentCacheParents := e.EvaluatePersistentCacheParents([]*persistentcache.Peer{&persistentcache.Peer{}}, &persistentcache.Peer{}, uint32(0))
+	candidatePersistentCacheParents := e.EvaluatePersistentCacheParents([]*persistentcache.Peer{&persistentcache.Peer{}}, &persistentcache.Peer{})
 	if len(candidatePersistentCacheParents) != 1 {
 		fmt.Println("EvaluatePersistentCacheParents failed")
 		os.Exit(1)
