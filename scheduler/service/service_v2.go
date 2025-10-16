@@ -1569,8 +1569,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 	task, loaded := v.resource.TaskManager().Load(taskID)
 	if !loaded {
 		options := []standard.TaskOption{
-			standard.WithPieceLength(int64(download.GetActualPieceLength())),
-			standard.WithConcurrentPieceCount(int32(download.GetConcurrentPieceCount())),
+			standard.WithPieceLength(download.GetActualPieceLength()),
 		}
 		if download.GetDigest() != "" {
 			d, err := digest.Parse(download.GetDigest())

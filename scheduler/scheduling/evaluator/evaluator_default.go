@@ -286,7 +286,7 @@ func (e *evaluatorDefault) EvaluatePersistentCacheParents(parents []*persistentc
 // evaluatePersistentCacheParents evaluates and scores a parent peer for selection as a download source for a child peer.
 // The score ranges from 0.0 to 1.0, where a higher value indicates a better parent candidate.
 //
-// This function combines four key metrics to comprehensively evaluate parent peer quality:
+// This function combines two key metrics to comprehensively evaluate parent peer quality:
 // 1. IDC Affinity Score: Measures network proximity based on Internet Data Center(IDC) affinity.
 // 2. Location Affinity Score: Measures geographic proximity based on location affinity.
 //

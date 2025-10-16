@@ -59,43 +59,18 @@ const (
 type Evaluator interface {
 	// EvaluateParents sorts and returns a list of parent peers ordered by their suitability as download sources.
 	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
-	//
-	// This function evaluates each parent peer using multiple metrics including load quality (bandwidth
-	// usage, sustained load, and concurrency), IDC affinity, location affinity, and host
-	// type. The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
-	// parents appearing first in the returned slice.
 	EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer
 
 	// IsBadParent determines whether a peer is unsuitable to be selected as a parent
-	// for downloading pieces. It evaluates peers based on their current state and historical
-	// download performance metrics.
-	//
-	// A peer is considered a bad parent if:
-	//  1. It is in an unsuitable state (Failed, Leave, Pending, or any Received* state).
-	//  2. Its recent download costs indicate poor performance based on statistical analysis.
-	//
-	// For performance evaluation, the function uses two strategies:
-	//   - If sample size is small (< normalDistributionLen): Uses a simple threshold check
-	//     where the last cost must not exceed 20 times the mean of previous costs.
-	//   - If sample size is sufficient (>= normalDistributionLen): Applies the three-sigma rule
-	//     where costs beyond mean + 3*standard_deviation are considered bad.
+	// for downloading pieces.
 	IsBadParent(peer *standard.Peer) bool
 
 	// EvaluatePersistentCacheParents sorts and returns a list of parent peers ordered by their suitability as download sources.
 	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
-	//
-	// This function evaluates each parent peer using multiple metrics including IDC affinity and location affinity.
-	// The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
-	// parents appearing first in the returned slice.
 	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer
 
-	// IsBadPersistentCacheParent checks if a persistent cache peer is unsuitable to be a parent.
-	// It returns true if the peer is in any of the following states:
-	// - PeerStatePending: peer is waiting to start.
-	// - PeerStateUploading: peer is currently uploading data.
-	// - PeerStateReceivedEmpty: peer has received an empty response.
-	// - PeerStateReceivedNormal: peer has received normal data but not yet completed.
-	// - PeerStateFailed: peer has failed.
+	// IsBadPersistentCacheParent determines whether a peer is unsuitable to be selected as a persistent cache parent
+	// for downloading pieces.
 	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool
 }
 

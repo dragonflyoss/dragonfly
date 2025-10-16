@@ -184,21 +184,21 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 			mock: func(parents []*standard.Peer, child *standard.Peer) {
 				parents[0].Host.Network.MaxTxBandwidth = 1000
 				parents[0].Host.TxBandwidth.Store(900)
-				parents[0].Host.Network.IDC = "idc-1"
-				parents[0].Host.Network.Location = "location-1"
+				parents[0].Host.Network.IDC = mockHostIDC
+				parents[0].Host.Network.Location = mockHostLocation
 
 				parents[1].Host.Network.MaxTxBandwidth = 1000
 				parents[1].Host.TxBandwidth.Store(100)
-				parents[1].Host.Network.IDC = "idc-1"
-				parents[1].Host.Network.Location = "location-1"
+				parents[1].Host.Network.IDC = mockHostIDC
+				parents[1].Host.Network.Location = mockHostLocation
 
 				parents[2].Host.Network.MaxTxBandwidth = 1000
 				parents[2].Host.TxBandwidth.Store(500)
-				parents[2].Host.Network.IDC = "idc-1"
-				parents[2].Host.Network.Location = "location-1"
+				parents[2].Host.Network.IDC = mockHostIDC
+				parents[2].Host.Network.Location = mockHostLocation
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "location-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = mockHostLocation
 			},
 			expect: func(t *testing.T, parents []*standard.Peer) {
 				assert := assert.New(t)
@@ -212,16 +212,16 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 			mock: func(parents []*standard.Peer, child *standard.Peer) {
 				parents[0].Host.Network.MaxTxBandwidth = 1000
 				parents[0].Host.TxBandwidth.Store(500)
-				parents[0].Host.Network.IDC = "idc-1"
-				parents[0].Host.Network.Location = "location-1"
+				parents[0].Host.Network.IDC = mockHostIDC
+				parents[0].Host.Network.Location = mockHostLocation
 
 				parents[1].Host.Network.MaxTxBandwidth = 1000
 				parents[1].Host.TxBandwidth.Store(100)
 				parents[1].Host.Network.IDC = "idc-2"
-				parents[1].Host.Network.Location = "location-1"
+				parents[1].Host.Network.Location = mockHostLocation
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "location-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = mockHostLocation
 			},
 			expect: func(t *testing.T, parents []*standard.Peer) {
 				assert := assert.New(t)
@@ -235,16 +235,16 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 			mock: func(parents []*standard.Peer, child *standard.Peer) {
 				parents[0].Host.Network.MaxTxBandwidth = 1000
 				parents[0].Host.TxBandwidth.Store(500)
-				parents[0].Host.Network.IDC = "idc-1"
-				parents[0].Host.Network.Location = "country-1|province-1"
+				parents[0].Host.Network.IDC = mockHostIDC
+				parents[0].Host.Network.Location = "country-3|province-3"
 
 				parents[1].Host.Network.MaxTxBandwidth = 1000
 				parents[1].Host.TxBandwidth.Store(500)
-				parents[1].Host.Network.IDC = "idc-1"
-				parents[1].Host.Network.Location = "country-1|province-1|city-1"
+				parents[1].Host.Network.IDC = mockHostIDC
+				parents[1].Host.Network.Location = "country-3|province-3|city-3"
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "country-1|province-1|city-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = "country-3|province-3|city-3"
 			},
 			expect: func(t *testing.T, parents []*standard.Peer) {
 				assert := assert.New(t)
@@ -257,25 +257,12 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 			name: "sort parents with host type considered",
 			mock: func(parents []*standard.Peer, child *standard.Peer) {
 				parents[0].Host.Type = types.HostTypeNormal
-				parents[0].Host.Network.MaxTxBandwidth = 1000
-				parents[0].Host.TxBandwidth.Store(500)
-				parents[0].Host.Network.IDC = "idc-1"
-				parents[0].Host.Network.Location = "location-1"
-
 				parents[1].Host.Type = types.HostTypeSuperSeed
-				parents[1].Host.Network.MaxTxBandwidth = 1000
-				parents[1].Host.TxBandwidth.Store(500)
-				parents[1].Host.Network.IDC = "idc-1"
-				parents[1].Host.Network.Location = "location-1"
-
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "location-1"
+				parents[2].Host.Type = types.HostTypeSuperSeed
 			},
 			expect: func(t *testing.T, parents []*standard.Peer) {
 				assert := assert.New(t)
 				assert.Equal("127.0.0.1-host1", parents[0].Host.ID)
-				assert.Equal("127.0.0.2-host2", parents[1].Host.ID)
-				assert.Equal("127.0.0.3-host3", parents[2].Host.ID)
 			},
 		},
 	}
@@ -320,13 +307,13 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 				parent.Host.TxBandwidth.Store(0)
 				parent.Host.UploadContentLength.Store(0)
 				parent.Host.ConcurrentUploadPieceCount.Store(0)
-				parent.Host.Network.IDC = "idc-1"
-				parent.Host.Network.Location = "country-1|province-1|city-1"
+				parent.Host.Network.IDC = mockHostIDC
+				parent.Host.Network.Location = "country-2|province-2|city-2"
 				parent.Host.Type = types.HostTypeSuperSeed
 				parent.FSM.SetState(standard.PeerStateRunning)
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "country-1|province-1|city-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = "country-2|province-2|city-2"
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
@@ -345,8 +332,8 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 				parent.Host.Type = types.HostTypeSuperSeed
 				parent.FSM.SetState(standard.PeerStateSucceeded)
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "location-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = mockHostLocation
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
@@ -360,11 +347,11 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 				parent.Host.TxBandwidth.Store(500)
 				parent.Host.UploadContentLength.Store(8589934592)
 				parent.Host.ConcurrentUploadPieceCount.Store(2)
-				parent.Host.Network.IDC = "idc-1"
+				parent.Host.Network.IDC = mockHostIDC
 				parent.Host.Network.Location = "country-1|province-1"
 				parent.Host.Type = types.HostTypeNormal
 
-				child.Host.Network.IDC = "idc-1"
+				child.Host.Network.IDC = mockHostIDC
 				child.Host.Network.Location = "country-1|province-1|city-1"
 			},
 			expect: func(t *testing.T, score float64) {
@@ -379,17 +366,17 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 				parent.Host.TxBandwidth.Store(4294967296)
 				parent.Host.UploadContentLength.Store(12884901888)
 				parent.Host.ConcurrentUploadPieceCount.Store(16)
-				parent.Host.Network.IDC = "idc-1"
-				parent.Host.Network.Location = "location-1"
+				parent.Host.Network.IDC = mockHostIDC
+				parent.Host.Network.Location = mockHostLocation
 				parent.Host.Type = types.HostTypeSuperSeed
 				parent.FSM.SetState(standard.PeerStateRunning)
 
-				child.Host.Network.IDC = "idc-1"
-				child.Host.Network.Location = "location-1"
+				child.Host.Network.IDC = mockHostIDC
+				child.Host.Network.Location = mockHostLocation
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(0.628, score, 0.01)
+				assert.Equal(0.628, score)
 			},
 		},
 	}

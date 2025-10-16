@@ -97,16 +97,9 @@ func WithDigest(d *digest.Digest) TaskOption {
 }
 
 // WithPieceLength set PieceLength for task.
-func WithPieceLength(pieceLength int64) TaskOption {
+func WithPieceLength(pieceLength uint64) TaskOption {
 	return func(t *Task) {
 		t.PieceLength = pieceLength
-	}
-}
-
-// WithConcurrentPieceCount set ConcurrentPieceCount for task.
-func WithConcurrentPieceCount(concurrentPieceCount int32) TaskOption {
-	return func(t *Task) {
-		t.ConcurrentPieceCount = concurrentPieceCount
 	}
 }
 
@@ -143,10 +136,7 @@ type Task struct {
 	ContentLength *atomic.Int64
 
 	// PieceLength is piece length.
-	PieceLength int64
-
-	// ConcurrentPieceCount is concurrent piece count.
-	ConcurrentPieceCount int32
+	PieceLength uint64
 
 	// TotalPieceCount is total piece count.
 	TotalPieceCount *atomic.Int32
@@ -318,8 +308,8 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 
 	fromPeer.Host.UploadCount.Inc()
 	fromPeer.Host.ConcurrentUploadCount.Inc()
-	fromPeer.Host.TxBandwidth.Add(t.PeakBandwidthUsage())
-	fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(t.ConcurrentPieceCount))
+	fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
+	fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(toPeer.ConcurrentPieceCount))
 	contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
 	fromPeer.Host.UploadContentLength.Add(contentLength)
 	t.Log.Debugf("increment host %s metrics on adding edge %s -> %s: "+
@@ -330,8 +320,8 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		fromPeer.ID, toPeer.ID,
 		fromPeer.Host.UploadCount.Load(),
 		fromPeer.Host.ConcurrentUploadCount.Load(),
-		fromPeer.Host.TxBandwidth.Load(), t.PeakBandwidthUsage(),
-		fromPeer.Host.ConcurrentUploadPieceCount.Load(), t.ConcurrentPieceCount,
+		fromPeer.Host.TxBandwidth.Load(), toPeer.PeakBandwidthUsage(t.PieceLength),
+		fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
 		fromPeer.Host.UploadContentLength.Load(), contentLength,
 	)
 
@@ -351,8 +341,8 @@ func (t *Task) DeletePeerInEdges(key string) error {
 		}
 
 		parent.Value.Host.ConcurrentUploadCount.Dec()
-		pkgmath.SafeSubAtomicUint64(parent.Value.Host.TxBandwidth, t.PeakBandwidthUsage())
-		pkgmath.SafeSubAtomicUint64(parent.Value.Host.ConcurrentUploadPieceCount, uint64(t.ConcurrentPieceCount))
+		pkgmath.SafeSubAtomicUint64(parent.Value.Host.TxBandwidth, vertex.Value.PeakBandwidthUsage(t.PieceLength))
+		pkgmath.SafeSubAtomicUint64(parent.Value.Host.ConcurrentUploadPieceCount, uint64(vertex.Value.ConcurrentPieceCount))
 		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
 		pkgmath.SafeSubAtomicUint64(parent.Value.Host.UploadContentLength, contentLength)
 		t.Log.Debugf("decrement host %s metrics on deleting edge %s -> %s: "+
@@ -361,8 +351,8 @@ func (t *Task) DeletePeerInEdges(key string) error {
 			parent.Value.Host.ID,
 			parent.Value.ID, key,
 			parent.Value.Host.ConcurrentUploadCount.Load(),
-			parent.Value.Host.TxBandwidth.Load(), t.PeakBandwidthUsage(),
-			parent.Value.Host.ConcurrentUploadPieceCount.Load(), t.ConcurrentPieceCount,
+			parent.Value.Host.TxBandwidth.Load(), vertex.Value.PeakBandwidthUsage(t.PieceLength),
+			parent.Value.Host.ConcurrentUploadPieceCount.Load(), vertex.Value.ConcurrentPieceCount,
 			parent.Value.Host.UploadContentLength.Load(), contentLength,
 		)
 	}
@@ -396,8 +386,8 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 			continue
 		}
 
-		totalTxBandwidth += t.PeakBandwidthUsage()
-		totalConcurrentUploadPiece += uint64(t.ConcurrentPieceCount)
+		totalTxBandwidth += peer.PeakBandwidthUsage(t.PieceLength)
+		totalConcurrentUploadPiece += uint64(peer.ConcurrentPieceCount)
 		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
 		totalUploadContentLength += contentLength
 	}
@@ -530,11 +520,6 @@ func (t *Task) LoadPiece(key int32) (*Piece, bool) {
 // StorePiece set piece.
 func (t *Task) StorePiece(piece *Piece) {
 	t.Pieces.Store(piece.Number, piece)
-}
-
-// PeakBandwidthUsage returns peak bandwidth usage of the task, uinit is bps.
-func (t *Task) PeakBandwidthUsage() uint64 {
-	return uint64(t.PieceLength) * uint64(t.ConcurrentPieceCount) * 8
 }
 
 // DeletePiece deletes piece for a key.

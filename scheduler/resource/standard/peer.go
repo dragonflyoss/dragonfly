@@ -448,6 +448,11 @@ func (p *Peer) Children() []*Peer {
 	return children
 }
 
+// PeakBandwidthUsage returns peak bandwidth usage of the peer, uint is bps.
+func (p *Peer) PeakBandwidthUsage(pieceLength uint64) uint64 {
+	return pieceLength * uint64(p.ConcurrentPieceCount) * 8
+}
+
 // Deprecated: Remove the method in the v2 protocol.
 // DownloadTinyFile downloads tiny file from peer without range.
 func (p *Peer) DownloadTinyFile() ([]byte, error) {

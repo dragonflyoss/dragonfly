@@ -120,7 +120,8 @@ seedClient:
         addr: https://index.docker.io
       rules:
       - regex: blobs/sha256.*
-      - regxe: file-server.*
+      - regex: file-server.*
+      - regex: dufs.dragonfly-e2e.svc.*
 
 client:
   enable: true
@@ -181,7 +182,8 @@ client:
         addr: https://index.docker.io
       rules:
       - regex: blobs/sha256.*
-      - regxe: file-server.*
+      - regex: file-server.*
+      - regex: dufs.dragonfly-e2e.svc.*
 
 dfdaemon:
   enable: false
