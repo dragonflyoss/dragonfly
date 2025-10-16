@@ -27,6 +27,12 @@ import (
 )
 
 const (
+	// defaultConcurrentPieceCount is the fallback value for concurrent pieces per peer
+	// when ConcurrentPieceCount is not reported by the client.
+	defaultConcurrentPieceCount uint32 = 8
+)
+
+const (
 	// Peer has been created but did not start running.
 	PeerStatePending = "Pending"
 
@@ -69,6 +75,16 @@ const (
 	PeerEventFailed = "Failed"
 )
 
+// PeerOption is a functional option for persistent cache peer.
+type PeerOption func(peer *Peer)
+
+// WithConcurrentPieceCount set ConcurrentPieceCount for peer.
+func WithConcurrentPieceCount(count uint32) PeerOption {
+	return func(p *Peer) {
+		p.ConcurrentPieceCount = count
+	}
+}
+
 // Peer contains content for persistent cache peer.
 type Peer struct {
 	// ID is persistent cache peer id.
@@ -76,6 +92,9 @@ type Peer struct {
 
 	// Persistent is whether the peer is persistent.
 	Persistent bool
+
+	// ConcurrentPieceCount is the count of pieces that can be downloaded concurrently.
+	ConcurrentPieceCount uint32
 
 	// Pieces is finished pieces bitset.
 	FinishedPieces *bitset.BitSet
@@ -107,18 +126,19 @@ type Peer struct {
 
 // New persistent cache peer instance.
 func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, blockParents []string, task *Task, host *Host,
-	cost time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith) *Peer {
+	cost time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith, options ...PeerOption) *Peer {
 	p := &Peer{
-		ID:             id,
-		Persistent:     persistent,
-		FinishedPieces: finishedPieces,
-		Task:           task,
-		Host:           host,
-		BlockParents:   blockParents,
-		Cost:           cost,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
-		Log:            logger.WithPeer(host.ID, task.ID, id),
+		ID:                   id,
+		Persistent:           persistent,
+		ConcurrentPieceCount: defaultConcurrentPieceCount,
+		FinishedPieces:       finishedPieces,
+		Task:                 task,
+		Host:                 host,
+		BlockParents:         blockParents,
+		Cost:                 cost,
+		CreatedAt:            createdAt,
+		UpdatedAt:            updatedAt,
+		Log:                  logger.WithPeer(host.ID, task.ID, id),
 	}
 
 	// Initialize state machine.
@@ -154,6 +174,10 @@ func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, b
 		},
 	)
 	p.FSM.SetState(state)
+
+	for _, opt := range options {
+		opt(p)
+	}
 
 	return p
 }

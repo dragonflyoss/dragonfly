@@ -7,7 +7,7 @@ on:
     tags:
       - v*
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
@@ -116,7 +116,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3
+        uses: github/codeql-action/upload-sarif@f443b600d91635bebf5b0d9ebc620189c0d6fba5
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -132,10 +132,10 @@ jobs:
         run: |
           docker buildx imagetools inspect dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker pull dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
-          cosign verify --key env://COSIGN_PUBLIC_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }} 
+          cosign verify --key env://COSIGN_PUBLIC_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker buildx imagetools inspect ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
           docker pull ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
-          cosign verify --key env://COSIGN_PUBLIC_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }} 
+          cosign verify --key env://COSIGN_PUBLIC_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
         env:
           COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
 

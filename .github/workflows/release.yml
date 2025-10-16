@@ -5,14 +5,14 @@ on:
     tags:
       - v*
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
   goreleaser:
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: oracle-vm-24cpu-96gb-x86-64
     timeout-minutes: 60
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
@@ -75,7 +75,7 @@ jobs:
     needs: [goreleaser, provenance]
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: oracle-vm-24cpu-96gb-x86-64
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8

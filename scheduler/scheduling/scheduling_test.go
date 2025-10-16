@@ -1524,9 +1524,10 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 									Start:  uint64(candidateParents[0].Range.Start),
 									Length: uint64(candidateParents[0].Range.Length),
 								},
-								Priority: candidateParents[0].Priority,
-								Cost:     durationpb.New(candidateParents[0].Cost.Load()),
-								State:    candidateParents[0].FSM.Current(),
+								Priority:             candidateParents[0].Priority,
+								ConcurrentPieceCount: candidateParents[0].ConcurrentPieceCount,
+								Cost:                 durationpb.New(candidateParents[0].Cost.Load()),
+								State:                candidateParents[0].FSM.Current(),
 								Task: &commonv2.Task{
 									Id:                  candidateParents[0].Task.ID,
 									Type:                candidateParents[0].Task.Type,

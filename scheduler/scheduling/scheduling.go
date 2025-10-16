@@ -820,13 +820,14 @@ func constructSuccessNormalTaskResponse(candidateParents []*standard.Peer) *sche
 	var parents []*commonv2.Peer
 	for _, candidateParent := range candidateParents {
 		parent := &commonv2.Peer{
-			Id:               candidateParent.ID,
-			Priority:         candidateParent.Priority,
-			Cost:             durationpb.New(candidateParent.Cost.Load()),
-			State:            candidateParent.FSM.Current(),
-			NeedBackToSource: candidateParent.NeedBackToSource.Load(),
-			CreatedAt:        timestamppb.New(candidateParent.CreatedAt.Load()),
-			UpdatedAt:        timestamppb.New(candidateParent.UpdatedAt.Load()),
+			Id:                   candidateParent.ID,
+			Priority:             candidateParent.Priority,
+			ConcurrentPieceCount: candidateParent.ConcurrentPieceCount,
+			Cost:                 durationpb.New(candidateParent.Cost.Load()),
+			State:                candidateParent.FSM.Current(),
+			NeedBackToSource:     candidateParent.NeedBackToSource.Load(),
+			CreatedAt:            timestamppb.New(candidateParent.CreatedAt.Load()),
+			UpdatedAt:            timestamppb.New(candidateParent.UpdatedAt.Load()),
 		}
 
 		// Set range to parent.
