@@ -37,7 +37,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
