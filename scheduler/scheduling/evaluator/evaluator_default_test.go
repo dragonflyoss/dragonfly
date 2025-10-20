@@ -482,7 +482,7 @@ func TestEvaluatorDefault_calculateLoadQualityScore(t *testing.T) {
 
 			e := newEvaluatorDefault()
 			tc.mock(peer)
-			tc.expect(t, e.(*evaluatorDefault).calculateLoadQualityScore(peer))
+			tc.expect(t, e.(*evaluatorDefault).calculateLoadQualityScore(peer, peer))
 		})
 	}
 }
@@ -570,7 +570,7 @@ func TestEvaluatorDefault_calculatePeakBandwidthUsageScore(t *testing.T) {
 
 			e := newEvaluatorDefault()
 			tc.mock(peer)
-			tc.expect(t, e.(*evaluatorDefault).calculatePeakBandwidthUsageScore(peer))
+			tc.expect(t, e.(*evaluatorDefault).calculatePeakBandwidthUsageScore(peer, peer))
 		})
 	}
 }
@@ -647,7 +647,7 @@ func TestEvaluatorDefault_calculateBandwidthDurationScore(t *testing.T) {
 
 			e := newEvaluatorDefault()
 			tc.mock(peer)
-			tc.expect(t, e.(*evaluatorDefault).calculateBandwidthDurationScore(peer))
+			tc.expect(t, e.(*evaluatorDefault).calculateBandwidthDurationScore(peer, peer))
 		})
 	}
 }
@@ -724,7 +724,7 @@ func TestEvaluatorDefault_calculateConcurrencyScore(t *testing.T) {
 
 			e := newEvaluatorDefault()
 			tc.mock(peer)
-			tc.expect(t, e.(*evaluatorDefault).calculateConcurrencyScore(peer))
+			tc.expect(t, e.(*evaluatorDefault).calculateConcurrencyScore(peer, peer))
 		})
 	}
 }

@@ -31,7 +31,7 @@ const (
 	DefaultPeerConcurrentUploadLimit = 200
 
 	// DefaultSchedulerCandidateParentLimit is default limit the number of candidate parent.
-	DefaultSchedulerCandidateParentLimit = 4
+	DefaultSchedulerCandidateParentLimit = 3
 
 	// DefaultSchedulerFilterParentLimit is default limit the number for filter parent.
 	DefaultSchedulerFilterParentLimit = 15

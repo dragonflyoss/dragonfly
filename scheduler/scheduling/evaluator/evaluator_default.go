@@ -97,12 +97,12 @@ func (e *evaluatorDefault) EvaluateParents(parents []*standard.Peer, child *stan
 //
 // Formula: TotalScore = (IDCAffinityScore * 0.2) + (LocationAffinityScore * 0.1) + (LoadQualityScore * 0.6) + (HostTypeScore * 0.1)
 func (e *evaluatorDefault) evaluateParents(parent *standard.Peer, child *standard.Peer) float64 {
-	loadQualityScore := e.calculateLoadQualityScore(parent)
+	loadQualityScore := e.calculateLoadQualityScore(parent, child)
 	idcAffinityScore := e.calculateIDCAffinityScore(parent.Host.Network.IDC, child.Host.Network.IDC)
 	locationAffinityScore := e.calculateLocationAffinityScore(parent.Host.Network.Location, child.Host.Network.Location)
 	hostTypeScore := e.calculateHostTypeScore(parent)
-	parent.Log.Debugf("[evaluator] evaluate parent: loadQualityScore=%.4f, idcAffinityScore=%.4f, locationAffinityScore=%.4f, hostTypeScore=%.4f",
-		loadQualityScore, idcAffinityScore, locationAffinityScore, hostTypeScore)
+	child.Log.Debugf("[evaluator] evaluate %s: loadQualityScore=%.4f, idcAffinityScore=%.4f, locationAffinityScore=%.4f, hostTypeScore=%.4f",
+		parent.ID, loadQualityScore, idcAffinityScore, locationAffinityScore, hostTypeScore)
 
 	return defaultLoadQualityWeight*loadQualityScore + defaultIDCAffinityWeight*idcAffinityScore +
 		defaultLocationAffinityWeight*locationAffinityScore + defaultHostTypeWeight*hostTypeScore
@@ -120,12 +120,12 @@ func (e *evaluatorDefault) evaluateParents(parent *standard.Peer, child *standar
 // a comprehensive assessment that balances immediate capacity, sustained load, and concurrency.
 //
 // Formula: LoadQualityScore = (PeakBandwidthUsage * 0.5) + (BandwidthDurationRatio * 0.3) + (ConcurrentEfficiency * 0.2)
-func (e *evaluatorDefault) calculateLoadQualityScore(parent *standard.Peer) float64 {
-	peakBandwidthUsageScore := e.calculatePeakBandwidthUsageScore(parent)
-	bandwidthDurationScore := e.calculateBandwidthDurationScore(parent)
-	concurrencyScore := e.calculateConcurrencyScore(parent)
-	parent.Log.Debugf("[evaluator] calculate load quality: peakBandwidthUsageScore=%.4f, bandwidthDurationScore=%.4f, concurrencyScore=%.4f",
-		peakBandwidthUsageScore, bandwidthDurationScore, concurrencyScore)
+func (e *evaluatorDefault) calculateLoadQualityScore(parent *standard.Peer, child *standard.Peer) float64 {
+	peakBandwidthUsageScore := e.calculatePeakBandwidthUsageScore(parent, child)
+	bandwidthDurationScore := e.calculateBandwidthDurationScore(parent, child)
+	concurrencyScore := e.calculateConcurrencyScore(parent, child)
+	child.Log.Debugf("[evaluator] calculate load quality %s: peakBandwidthUsageScore=%.4f, bandwidthDurationScore=%.4f, concurrencyScore=%.4f",
+		parent.ID, peakBandwidthUsageScore, bandwidthDurationScore, concurrencyScore)
 
 	return defaultPeakBandwidthUsageWeight*peakBandwidthUsageScore + defaultBandwidthDurationWeight*bandwidthDurationScore + defaultConcurrencyWeight*concurrencyScore
 }
@@ -146,9 +146,9 @@ func (e *evaluatorDefault) calculateLoadQualityScore(parent *standard.Peer) floa
 // environments where RTT is typically less than 1ms.
 //
 // Formula: PeakBandwidthUsageScore = Max(0, 1 - (TxBandwidth / MaxTxBandwidth))
-func (e *evaluatorDefault) calculatePeakBandwidthUsageScore(parent *standard.Peer) float64 {
-	parent.Log.Debugf("[evaluator] calculate peak bandwidth usage: maxTxBandwidth=%d, txBandwidth=%d",
-		parent.Host.Network.MaxTxBandwidth, parent.Host.TxBandwidth.Load())
+func (e *evaluatorDefault) calculatePeakBandwidthUsageScore(parent *standard.Peer, child *standard.Peer) float64 {
+	child.Log.Debugf("[evaluator] calculate peak bandwidth usage %s: maxTxBandwidth=%d, txBandwidth=%d",
+		parent.ID, parent.Host.Network.MaxTxBandwidth, parent.Host.TxBandwidth.Load())
 
 	maxTxBandwidth := parent.Host.Network.MaxTxBandwidth
 	if maxTxBandwidth == 0 {
@@ -188,9 +188,9 @@ func (e *evaluatorDefault) calculatePeakBandwidthUsageScore(parent *standard.Pee
 // reflecting the sustained impact of different-sized tasks on the network.
 //
 // Formula: BandwidthDurationScore = Max(0, 1 - (UploadContentLength / MaxTxBandwidth / DurationWindow))
-func (e *evaluatorDefault) calculateBandwidthDurationScore(parent *standard.Peer) float64 {
-	parent.Log.Debugf("[evaluator] calculate bandwidth duration: maxTxBandwidth=%d, uploadContentLength=%d",
-		parent.Host.Network.MaxTxBandwidth, parent.Host.UploadContentLength.Load())
+func (e *evaluatorDefault) calculateBandwidthDurationScore(parent *standard.Peer, child *standard.Peer) float64 {
+	child.Log.Debugf("[evaluator] calculate bandwidth duration %s: maxTxBandwidth=%d, uploadContentLength=%d",
+		parent.ID, parent.Host.Network.MaxTxBandwidth, parent.Host.UploadContentLength.Load())
 
 	maxTxBandwidth := parent.Host.Network.MaxTxBandwidth
 	if maxTxBandwidth == 0 {
@@ -236,9 +236,9 @@ func (e *evaluatorDefault) calculateBandwidthDurationScore(parent *standard.Peer
 // - PieceCountNeeded = MaxParentTransmitBandwidth / PieceLength
 // - If ConcurrentUploadPieceCount / PieceCountNeeded <= 1: ConcurrentEfficiency = 1 (maxScore)
 // - If ConcurrentUploadPieceCount / PieceCountNeeded > 1: ConcurrentEfficiency = PieceCountNeeded / ConcurrentUploadPieceCount
-func (e *evaluatorDefault) calculateConcurrencyScore(parent *standard.Peer) float64 {
-	parent.Log.Debugf("[evaluator] calculate concurrency: maxTxBandwidth=%d, concurrentUploadPieceCount=%d",
-		parent.Host.Network.MaxTxBandwidth, parent.Host.ConcurrentUploadPieceCount.Load())
+func (e *evaluatorDefault) calculateConcurrencyScore(parent *standard.Peer, child *standard.Peer) float64 {
+	child.Log.Debugf("[evaluator] calculate concurrency %s: maxTxBandwidth=%d, concurrentUploadPieceCount=%d",
+		parent.ID, parent.Host.Network.MaxTxBandwidth, parent.Host.ConcurrentUploadPieceCount.Load())
 
 	maxTxBandwidth := parent.Host.Network.MaxTxBandwidth
 	if maxTxBandwidth == 0 {
@@ -294,8 +294,8 @@ func (e *evaluatorDefault) EvaluatePersistentCacheParents(parents []*persistentc
 func (e *evaluatorDefault) evaluatePersistentCacheParents(parent *persistentcache.Peer, child *persistentcache.Peer) float64 {
 	idcAffinityScore := e.calculateIDCAffinityScore(parent.Host.Network.IDC, child.Host.Network.IDC)
 	locationAffinityScore := e.calculateLocationAffinityScore(parent.Host.Network.Location, child.Host.Network.Location)
-	parent.Log.Debugf("[evaluator] evaluate persistent cache parent: idcAffinityScore=%.4f, locationAffinityScore=%.4f",
-		idcAffinityScore, locationAffinityScore)
+	child.Log.Debugf("[evaluator] evaluate persistent cache parent %s: idcAffinityScore=%.4f, locationAffinityScore=%.4f",
+		parent.ID, idcAffinityScore, locationAffinityScore)
 
 	return defaultIDCAffinityWeightForPersistentCacheTask*idcAffinityScore +
 		defaultLocationAffinityWeightForPersistentCacheTask*locationAffinityScore

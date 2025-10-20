@@ -58,9 +58,6 @@ type Scheduling interface {
 	// Used only in v1 version of the grpc.
 	FindParentAndCandidateParents(context.Context, *standard.Peer, set.SafeSet[string]) ([]*standard.Peer, bool)
 
-	// FindSuccessParent finds success parent for the peer to download the task.
-	FindSuccessParent(context.Context, *standard.Peer, set.SafeSet[string]) (*standard.Peer, bool)
-
 	// FindReplicatePersistentCacheHosts finds replicate persistent cache hosts for the peer to replicate the task. It will compare the current
 	// persistent replica count with the persistent replica count and try to find enough parents. Then function will return the cached replicate parents,
 	// the replicate hosts without cache and found flag.
@@ -184,6 +181,15 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			continue
 		}
 
+		// Add edge from parent to peer.
+		for _, candidateParent := range candidateParents {
+			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
+				err = fmt.Errorf("peer adds edge failed: %w", err)
+				peer.Log.Warn(err)
+				continue
+			}
+		}
+
 		// Load AnnouncePeerStream from peer.
 		stream, loaded := peer.LoadAnnouncePeerStream()
 		if !loaded {
@@ -202,17 +208,14 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
 			Response: constructSuccessNormalTaskResponse(candidateParents),
 		}); err != nil {
+			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
+				err = fmt.Errorf("peer deletes inedges failed: %w", err)
+				peer.Log.Error(err)
+				return status.Error(codes.Internal, err.Error())
+			}
+
 			peer.Log.Error(err)
 			return status.Error(codes.FailedPrecondition, err.Error())
-		}
-
-		// Add edge from parent to peer.
-		for _, candidateParent := range candidateParents {
-			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				err = fmt.Errorf("peer adds edge failed: %w", err)
-				peer.Log.Warn(err)
-				continue
-			}
 		}
 
 		peer.Log.Infof("scheduling success in %d times", n+1)
@@ -346,6 +349,15 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			continue
 		}
 
+		// Add edge from parent to peer.
+		for _, candidateParent := range candidateParents {
+			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
+				err = fmt.Errorf("peer adds edge failed: %w", err)
+				peer.Log.Debug(err)
+				continue
+			}
+		}
+
 		// Load ReportPieceResultStream from peer.
 		stream, loaded := peer.LoadReportPieceResultStream()
 		if !loaded {
@@ -375,15 +387,6 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			}
 
 			return
-		}
-
-		// Add edge from parent to peer.
-		for _, candidateParent := range candidateParents {
-			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				err = fmt.Errorf("peer adds edge failed: %w", err)
-				peer.Log.Debug(err)
-				continue
-			}
 		}
 
 		peer.Log.Infof("scheduling success in %d times", n+1)
@@ -473,36 +476,6 @@ func (s *scheduling) FindParentAndCandidateParents(ctx context.Context, peer *st
 	return candidateParents, true
 }
 
-// FindSuccessParent finds success parent for the peer.
-func (s *scheduling) FindSuccessParent(ctx context.Context, peer *standard.Peer, blocklist set.SafeSet[string]) (*standard.Peer, bool) {
-	// Only PeerStateRunning peers need to be rescheduled,
-	// and other states including the PeerStateBackToSource indicate that
-	// they have been scheduled.
-	if !peer.FSM.Is(standard.PeerStateRunning) {
-		peer.Log.Infof("peer state is %s, can not schedule parent", peer.FSM.Current())
-		return nil, false
-	}
-
-	// Find the candidate parent that can be scheduled.
-	candidateParents := s.filterCandidateParents(peer, blocklist)
-	if len(candidateParents) == 0 {
-		peer.Log.Info("can not find candidate parents")
-		return nil, false
-	}
-
-	var successParents []*standard.Peer
-	for _, candidateParent := range candidateParents {
-		if candidateParent.FSM.Is(standard.PeerStateSucceeded) {
-			successParents = append(successParents, candidateParent)
-		}
-	}
-
-	// Sort candidate parents by evaluation score.
-	successParents = s.evaluator.EvaluateParents(successParents, peer)
-	peer.Log.Infof("scheduling success parent is %s", successParents[0].ID)
-	return successParents[0], true
-}
-
 // filterCandidateParents filters the candidate parents that can be scheduled.
 func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.SafeSet[string]) []*standard.Peer {
 	filterParentLimit := config.DefaultSchedulerFilterParentLimit
@@ -544,12 +517,13 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 			continue
 		}
 
-		// Parent can be parent of the peer:
-		// Condition 1: Parent has parent.
-		// Condition 2: Parent has been back-to-source.
-		// Condition 3: Parent has been succeeded.
-		// Condition 4: Parent is seed peer.
-		if candidateParent.Host.Type == types.HostTypeNormal && inDegree == 0 && !candidateParent.FSM.Is(standard.PeerStateBackToSource) &&
+		// Skip candidate parent if it's a normal host that doesn't meet selection criteria:
+		// - In-degree is 0 (no parents)
+		// - Not in BackToSource state
+		// - Not in Succeeded state
+		if candidateParent.Host.Type == types.HostTypeNormal &&
+			inDegree == 0 &&
+			!candidateParent.FSM.Is(standard.PeerStateBackToSource) &&
 			!candidateParent.FSM.Is(standard.PeerStateSucceeded) {
 			peer.Log.Debugf("parent %s host %s is not selected, because its download state is %d %d %s",
 				candidateParent.ID, candidateParent.Host.ID, inDegree, int(candidateParent.Host.Type), candidateParent.FSM.Current())
@@ -559,13 +533,6 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 		// Candidate parent is bad parent.
 		if s.evaluator.IsBadParent(candidateParent) {
 			peer.Log.Debugf("parent %s host %s is not selected because it is bad node", candidateParent.ID, candidateParent.Host.ID)
-			continue
-		}
-
-		// Candidate parent's free upload is empty.
-		if candidateParent.Host.FreeUploadCount() <= 0 {
-			peer.Log.Debugf("parent %s host %s is not selected because its free upload is empty, upload limit is %d, upload count is %d",
-				candidateParent.ID, candidateParent.Host.ID, candidateParent.Host.ConcurrentUploadLimit.Load(), candidateParent.Host.ConcurrentUploadCount.Load())
 			continue
 		}
 

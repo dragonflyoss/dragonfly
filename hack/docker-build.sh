@@ -36,6 +36,7 @@ docker-build() {
       --build-arg GOTAGS="${GOTAGS}" \
       --build-arg GOGCFLAGS="${GOGCFLAGS}" \
       --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+      --load \
       -t "${D7Y_REGISTRY}/${name}:${D7Y_VERSION}" \
       -f "${IMAGES_DIR}/${name}/Dockerfile" .
 }

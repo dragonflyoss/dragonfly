@@ -104,21 +104,6 @@ func (mr *MockSchedulingMockRecorder) FindReplicatePersistentCacheHosts(arg0, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicatePersistentCacheHosts", reflect.TypeOf((*MockScheduling)(nil).FindReplicatePersistentCacheHosts), arg0, arg1, arg2)
 }
 
-// FindSuccessParent mocks base method.
-func (m *MockScheduling) FindSuccessParent(arg0 context.Context, arg1 *standard.Peer, arg2 set.SafeSet[string]) (*standard.Peer, bool) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindSuccessParent", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*standard.Peer)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
-}
-
-// FindSuccessParent indicates an expected call of FindSuccessParent.
-func (mr *MockSchedulingMockRecorder) FindSuccessParent(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSuccessParent", reflect.TypeOf((*MockScheduling)(nil).FindSuccessParent), arg0, arg1, arg2)
-}
-
 // ScheduleCandidateParents mocks base method.
 func (m *MockScheduling) ScheduleCandidateParents(arg0 context.Context, arg1 *standard.Peer, arg2 set.SafeSet[string]) error {
 	m.ctrl.T.Helper()
