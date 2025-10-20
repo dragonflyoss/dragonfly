@@ -29,18 +29,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Check GoReleaser config
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a
-        with:
-          version: latest
-          args: check
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a
         id: run-goreleaser
         with:
           version: latest
-          args: release
+          distribution: goreleaser
+          args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -1,9 +1,10 @@
+version: 2
+
 release:
   draft: true
   replace_existing_draft: true
   footer: |
     ## Contributors
-    
     Thanks to all the [contributors](https://github.com/dragonflyoss/dragonfly/graphs/contributors)! ❤️
 
 before:
