@@ -431,7 +431,6 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 		successTasks = sync.Map{}
 		failureTasks = sync.Map{}
 	)
-
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
@@ -852,7 +851,7 @@ func (j *job) selectPeers(ips []string, count *uint32, percentage *uint32, log *
 
 // syncPeers is a job to sync peers.
 func (j *job) syncPeers() (string, error) {
-	var hosts []*resource.Host
+	hosts := make([]*resource.Host, 0, j.resource.HostManager().Len())
 	j.resource.HostManager().Range(func(key, value any) bool {
 		host, ok := value.(*resource.Host)
 		if !ok {
@@ -909,7 +908,7 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	var mu sync.Mutex
 	resp := &internaljob.GetTaskResponse{
 		SchedulerClusterID: j.config.Manager.SchedulerClusterID,
-		Peers:              make([]*internaljob.Peer, 0),
+		Peers:              make([]*internaljob.Peer, 0, len(hosts)),
 	}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentPeerCount))
@@ -984,10 +983,9 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 		})
 	}
 
-	successTasks := []*internaljob.DeleteSuccessTask{}
-	failureTasks := []*internaljob.DeleteFailureTask{}
-
 	finishedPeers := task.LoadFinishedPeers()
+	successTasks := make([]*internaljob.DeleteSuccessTask, 0, len(finishedPeers))
+	failureTasks := make([]*internaljob.DeleteFailureTask, 0, len(finishedPeers))
 	for _, finishedPeer := range finishedPeers {
 		log := logger.WithDeleteTaskJobAndPeer(req.GroupUUID, req.TaskUUID, finishedPeer.Host.ID, finishedPeer.Task.ID, finishedPeer.ID)
 

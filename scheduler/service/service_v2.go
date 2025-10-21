@@ -3091,9 +3091,16 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	}
 
 	resp := &schedulerv2.StatImageResponse{
-		Image: &schedulerv2.Image{Layers: make([]*schedulerv2.Layer, 0, len(layers))},
+		Image: &schedulerv2.Image{Layers: make([]*schedulerv2.Layer, 0, len(layers[0].URLs))},
 		Peers: make([]*schedulerv2.PeerImage, 0),
 	}
+
+	pieceLength := req.PieceLength
+	tag := req.GetTag()
+	application := req.GetApplication()
+	filteredQueryParams := req.FilteredQueryParams
+	timeout := req.GetTimeout().AsDuration()
+	concurrentPeerCount := *req.ConcurrentPeerCount
 
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerImage{}
@@ -3102,15 +3109,16 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	for _, url := range layers[0].URLs {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
+			taskID := idgen.TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams)
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
-				Timeout:             req.GetTimeout().AsDuration(),
-				ConcurrentPeerCount: *req.ConcurrentPeerCount,
+				Timeout:             timeout,
+				ConcurrentPeerCount: concurrentPeerCount,
 			}
 
 			log := logger.WithStatImageAndTaskID(url, taskID)
 			log.Infof("get task request: %#v", getTaskRequest)
+
 			task, err := v.job.GetTask(ctx, getTaskRequest, log)
 			if err != nil {
 				log.Errorf("get task failed: %s", err.Error())
@@ -3142,6 +3150,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 		logger.Errorf("failed to create get task jobs: %w", err)
 	}
 
+	resp.Peers = make([]*schedulerv2.PeerImage, 0, len(peers))
 	for _, peer := range peers {
 		resp.Peers = append(resp.Peers, peer)
 		log.Infof("stat image for peer %s, cached layers: %d", peer.Ip, len(peer.CachedLayers))

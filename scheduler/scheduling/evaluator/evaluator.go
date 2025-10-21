@@ -142,13 +142,15 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	return isBadParent
 }
 
-// IsBadPersistentCacheParent checks if a persistent cache peer is unsuitable to be a parent.
-// It returns true if the peer is in any of the following states:
-// - PeerStatePending: peer is waiting to start.
-// - PeerStateUploading: peer is currently uploading data.
-// - PeerStateReceivedEmpty: peer has received an empty response.
-// - PeerStateReceivedNormal: peer has received normal data but not yet completed.
-// - PeerStateFailed: peer has failed.
+// IsBadPersistentCacheParent determines whether a persistent cache peer is unsuitable to be selected as a parent
+// for replication. It evaluates the peer based on its current state.
+//
+// A persistent cache peer is considered a bad parent if it is in an unsuitable state:
+// - Pending: waiting to start.
+// - Uploading: currently uploading data.
+// - ReceivedEmpty: received an empty response.
+// - ReceivedNormal: received normal data but not yet completed.
+// - Failed: has failed.
 func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
 	if peer.FSM.Is(persistentcache.PeerStatePending) || peer.FSM.Is(persistentcache.PeerStateUploading) || peer.FSM.Is(persistentcache.PeerStateReceivedEmpty) ||
 		peer.FSM.Is(persistentcache.PeerStateReceivedNormal) || peer.FSM.Is(persistentcache.PeerStateFailed) {

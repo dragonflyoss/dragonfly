@@ -53,6 +53,20 @@ func (mr *MockHostManagerMockRecorder) Delete(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockHostManager)(nil).Delete), arg0)
 }
 
+// Len mocks base method.
+func (m *MockHostManager) Len() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Len")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// Len indicates an expected call of Len.
+func (mr *MockHostManagerMockRecorder) Len() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Len", reflect.TypeOf((*MockHostManager)(nil).Len))
+}
+
 // Load mocks base method.
 func (m *MockHostManager) Load(arg0 string) (*Host, bool) {
 	m.ctrl.T.Helper()

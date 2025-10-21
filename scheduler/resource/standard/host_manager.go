@@ -36,6 +36,9 @@ const (
 
 // HostManager is the interface used for host manager.
 type HostManager interface {
+	// Len returns the length of host map.
+	Len() int
+
 	// Load returns host for a key.
 	Load(string) (*Host, bool)
 
@@ -108,6 +111,17 @@ func newHostManager(cfg *config.GCConfig, gc pkggc.GC) (HostManager, error) {
 	}
 
 	return h, nil
+}
+
+// Len returns the length of host map.
+func (h *hostManager) Len() int {
+	length := 0
+	h.Map.Range(func(_, _ any) bool {
+		length++
+		return true
+	})
+
+	return length
 }
 
 // Load returns host for a key.
