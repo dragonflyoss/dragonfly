@@ -3990,3 +3990,345 @@ func TestServiceV2_StatImage(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceV2_PreheatFile(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *schedulerv2.PreheatFileRequest
+		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder)
+	}{
+		{
+			name: "unsupported preheat scope",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: "invalid-scope",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{
+					Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}},
+				}, nil).Times(1)
+
+				assert := assert.New(t)
+				assert.ErrorIs(svc.PreheatFile(context.Background(), req), status.Errorf(codes.InvalidArgument, "unsupported preheat scope: invalid-scope"))
+			},
+		},
+		{
+			name: "preheat scope is empty",
+			req: &schedulerv2.PreheatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.SingleSeedPeerScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer failed",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.SingleSeedPeerScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat all_seed_peers",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.AllSeedPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
+				)
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat all_seed_peers failed",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.AllSeedPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
+				)
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat all_peers",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.AllPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
+				)
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat all_peers failed",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:   "https://example.com/file.txt",
+				Scope: managertypes.AllPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
+				)
+
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatFile(context.Background(), req))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			scheduling := schedulingmocks.NewMockScheduling(ctl)
+			resource := standard.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			job := jobmocks.NewMockJob(ctl)
+
+			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, job, nil, dynconfig)
+
+			tc.run(t, svc, tc.req, job.EXPECT())
+		})
+	}
+}
+
+func TestServiceV2_StatFile(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *schedulerv2.StatFileRequest
+		run  func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder)
+	}{
+		{
+			name: "list task entries failed",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("list task entries failed")).Times(1)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Errorf(codes.InvalidArgument, "failed to list task entries: list task entries failed"))
+			},
+		},
+		{
+			name: "get task failed",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("get task failed")).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(0, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat file by peer",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat multi files by different peer",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat multi files by peers",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}, {IP: "127.0.0.1", Hostname: "peer-2"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2"}, {IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat multi files by peers, but one of the get task failed",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}, {IP: "127.0.0.1", Hostname: "peer-2"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("get task failed")).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat multi files by peers, but the get task failed",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			scheduling := schedulingmocks.NewMockScheduling(ctl)
+			resource := standard.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			job := jobmocks.NewMockJob(ctl)
+
+			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentCacheResource, scheduling, job, nil, dynconfig)
+
+			tc.run(t, svc, tc.req, job.EXPECT())
+		})
+	}
+}
