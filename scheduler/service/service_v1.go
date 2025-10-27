@@ -431,7 +431,7 @@ func (v *V1) StatTask(ctx context.Context, req *schedulerv1.StatTaskRequest) (*s
 		TotalPieceCount:  task.TotalPieceCount.Load(),
 		State:            task.FSM.Current(),
 		PeerCount:        int32(task.PeerCount()),
-		HasAvailablePeer: task.HasAvailablePeer(set.NewSafeSet[string]()),
+		HasAvailablePeer: task.HasAvailablePeer("", set.NewSafeSet[string]()),
 	}, nil
 }
 
@@ -696,7 +696,7 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 	blocklist.Add(peer.ID)
 	if (task.FSM.Is(resource.TaskStateRunning) ||
 		task.FSM.Is(resource.TaskStateSucceeded)) &&
-		task.HasAvailablePeer(blocklist) {
+		task.HasAvailablePeer(host.ID, blocklist) {
 		peer.Log.Info("peer does not need to trigger")
 		return nil
 	}
