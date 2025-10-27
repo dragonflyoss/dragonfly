@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.23.8
+go 1.24.0
 
 require (
 	cloud.google.com/go/storage v1.50.0
@@ -35,7 +35,7 @@ require (
 	github.com/go-echarts/statsview v0.3.4
 	github.com/go-gorm/caches/v4 v4.0.5
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
-	github.com/go-playground/validator/v10 v10.27.0
+	github.com/go-playground/validator/v10 v10.28.0
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -88,11 +88,11 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.41.0
+	golang.org/x/crypto v0.42.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sync v0.17.0
+	golang.org/x/sys v0.36.0
 	golang.org/x/time v0.12.0
 	google.golang.org/api v0.248.0
 	google.golang.org/grpc v1.75.0
@@ -145,7 +145,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-echarts/go-echarts/v2 v2.2.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.2 // indirect
@@ -273,8 +273,8 @@ require (
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/term v0.35.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
