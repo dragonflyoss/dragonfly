@@ -979,7 +979,18 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 
 				blocklist := set.NewSafeSet[string]()
 				blocklist.Add(mockPeer.ID)
-				assert.Equal(task.HasAvailablePeer(blocklist), false)
+				assert.Equal(task.HasAvailablePeer("", blocklist), false)
+			},
+		},
+		{
+			name: "host id is equal to the peer's host id",
+			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockPeer.FSM.SetState(PeerStateSucceeded)
+				task.StorePeer(mockPeer)
+
+				blocklist := set.NewSafeSet[string]()
+				assert.Equal(task.HasAvailablePeer(mockPeer.Host.ID, blocklist), false)
 			},
 		},
 		{
@@ -990,7 +1001,7 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 				mockPeer.ID = idgen.PeerIDV2()
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer(set.NewSafeSet[string]()), true)
+				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
 			},
 		},
 		{
@@ -1001,7 +1012,7 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 				mockPeer.ID = idgen.PeerIDV2()
 				mockPeer.FSM.SetState(PeerStateRunning)
 				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer(set.NewSafeSet[string]()), true)
+				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
 			},
 		},
 		{
@@ -1012,14 +1023,14 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 				mockPeer.ID = idgen.PeerIDV2()
 				mockPeer.FSM.SetState(PeerStateBackToSource)
 				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer(set.NewSafeSet[string]()), true)
+				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
 			},
 		},
 		{
 			name: "peer does not exist",
 			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				assert.Equal(task.HasAvailablePeer(set.NewSafeSet[string]()), false)
+				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), false)
 			},
 		},
 	}

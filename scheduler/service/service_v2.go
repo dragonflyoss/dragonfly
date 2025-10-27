@@ -1123,7 +1123,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 		task.FSM.Is(standard.TaskStateFailed) ||
 		task.FSM.Is(standard.TaskStateLeave) ||
 		task.FSM.Is(standard.TaskStateSucceeded) &&
-			!task.HasAvailablePeer(blocklist):
+			!task.HasAvailablePeer(hostID, blocklist):
 
 		// If HostType is normal, trigger seed peer download back-to-source.
 		if host.Type == types.HostTypeNormal {

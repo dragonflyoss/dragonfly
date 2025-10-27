@@ -450,11 +450,15 @@ func (t *Task) PeerOutDegree(key string) (int, error) {
 }
 
 // HasAvailablePeer returns whether there is an available peer.
-func (t *Task) HasAvailablePeer(blocklist set.SafeSet[string]) bool {
+func (t *Task) HasAvailablePeer(hostID string, blocklist set.SafeSet[string]) bool {
 	var hasAvailablePeer bool
 	for _, vertex := range t.DAG.GetVertices() {
 		peer := vertex.Value
 		if peer == nil {
+			continue
+		}
+
+		if peer.Host.ID == hostID {
 			continue
 		}
 
