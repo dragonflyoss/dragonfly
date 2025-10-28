@@ -879,9 +879,18 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 			return status.Error(codes.Internal, err.Error())
 		}
 
+		// Clean legacy scheduler cache.
 		if err := s.cache.Delete(
 			context.TODO(),
 			pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
+		); err != nil {
+			log.Warnf("refresh keepalive status failed: %s", err.Error())
+		}
+
+		// Clean scheduler cache.
+		if err := s.cache.Delete(
+			context.TODO(),
+			pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
 		}
@@ -923,9 +932,18 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 					return status.Error(codes.Internal, err.Error())
 				}
 
+				// Clean legacy scheduler cache.
 				if err := s.cache.Delete(
 					context.TODO(),
 					pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
+				); err != nil {
+					log.Warnf("refresh keepalive status failed: %s", err.Error())
+				}
+
+				// Clean scheduler cache.
+				if err := s.cache.Delete(
+					context.TODO(),
+					pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())
 				}
