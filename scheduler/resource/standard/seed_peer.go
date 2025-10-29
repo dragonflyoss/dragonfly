@@ -83,6 +83,9 @@ type seedPeer struct {
 	// hostManager is HostManager interface.
 	hostManager HostManager
 
+	// clientPool is Pool interface.
+	clientPool dfdaemonclient.Pool
+
 	// dialOpts is the options for grpc dial.
 	dialOptions []grpc.DialOption
 
@@ -97,10 +100,11 @@ type seedPeer struct {
 }
 
 // New SeedPeer interface.
-func newSeedPeer(peerManager PeerManager, hostManager HostManager, dialOptions ...grpc.DialOption) SeedPeer {
+func newSeedPeer(peerManager PeerManager, hostManager HostManager, clientPool dfdaemonclient.Pool, dialOptions ...grpc.DialOption) SeedPeer {
 	return &seedPeer{
 		peerManager: peerManager,
 		hostManager: hostManager,
+		clientPool:  clientPool,
 		dialOptions: dialOptions,
 		hosts:       &sync.Map{},
 		hashring:    consistent.New(),
@@ -122,12 +126,10 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
 	logger.Infof("selected seed peer %s for task %s", addr, taskID)
 
-	// TODO(chlins): reuse the client if we encounter the performance issue in future.
-	client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, s.dialOptions...)
+	client, err := s.clientPool.Get(addr, s.dialOptions...)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
 
 	stream, err := client.DownloadTask(ctx, taskID, req)
 	if err != nil {
@@ -361,6 +363,8 @@ func (s *seedPeer) refresh(ctx context.Context) error {
 
 // Serve serves the seed peer service.
 func (s *seedPeer) Serve() error {
+	go s.clientPool.Serve()
+
 	ticker := time.NewTicker(SeedPeerRefreshInterval)
 	defer ticker.Stop()
 
@@ -378,6 +382,8 @@ func (s *seedPeer) Serve() error {
 
 // Stop seed peer service.
 func (s *seedPeer) Stop() error {
+	s.clientPool.Stop()
+
 	close(s.done)
 	return nil
 }

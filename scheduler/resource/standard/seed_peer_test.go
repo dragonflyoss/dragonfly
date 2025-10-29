@@ -27,6 +27,7 @@ import (
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
+	dfdaemonclientmocks "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client/mocks"
 )
 
 func TestSeedPeer_newSeedPeer(t *testing.T) {
@@ -49,8 +50,9 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
+			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			tc.expect(t, newSeedPeer(peerManager, hostManager))
+			tc.expect(t, newSeedPeer(peerManager, hostManager, clientPool))
 		})
 	}
 }
@@ -75,8 +77,9 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
+			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager)
+			seedPeer := newSeedPeer(peerManager, hostManager, clientPool)
 			tc.expect(t, seedPeer.TriggerDownloadTask(context.Background(), mockTaskID, &dfdaemonv2.DownloadTaskRequest{}))
 		})
 	}
@@ -102,8 +105,9 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 			defer ctl.Finish()
 			hostManager := NewMockHostManager(ctl)
 			peerManager := NewMockPeerManager(ctl)
+			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager)
+			seedPeer := newSeedPeer(peerManager, hostManager, clientPool)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			peer, result, err := seedPeer.TriggerTask(context.Background(), nil, mockTask)
 			tc.expect(t, peer, result, err)

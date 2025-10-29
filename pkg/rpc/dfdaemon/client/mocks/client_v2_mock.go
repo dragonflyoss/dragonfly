@@ -15,9 +15,78 @@ import (
 
 	common "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemon "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
+	client "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	gomock "go.uber.org/mock/gomock"
 	grpc "google.golang.org/grpc"
 )
+
+// MockPool is a mock of Pool interface.
+type MockPool struct {
+	ctrl     *gomock.Controller
+	recorder *MockPoolMockRecorder
+	isgomock struct{}
+}
+
+// MockPoolMockRecorder is the mock recorder for MockPool.
+type MockPoolMockRecorder struct {
+	mock *MockPool
+}
+
+// NewMockPool creates a new mock instance.
+func NewMockPool(ctrl *gomock.Controller) *MockPool {
+	mock := &MockPool{ctrl: ctrl}
+	mock.recorder = &MockPoolMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPool) EXPECT() *MockPoolMockRecorder {
+	return m.recorder
+}
+
+// Get mocks base method.
+func (m *MockPool) Get(target string, opts ...grpc.DialOption) (client.V2, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{target}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Get", varargs...)
+	ret0, _ := ret[0].(client.V2)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockPoolMockRecorder) Get(target any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{target}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPool)(nil).Get), varargs...)
+}
+
+// Serve mocks base method.
+func (m *MockPool) Serve() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Serve")
+}
+
+// Serve indicates an expected call of Serve.
+func (mr *MockPoolMockRecorder) Serve() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockPool)(nil).Serve))
+}
+
+// Stop mocks base method.
+func (m *MockPool) Stop() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Stop")
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockPoolMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockPool)(nil).Stop))
+}
 
 // MockV2 is a mock of V2 interface.
 type MockV2 struct {

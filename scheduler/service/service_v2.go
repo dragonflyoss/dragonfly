@@ -45,7 +45,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
-	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -2475,7 +2474,7 @@ func (v *V2) DeletePersistentCachePeer(_ctx context.Context, req *schedulerv2.De
 	// Delete the persistent cache task from the peer, if delete failed, skip it.
 	addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
 		peer.Log.Errorf("get dfdaemon client failed %s", err)
 		return err
@@ -2682,7 +2681,7 @@ func (v *V2) replicatePersistentCacheTask(ctx context.Context, peer *persistentc
 func (v *V2) downloadPersistentCacheTaskByPeer(ctx context.Context, task *persistentcache.Task, host *persistentcache.Host) error {
 	addr := fmt.Sprintf("%s:%d", host.IP, host.DownloadPort)
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
 		task.Log.Errorf("get dfdaemon client failed %s", err)
 		return err
@@ -2720,7 +2719,7 @@ func (v *V2) downloadPersistentCacheTaskByPeer(ctx context.Context, task *persis
 func (v *V2) persistPersistentCacheTaskByPeer(ctx context.Context, peer *persistentcache.Peer, cachedParent *persistentcache.Peer) error {
 	addr := fmt.Sprintf("%s:%d", cachedParent.Host.IP, cachedParent.Host.DownloadPort)
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
 		peer.Log.Errorf("get dfdaemon client failed %s", err)
 		return err
@@ -2859,7 +2858,7 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 		// Delete the persistent cache task from the peer, if delete failed, skip it.
 		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
 		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-		dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+		dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 		if err != nil {
 			peer.Log.Errorf("get dfdaemon client failed %s", err)
 			continue

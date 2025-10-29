@@ -12,6 +12,7 @@ package standard
 import (
 	reflect "reflect"
 
+	client "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -51,6 +52,20 @@ func (m *MockResource) HostManager() HostManager {
 func (mr *MockResourceMockRecorder) HostManager() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HostManager", reflect.TypeOf((*MockResource)(nil).HostManager))
+}
+
+// PeerClientPool mocks base method.
+func (m *MockResource) PeerClientPool() client.Pool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PeerClientPool")
+	ret0, _ := ret[0].(client.Pool)
+	return ret0
+}
+
+// PeerClientPool indicates an expected call of PeerClientPool.
+func (mr *MockResourceMockRecorder) PeerClientPool() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeerClientPool", reflect.TypeOf((*MockResource)(nil).PeerClientPool))
 }
 
 // PeerManager mocks base method.

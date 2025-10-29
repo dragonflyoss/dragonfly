@@ -31,7 +31,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -46,7 +45,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/dfnet"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	cndsystemclient "d7y.io/dragonfly/v2/pkg/rpc/cdnsystem/client"
-	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
@@ -368,12 +366,10 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
 	log.Infof("[preheat]: selected seed peer %s", addr)
 
-	// TODO(chlins): reuse the client if we encounter the performance issue in future.
-	client, err := dfdaemonclient.GetV2ByAddr(ctx, addr, j.dialOptions...)
+	client, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
 
 	stream, err := client.DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
@@ -456,8 +452,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
-					dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-					dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
 						failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
@@ -674,8 +669,7 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
-					dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-					dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
 						failureTasks.Store(compositeID, &internaljob.PreheatFailureTask{
@@ -918,8 +912,7 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	for _, host := range hosts {
 		eg.Go(func() error {
 			addr := fmt.Sprintf("%s:%d", host.IP, host.Port)
-			dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-			dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+			dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 			if err != nil {
 				log.Warnf("[get-task] get client from %s failed: %s", addr, err.Error())
 				return nil
@@ -993,8 +986,7 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 		log := logger.WithDeleteTaskJobAndPeer(req.GroupUUID, req.TaskUUID, finishedPeer.Host.ID, finishedPeer.Task.ID, finishedPeer.ID)
 
 		addr := fmt.Sprintf("%s:%d", finishedPeer.Host.IP, finishedPeer.Host.Port)
-		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-		dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, dialOptions...)
+		dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 		if err != nil {
 			log.Errorf("[delete-task] get client from %s failed: %s", addr, err.Error())
 			failureTasks = append(failureTasks, &internaljob.DeleteFailureTask{
@@ -1049,7 +1041,7 @@ func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntr
 	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
 	log.Infof("selected seed peer %s for task %s", addr, req.TaskID)
 
-	dfdaemonClient, err := dfdaemonclient.GetV2ByAddr(ctx, addr, j.dialOptions...)
+	dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 	if err != nil {
 		log.Errorf("[list-task-entries] get dfdaemon client failed: %s", err)
 		return nil, err

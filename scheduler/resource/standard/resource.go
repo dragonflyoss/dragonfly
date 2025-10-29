@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"d7y.io/dragonfly/v2/pkg/gc"
+	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -40,6 +41,9 @@ type Resource interface {
 
 	// Task manager interface.
 	TaskManager() TaskManager
+
+	// Peer client pool.
+	PeerClientPool() dfdaemonclient.Pool
 
 	// Serve serves resource service.
 	Serve() error
@@ -61,6 +65,9 @@ type resource struct {
 
 	// Task manager interface.
 	taskManager TaskManager
+
+	// Peer client pool.
+	peerClientPool dfdaemonclient.Pool
 
 	// Scheduler config.
 	config *config.Config
@@ -91,10 +98,13 @@ func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.Transpor
 	}
 	resource.peerManager = peerManager
 
+	// Initialize peer client pool.
+	resource.peerClientPool = dfdaemonclient.GetV2Pool()
+
 	// Initialize seed peer interface.
 	if cfg.SeedPeer.Enable {
 		dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
-		resource.seedPeer = newSeedPeer(peerManager, hostManager, dialOptions...)
+		resource.seedPeer = newSeedPeer(peerManager, hostManager, resource.peerClientPool, dialOptions...)
 	}
 
 	return resource, nil
@@ -120,8 +130,15 @@ func (r *resource) TaskManager() TaskManager {
 	return r.taskManager
 }
 
+// Peer client pool interface.
+func (r *resource) PeerClientPool() dfdaemonclient.Pool {
+	return r.peerClientPool
+}
+
 // Serve serves resource service.
 func (r *resource) Serve() error {
+	go r.peerClientPool.Serve()
+
 	if r.config.SeedPeer.Enable {
 		return r.seedPeer.Serve()
 	}
@@ -131,6 +148,8 @@ func (r *resource) Serve() error {
 
 // Stop resource service.
 func (r *resource) Stop() error {
+	r.peerClientPool.Stop()
+
 	if r.config.SeedPeer.Enable {
 		return r.seedPeer.Stop()
 	}

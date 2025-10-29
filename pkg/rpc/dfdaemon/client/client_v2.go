@@ -21,12 +21,16 @@ package client
 import (
 	"context"
 	"math"
+	"sync"
+	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
@@ -36,40 +40,86 @@ import (
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
 )
 
-// GetV2ByAddr returns v2 version of the dfdaemon client by address.
-func GetV2ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V2, error) {
-	conn, err := grpc.DialContext(
-		ctx,
-		target,
-		append([]grpc.DialOption{
-			grpc.WithIdleTimeout(0),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(math.MaxInt32),
-				grpc.MaxCallSendMsgSize(math.MaxInt32),
-			),
-			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-				grpc_prometheus.UnaryClientInterceptor,
-				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
-				grpc_retry.UnaryClientInterceptor(
-					grpc_retry.WithMax(maxRetries),
-					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
-				),
-			)),
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-				grpc_prometheus.StreamClientInterceptor,
-				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
-			)),
-		}, opts...)...,
-	)
+// Pool is the interface for pooling v2 version of the grpc client.
+type Pool interface {
+	// Serve starts the manager.
+	Serve()
+
+	// Stop stops the manager.
+	Stop()
+
+	// Get returns the client by address.
+	Get(target string, opts ...grpc.DialOption) (V2, error)
+}
+
+// pool is the pool for managing v2 version of the dfdaemon client.
+type pool struct {
+	// pool is a map of client connections for reusing.
+	*sync.Map
+
+	// sf is the singleflight instance for concurrent requests.
+	sf *singleflight.Group
+
+	// done is a channel to signal the manager is done.
+	done chan struct{}
+}
+
+// GetV2Pool creates a new pool instance.
+func GetV2Pool() Pool {
+	return &pool{
+		Map:  &sync.Map{},
+		sf:   &singleflight.Group{},
+		done: make(chan struct{}),
+	}
+}
+
+// Serve starts the pool.
+func (p *pool) Serve() {
+	ticker := time.NewTicker(gcInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			p.runGC()
+		case <-p.done:
+			return
+		}
+	}
+}
+
+// Stop stops the pool.
+func (p *pool) Stop() {
+	close(p.done)
+}
+
+// Get returns a v2 version of the dfdaemon client by address.
+func (p *pool) Get(target string, opts ...grpc.DialOption) (V2, error) {
+	if client, ok := p.Load(target); ok {
+		return client.(V2), nil
+	}
+
+	client, err, _ := p.sf.Do(target, func() (any, error) { return GetV2ByAddr(target, opts...) })
 	if err != nil {
 		return nil, err
 	}
 
-	return &v2{
-		DfdaemonUploadClient: dfdaemonv2.NewDfdaemonUploadClient(conn),
-		ClientConn:           conn,
-	}, nil
+	p.Store(target, client)
+	return client.(V2), nil
+}
+
+// runGC cleans up unhealthy connections.
+func (p *pool) runGC() {
+	p.Range(func(k, v any) bool {
+		// Cleanup the not connecting and ready connections and remove them from the pool.
+		if state := v.(*v2).GetState(); state != connectivity.Connecting && state != connectivity.Ready {
+			v.(*v2).Close()
+			p.Delete(k)
+			return true
+		}
+
+		return true
+	})
 }
 
 // V2 is the interface for v2 version of the grpc client.
@@ -106,6 +156,41 @@ type V2 interface {
 
 	// Close tears down the ClientConn and all underlying connections.
 	Close() error
+}
+
+// GetV2ByAddr returns v2 version of the dfdaemon client by address.
+func GetV2ByAddr(target string, opts ...grpc.DialOption) (V2, error) {
+	conn, err := grpc.NewClient(
+		target,
+		append([]grpc.DialOption{
+			grpc.WithIdleTimeout(idleTimeout),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(math.MaxInt32),
+				grpc.MaxCallSendMsgSize(math.MaxInt32),
+			),
+			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
+				grpc_prometheus.UnaryClientInterceptor,
+				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
+				grpc_retry.UnaryClientInterceptor(
+					grpc_retry.WithMax(maxRetries),
+					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
+				),
+			)),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
+				grpc_prometheus.StreamClientInterceptor,
+				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
+			)),
+		}, opts...)...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v2{
+		DfdaemonUploadClient: dfdaemonv2.NewDfdaemonUploadClient(conn),
+		ClientConn:           conn,
+	}, nil
 }
 
 // v2 provides v2 version of the dfdaemon grpc function.
