@@ -226,6 +226,9 @@ type Host struct {
 	// UploadFailedCount is upload failed count.
 	UploadFailedCount *atomic.Int64
 
+	// ConcurrentRegisterCount tracks active peer registration requests.
+	ConcurrentRegisterCount *atomic.Uint32
+
 	// Peer sync map.
 	Peers *sync.Map
 
@@ -420,6 +423,7 @@ func NewHost(
 		ConcurrentUploadCount:      atomic.NewInt32(0),
 		UploadCount:                atomic.NewInt64(0),
 		UploadFailedCount:          atomic.NewInt64(0),
+		ConcurrentRegisterCount:    atomic.NewUint32(0),
 		Peers:                      &sync.Map{},
 		PeerCount:                  atomic.NewInt32(0),
 		CreatedAt:                  atomic.NewTime(time.Now()),

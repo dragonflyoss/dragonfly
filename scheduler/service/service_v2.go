@@ -46,6 +46,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 	dfdaemonclient "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client"
+	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -53,6 +54,11 @@ import (
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
+)
+
+const (
+	incrementalDelayForRetryRegisterPeer = 10 * time.Millisecond
+	maxDelayForRetryRegisterPeer         = 50 * time.Millisecond
 )
 
 // V2 is the interface for v2 version of the service.
@@ -1102,11 +1108,22 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if err != nil {
 		return err
 	}
+	host.ConcurrentRegisterCount.Inc()
+	defer host.ConcurrentRegisterCount.Dec()
 
 	// Collect RegisterPeerCount metrics.
 	priority := peer.CalculatePriority(v.dynconfig)
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 		peer.Host.Type.Name()).Inc()
+
+	// Provides a linear backoff delay to prevent thundering herd problems. When a host has many concurrent registration requests, later requests
+	// are delayed progressively to avoid overwhelming the source with simultaneous back-to-source tasks from a single host.
+	if err := pkgtime.LinearDelay(ctx, uint(host.ConcurrentRegisterCount.Load()), incrementalDelayForRetryRegisterPeer, maxDelayForRetryRegisterPeer); err != nil {
+		// Collect RegisterPeerFailureCount metrics.
+		metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+			peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, err.Error())
+	}
 
 	blocklist := set.NewSafeSet[string]()
 	blocklist.Add(peer.ID)
