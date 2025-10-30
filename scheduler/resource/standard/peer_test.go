@@ -69,7 +69,6 @@ func TestPeer_NewPeer(t *testing.T) {
 				assert.Nil(peer.Range)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL0)
 				assert.Equal(peer.ConcurrentPieceCount, defaultConcurrentPieceCount)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -95,7 +94,6 @@ func TestPeer_NewPeer(t *testing.T) {
 				assert.Nil(peer.Range)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL4)
 				assert.Equal(peer.ConcurrentPieceCount, defaultConcurrentPieceCount)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -124,7 +122,6 @@ func TestPeer_NewPeer(t *testing.T) {
 				assert.EqualValues(peer.Range, &nethttp.Range{Start: 1, Length: 10})
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL0)
 				assert.Equal(peer.ConcurrentPieceCount, defaultConcurrentPieceCount)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -150,7 +147,6 @@ func TestPeer_NewPeer(t *testing.T) {
 				assert.Nil(peer.Range)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL0)
 				assert.Equal(peer.ConcurrentPieceCount, defaultConcurrentPieceCount)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -176,7 +172,6 @@ func TestPeer_NewPeer(t *testing.T) {
 				assert.Nil(peer.Range)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL0)
 				assert.Equal(peer.ConcurrentPieceCount, uint32(1))
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -489,151 +484,6 @@ func TestPeer_DeleteAnnouncePeerStream(t *testing.T) {
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			peer := NewPeer(mockPeerID, mockTask, mockHost)
 			tc.expect(t, peer, stream)
-		})
-	}
-}
-
-func TestPeer_LoadPiece(t *testing.T) {
-	tests := []struct {
-		name        string
-		piece       *Piece
-		pieceNumber int32
-		expect      func(t *testing.T, piece *Piece, loaded bool)
-	}{
-		{
-			name:        "load piece",
-			piece:       mockPiece,
-			pieceNumber: mockPiece.Number,
-			expect: func(t *testing.T, piece *Piece, loaded bool) {
-				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.EqualValues(piece.Digest, mockPiece.Digest)
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.Equal(piece.CreatedAt, mockPiece.CreatedAt)
-			},
-		},
-		{
-			name:        "piece does not exist",
-			piece:       mockPiece,
-			pieceNumber: 2,
-			expect: func(t *testing.T, piece *Piece, loaded bool) {
-				assert := assert.New(t)
-				assert.Equal(loaded, false)
-			},
-		},
-		{
-			name:        "load key is zero",
-			piece:       mockPiece,
-			pieceNumber: 0,
-			expect: func(t *testing.T, piece *Piece, loaded bool) {
-				assert := assert.New(t)
-				assert.Equal(loaded, false)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			peer := NewPeer(mockPeerID, mockTask, mockHost)
-
-			peer.StorePiece(tc.piece)
-			piece, loaded := peer.LoadPiece(tc.pieceNumber)
-			tc.expect(t, piece, loaded)
-		})
-	}
-}
-
-func TestPeer_StorePiece(t *testing.T) {
-	tests := []struct {
-		name        string
-		piece       *Piece
-		pieceNumber int32
-		expect      func(t *testing.T, piece *Piece, loaded bool)
-	}{
-		{
-			name:        "store piece",
-			piece:       mockPiece,
-			pieceNumber: mockPiece.Number,
-			expect: func(t *testing.T, piece *Piece, loaded bool) {
-				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.EqualValues(piece.Digest, mockPiece.Digest)
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.Equal(piece.CreatedAt, mockPiece.CreatedAt)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			peer := NewPeer(mockPeerID, mockTask, mockHost)
-
-			peer.StorePiece(tc.piece)
-			piece, loaded := peer.LoadPiece(tc.pieceNumber)
-			tc.expect(t, piece, loaded)
-		})
-	}
-}
-
-func TestPeer_DeletePiece(t *testing.T) {
-	tests := []struct {
-		name        string
-		piece       *Piece
-		pieceNumber int32
-		expect      func(t *testing.T, peer *Peer)
-	}{
-		{
-			name:        "delete piece",
-			piece:       mockPiece,
-			pieceNumber: mockPiece.Number,
-			expect: func(t *testing.T, peer *Peer) {
-				assert := assert.New(t)
-				_, loaded := peer.LoadPiece(mockPiece.Number)
-				assert.Equal(loaded, false)
-			},
-		},
-		{
-			name:        "delete key does not exist",
-			piece:       mockPiece,
-			pieceNumber: 0,
-			expect: func(t *testing.T, peer *Peer) {
-				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(mockPiece.Number)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			peer := NewPeer(mockPeerID, mockTask, mockHost)
-
-			peer.StorePiece(tc.piece)
-			peer.DeletePiece(tc.pieceNumber)
-			tc.expect(t, peer)
 		})
 	}
 }

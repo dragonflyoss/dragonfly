@@ -1406,7 +1406,6 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 				Start:  1,
 				Length: 10,
 			}))}
-			candidateParents[0].StorePiece(&mockPiece)
 			candidateParents[0].Task.StorePiece(&mockPiece)
 
 			tc.expect(t, constructSuccessNormalTaskResponse(candidateParents), candidateParents)

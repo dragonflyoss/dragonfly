@@ -2872,7 +2872,6 @@ func TestServiceV1_storePeer(t *testing.T) {
 				assert.Equal(peer.ID, mockPeerID)
 				assert.EqualValues(peer.Range, &mockPeerRange)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL1)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -3085,16 +3084,6 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Equal(piece.ParentID, mockSeedPeerID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.EqualValues(piece.Digest, mockPieceMD5)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_REMOTE_PEER)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 			},
@@ -3120,16 +3109,6 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Equal(piece.ParentID, mockSeedPeerID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.Nil(piece.Digest)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_REMOTE_PEER)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 				assert.NotEqual(peer.UpdatedAt.Load(), 0)
@@ -3151,16 +3130,6 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Empty(piece.ParentID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.Nil(piece.Digest)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_BACK_TO_SOURCE)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 			},

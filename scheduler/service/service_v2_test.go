@@ -307,20 +307,8 @@ func TestServiceV2_StatPeer(t *testing.T) {
 					},
 					Priority:             peer.Priority,
 					ConcurrentPieceCount: mockConcurrentPieceCount,
-					Pieces: []*commonv2.Piece{
-						{
-							Number:      uint32(mockPiece.Number),
-							ParentId:    &mockPiece.ParentID,
-							Offset:      mockPiece.Offset,
-							Length:      mockPiece.Length,
-							Digest:      mockPiece.Digest.String(),
-							TrafficType: &mockPiece.TrafficType,
-							Cost:        durationpb.New(mockPiece.Cost),
-							CreatedAt:   timestamppb.New(mockPiece.CreatedAt),
-						},
-					},
-					Cost:  durationpb.New(peer.Cost.Load()),
-					State: peer.FSM.Current(),
+					Cost:                 durationpb.New(peer.Cost.Load()),
+					State:                peer.FSM.Current(),
 					Task: &commonv2.Task{
 						Id:                  peer.Task.ID,
 						Type:                peer.Task.Type,
@@ -2653,16 +2641,6 @@ func TestServiceV2_handleDownloadPieceFinishedRequest(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(svc.handleDownloadPieceFinishedRequest(peer.ID, req))
 
-				piece, loaded := peer.LoadPiece(int32(req.Piece.Number))
-				assert.True(loaded)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.Equal(piece.Digest.String(), mockPiece.Digest.String())
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.True(piece.CreatedAt.Equal(mockPiece.CreatedAt))
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.Equal(len(peer.PieceCosts()), 1)
 				assert.NotEqual(peer.PieceUpdatedAt.Load(), 0)
@@ -2695,16 +2673,6 @@ func TestServiceV2_handleDownloadPieceFinishedRequest(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(svc.handleDownloadPieceFinishedRequest(peer.ID, req))
 
-				piece, loaded := peer.LoadPiece(int32(req.Piece.Number))
-				assert.True(loaded)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.Equal(piece.Digest.String(), mockPiece.Digest.String())
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.True(piece.CreatedAt.Equal(mockPiece.CreatedAt))
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.Equal(len(peer.PieceCosts()), 1)
 				assert.NotEqual(peer.PieceUpdatedAt.Load(), 0)
@@ -2811,31 +2779,10 @@ func TestServiceV2_handleDownloadPieceBackToSourceFinishedRequest(t *testing.T) 
 				assert := assert.New(t)
 				assert.NoError(svc.handleDownloadPieceBackToSourceFinishedRequest(context.Background(), peer.ID, req))
 
-				piece, loaded := peer.LoadPiece(int32(req.Piece.Number))
-				assert.True(loaded)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.Equal(piece.Digest.String(), mockPiece.Digest.String())
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.True(piece.CreatedAt.Equal(mockPiece.CreatedAt))
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.Equal(len(peer.PieceCosts()), 1)
 				assert.NotEqual(peer.PieceUpdatedAt.Load(), 0)
 				assert.NotEqual(peer.UpdatedAt.Load(), 0)
-
-				piece, loaded = peer.Task.LoadPiece(int32(req.Piece.Number))
-				assert.True(loaded)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.Equal(piece.Digest.String(), mockPiece.Digest.String())
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.True(piece.CreatedAt.Equal(mockPiece.CreatedAt))
 				assert.NotEqual(peer.Task.UpdatedAt.Load(), 0)
 				assert.NotEqual(peer.Host.UpdatedAt.Load(), 0)
 			},
