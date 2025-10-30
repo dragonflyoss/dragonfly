@@ -95,3 +95,5 @@ refer to [Setup Dragonfly in Kubernetes](https://d7y.io/docs/getting-started/qui
 **_[Amap](https://mobile.amap.com/)_** - Large-scale image and file distribution.
 
 **_[iQIYI](https://www.iqiyi.com/)_** - Large-scale image distribution.
+
+**_[Datadog](https://www.datadoghq.com/)_** - Image distribution with lazy loading.
