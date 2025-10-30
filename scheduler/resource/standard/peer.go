@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
@@ -155,9 +154,6 @@ type Peer struct {
 	// Priority is peer priority.
 	Priority commonv2.Priority
 
-	// Piece sync map.
-	Pieces *sync.Map
-
 	// Pieces is finished pieces bitset.
 	FinishedPieces *bitset.BitSet
 
@@ -216,7 +212,6 @@ func NewPeer(id string, task *Task, host *Host, options ...PeerOption) *Peer {
 		ID:                      id,
 		Priority:                commonv2.Priority_LEVEL0,
 		ConcurrentPieceCount:    defaultConcurrentPieceCount,
-		Pieces:                  &sync.Map{},
 		FinishedPieces:          &bitset.BitSet{},
 		pieceCosts:              []time.Duration{},
 		Cost:                    atomic.NewDuration(0),
@@ -386,26 +381,6 @@ func (p *Peer) StoreAnnouncePeerStream(stream schedulerv2.Scheduler_AnnouncePeer
 // Used only in v2 version of the grpc.
 func (p *Peer) DeleteAnnouncePeerStream() {
 	p.AnnouncePeerStream = &atomic.Value{}
-}
-
-// LoadPiece return piece for a key.
-func (p *Peer) LoadPiece(key int32) (*Piece, bool) {
-	rawPiece, loaded := p.Pieces.Load(key)
-	if !loaded {
-		return nil, false
-	}
-
-	return rawPiece.(*Piece), loaded
-}
-
-// StorePiece set piece.
-func (p *Peer) StorePiece(piece *Piece) {
-	p.Pieces.Store(piece.Number, piece)
-}
-
-// DeletePiece deletes piece for a key.
-func (p *Peer) DeletePiece(key int32) {
-	p.Pieces.Delete(key)
 }
 
 // Parents returns parents of peer.

@@ -289,7 +289,6 @@ func TestServiceV2_StatPeer(t *testing.T) {
 		{
 			name: "peer has been loaded",
 			mock: func(peer *standard.Peer, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
-				peer.StorePiece(&mockPiece)
 				peer.Task.StorePiece(&mockPiece)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),

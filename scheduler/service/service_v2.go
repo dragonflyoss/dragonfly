@@ -302,32 +302,6 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 		}
 	}
 
-	// Set pieces to response.
-	peer.Pieces.Range(func(key, value any) bool {
-		piece, ok := value.(*standard.Piece)
-		if !ok {
-			peer.Log.Errorf("invalid piece %s %#v", key, value)
-			return true
-		}
-
-		respPiece := &commonv2.Piece{
-			Number:      uint32(piece.Number),
-			ParentId:    &piece.ParentID,
-			Offset:      piece.Offset,
-			Length:      piece.Length,
-			TrafficType: &piece.TrafficType,
-			Cost:        durationpb.New(piece.Cost),
-			CreatedAt:   timestamppb.New(piece.CreatedAt),
-		}
-
-		if piece.Digest != nil {
-			respPiece.Digest = piece.Digest.String()
-		}
-
-		resp.Pieces = append(resp.Pieces, respPiece)
-		return true
-	})
-
 	// Set task to response.
 	resp.Task = &commonv2.Task{
 		Id:                  peer.Task.ID,
@@ -1439,7 +1413,6 @@ func (v *V2) handleDownloadPieceFinishedRequest(peerID string, req *schedulerv2.
 
 	// Handle peer with piece finished request. When the piece is downloaded successfully, peer.UpdatedAt needs
 	// to be updated to prevent the peer from being GC during the download process.
-	peer.StorePiece(piece)
 	peer.FinishedPieces.Set(uint(piece.Number))
 	peer.AppendPieceCost(piece.Cost)
 	peer.PieceUpdatedAt.Store(time.Now())
@@ -1502,7 +1475,6 @@ func (v *V2) handleDownloadPieceBackToSourceFinishedRequest(_ context.Context, p
 
 	// Handle peer with piece back-to-source finished request. When the piece is downloaded successfully, peer.UpdatedAt
 	// needs to be updated to prevent the peer from being GC during the download process.
-	peer.StorePiece(piece)
 	peer.FinishedPieces.Set(uint(piece.Number))
 	peer.AppendPieceCost(piece.Cost)
 	peer.PieceUpdatedAt.Store(time.Now())

@@ -67,7 +67,7 @@ func (m *MockJob) ListTaskEntries(arg0 context.Context, arg1 *job.ListTaskEntrie
 }
 
 // ListTaskEntries indicates an expected call of ListTaskEntries.
-func (mr *MockJobMockRecorder) ListTaskEntries(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockJobMockRecorder) ListTaskEntries(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskEntries", reflect.TypeOf((*MockJob)(nil).ListTaskEntries), arg0, arg1, arg2)
 }

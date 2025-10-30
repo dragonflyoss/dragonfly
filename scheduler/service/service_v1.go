@@ -373,7 +373,6 @@ func (v *V1) AnnounceTask(ctx context.Context, req *schedulerv1.AnnounceTaskRequ
 				piece.Digest = digest.New(digest.AlgorithmMD5, pieceInfo.PieceMd5)
 			}
 
-			peer.StorePiece(piece)
 			peer.FinishedPieces.Set(uint(pieceInfo.PieceNum))
 			peer.AppendPieceCost(piece.Cost)
 			task.StorePiece(piece)
@@ -1059,7 +1058,6 @@ func (v *V1) handlePieceSuccess(_ context.Context, peer *resource.Peer, pieceRes
 		piece.Digest = digest.New(digest.AlgorithmMD5, pieceResult.PieceInfo.PieceMd5)
 	}
 
-	peer.StorePiece(piece)
 	peer.FinishedPieces.Set(uint(piece.Number))
 	peer.AppendPieceCost(piece.Cost)
 
