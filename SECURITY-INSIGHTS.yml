@@ -51,7 +51,7 @@ repository:
     assessments:
       self:
         comment: |
-          Dragonfly undergoes regular security assessments as part of CNCF incubating project requirements.
+          Dragonfly undergoes regular security assessments as part of CNCF graduated project requirements.
           The project follows CNCF security best practices and guidelines.
         date: "2025-07-15"
   documentation:

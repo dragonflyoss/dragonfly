@@ -13,14 +13,15 @@
 [![LICENSE](https://img.shields.io/github/license/dragonflyoss/dragonfly.svg?style=flat-square)](https://github.com/dragonflyoss/dragonfly/blob/main/LICENSE)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly?ref=badge_shield&issueType=license)
 [![LFX Health Score](https://img.shields.io/static/v1?label=Health%20Score&message=Healthy&color=A7F3D0&logo=linuxfoundation&logoColor=white&style=flat)](https://insights.linuxfoundation.org/project/d7y)
-[![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/dragonfly/badge)](https://clomonitor.io/projects/cncf/dragonfly)
+[![CNCF Status](https://img.shields.io/badge/CNCF%20Status-Graduated-informational)](https://www.cncf.io/projects/dragonfly/)
 
 ## Introduction
 
-Delivers efficient, stable, and secure data distribution and acceleration powered by P2P technology.
-It aims to be the best practice and standard solution in cloud native architectures.
-Designed to improve the performance of large‑scale delivery across files, container images,
-OCI artifacts, AI models, caches, logs, dependencies, etc.
+Delivers efficient, stable, and secure data distribution and acceleration powered by P2P technology,
+with an optional content‑addressable filesystem that accelerates OCI container launch.
+It aims to provide a best‑practice, standards‑based solution for cloud‑native architectures,
+improving large‑scale delivery of files, container images, OCI artifacts, AI/ML models, caches,
+logs, dependencies, etc.
 
 ## Documentation
 
