@@ -101,7 +101,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/driver/postgres v1.4.8
-	gorm.io/gorm v1.25.0
+	gorm.io/gorm v1.31.1
 	gorm.io/plugin/soft_delete v1.2.1
 	moul.io/zapgorm2 v1.3.0
 	stathat.com/c/consistent v1.0.0
@@ -212,7 +212,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/microsoft/go-mssqldb v0.17.0 // indirect
 	github.com/miekg/dns v1.1.41 // indirect
