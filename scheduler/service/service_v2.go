@@ -57,10 +57,10 @@ import (
 
 const (
 	// incrementalDelayForRegisterPeer is the incremental delay for registering peer.
-	incrementalDelayForRegisterPeer = 20 * time.Millisecond
+	incrementalDelayForRegisterPeer = 10 * time.Millisecond
 
 	// maxDelayForRegisterPeer is the maximum delay for registering peer.
-	maxDelayForRegisterPeer = 100 * time.Millisecond
+	maxDelayForRegisterPeer = 70 * time.Millisecond
 )
 
 // V2 is the interface for v2 version of the service.
@@ -1119,7 +1119,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 			!task.HasAvailablePeer(hostID, blocklist):
 
 		// If HostType is normal, trigger seed peer download back-to-source.
-		if host.Type == types.HostTypeNormal {
+		if host.Type == types.HostTypeNormal && v.config.SeedPeer.Enable {
 			// If trigger the seed peer download back-to-source,
 			// the need back-to-source flag should be true.
 			download.NeedBackToSource = true
@@ -1611,7 +1611,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 	switch priority {
 	case commonv2.Priority_LEVEL6, commonv2.Priority_LEVEL0:
 		// Super peer is first triggered to download back-to-source.
-		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
+		if !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
 				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
@@ -1628,7 +1628,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 		fallthrough
 	case commonv2.Priority_LEVEL5:
 		// Super peer is first triggered to download back-to-source.
-		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
+		if !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
 				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
@@ -1645,7 +1645,7 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 		fallthrough
 	case commonv2.Priority_LEVEL4:
 		// Super peer is first triggered to download back-to-source.
-		if v.config.SeedPeer.Enable && !peer.Task.IsSeedPeerFailed() {
+		if !peer.Task.IsSeedPeerFailed() {
 			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
 				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {

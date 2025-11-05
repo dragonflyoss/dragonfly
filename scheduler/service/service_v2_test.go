@@ -1608,6 +1608,7 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 				)
 
 				peer.Priority = commonv2.Priority_LEVEL1
+				svc.config.SeedPeer.Enable = true
 
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),
@@ -1638,6 +1639,7 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(seedPeer)
 				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				svc.config.SeedPeer.Enable = true
 
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),
@@ -3210,17 +3212,11 @@ func TestServiceV2_handleResource(t *testing.T) {
 
 func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 	tests := []struct {
-		name   string
-		config config.Config
-		run    func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder)
+		name string
+		run  func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder)
 	}{
 		{
-			name: "priority is Priority_LEVEL6 and enable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL6",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3239,12 +3235,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL6, enable seed peer and download task failed",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL6 and download task failed",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3263,27 +3254,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL6 and disable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: false,
-				},
-			},
-			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
-				peer.Priority = commonv2.Priority_LEVEL6
-
-				assert := assert.New(t)
-				assert.NoError(svc.downloadTaskBySeedPeer(context.Background(), mockTaskID, &commonv2.Download{}, peer))
-				assert.True(peer.NeedBackToSource.Load())
-			},
-		},
-		{
-			name: "priority is Priority_LEVEL5 and enable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL5",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3302,12 +3273,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL5, enable seed peer and download task failed",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL5 and download task failed",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3326,27 +3292,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL5 and disable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: false,
-				},
-			},
-			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
-				peer.Priority = commonv2.Priority_LEVEL5
-
-				assert := assert.New(t)
-				assert.NoError(svc.downloadTaskBySeedPeer(context.Background(), mockTaskID, &commonv2.Download{}, peer))
-				assert.True(peer.NeedBackToSource.Load())
-			},
-		},
-		{
-			name: "priority is Priority_LEVEL4 and enable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL4",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3365,12 +3311,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL4, enable seed peer and download task failed",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
+			name: "priority is Priority_LEVEL4 and download task failed",
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				var wg sync.WaitGroup
 				wg.Add(1)
@@ -3386,30 +3327,10 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(svc.downloadTaskBySeedPeer(context.Background(), mockTaskID, &commonv2.Download{}, peer))
 				assert.False(peer.NeedBackToSource.Load())
-			},
-		},
-		{
-			name: "priority is Priority_LEVEL4 and disable seed peer",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: false,
-				},
-			},
-			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
-				peer.Priority = commonv2.Priority_LEVEL4
-
-				assert := assert.New(t)
-				assert.NoError(svc.downloadTaskBySeedPeer(context.Background(), mockTaskID, &commonv2.Download{}, peer))
-				assert.True(peer.NeedBackToSource.Load())
 			},
 		},
 		{
 			name: "priority is Priority_LEVEL3",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer.Priority = commonv2.Priority_LEVEL3
 
@@ -3420,11 +3341,6 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 		},
 		{
 			name: "priority is Priority_LEVEL2",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer.Priority = commonv2.Priority_LEVEL2
 
@@ -3434,11 +3350,6 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 		},
 		{
 			name: "priority is Priority_LEVEL1",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer.Priority = commonv2.Priority_LEVEL1
 
@@ -3448,11 +3359,6 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 		},
 		{
 			name: "priority is Priority_LEVEL0",
-			config: config.Config{
-				SeedPeer: config.SeedPeerConfig{
-					Enable: true,
-				},
-			},
 			run: func(t *testing.T, svc *V2, peer *standard.Peer, seedPeerClient standard.SeedPeer, mr *standard.MockResourceMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer.Priority = commonv2.Priority(100)
 
@@ -3479,7 +3385,7 @@ func TestServiceV2_downloadTaskBySeedPeer(t *testing.T) {
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
-			svc := NewV2(&tc.config, resource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
+			svc := NewV2(&config.Config{}, resource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
 			tc.run(t, svc, peer, seedPeerClient, resource.EXPECT(), seedPeerClient.EXPECT())
 		})
