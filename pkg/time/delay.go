@@ -18,6 +18,7 @@ package time
 
 import (
 	"context"
+	"math/rand"
 	"time"
 )
 
@@ -25,8 +26,25 @@ import (
 // the attempt number and sleeps for that duration, capped at maxDelay.
 func LinearDelay(ctx context.Context, attempt uint, increment, maxDelay time.Duration) error {
 	delay := time.Duration(attempt) * increment
-	if delay > maxDelay {
-		delay = maxDelay
+	delay = min(delay, maxDelay)
+
+	select {
+	case <-time.After(delay):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// ExponentialDelayWithJitter is an exponential backoff strategy with jitter for retries. It calculates delay based on the attempt number,
+// adds jitter, and sleeps for that duration, capped at maxDelay.
+func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, maxDelay time.Duration) error {
+	delay := baseDelay * time.Duration(1<<attempt)
+	delay = min(delay, maxDelay)
+
+	if delay > 0 {
+		jitter := time.Duration(rand.Int63n(int64(delay)))
+		delay = delay/2 + jitter // delay is now between [delay/2, delay]
 	}
 
 	select {

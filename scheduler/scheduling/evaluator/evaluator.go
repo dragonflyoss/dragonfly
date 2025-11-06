@@ -46,9 +46,9 @@ const (
 	// Maximum number of elements.
 	maxElementLen = 5
 
-	// If the number of samples is greater than or equal to 30,
+	// If the number of samples is greater than or equal to 2000,
 	// it is close to the normal distribution.
-	normalDistributionLen = 30
+	normalDistributionLen = 2000
 
 	// When costs len is greater than or equal to 2,
 	// the last cost can be compared and calculated.

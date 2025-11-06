@@ -56,11 +56,11 @@ import (
 )
 
 const (
-	// incrementalDelayForRegisterPeer is the incremental delay for registering peer.
-	incrementalDelayForRegisterPeer = 10 * time.Millisecond
+	// baseDelayForRegisterPeer is the base delay for registering peer.
+	baseDelayForRegisterPeer = 30 * time.Millisecond
 
 	// maxDelayForRegisterPeer is the maximum delay for registering peer.
-	maxDelayForRegisterPeer = 70 * time.Millisecond
+	maxDelayForRegisterPeer = 1000 * time.Millisecond
 )
 
 // V2 is the interface for v2 version of the service.
@@ -1092,9 +1092,9 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 		peer.Host.Type.Name()).Inc()
 
-	// Provides a linear backoff delay to prevent thundering herd problems. When a host has many concurrent registration requests, later requests
+	// Provides a exponential delay to prevent thundering herd problems. When a host has many concurrent registration requests, later requests
 	// are delayed progressively to avoid overwhelming the source with simultaneous back-to-source tasks from a single host.
-	if err := pkgtime.LinearDelay(ctx, uint(host.ConcurrentRegisterCount.Load()), incrementalDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
+	if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
 		// Collect RegisterPeerFailureCount metrics.
 		metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 			peer.Host.Type.Name()).Inc()
