@@ -54,3 +54,16 @@ func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, ma
 		return ctx.Err()
 	}
 }
+
+// RandomDelayWithJitter sleeps for a duration within ±25% of baseDelay to add jitter.
+// This helps prevent thundering herd when multiple clients retry simultaneously.
+// Example: baseDelay=2s results in sleep time between [1.5s, 2.5s).
+func RandomDelayWithJitter(baseDelay time.Duration) {
+	if baseDelay <= 0 {
+		return
+	}
+
+	jitter := time.Duration(rand.Int63n(int64(baseDelay) / 2))
+	delay := baseDelay*3/4 + jitter
+	time.Sleep(delay)
+}

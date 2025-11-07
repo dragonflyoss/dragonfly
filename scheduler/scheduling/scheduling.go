@@ -21,7 +21,6 @@ package scheduling
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,6 +33,7 @@ import (
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	"d7y.io/dragonfly/v2/pkg/container/set"
+	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
@@ -178,7 +178,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			time.Sleep(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
 			continue
 		}
 
@@ -323,7 +323,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Error(err)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			time.Sleep(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
 			continue
 		}
 
@@ -334,7 +334,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			time.Sleep(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
 			continue
 		}
 

@@ -469,6 +469,7 @@ func (t *Task) HasAvailablePeer(hostID string, blocklist set.SafeSet[string]) bo
 		if peer.FSM.Is(PeerStateRunning) ||
 			peer.FSM.Is(PeerStateSucceeded) ||
 			peer.FSM.Is(PeerStateBackToSource) {
+			t.Log.Debugf("found available peer %s state is %s in task %s for host %s", peer.ID, peer.FSM.Current(), t.ID, hostID)
 			hasAvailablePeer = true
 			break
 		}

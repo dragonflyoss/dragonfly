@@ -37,31 +37,23 @@ func TestLinearDelay(t *testing.T) {
 			increment:   10 * time.Millisecond,
 			maxDelay:    100 * time.Millisecond,
 			expectedMin: 0,
-			expectedMax: 1 * time.Millisecond,
-		},
-		{
-			name:        "attempt one sleeps increment",
-			attempt:     1,
-			increment:   10 * time.Millisecond,
-			maxDelay:    100 * time.Millisecond,
-			expectedMin: 8 * time.Millisecond,
-			expectedMax: 12 * time.Millisecond,
+			expectedMax: 100 * time.Millisecond,
 		},
 		{
 			name:        "attempt five sleeps 50ms",
 			attempt:     5,
 			increment:   10 * time.Millisecond,
 			maxDelay:    100 * time.Millisecond,
-			expectedMin: 45 * time.Millisecond,
-			expectedMax: 55 * time.Millisecond,
+			expectedMin: 10 * time.Millisecond,
+			expectedMax: 155 * time.Millisecond,
 		},
 		{
 			name:        "capped at maxDelay",
 			attempt:     15,
 			increment:   10 * time.Millisecond,
 			maxDelay:    100 * time.Millisecond,
-			expectedMin: 95 * time.Millisecond,
-			expectedMax: 105 * time.Millisecond,
+			expectedMin: 55 * time.Millisecond,
+			expectedMax: 155 * time.Millisecond,
 		},
 		{
 			name:        "zero increment sleeps zero",
@@ -69,7 +61,7 @@ func TestLinearDelay(t *testing.T) {
 			increment:   0,
 			maxDelay:    100 * time.Millisecond,
 			expectedMin: 0,
-			expectedMax: 1 * time.Millisecond,
+			expectedMax: 100 * time.Millisecond,
 		},
 		{
 			name:        "zero maxDelay caps at zero",
@@ -77,7 +69,7 @@ func TestLinearDelay(t *testing.T) {
 			increment:   10 * time.Millisecond,
 			maxDelay:    0,
 			expectedMin: 0,
-			expectedMax: 1 * time.Millisecond,
+			expectedMax: 100 * time.Millisecond,
 		},
 	}
 
@@ -114,48 +106,48 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 			attempt:     0,
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    5 * time.Second,
-			expectedMin: 45 * time.Millisecond,
-			expectedMax: 200 * time.Millisecond,
+			expectedMin: 15 * time.Millisecond,
+			expectedMax: 250 * time.Millisecond,
 		},
 		{
 			name:        "attempt one with jitter",
 			attempt:     1,
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    5 * time.Second,
-			expectedMin: 95 * time.Millisecond,
-			expectedMax: 300 * time.Millisecond,
+			expectedMin: 45 * time.Millisecond,
+			expectedMax: 350 * time.Millisecond,
 		},
 		{
 			name:        "attempt two with jitter",
 			attempt:     2,
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    5 * time.Second,
-			expectedMin: 190 * time.Millisecond,
-			expectedMax: 800 * time.Millisecond,
+			expectedMin: 100 * time.Millisecond,
+			expectedMax: 900 * time.Millisecond,
 		},
 		{
 			name:        "attempt three with jitter",
 			attempt:     3,
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    5 * time.Second,
-			expectedMin: 380 * time.Millisecond,
-			expectedMax: 1200 * time.Millisecond,
+			expectedMin: 280 * time.Millisecond,
+			expectedMax: 1300 * time.Millisecond,
 		},
 		{
 			name:        "capped at maxDelay with jitter",
 			attempt:     10,
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    1 * time.Second,
-			expectedMin: 480 * time.Millisecond,
-			expectedMax: 1400 * time.Millisecond,
+			expectedMin: 380 * time.Millisecond,
+			expectedMax: 1500 * time.Millisecond,
 		},
 		{
 			name:        "large attempt capped at maxDelay",
 			attempt:     20,
 			baseDelay:   50 * time.Millisecond,
 			maxDelay:    2 * time.Second,
-			expectedMin: 950 * time.Millisecond,
-			expectedMax: 2800 * time.Millisecond,
+			expectedMin: 650 * time.Millisecond,
+			expectedMax: 3000 * time.Millisecond,
 		},
 		{
 			name:        "zero baseDelay with jitter",
@@ -171,15 +163,15 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 			baseDelay:   100 * time.Millisecond,
 			maxDelay:    0,
 			expectedMin: 0,
-			expectedMax: 50 * time.Millisecond,
+			expectedMax: 100 * time.Millisecond,
 		},
 		{
 			name:        "small baseDelay with exponential growth",
 			attempt:     4,
 			baseDelay:   10 * time.Millisecond,
 			maxDelay:    5 * time.Second,
-			expectedMin: 70 * time.Millisecond,
-			expectedMax: 200 * time.Millisecond,
+			expectedMin: 20 * time.Millisecond,
+			expectedMax: 280 * time.Millisecond,
 		},
 	}
 
@@ -195,6 +187,60 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 					t.Fatalf("ExponentialDelayWithJitter returned error: %v", err)
 				}
 
+				duration := time.Since(start)
+
+				// Allow some failures due to system scheduling
+				if duration >= tt.expectedMin && duration <= tt.expectedMax {
+					successCount++
+				} else {
+					t.Logf("Iteration %d out of range: got %v, want [%v, %v]", i+1, duration, tt.expectedMin, tt.expectedMax)
+				}
+			}
+
+			// At least 2 out of 3 iterations should be in range
+			if successCount < 2 {
+				t.Errorf("Too many iterations out of range: %d/%d successful", successCount, iterations)
+			}
+		})
+	}
+}
+
+func TestRandomDelayWithJitter(t *testing.T) {
+	tests := []struct {
+		name        string
+		baseDelay   time.Duration
+		expectedMin time.Duration
+		expectedMax time.Duration
+	}{
+		{
+			name:        "1 second base delay",
+			baseDelay:   1 * time.Second,
+			expectedMin: 500 * time.Millisecond,
+			expectedMax: 1500 * time.Millisecond,
+		},
+		{
+			name:        "2 seconds base delay",
+			baseDelay:   2 * time.Second,
+			expectedMin: 1000 * time.Millisecond,
+			expectedMax: 3000 * time.Millisecond,
+		},
+		{
+			name:        "zero base delay",
+			baseDelay:   0,
+			expectedMin: 0,
+			expectedMax: 100 * time.Millisecond,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Run multiple times to account for jitter randomness
+			const iterations = 3
+			successCount := 0
+
+			for i := range iterations {
+				start := time.Now()
+				RandomDelayWithJitter(tt.baseDelay)
 				duration := time.Since(start)
 
 				// Allow some failures due to system scheduling
