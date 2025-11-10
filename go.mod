@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.23.8
+go 1.24.0
 
 require (
 	cloud.google.com/go/storage v1.50.0
@@ -67,7 +67,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.16.0
 	github.com/schollz/progressbar/v3 v3.18.0
-	github.com/shirou/gopsutil/v4 v4.25.9
+	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.18.2
@@ -92,7 +92,7 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.37.0
 	golang.org/x/time v0.12.0
 	google.golang.org/api v0.248.0
 	google.golang.org/grpc v1.75.0
