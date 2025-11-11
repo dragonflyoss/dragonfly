@@ -115,6 +115,7 @@ func migrate(db *gorm.DB) error {
 		&models.Application{},
 		&models.PersonalAccessToken{},
 		&models.Peer{},
+		&models.EncryptionKey{},
 	)
 }
 

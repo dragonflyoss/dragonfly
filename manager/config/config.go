@@ -17,12 +17,14 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/slices"
@@ -56,6 +58,9 @@ type Config struct {
 
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
+
+	// Encryption configuration
+	Encryption EncryptionConfig `yaml:"encryption" mapstructure:"encryption"`
 }
 
 type ServerConfig struct {
@@ -398,6 +403,36 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
+// AES256 base64 key is 32 bytes.
+type EncryptionKey [32]byte
+type EncryptionConfig struct {
+	// Enable encryption.
+	Enable bool `mapstructure:"enable" yaml:"enable"`
+	// AES256 base64, optional
+	Key *EncryptionKey `mapstructure:"key" yaml:"key"`
+}
+
+// UnmarshalText Base64
+func (e *EncryptionKey) UnmarshalText(text []byte) error {
+	logger.Debugf("base64 key str: %s", string(text))
+	keyBytes, err := base64.StdEncoding.DecodeString(string(text))
+	if err != nil {
+		return fmt.Errorf("invalid base64 key: %v", err)
+	}
+
+	if len(keyBytes) != 32 {
+		return fmt.Errorf("key must be 32 bytes, got %d", len(keyBytes))
+	}
+
+	copy(e[:], keyBytes)
+	return nil
+}
+
+// MarshalText Base64
+func (e EncryptionKey) MarshalText() ([]byte, error) {
+	return []byte(base64.StdEncoding.EncodeToString(e[:])), nil
+}
+
 // New config instance.
 func New() *Config {
 	return &Config{
@@ -488,6 +523,9 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
+		},
+		Encryption: EncryptionConfig{
+			Enable: false,
 		},
 	}
 }
@@ -683,6 +721,12 @@ func (cfg *Config) Validate() error {
 	if cfg.Metrics.Enable {
 		if cfg.Metrics.Addr == "" {
 			return errors.New("metrics requires parameter addr")
+		}
+	}
+
+	if cfg.Encryption.Enable {
+		if cfg.Encryption.Key == nil {
+			return errors.New("encryption requires parameter key")
 		}
 	}
 

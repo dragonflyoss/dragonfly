@@ -18,7 +18,11 @@ package manager
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -37,6 +41,7 @@ import (
 	managergc "d7y.io/dragonfly/v2/manager/gc"
 	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
+	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 	"d7y.io/dragonfly/v2/manager/router"
 	"d7y.io/dragonfly/v2/manager/rpcserver"
@@ -120,6 +125,16 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	db, err := database.New(cfg)
 	if err != nil {
 		return nil, err
+	}
+
+	// Initialize encryption key
+	if cfg.Encryption.Enable {
+		if err := initializeEncryptionKey(cfg, db.DB); err != nil {
+			return nil, err
+		}
+		logger.Infof("encryption enabled")
+	} else {
+		logger.Infof("encryption disabled")
 	}
 
 	// Initialize enforcer.
@@ -247,6 +262,35 @@ func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
 		return err
 	}
 
+	return nil
+}
+
+// Initialize encryption key
+func initializeEncryptionKey(cfg *config.Config, db *gorm.DB) error {
+	// 1. try get key from db
+	var existingKey models.EncryptionKey
+	if err := db.First(&existingKey).Error; err == nil {
+		logger.Infof("encryption key loaded from database, key(hex): %s, key(base64): %s",
+			hex.EncodeToString(existingKey.Key),
+			base64.StdEncoding.EncodeToString(existingKey.Key),
+		)
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to check encryption key: %v", err)
+	}
+
+	// 2. if there is no key in db, generate a new one
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return fmt.Errorf("failed to generate random encryption key: %v", err)
+	}
+	if err := db.Create(&models.EncryptionKey{Key: keyBytes}).Error; err != nil {
+		return fmt.Errorf("failed to save random encryption key to database: %v", err)
+	}
+	logger.Infof(
+		"generated random encryption key and saved to database, key(hex): %s, key(base64): %s",
+		hex.EncodeToString(keyBytes),
+		base64.StdEncoding.EncodeToString(keyBytes),
+	)
 	return nil
 }
 

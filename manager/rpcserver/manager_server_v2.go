@@ -994,3 +994,24 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 		}
 	}
 }
+
+// RequestEncryptionKey implements manager.ManagerServer.
+func (s *managerServerV2) RequestEncryptionKey(ctx context.Context, req *managerv2.RequestEncryptionKeyRequest) (*managerv2.RequestEncryptionKeyResponse, error) {
+	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
+	if !s.config.Encryption.Enable {
+		return &managerv2.RequestEncryptionKeyResponse{
+			Status: managerv2.EncryptionStatus_ENCRYPTION_DISABLED,
+		}, nil
+	}
+	// Get key from db
+	var encKey models.EncryptionKey
+	if err := s.db.WithContext(ctx).First(&encKey).Error; err != nil {
+		log.Errorf("failed to get encryption key: %v", err)
+		return nil, status.Error(codes.Internal, "failed to get encryption key")
+	}
+
+	return &managerv2.RequestEncryptionKeyResponse{
+		Status:        managerv2.EncryptionStatus_ENCRYPTION_ENABLED,
+		EncryptionKey: encKey.Key,
+	}, nil
+}
