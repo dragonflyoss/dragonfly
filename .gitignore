@@ -67,3 +67,41 @@ test/e2e/v1/*.log
 test/e2e/*.log
 # Exclude build artifacts
 bin/
+
+# ---------------- Python SDK & tooling ----------------
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Bytecode caches
+__pycache__/
+*.py[cod]
+
+# Build artifacts / metadata
+python/dfcache_sdk/.pytest_cache/
+.pytest_cache/
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Temporary files
+*.swp
+*.bak
+*.tmp
+
+# Jupyter (if added later)
+.ipynb_checkpoints/
+

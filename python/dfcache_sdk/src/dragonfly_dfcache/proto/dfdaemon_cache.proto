@@ -1,0 +1,50 @@
+syntax = "proto3";
+package dfdaemon.v1;
+
+// Minimal subset of Dragonfly dfdaemon v1 API required for dfcache operations.
+// NOTE: This is a reduced, compatibility proto. For full capability use upstream d7y.io/api.
+
+message UrlMeta {
+  string tag = 1;
+}
+
+message StatTaskRequest {
+  string url = 1;            // d7y:/<cid>
+  UrlMeta url_meta = 2;      // tag differentiates tasks
+  bool local_only = 3;       // only check local cache
+}
+
+message ImportTaskRequest {
+  string type = 1;           // Task type, "DfCache"
+  string url = 2;            // d7y:/<cid>
+  string path = 3;           // source file path
+  UrlMeta url_meta = 4;      // tag
+}
+
+message ExportTaskRequest {
+  string url = 1;            // d7y:/<cid>
+  string output = 2;         // destination file path
+  uint64 timeout = 3;        // seconds
+  double limit = 4;          // rate limit (bytes per second) - optional
+  UrlMeta url_meta = 5;      // tag
+  int64 uid = 6;
+  int64 gid = 7;
+  bool local_only = 8;       // only export from local cache
+}
+
+message DeleteTaskRequest {
+  string url = 1;            // d7y:/<cid>
+  UrlMeta url_meta = 2;      // tag
+}
+
+message Empty {}
+
+// Error reporting simplified: success = empty response, not found -> gRPC status NOT_FOUND
+
+service Daemon {
+  rpc StatTask(StatTaskRequest) returns (Empty);
+  rpc ImportTask(ImportTaskRequest) returns (Empty);
+  rpc ExportTask(ExportTaskRequest) returns (Empty);
+  rpc DeleteTask(DeleteTaskRequest) returns (Empty);
+  // Health check: upstream exposes CheckHealth; we model it as StatTask on a reserved cid, or rely on channel connectivity.
+}
