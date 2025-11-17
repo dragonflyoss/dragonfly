@@ -1033,9 +1033,18 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntriesRequest, log *logger.SugaredLoggerOnWith) (*internaljob.ListTaskEntriesResponse, error) {
 	advertiseIP := j.config.Server.AdvertiseIP.String()
 
-	selected, err := j.resource.SeedPeer().Select(ctx, req.TaskID)
+	// select a dfdaemon from peers or seed peers
+	var selected *resource.Host
+	peers, err := j.selectPeers([]string{}, nil, nil, log)
 	if err != nil {
-		return nil, err
+		log.Warnf("[list-task-entries] select peers failed: %s", err)
+
+		selected, err = j.resource.SeedPeer().Select(ctx, req.TaskID)
+		if err != nil {
+			return nil, err
+		}		
+	} else {
+		selected = peers[0]
 	}
 
 	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
