@@ -383,6 +383,9 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 			RequestHeader:       req.Headers,
 			CertificateChain:    req.CertificateChain,
 			RemoteIp:            &advertiseIP,
+			Timeout:             durationpb.New(req.Timeout),
+			ObjectStorage:       req.ObjectStorage,
+			Hdfs:                req.Hdfs,
 		}})
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -481,6 +484,8 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 							Timeout:             durationpb.New(req.Timeout),
 							CertificateChain:    req.CertificateChain,
 							RemoteIp:            &advertiseIP,
+							ObjectStorage:       req.ObjectStorage,
+							Hdfs:                req.Hdfs,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -698,6 +703,8 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 							Timeout:             durationpb.New(req.Timeout),
 							CertificateChain:    req.CertificateChain,
 							RemoteIp:            &advertiseIP,
+							ObjectStorage:       req.ObjectStorage,
+							Hdfs:                req.Hdfs,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())

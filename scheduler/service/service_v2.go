@@ -3225,6 +3225,8 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 		Timeout:             req.GetTimeout().AsDuration(),
 		CertificateChain:    req.GetCertificateChain(),
 		InsecureSkipVerify:  req.GetInsecureSkipVerify(),
+		ObjectStorage:       req.GetObjectStorage(),
+		Hdfs:                req.GetHdfs(),
 	}
 
 	switch req.GetScope() {

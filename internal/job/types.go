@@ -49,6 +49,8 @@ type PreheatRequest struct {
 	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
 	GroupUUID           string            `json:"group_uuid" validate:"omitempty"`
 	TaskUUID            string            `json:"task_uuid" validate:"omitempty"`
+	ObjectStorage       *v2.ObjectStorage `json:"object_storage" validate:"omitempty"`
+	Hdfs                *v2.HDFS          `json:"hdfs" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.
