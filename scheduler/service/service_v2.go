@@ -3205,17 +3205,19 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 	}
 
 	var urls []string
-	for _, entry := range listResp.Entries {
-		if entry.IsDir {
-			continue
-		}
-		urls = append(urls, entry.Url)
-	}
-
-	if len(listResp.Entries) == 0 {
-		if strings.HasSuffix(req.GetUrl(), "/") {
+	if strings.HasSuffix(req.GetUrl(), "/") {
+		if len(listResp.Entries) == 0 {
 			return status.Errorf(codes.InvalidArgument, "preheat url is a directory, but with no entry: %s", req.GetUrl())
 		}
+
+		for _, entry := range listResp.Entries {
+			if entry.IsDir {
+				continue
+			}
+
+			urls = append(urls, entry.Url)
+		}
+	} else {
 		urls = append(urls, req.GetUrl())
 	}
 
@@ -3328,17 +3330,19 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	}
 
 	var urls []string
-	for _, entry := range listResp.Entries {
-		if entry.IsDir {
-			continue
-		}
-		urls = append(urls, entry.Url)
-	}
-
-	if len(listResp.Entries) == 0 {
-		if strings.HasSuffix(req.GetUrl(), "/") {
+	if strings.HasSuffix(req.GetUrl(), "/") {
+		if len(listResp.Entries) == 0 {
 			return nil, status.Errorf(codes.InvalidArgument, "stat url is a directory, but with no entry: %s", req.GetUrl())
 		}
+
+		for _, entry := range listResp.Entries {
+			if entry.IsDir {
+				continue
+			}
+
+			urls = append(urls, entry.Url)
+		}
+	} else {
 		urls = append(urls, req.GetUrl())
 	}
 
