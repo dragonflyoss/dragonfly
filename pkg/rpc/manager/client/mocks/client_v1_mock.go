@@ -57,26 +57,6 @@ func (mr *MockV1MockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockV1)(nil).Close))
 }
 
-// GetObjectStorage mocks base method.
-func (m *MockV1) GetObjectStorage(arg0 context.Context, arg1 *manager.GetObjectStorageRequest, arg2 ...grpc.CallOption) (*manager.ObjectStorage, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "GetObjectStorage", varargs...)
-	ret0, _ := ret[0].(*manager.ObjectStorage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetObjectStorage indicates an expected call of GetObjectStorage.
-func (mr *MockV1MockRecorder) GetObjectStorage(arg0, arg1 any, arg2 ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectStorage", reflect.TypeOf((*MockV1)(nil).GetObjectStorage), varargs...)
-}
-
 // GetScheduler mocks base method.
 func (m *MockV1) GetScheduler(arg0 context.Context, arg1 *manager.GetSchedulerRequest, arg2 ...grpc.CallOption) (*manager.Scheduler, error) {
 	m.ctrl.T.Helper()
@@ -132,26 +112,6 @@ func (mr *MockV1MockRecorder) ListApplications(arg0, arg1 any, arg2 ...any) *gom
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplications", reflect.TypeOf((*MockV1)(nil).ListApplications), varargs...)
-}
-
-// ListBuckets mocks base method.
-func (m *MockV1) ListBuckets(arg0 context.Context, arg1 *manager.ListBucketsRequest, arg2 ...grpc.CallOption) (*manager.ListBucketsResponse, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "ListBuckets", varargs...)
-	ret0, _ := ret[0].(*manager.ListBucketsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListBuckets indicates an expected call of ListBuckets.
-func (mr *MockV1MockRecorder) ListBuckets(arg0, arg1 any, arg2 ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListBuckets", reflect.TypeOf((*MockV1)(nil).ListBuckets), varargs...)
 }
 
 // ListSchedulers mocks base method.

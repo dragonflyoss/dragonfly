@@ -193,13 +193,6 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	peer.GET(":id", h.GetPeer)
 	peer.GET("", h.GetPeers)
 
-	// Bucket.
-	bucket := apiv1.Group("/buckets", jwt.MiddlewareFunc(), rbac)
-	bucket.POST("", h.CreateBucket)
-	bucket.DELETE(":id", h.DestroyBucket)
-	bucket.GET(":id", h.GetBucket)
-	bucket.GET("", h.GetBuckets)
-
 	// Config.
 	config := apiv1.Group("/configs", jwt.MiddlewareFunc(), rbac)
 	config.POST("", h.CreateConfig)

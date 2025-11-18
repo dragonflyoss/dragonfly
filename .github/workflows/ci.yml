@@ -101,16 +101,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
-      - name: Build Dfdaemon Image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
-        with:
-          context: .
-          file: build/images/dfdaemon/Dockerfile
-          push: false
-          tags: dragonflyoss/dfdaemon:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
-
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache

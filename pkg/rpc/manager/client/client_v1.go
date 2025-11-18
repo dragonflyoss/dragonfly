@@ -110,12 +110,6 @@ type V1 interface {
 	// List active schedulers configuration.
 	ListSchedulers(context.Context, *managerv1.ListSchedulersRequest, ...grpc.CallOption) (*managerv1.ListSchedulersResponse, error)
 
-	// Get object storage configuration.
-	GetObjectStorage(context.Context, *managerv1.GetObjectStorageRequest, ...grpc.CallOption) (*managerv1.ObjectStorage, error)
-
-	// List buckets configuration.
-	ListBuckets(context.Context, *managerv1.ListBucketsRequest, ...grpc.CallOption) (*managerv1.ListBucketsResponse, error)
-
 	// List applications configuration.
 	ListApplications(context.Context, *managerv1.ListApplicationsRequest, ...grpc.CallOption) (*managerv1.ListApplicationsResponse, error)
 
@@ -170,22 +164,6 @@ func (v *v1) ListSchedulers(ctx context.Context, req *managerv1.ListSchedulersRe
 	defer cancel()
 
 	return v.ManagerClient.ListSchedulers(ctx, req, opts...)
-}
-
-// Get object storage configuration.
-func (v *v1) GetObjectStorage(ctx context.Context, req *managerv1.GetObjectStorageRequest, opts ...grpc.CallOption) (*managerv1.ObjectStorage, error) {
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	return v.ManagerClient.GetObjectStorage(ctx, req, opts...)
-}
-
-// List buckets configuration.
-func (v *v1) ListBuckets(ctx context.Context, req *managerv1.ListBucketsRequest, opts ...grpc.CallOption) (*managerv1.ListBucketsResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	return v.ManagerClient.ListBuckets(ctx, req, opts...)
 }
 
 // List applications configuration.

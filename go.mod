@@ -3,7 +3,7 @@ module d7y.io/dragonfly/v2
 go 1.23.8
 
 require (
-	d7y.io/api/v2 v2.1.81
+	d7y.io/api/v2 v2.1.83
 	github.com/Showmax/go-fqdn v1.0.0
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/appleboy/gin-jwt/v2 v2.10.3
@@ -39,7 +39,6 @@ require (
 	github.com/juju/ratelimit v1.0.2
 	github.com/looplab/fsm v1.0.2
 	github.com/mcuadros/go-gin-prometheus v0.1.0
-	github.com/mdlayher/vsock v1.2.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/montanaflynn/stats v0.7.1
 	github.com/onsi/ginkgo/v2 v2.27.2
@@ -163,7 +162,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
-	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/microsoft/go-mssqldb v0.17.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
