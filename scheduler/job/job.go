@@ -1042,20 +1042,20 @@ func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntr
 
 	// select a dfdaemon from peers or seed peers
 	var selected *resource.Host
-	peers, err := j.selectPeers([]string{}, nil, nil, log)
-	if err != nil {
+	if peers, err := j.selectPeers([]string{}, nil, nil, log); err != nil {
 		log.Warnf("[list-task-entries] select peers failed: %s", err)
-
-		selected, err = j.resource.SeedPeer().Select(ctx, req.TaskID)
+		seedPeer, err := j.resource.SeedPeer().Select(ctx, req.TaskID)
 		if err != nil {
 			return nil, err
 		}
+
+		selected = seedPeer
 	} else {
 		selected = peers[0]
 	}
 
 	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
-	log.Infof("selected seed peer %s for task %s", addr, req.TaskID)
+	log.Infof("[list-task-entries] selected seed peer %s for task %s", addr, req.TaskID)
 
 	dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 	if err != nil {
