@@ -103,9 +103,6 @@ type Service interface {
 	GetSchedulers(context.Context, types.GetSchedulersQuery) ([]models.Scheduler, int64, error)
 	GetSchedulerFeatures(context.Context) []string
 
-	CreateBucket(context.Context, types.CreateBucketRequest) error
-	DestroyBucket(context.Context, string) error
-
 	CreateConfig(context.Context, types.CreateConfigRequest) (*models.Config, error)
 	DestroyConfig(context.Context, uint) error
 	UpdateConfig(context.Context, uint, types.UpdateConfigRequest) (*models.Config, error)

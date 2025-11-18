@@ -296,156 +296,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/buckets": {
-            "get": {
-                "description": "Get Buckets",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Get Buckets",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "post": {
-                "description": "Create by json bucket",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Create Bucket",
-                "parameters": [
-                    {
-                        "description": "Bucket",
-                        "name": "Bucket",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateBucketRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/api/v1/buckets/{id}": {
-            "get": {
-                "description": "Get Bucket by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Get Bucket",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Destroy by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Destroy Bucket",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
         "/api/v1/clusters": {
             "get": {
                 "description": "Get Clusters",
@@ -4808,17 +4658,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_types.CreateBucketRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_types.CreateClusterRequest": {
             "type": "object",
             "required": [
@@ -6198,19 +6037,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "phone": {
-                    "type": "string"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata": {
-            "type": "object",
-            "properties": {
-                "createAt": {
-                    "description": "CreateAt is bucket create time.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name is bucket name.",
                     "type": "string"
                 }
             }

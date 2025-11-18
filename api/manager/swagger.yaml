@@ -445,13 +445,6 @@ definitions:
     - url
     - user_id
     type: object
-  d7y_io_dragonfly_v2_manager_types.CreateBucketRequest:
-    properties:
-      name:
-        type: string
-    required:
-    - name
-    type: object
   d7y_io_dragonfly_v2_manager_types.CreateClusterRequest:
     properties:
       bio:
@@ -1404,15 +1397,6 @@ definitions:
       phone:
         type: string
     type: object
-  d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata:
-    properties:
-      createAt:
-        description: CreateAt is bucket create time.
-        type: string
-      name:
-        description: Name is bucket name.
-        type: string
-    type: object
   time.Duration:
     enum:
     - -9223372036854775808
@@ -1629,105 +1613,6 @@ paths:
       summary: Get Audits
       tags:
       - Audit
-  /api/v1/buckets:
-    get:
-      consumes:
-      - application/json
-      description: Get Buckets
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata'
-            type: array
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get Buckets
-      tags:
-      - Bucket
-    post:
-      consumes:
-      - application/json
-      description: Create by json bucket
-      parameters:
-      - description: Bucket
-        in: body
-        name: Bucket
-        required: true
-        schema:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.CreateBucketRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Create Bucket
-      tags:
-      - Bucket
-  /api/v1/buckets/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Destroy by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Destroy Bucket
-      tags:
-      - Bucket
-    get:
-      consumes:
-      - application/json
-      description: Get Bucket by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get Bucket
-      tags:
-      - Bucket
   /api/v1/clusters:
     get:
       consumes:
