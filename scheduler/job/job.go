@@ -1049,7 +1049,7 @@ func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntr
 		selected, err = j.resource.SeedPeer().Select(ctx, req.TaskID)
 		if err != nil {
 			return nil, err
-		}		
+		}
 	} else {
 		selected = peers[0]
 	}

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -3205,7 +3206,17 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 
 	var urls []string
 	for _, entry := range listResp.Entries {
+		if entry.IsDir {
+			continue
+		}
 		urls = append(urls, entry.Url)
+	}
+
+	if len(listResp.Entries) == 0 {
+		if strings.HasSuffix(req.GetUrl(), "/") {
+			return status.Errorf(codes.InvalidArgument, "preheat url is a directory, but with no entry: %s", req.GetUrl())
+		}
+		urls = append(urls, req.GetUrl())
 	}
 
 	// Create a preheat request for the job queue.
@@ -3316,6 +3327,21 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 		return nil, status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
 	}
 
+	var urls []string
+	for _, entry := range listResp.Entries {
+		if entry.IsDir {
+			continue
+		}
+		urls = append(urls, entry.Url)
+	}
+
+	if len(listResp.Entries) == 0 {
+		if strings.HasSuffix(req.GetUrl(), "/") {
+			return nil, status.Errorf(codes.InvalidArgument, "stat url is a directory, but with no entry: %s", req.GetUrl())
+		}
+		urls = append(urls, req.GetUrl())
+	}
+
 	resp := &schedulerv2.StatFileResponse{
 		Peers: make([]*schedulerv2.PeerFile, 0),
 	}
@@ -3323,16 +3349,16 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerFile{}
 	eg, ctx := errgroup.WithContext(ctx)
-	for _, entry := range listResp.Entries {
+	for _, url := range urls {
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(entry.Url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
+			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             req.GetTimeout().AsDuration(),
 				ConcurrentPeerCount: *req.ConcurrentPeerCount,
 			}
 
-			log := logger.WithStatFileAndTaskID(entry.Url, taskID)
+			log := logger.WithStatFileAndTaskID(url, taskID)
 			log.Infof("get task request: %#v", getTaskRequest)
 			task, err := v.job.GetTask(ctx, getTaskRequest, log)
 			if err != nil {
