@@ -94,7 +94,7 @@ jobs:
 
       - name: Pull Rust Client Image
         run: |
-          cd client-rs
+          cd client
           CLIENT_TAG=$(git describe --tags $(git rev-parse HEAD))
           docker pull dragonflyoss/client:$CLIENT_TAG
           docker tag dragonflyoss/client:$CLIENT_TAG dragonflyoss/client:latest
