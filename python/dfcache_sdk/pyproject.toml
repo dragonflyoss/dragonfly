@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dragonfly-dfcache-sdk"
+version = "0.1.0"
+description = "Unofficial Python SDK for Dragonfly dfcache/dfdaemon operations (stat, import, export, delete)."
+readme = "README.md"
+authors = [{name = "Dragonfly Authors"}]
+license = {text = "Apache-2.0"}
+keywords = ["dragonfly", "p2p", "cache", "dfcache", "dfdaemon"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent"
+]
+requires-python = ">=3.9"
+dependencies = [
+  "typing-extensions>=4.0.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "ruff"]
+
+[tool.pytest.ini_options]
+testpaths = ["python/dfcache_sdk/tests"]
+pythonpath = ["python/dfcache_sdk/src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.ruff]
+line-length = 100
