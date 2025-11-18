@@ -105,9 +105,6 @@ type ServerConfig struct {
 
 	// Server plugin directory.
 	PluginDir string `yaml:"pluginDir" mapstructure:"pluginDir"`
-
-	// Server storage data directory.
-	DataDir string `yaml:"dataDir" mapstructure:"dataDir"`
 }
 
 type GRPCTLSServerConfig struct {

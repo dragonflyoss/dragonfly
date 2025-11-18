@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	retry "github.com/avast/retry-go/v4"
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
@@ -37,7 +38,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
-	"d7y.io/dragonfly/v2/pkg/retry"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/structure"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
@@ -169,7 +169,7 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 		return nil, err
 	}
 
-	go s.pollingJob(context.Background(), internaljob.PreheatJob, job.ID, job.TaskID, 30, 300, 16)
+	go s.pollingJob(context.Background(), internaljob.PreheatJob, job.ID, job.TaskID, 30*time.Second, 300*time.Second, 16)
 	return &job, nil
 }
 
@@ -224,7 +224,7 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 		return nil, err
 	}
 
-	go s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 30, 300, 16)
+	go s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 30*time.Second, 300*time.Second, 16)
 	logger.Infof("create get task job %s for task %s in scheduler clusters %v", job.ID, job.TaskID, json.SchedulerClusterIDs)
 	return &job, nil
 }
@@ -406,7 +406,7 @@ func (s *service) createGetTaskJobSync(ctx context.Context, json types.CreateGet
 		return nil, err
 	}
 
-	s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 3, 5, 60)
+	s.pollingJob(context.Background(), internaljob.GetTaskJob, job.ID, job.TaskID, 3*time.Second, 5*time.Second, 60)
 	if err := s.db.WithContext(ctx).Preload("SeedPeerClusters").Preload("SchedulerClusters").First(&job, job.ID).Error; err != nil {
 		return nil, err
 	}
@@ -577,7 +577,7 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 		return nil, err
 	}
 
-	go s.pollingJob(context.Background(), internaljob.DeleteTaskJob, job.ID, job.TaskID, 30, 300, 16)
+	go s.pollingJob(context.Background(), internaljob.DeleteTaskJob, job.ID, job.TaskID, 30*time.Second, 300*time.Second, 16)
 	return &job, nil
 }
 
@@ -746,24 +746,24 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 	return candidateSchedulers, nil
 }
 
-func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUID string, initBackoff float64, maxBackoff float64, maxAttempts int) {
+func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUID string, delay, maxDelay time.Duration, attempts uint) {
 	var (
 		job models.Job
 		log = logger.WithGroupAndJobID(groupUUID, fmt.Sprint(id))
 	)
-	if _, _, err := retry.Run(ctx, initBackoff, maxBackoff, maxAttempts, func() (any, bool, error) {
+	if err := retry.Do(func() error {
 		groupJob, err := s.job.GetGroupJobState(name, groupUUID)
 		if err != nil {
 			err = fmt.Errorf("get group job state failed: %w", err)
 			log.Error(err)
-			return nil, false, err
+			return err
 		}
 
 		result, err := structure.StructToMap(groupJob)
 		if err != nil {
 			err = fmt.Errorf("convert group job state to map failed: %w", err)
 			log.Error(err)
-			return nil, false, err
+			return err
 		}
 
 		if err := s.db.WithContext(ctx).First(&job, id).Updates(models.Job{
@@ -772,7 +772,7 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUI
 		}).Error; err != nil {
 			err = fmt.Errorf("update job state failed: %w", err)
 			log.Error(err)
-			return nil, true, err
+			return err
 		}
 
 		switch job.State {
@@ -781,16 +781,22 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUI
 			metrics.CreateJobSuccessCount.WithLabelValues(name).Inc()
 
 			log.Info("polling group succeeded")
-			return nil, true, nil
+			return nil
 		case machineryv1tasks.StateFailure:
 			log.Error("polling group failed")
-			return nil, true, nil
+			return nil
 		default:
 			msg := fmt.Sprintf("polling job state is %s", job.State)
 			log.Info(msg)
-			return nil, false, errors.New(msg)
+			return errors.New(msg)
 		}
-	}); err != nil {
+	},
+		retry.Attempts(attempts),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Delay(delay),
+		retry.MaxDelay(maxDelay),
+		retry.Context(ctx),
+	); err != nil {
 		err = fmt.Errorf("polling group job failed: %w", err)
 		log.Error(err)
 	}

@@ -30,67 +30,13 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
-	"d7y.io/dragonfly/v2/client/config"
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
-	"d7y.io/dragonfly/v2/pkg/resolver"
-	"d7y.io/dragonfly/v2/pkg/rpc"
 )
-
-// GetV2 returns v2 version of the scheduler client.
-func GetV2(ctx context.Context, dynconfig config.Dynconfig, opts ...grpc.DialOption) (V2, error) {
-	// Register resolver and balancer.
-	resolver.RegisterScheduler(dynconfig)
-	builder, pickerBuilder := pkgbalancer.NewConsistentHashingBuilder()
-	balancer.Register(builder)
-
-	conn, err := grpc.DialContext(
-		ctx,
-		resolver.SchedulerVirtualTarget,
-		append([]grpc.DialOption{
-			grpc.WithIdleTimeout(0),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(math.MaxInt32),
-				grpc.MaxCallSendMsgSize(math.MaxInt32),
-			),
-			grpc.WithDefaultServiceConfig(pkgbalancer.BalancerServiceConfig),
-			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-				grpc_prometheus.UnaryClientInterceptor,
-				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
-				grpc_retry.UnaryClientInterceptor(
-					grpc_retry.WithMax(maxRetries),
-					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
-				),
-				rpc.RefresherUnaryClientInterceptor(dynconfig),
-			)),
-			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-				grpc_prometheus.StreamClientInterceptor,
-				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
-				rpc.RefresherStreamClientInterceptor(dynconfig),
-			)),
-			grpc.WithStatsHandler(otelgrpc.NewClientHandler(
-				otelgrpc.WithTracerProvider(otel.GetTracerProvider()),
-				otelgrpc.WithPropagators(otel.GetTextMapPropagator())),
-			),
-		}, opts...)...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &v2{
-		SchedulerClient:                schedulerv2.NewSchedulerClient(conn),
-		ClientConn:                     conn,
-		Dynconfig:                      dynconfig,
-		dialOptions:                    opts,
-		ConsistentHashingPickerBuilder: pickerBuilder,
-	}, nil
-}
 
 // GetV2ByAddr returns v2 version of the scheduler client by address.
 func GetV2ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V2, error) {
@@ -167,7 +113,6 @@ type V2 interface {
 type v2 struct {
 	schedulerv2.SchedulerClient
 	*grpc.ClientConn
-	config.Dynconfig
 	dialOptions []grpc.DialOption
 	*pkgbalancer.ConsistentHashingPickerBuilder
 }

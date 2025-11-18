@@ -39,7 +39,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/types"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/slices"
 )
@@ -60,22 +59,17 @@ type managerServerV1 struct {
 
 	// Searcher interface.
 	searcher searcher.Searcher
-
-	// Object storage interface.
-	objectStorage objectstorage.ObjectStorage
 }
 
 // newManagerServerV1 returns v1 version of the manager server.
 func newManagerServerV1(
-	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher,
-	objectStorage objectstorage.ObjectStorage) managerv1.ManagerServer {
+	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher) managerv1.ManagerServer {
 	return &managerServerV1{
-		config:        cfg,
-		db:            database.DB,
-		rdb:           database.RDB,
-		cache:         cache,
-		searcher:      searcher,
-		objectStorage: objectStorage,
+		config:   cfg,
+		db:       database.DB,
+		rdb:      database.RDB,
+		cache:    cache,
+		searcher: searcher,
 	}
 }
 
@@ -143,7 +137,6 @@ func (s *managerServerV1) GetSeedPeer(ctx context.Context, req *managerv1.GetSee
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		State:             seedPeer.State,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 		SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -216,7 +209,6 @@ func (s *managerServerV1) ListSeedPeers(ctx context.Context, req *managerv1.List
 			Ip:                seedPeer.IP,
 			Port:              seedPeer.Port,
 			DownloadPort:      seedPeer.DownloadPort,
-			ObjectStoragePort: seedPeer.ObjectStoragePort,
 			State:             seedPeer.State,
 			SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 			SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -263,7 +255,6 @@ func (s *managerServerV1) UpdateSeedPeer(ctx context.Context, req *managerv1.Upd
 		IP:                req.GetIp(),
 		Port:              req.GetPort(),
 		DownloadPort:      req.GetDownloadPort(),
-		ObjectStoragePort: req.GetObjectStoragePort(),
 		State:             models.SeedPeerStateActive,
 		SeedPeerClusterID: uint(req.GetSeedPeerClusterId()),
 	}).Error; err != nil {
@@ -286,7 +277,6 @@ func (s *managerServerV1) UpdateSeedPeer(ctx context.Context, req *managerv1.Upd
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		State:             seedPeer.State,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 	}, nil
@@ -302,7 +292,6 @@ func (s *managerServerV1) createSeedPeer(ctx context.Context, req *managerv1.Upd
 		IP:                req.GetIp(),
 		Port:              req.GetPort(),
 		DownloadPort:      req.GetDownloadPort(),
-		ObjectStoragePort: req.GetObjectStoragePort(),
 		SeedPeerClusterID: uint(req.GetSeedPeerClusterId()),
 	}
 
@@ -319,7 +308,6 @@ func (s *managerServerV1) createSeedPeer(ctx context.Context, req *managerv1.Upd
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 		State:             seedPeer.State,
 	}, nil
@@ -386,7 +374,6 @@ func (s *managerServerV1) GetScheduler(ctx context.Context, req *managerv1.GetSc
 				Ip:                seedPeer.IP,
 				Port:              seedPeer.Port,
 				DownloadPort:      seedPeer.DownloadPort,
-				ObjectStoragePort: seedPeer.ObjectStoragePort,
 				State:             seedPeer.State,
 				SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 				SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -606,7 +593,6 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 					Ip:                seedPeer.IP,
 					Port:              seedPeer.Port,
 					DownloadPort:      seedPeer.DownloadPort,
-					ObjectStoragePort: seedPeer.ObjectStoragePort,
 					State:             seedPeer.State,
 					SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 				})
@@ -651,48 +637,6 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 	}
 
 	return &pbListSchedulersResponse, nil
-}
-
-// Get object storage configuration.
-func (s *managerServerV1) GetObjectStorage(ctx context.Context, req *managerv1.GetObjectStorageRequest) (*managerv1.ObjectStorage, error) {
-	if !s.config.ObjectStorage.Enable {
-		return nil, status.Error(codes.Internal, "object storage is disabled")
-	}
-
-	return &managerv1.ObjectStorage{
-		Name:             s.config.ObjectStorage.Name,
-		Region:           s.config.ObjectStorage.Region,
-		Endpoint:         s.config.ObjectStorage.Endpoint,
-		AccessKey:        s.config.ObjectStorage.AccessKey,
-		SecretKey:        s.config.ObjectStorage.SecretKey,
-		S3ForcePathStyle: s.config.ObjectStorage.S3ForcePathStyle,
-	}, nil
-}
-
-// List buckets configuration.
-func (s *managerServerV1) ListBuckets(ctx context.Context, req *managerv1.ListBucketsRequest) (*managerv1.ListBucketsResponse, error) {
-	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
-
-	if !s.config.ObjectStorage.Enable {
-		log.Warn("object storage is disabled")
-		return nil, status.Error(codes.Internal, "object storage is disabled")
-	}
-
-	// Cache miss and search buckets.
-	buckets, err := s.objectStorage.ListBucketMetadatas(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Construct schedulers.
-	var pbListBucketsResponse managerv1.ListBucketsResponse
-	for _, bucket := range buckets {
-		pbListBucketsResponse.Buckets = append(pbListBucketsResponse.Buckets, &managerv1.Bucket{
-			Name: bucket.Name,
-		})
-	}
-
-	return &pbListBucketsResponse, nil
 }
 
 // List applications configuration.

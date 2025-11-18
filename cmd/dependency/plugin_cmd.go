@@ -25,7 +25,6 @@ import (
 
 	"d7y.io/dragonfly/v2/internal/dfplugin"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
-	"d7y.io/dragonfly/v2/pkg/source"
 )
 
 var PluginCmd = &cobra.Command{
@@ -36,16 +35,8 @@ var PluginCmd = &cobra.Command{
 	DisableAutoGenTag: true,
 	SilenceUsage:      true,
 	Run: func(cmd *cobra.Command, args []string) {
-		ListAvailableInTreePlugins()
 		ListAvailableOutOfTreePlugins()
 	},
-}
-
-func ListAvailableInTreePlugins() {
-	clients := source.ListClients()
-	for _, scheme := range clients {
-		fmt.Printf("source plugin: %s, location: in-tree\n", scheme)
-	}
 }
 
 func ListAvailableOutOfTreePlugins() {

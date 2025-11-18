@@ -50,7 +50,7 @@ git reset --hard ${COMMIT_ID}
 1. Attach Process
 
    ```shell
-   pid=$(pidof scheduler) # or dfget, manager
+   pid=$(pidof scheduler) # or manager
    dlv attach $pid
    ```
 

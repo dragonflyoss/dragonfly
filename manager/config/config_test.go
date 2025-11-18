@@ -24,8 +24,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 )
 
 var (
@@ -73,16 +71,6 @@ var (
 		DB:         DefaultRedisDB,
 		BrokerDB:   DefaultRedisBrokerDB,
 		BackendDB:  DefaultRedisBackendDB,
-	}
-
-	mockObjectStorageConfig = ObjectStorageConfig{
-		Enable:           true,
-		Name:             objectstorage.ServiceNameS3,
-		Region:           "bas",
-		Endpoint:         "127.0.0.1",
-		AccessKey:        "ak",
-		SecretKey:        "sk",
-		S3ForcePathStyle: true,
 	}
 
 	mockMetricsConfig = MetricsConfig{
@@ -194,15 +182,6 @@ func TestConfig_Load(t *testing.T) {
 				Timeout:   2 * time.Minute,
 				BatchSize: 50,
 			},
-		},
-		ObjectStorage: ObjectStorageConfig{
-			Enable:           true,
-			Name:             objectstorage.ServiceNameS3,
-			Endpoint:         "127.0.0.1",
-			AccessKey:        "foo",
-			SecretKey:        "bar",
-			Region:           "baz",
-			S3ForcePathStyle: false,
 		},
 		Metrics: MetricsConfig{
 			Enable: true,
@@ -796,70 +775,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "syncPeers requires parameter batchSize")
-			},
-		},
-		{
-			name:   "objectStorage requires parameter name",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.Name = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter name")
-			},
-		},
-		{
-			name:   "invalid objectStorage name",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.Name = "foo"
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter name")
-			},
-		},
-		{
-			name:   "objectStorage requires parameter accessKey",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.AccessKey = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter accessKey")
-			},
-		},
-		{
-			name:   "objectStorage requires parameter secretKey",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.SecretKey = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter secretKey")
 			},
 		},
 		{

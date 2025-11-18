@@ -33,15 +33,11 @@ type LogRotateConfig struct {
 }
 
 var (
-	CoreLogFileName       = "core.log"
-	GrpcLogFileName       = "grpc.log"
-	GinLogFileName        = "gin.log"
-	GCLogFileName         = "gc.log"
-	StorageGCLogFileName  = "storage-gc.log"
-	JobLogFileName        = "job.log"
-	StatSeedLogFileName   = "stat/seed.log"
-	DownloaderLogFileName = "downloader.log"
-	KeepAliveLogFileName  = "keepalive.log"
+	CoreLogFileName = "core.log"
+	GrpcLogFileName = "grpc.log"
+	GinLogFileName  = "gin.log"
+	GCLogFileName   = "gc.log"
+	JobLogFileName  = "job.log"
 )
 
 const (

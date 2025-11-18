@@ -184,9 +184,3 @@ client:
       - regex: blobs/sha256.*
       - regex: file-server.*
       - regex: dufs.dragonfly-e2e.svc.*
-
-dfdaemon:
-  enable: false
-
-seedPeer:
-  enable: false

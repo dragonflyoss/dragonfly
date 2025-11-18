@@ -87,15 +87,6 @@ job:
     timeout: 2m
     batchSize: 50
 
-objectStorage:
-  enable: true
-  name: s3
-  endpoint: 127.0.0.1
-  accessKey: foo
-  secretKey: bar
-  region: baz
-  s3ForcePathStyle: false
-
 metrics:
   enable: true
   addr: :8000

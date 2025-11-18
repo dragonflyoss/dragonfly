@@ -1418,7 +1418,7 @@ func TestTask_CanBackToSource(t *testing.T) {
 			},
 		},
 		{
-			name:              "task can back-to-source and task type is DFSTORE",
+			name:              "task can back-to-source and task type is PERSISTENT",
 			backToSourceLimit: 1,
 			run: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
@@ -1427,7 +1427,7 @@ func TestTask_CanBackToSource(t *testing.T) {
 			},
 		},
 		{
-			name:              "task type is DFCACHE",
+			name:              "task type is PERSISTENT_CACHE",
 			backToSourceLimit: 1,
 			run: func(t *testing.T, task *Task) {
 				assert := assert.New(t)

@@ -42,11 +42,6 @@ print_verbose_info(){
 
 build(){
   case "$PLUGIN_TYPE" in
-    resource)
-      build_plugin
-      build_binary dfget
-      print_verbose_info dfget
-      ;;
     scheduler)
       build_plugin
       build_binary scheduler

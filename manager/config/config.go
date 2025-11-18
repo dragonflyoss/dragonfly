@@ -24,7 +24,6 @@ import (
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
@@ -47,9 +46,6 @@ type Config struct {
 
 	// Job configuration.
 	Job JobConfig `yaml:"job" mapstructure:"job"`
-
-	// ObjectStorage configuration.
-	ObjectStorage ObjectStorageConfig `yaml:"objectStorage" mapstructure:"objectStorage"`
 
 	// Metrics configuration.
 	Metrics MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
@@ -365,34 +361,6 @@ type PreheatTLSClientConfig struct {
 	CACert types.PEMContent `yaml:"caCert" mapstructure:"caCert"`
 }
 
-type ObjectStorageConfig struct {
-	// Enable object storage.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
-	// Name is object storage name of type, it can be s3, oss or obs.
-	Name string `mapstructure:"name" yaml:"name"`
-
-	// Region is storage region.
-	Region string `mapstructure:"region" yaml:"region"`
-
-	// Endpoint is datacenter endpoint.
-	Endpoint string `mapstructure:"endpoint" yaml:"endpoint"`
-
-	// AccessKey is access key ID.
-	AccessKey string `mapstructure:"accessKey" yaml:"accessKey"`
-
-	// SecretKey is access key secret.
-	SecretKey string `mapstructure:"secretKey" yaml:"secretKey"`
-
-	// S3ForcePathStyle sets force path style for s3, true by default.
-	// Set this to `true` to force the request to use path-style addressing,
-	// i.e., `http://s3.amazonaws.com/BUCKET/KEY`. By default, the S3 client
-	// will use virtual hosted bucket addressing when possible
-	// (`http://BUCKET.s3.amazonaws.com/KEY`).
-	// Refer to https://github.com/aws/aws-sdk-go/blob/main/aws/config.go#L118.
-	S3ForcePathStyle bool `mapstructure:"s3ForcePathStyle" yaml:"s3ForcePathStyle"`
-}
-
 type NetworkConfig struct {
 	// EnableIPv6 enables ipv6 for server.
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
@@ -477,10 +445,6 @@ func New() *Config {
 				Timeout:   DefaultJobSyncPeersTimeout,
 				BatchSize: DefaultJobSyncPeersBatchSize,
 			},
-		},
-		ObjectStorage: ObjectStorageConfig{
-			Enable:           false,
-			S3ForcePathStyle: true,
 		},
 		Metrics: MetricsConfig{
 			Enable: false,
@@ -660,24 +624,6 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Job.SyncPeers.BatchSize == 0 {
 		return errors.New("syncPeers requires parameter batchSize")
-	}
-
-	if cfg.ObjectStorage.Enable {
-		if cfg.ObjectStorage.Name == "" {
-			return errors.New("objectStorage requires parameter name")
-		}
-
-		if !slices.Contains([]string{objectstorage.ServiceNameS3, objectstorage.ServiceNameOSS, objectstorage.ServiceNameOBS}, cfg.ObjectStorage.Name) {
-			return errors.New("objectStorage requires parameter name")
-		}
-
-		if cfg.ObjectStorage.AccessKey == "" {
-			return errors.New("objectStorage requires parameter accessKey")
-		}
-
-		if cfg.ObjectStorage.SecretKey == "" {
-			return errors.New("objectStorage requires parameter secretKey")
-		}
 	}
 
 	if cfg.Metrics.Enable {

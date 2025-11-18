@@ -18,31 +18,11 @@ package strings
 
 import (
 	"slices"
-	"strings"
 )
-
-// IsBlank determines whether the string is empty.
-func IsBlank(s string) bool {
-	return strings.TrimSpace(s) == ""
-}
 
 // Contains reports whether the string contains the element.
 func Contains(slice []string, ele string) bool {
 	return slices.Contains(slice, ele)
-}
-
-// Remove the duplicate elements in the string slice.
-func Unique(slice []string) []string {
-	keys := make(map[string]bool)
-	result := []string{}
-	for _, entry := range slice {
-		if _, ok := keys[entry]; !ok {
-			keys[entry] = true
-			result = append(result, entry)
-		}
-	}
-
-	return result
 }
 
 // Concat concatenates multiple string slices.

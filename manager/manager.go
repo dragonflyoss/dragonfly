@@ -45,7 +45,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/dfpath"
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 )
@@ -144,22 +143,6 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 	s.job = job
 
-	// Initialize object storage.
-	var objectStorage objectstorage.ObjectStorage
-	if cfg.ObjectStorage.Enable {
-		objectStorage, err = objectstorage.New(
-			cfg.ObjectStorage.Name,
-			cfg.ObjectStorage.Region,
-			cfg.ObjectStorage.Endpoint,
-			cfg.ObjectStorage.AccessKey,
-			cfg.ObjectStorage.SecretKey,
-			objectstorage.WithS3ForcePathStyle(cfg.ObjectStorage.S3ForcePathStyle),
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Initialize job rate limiter.
 	s.jobRateLimiter, err = ratelimiter.NewJobRateLimiter(db)
 	if err != nil {
@@ -174,7 +157,7 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	s.gc = gc
 
 	// Initialize REST server.
-	restService := service.New(cfg, db, cache, job, gc, enforcer, objectStorage)
+	restService := service.New(cfg, db, cache, job, gc, enforcer)
 	router, err := router.Init(cfg, d.LogDir(), restService, db, enforcer, s.jobRateLimiter, EmbedFolder(assets, assetsTargetPath))
 	if err != nil {
 		return nil, err
@@ -207,7 +190,7 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 
 	// Initialize GRPC server.
-	_, grpcServer, err := rpcserver.New(cfg, db, cache, searcher, objectStorage, options...)
+	_, grpcServer, err := rpcserver.New(cfg, db, cache, searcher, options...)
 	if err != nil {
 		return nil, err
 	}

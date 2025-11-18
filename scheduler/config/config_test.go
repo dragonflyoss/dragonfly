@@ -92,7 +92,6 @@ func TestConfig_Load(t *testing.T) {
 			LogMaxAge:     5,
 			LogMaxBackups: 3,
 			PluginDir:     "foo",
-			DataDir:       "foo",
 		},
 		Database: DatabaseConfig{
 			Redis: RedisConfig{

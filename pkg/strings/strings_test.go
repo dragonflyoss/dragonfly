@@ -22,23 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsBlank(t *testing.T) {
-	assert.True(t, IsBlank(""))
-	assert.True(t, IsBlank("	  "))
-	assert.False(t, IsBlank("x"))
-}
-
 func TestContains(t *testing.T) {
 	assert.True(t, Contains([]string{"a", "B"}, "B"))
 	assert.False(t, Contains([]string{"a", "B"}, "b"))
-}
-
-func TestUnique(t *testing.T) {
-	assert.EqualValues(t, Unique([]string{"a", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{"a", "a", "B", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{"a", "B", "a", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{}), []string{})
-	assert.EqualValues(t, Unique([]string{}), []string{})
 }
 
 func TestConcat(t *testing.T) {

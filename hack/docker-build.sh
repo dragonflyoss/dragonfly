@@ -47,9 +47,6 @@ git-submodule() {
 
 main() {
     case "${1-}" in
-    dfdaemon)
-        docker-build dfdaemon
-        ;;
     scheduler)
         docker-build scheduler
         ;;

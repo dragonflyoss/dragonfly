@@ -5,7 +5,6 @@ set -o errexit
 set -o pipefail
 
 BIN_DIR="../bin"
-DFGET_BINARY_NAME=dfget
 SCHEDULER_BINARY_NAME=scheduler
 MANAGER_BINARY_NAME=manager
 
@@ -16,30 +15,12 @@ cd "${curDir}" || return
 
 install() {
     case "${1-}" in
-    dfget)
-        install-dfget
-        ;;
     scheduler)
         install-scheduler
         ;;
     manager)
         install-manager
     esac
-}
-
-install-dfget() {
-    local bin="${INSTALL_HOME}/${INSTALL_BIN_PATH}"
-    echo "install: ${bin}"
-    mkdir -p "${bin}"
-
-    cp "${BIN_DIR}/${GOOS}_${GOARCH}/${DFGET_BINARY_NAME}" "${bin}"
-
-    createLink "${bin}/${DFGET_BINARY_NAME}" /usr/local/bin/dfget
-}
-
-uninstall-dfget() {
-    echo "unlink /usr/local/bin/dfget"
-    test -e /usr/local/bin/dfget && unlink /usr/local/bin/dfget
 }
 
 install-scheduler() {

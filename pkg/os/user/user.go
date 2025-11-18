@@ -17,8 +17,6 @@
 package user
 
 import (
-	"fmt"
-	"os"
 	"os/user"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -33,15 +31,4 @@ func HomeDir() string {
 	}
 
 	return u.HomeDir
-}
-
-// Username is the username.
-func Username() string {
-	u, err := user.Current()
-	if err != nil {
-		logger.Warnf("Failed to get current user: %s. Use os.Getuid() as username", err.Error())
-		return fmt.Sprint(os.Getuid())
-	}
-
-	return u.Username
 }

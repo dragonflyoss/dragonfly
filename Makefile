@@ -13,18 +13,12 @@
 # limitations under the License.
 
 PROJECT_NAME := "d7y.io/dragonfly/v2"
-DFGET_NAME := "dfget"
-DFCACHE_NAME := "dfcache"
-DFSTORE_NAME := "dfstore"
 SEMVER := "2.3.0"
 VERSION_RELEASE := "1"
 PKG := "$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/ | grep -v '\(/test/\)')
 GIT_COMMIT := $(shell git rev-parse --verify HEAD --short=7)
 GIT_COMMIT_LONG := $(shell git rev-parse --verify HEAD)
-DFGET_ARCHIVE_PREFIX := "$(DFGET_NAME)_$(SEMVER)-$(VERSION_RELEASE)_$(GIT_COMMIT)"
-DFCACHE_ARCHIVE_PREFIX := "$(DFCACHE_NAME)_$(SEMVER)-$(VERSION_RELEASE)_$(GIT_COMMIT)"
-DFSTORE_ARCHIVE_PREFIX := "$(DFSTORE_NAME)_$(SEMVER)-$(VERSION_RELEASE)_$(GIT_COMMIT)"
 
 all: help
 
@@ -68,44 +62,8 @@ docker-push-manager: docker-build-manager
 .PHONY: docker-push-manager
 
 # Build dragonfly.
-build: build-manager build-scheduler build-dfget build-dfcache build-dfstore
+build: build-manager build-scheduler
 .PHONY: build
-
-# Build dfget.
-build-dfget: build-dirs
-	@echo "Begin to build dfget."
-	./hack/build.sh dfget
-.PHONY: build-dfget
-
-# Build linux dfget.
-build-linux-dfget: build-dirs
-	@echo "Begin to build linux dfget."
-	GOOS=linux GOARCH=amd64 ./hack/build.sh dfget
-.PHONY: build-linux-dfget
-
-# Build dfcache.
-build-dfcache: build-dirs
-	@echo "Begin to build dfcache."
-	./hack/build.sh dfcache
-.PHONY: build-dfcache
-
-# Build linux dfcache.
-build-linux-dfcache: build-dirs
-	@echo "Begin to build linux dfcache."
-	GOOS=linux GOARCH=amd64 ./hack/build.sh dfcache
-.PHONY: build-linux-dfcache
-
-# Build dfstore.
-build-dfstore: build-dirs
-	@echo "Begin to build dfstore."
-	./hack/build.sh dfstore
-.PHONY: build-dfstore
-
-# Build linux dfcache.
-build-linux-dfstore: build-dirs
-	@echo "Begin to build linux dfstore."
-	GOOS=linux GOARCH=amd64 ./hack/build.sh dfstore
-.PHONY: build-linux-dfstore
 
 # Build scheduler.
 build-scheduler: build-dirs
@@ -131,12 +89,6 @@ build-manager-console: build-dirs
 	./hack/build.sh manager-console
 .PHONY: build-manager-console
 
-# Install dfget.
-install-dfget:
-	@echo "Begin to install dfget."
-	./hack/install.sh install dfget
-.PHONY: install-dfget
-
 # Install scheduler.
 install-scheduler:
 	@echo "Begin to install scheduler."
@@ -148,137 +100,6 @@ install-manager:
 	@echo "Begin to install manager."
 	./hack/install.sh install manager
 .PHONY: install-manager
-
-# Build rpm dfget.
-build-rpm-dfget: build-linux-dfget
-	@echo "Begin to build rpm dfget."
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfget.yaml \
-		--target /root/bin/$(DFGET_ARCHIVE_PREFIX)_linux_amd64.rpm
-	@echo "Build package output: ./bin/$(DFGET_ARCHIVE_PREFIX)_linux_amd64.rpm"
-.PHONY: build-rpm-dfget
-
-# Build rpm dfcache.
-build-rpm-dfcache: build-linux-dfcache build-dfcache-man-page
-	@echo "Begin to build rpm dfcache."
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfcache.yaml \
-		--target /root/bin/$(DFCACHE_ARCHIVE_PREFIX)_linux_amd64.rpm
-	@echo "Build package output: ./bin/$(DFCACHE_ARCHIVE_PREFIX)_linux_amd64.rpm"
-.PHONY: build-rpm-dfcache
-
-# Build rpm dfstore.
-build-rpm-dfstore: build-linux-dfstore
-	@echo "Begin to build rpm dfstore."
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfstore.yaml \
-		--target /root/bin/$(DFSTORE_ARCHIVE_PREFIX)_linux_amd64.rpm
-	@echo "Build package output: ./bin/$(DFSTORE_ARCHIVE_PREFIX)_linux_amd64.rpm"
-.PHONY: build-rpm-dfstore
-
-# Build deb dfget.
-build-deb-dfget: build-linux-dfget
-	@echo "Begin to build deb dfget."
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfget.yaml \
-		--target /root/bin/$(DFGET_ARCHIVE_PREFIX)_linux_amd64.deb
-	@echo "Build package output: ./bin/$(DFGET_ARCHIVE_PREFIX)_linux_amd64.deb"
-.PHONY: build-deb-dfget
-
-# Build deb dfcache.
-build-deb-dfcache: build-linux-dfcache build-dfcache-man-page
-	@echo "Begin to build deb dfcache."
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfcache.yaml \
-		--target /root/bin/$(DFCACHE_ARCHIVE_PREFIX)_linux_amd64.deb
-	@echo "Build package output: ./bin/$(DFCACHE_ARCHIVE_PREFIX)_linux_amd64.deb"
-.PHONY: build-deb-dfcache
-
-# Build deb dfstore
-build-deb-dfstore: build-linux-dfstore
-	@echo "Begin to build deb dfstore"
-	@docker run --rm \
-	-v "$(PWD)/build:/root/build" \
-	-v "$(PWD)/build/package/docs:/root/docs" \
-	-v "$(PWD)/LICENSE:/root/License" \
-	-v "$(PWD)/CHANGELOG.md:/root/CHANGELOG.md" \
-	-v "$(PWD)/bin:/root/bin" \
-	-e "SEMVER=$(SEMVER)" \
-	-e "VERSION_RELEASE=$(VERSION_RELEASE)" \
-	goreleaser/nfpm pkg \
-		--config /root/build/package/nfpm/dfstore.yaml \
-		--target /root/bin/$(DFSTORE_ARCHIVE_PREFIX)_linux_amd64.deb
-	@echo "Build package output: ./bin/$(DFSTORE_ARCHIVE_PREFIX)_linux_amd64.deb"
-.PHONY: build-deb-dfstore
-
-# Generate man page.
-build-man-page: build-dfget-man-page build-dfcache-man-page build-dfstore-man-page
-.PHONY: build-man-page
-
-# Generate dfget man page.
-build-dfget-man-page:
-	@pandoc -s -t man ./build/package/docs/dfget.1.md -o ./build/package/docs/dfget.1
-.PHONY: build-dfget-man-page
-
-# Genrate dfcache man pages.
-build-dfcache-man-page:
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache.md -o ./build/package/docs/dfcache/dfcache.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_delete.md -o ./build/package/docs/dfcache/dfcache-delete.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_doc.md -o ./build/package/docs/dfcache/dfcache-doc.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_export.md -o ./build/package/docs/dfcache/dfcache-export.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_import.md -o ./build/package/docs/dfcache/dfcache-import.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_plugin.md -o ./build/package/docs/dfcache/dfcache-plugin.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_stat.md -o ./build/package/docs/dfcache/dfcache-stat.1
-	@pandoc -s -t man ./build/package/docs/dfcache/dfcache_version.md -o ./build/package/docs/dfcache/dfcache-version.1
-.PHONY: build-dfcache-man-page
-
-# Genrate dfstore man pages.
-build-dfstore-man-page:
-	@pandoc -s -t man ./build/package/docs/dfstore/dfstore.md -o ./build/package/docs/dfstore/dfstore.1
-	@pandoc -s -t man ./build/package/docs/dfstore/dfstore_copy.md -o ./build/package/docs/dfstore/dfstore-copy.1
-	@pandoc -s -t man ./build/package/docs/dfstore/dfstore_remove.md -o ./build/package/docs/dfstore/dfstore-remove.1
-	@pandoc -s -t man ./build/package/docs/dfstore/dfstore_version.md -o ./build/package/docs/dfstore/dfstore-version.1
-.PHONY: build-dfstore-man-page
 
 # Run unittests.
 test:
@@ -369,29 +190,12 @@ help:
 	@echo "make docker-push-scheduler          push scheduler image"
 	@echo "make docker-push-manager            push manager image"
 	@echo "make build                          build dragonfly"
-	@echo "make build-dfget                    build dfget"
-	@echo "make build-linux-dfget              build linux dfget"
-	@echo "make build-dfcache                  build dfcache"
-	@echo "make build-linux-dfcache            build linux dfcache"
-	@echo "make build-dfstore                  build dfstore"
-	@echo "make build-linux-dfstore            build linux dfstore"
 	@echo "make build-scheduler                build scheduler"
 	@echo "make build-manager                  build manager"
 	@echo "make build-manager-server           build manager server"
 	@echo "make build-manager-console          build manager console"
-	@echo "make install-dfget                  install dfget"
 	@echo "make install-scheduler              install scheduler"
 	@echo "make install-manager                install manager"
-	@echo "make build-rpm-dfget                build rpm dfget"
-	@echo "make build-rpm-dfcache              build rpm dfcache"
-	@echo "make build-rpm-dfstore              build rpm dfstore"
-	@echo "make build-deb-dfget                build deb dfget"
-	@echo "make build-deb-dfcache              build deb dfcache"
-	@echo "make build-deb-dfstore              build deb dfstore"
-	@echo "make build-man-page                 generate man page"
-	@echo "make build-dfget-man-page           generate dfget man page"
-	@echo "make build-dfcache-man-page         generate dfcache man page"
-	@echo "make build-dfstore-man-page         generate dfstore man page"
 	@echo "make test                           run unit tests"
 	@echo "make test-coverage                  run tests with coverage"
 	@echo "make actions-e2e-test-coverage      run github actons E2E tests with coverage"

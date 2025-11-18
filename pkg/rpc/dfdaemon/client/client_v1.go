@@ -40,10 +40,6 @@ import (
 
 // GetV1 returns v1 version of the dfdaemon client.
 func GetV1(ctx context.Context, target string, opts ...grpc.DialOption) (V1, error) {
-	if rpc.IsVsock(target) {
-		opts = append(opts, grpc.WithContextDialer(rpc.VsockDialer))
-	}
-
 	conn, err := grpc.DialContext(
 		ctx,
 		target,

@@ -4,9 +4,6 @@ set -o nounset
 set -o errexit
 set -o pipefail
 
-DFGET_BINARY_NAME=dfget
-DFCACHE_BINARY_NAME=dfcache
-DFSTORE_BINARY_NAME=dfstore
 SCHEDULER_BINARY_NAME=scheduler
 MANAGER_BINARY_NAME=manager
 
@@ -49,18 +46,6 @@ build-local() {
     echo "BUILD: $2 in ${BUILD_SOURCE_HOME}/${BUILD_PATH}/$1"
 }
 
-build-dfget-local() {
-    build-local ${DFGET_BINARY_NAME} dfget
-}
-
-build-dfcache-local() {
-    build-local ${DFCACHE_BINARY_NAME} dfcache
-}
-
-build-dfstore-local() {
-    build-local ${DFSTORE_BINARY_NAME} dfstore
-}
-
 build-scheduler-local() {
     build-local ${SCHEDULER_BINARY_NAME} scheduler
 }
@@ -92,18 +77,6 @@ build-docker() {
     echo "BUILD: $1 in ${BUILD_SOURCE_HOME}/${BUILD_PATH}/$1"
 }
 
-build-dfget-docker() {
-    build-docker ${DFGET_BINARY_NAME} dfget
-}
-
-build-dfcache-docker() {
-    build-docker ${DFCACHE_BINARY_NAME} dfcache
-}
-
-build-dfstore-docker() {
-    build-docker ${DFSTORE_BINARY_NAME} dfstore
-}
-
 build-scheduler-docker() {
     build-docker ${SCHEDULER_BINARY_NAME} scheduler
 }
@@ -129,15 +102,6 @@ main() {
     if [[ "1" == "${USE_DOCKER}" ]]; then
         echo "Begin to build with docker."
         case "${1-}" in
-        dfget)
-            build-dfget-docker
-            ;;
-        dfcache)
-            build-dfcache-docker
-            ;;
-        dfstore)
-            build-dfstore-docker
-            ;;
         scheduler)
             build-scheduler-docker
             ;;
@@ -148,9 +112,6 @@ main() {
             build-manager-console
             ;;
         *)
-            build-dfget-docker
-            build-dfcache-docker
-            build-dfstore-docker
             build-scheduler-docker
             build-manager-docker
             ;;
@@ -158,15 +119,6 @@ main() {
     else
         echo "Begin to build in the local environment."
         case "${1-}" in
-        dfget)
-            build-dfget-local
-            ;;
-        dfcache)
-            build-dfcache-local
-            ;;
-        dfstore)
-            build-dfstore-local
-            ;;
         scheduler)
             build-scheduler-local
             ;;
@@ -177,9 +129,6 @@ main() {
             build-manager-console
             ;;
         *)
-            build-dfget-local
-            build-dfcache-local
-            build-dfstore-local
             build-scheduler-local
             build-manager-local
             ;;

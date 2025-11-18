@@ -26,7 +26,6 @@ import (
 
 	pkgdigest "d7y.io/dragonfly/v2/pkg/digest"
 	neturl "d7y.io/dragonfly/v2/pkg/net/url"
-	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
 )
 
 // DefaultFilteredQueryParams is the default filtered query params to generate the task id.
@@ -154,10 +153,6 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 
 // ParseFilteredQueryParams parses filtered query params.
 func ParseFilteredQueryParams(rawFilteredQueryParams string) []string {
-	if pkgstrings.IsBlank(rawFilteredQueryParams) {
-		return nil
-	}
-
 	return strings.Split(rawFilteredQueryParams, FilteredQueryParamsSeparator)
 }
 

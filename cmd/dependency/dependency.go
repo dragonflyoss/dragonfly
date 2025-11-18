@@ -46,8 +46,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v3"
 
-	"d7y.io/dragonfly/v2/client/config"
-	"d7y.io/dragonfly/v2/client/util"
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/dfnet"
@@ -55,7 +53,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/net/fqdn"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/types"
-	"d7y.io/dragonfly/v2/pkg/unit"
 	"d7y.io/dragonfly/v2/version"
 )
 
@@ -297,17 +294,9 @@ loop:
 func initDecoderConfig(dc *mapstructure.DecoderConfig) {
 	dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(func(from, to reflect.Type, v any) (any, error) {
 		switch to {
-		case reflect.TypeOf(unit.B),
-			reflect.TypeOf(dfnet.NetAddr{}),
-			reflect.TypeOf(util.RateLimit{}),
-			reflect.TypeOf(util.Duration{}),
-			reflect.TypeOf(&config.ProxyOption{}),
-			reflect.TypeOf(config.TCPListenPortRange{}),
+		case reflect.TypeOf(dfnet.NetAddr{}),
 			reflect.TypeOf(types.PEMContent("")),
-			reflect.TypeOf(config.URL{}),
-			reflect.TypeOf(net.IP{}),
-			reflect.TypeOf(config.CertPool{}),
-			reflect.TypeOf(config.Regexp{}):
+			reflect.TypeOf(net.IP{}):
 
 			b, _ := yaml.Marshal(v)
 			p := reflect.New(to)

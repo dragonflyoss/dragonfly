@@ -176,9 +176,3 @@ client:
       rules:
       - regex: blobs/sha256.*
       - regxe: file-server.*
-
-dfdaemon:
-  enable: false
-
-seedPeer:
-  enable: false

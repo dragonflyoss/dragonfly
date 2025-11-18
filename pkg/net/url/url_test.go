@@ -35,9 +35,3 @@ func TestFilterQuery(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "", url)
 }
-
-func TestIsValid(t *testing.T) {
-	assert.True(t, IsValid("http://www.x.yy"))
-	assert.True(t, IsValid("http://www.x.yy/path"))
-	assert.False(t, IsValid("http:///path"))
-}

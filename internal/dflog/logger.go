@@ -53,10 +53,6 @@ func init() {
 		SetGrpcLogger(sugar)
 		SetGinLogger(sugar)
 		SetGCLogger(sugar)
-		SetStorageGCLogger(sugar)
-		SetKeepAliveLogger(sugar)
-		SetStatSeedLogger(log)
-		SetDownloadLogger(log)
 		SetJobLogger(sugar)
 	}
 	levels = append(levels, config.Level)
@@ -77,22 +73,6 @@ func SetCoreLogger(log *zap.SugaredLogger) {
 
 func SetGCLogger(log *zap.SugaredLogger) {
 	GCLogger = log
-}
-
-func SetStorageGCLogger(log *zap.SugaredLogger) {
-	StorageGCLogger = log
-}
-
-func SetKeepAliveLogger(log *zap.SugaredLogger) {
-	KeepAliveLogger = log
-}
-
-func SetStatSeedLogger(log *zap.Logger) {
-	StatSeedLogger = log
-}
-
-func SetDownloadLogger(log *zap.Logger) {
-	DownloaderLogger = log
 }
 
 func SetGrpcLogger(log *zap.SugaredLogger) {

@@ -48,33 +48,9 @@ func TestNew(t *testing.T) {
 				cache.err = &multierror.Error{}
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
-				assert.Equal(d.WorkHomeMode(), DefaultWorkHomeMode)
 				assert.Equal(d.CacheDir(), DefaultCacheDir)
 				assert.Equal(d.CacheDirMode(), DefaultCacheDirMode)
 				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
-				assert.Equal(d.DaemonSockPath(), DefaultDownloadUnixSocketPath)
-			},
-		},
-		{
-			name:    "new dfpath by workHome and workHomeMode",
-			options: []Option{WithWorkHome("foo"), WithWorkHomeMode(os.FileMode(0700))},
-			expect: func(t *testing.T, options []Option) {
-				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
-				d, err := New(options...)
-				assert.NoError(err)
-				assert.Equal(d.WorkHome(), "foo")
-				assert.Equal(d.WorkHomeMode(), os.FileMode(0700))
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
-				assert.Equal(d.CacheDirMode(), DefaultCacheDirMode)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
 				assert.Equal(d.PluginDir(), DefaultPluginDir)
 			},
 		},
@@ -87,15 +63,10 @@ func TestNew(t *testing.T) {
 				cache.err = &multierror.Error{}
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
-				assert.Equal(d.WorkHomeMode(), DefaultWorkHomeMode)
 				assert.Equal(d.CacheDir(), "foo")
 				assert.Equal(d.CacheDirMode(), os.FileMode(0700))
 				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
 				assert.Equal(d.PluginDir(), DefaultPluginDir)
-				assert.Equal(d.DaemonSockPath(), DefaultDownloadUnixSocketPath)
 			},
 		},
 		{
@@ -107,31 +78,9 @@ func TestNew(t *testing.T) {
 				cache.err = &multierror.Error{}
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
 				assert.Equal(d.CacheDir(), DefaultCacheDir)
 				assert.Equal(d.LogDir(), "foo")
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
 				assert.Equal(d.PluginDir(), DefaultPluginDir)
-				assert.Equal(d.DaemonSockPath(), DefaultDownloadUnixSocketPath)
-			},
-		},
-		{
-			name:    "new dfpath by dataDir and dataDirMode",
-			options: []Option{WithDataDir("foo"), WithDataDirMode(os.FileMode(0700))},
-			expect: func(t *testing.T, options []Option) {
-				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
-				d, err := New(options...)
-				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), "foo")
-				assert.Equal(d.DataDirMode(), os.FileMode(0700))
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
-				assert.Equal(d.DaemonSockPath(), DefaultDownloadUnixSocketPath)
 			},
 		},
 		{
@@ -143,31 +92,9 @@ func TestNew(t *testing.T) {
 				cache.err = &multierror.Error{}
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
 				assert.Equal(d.CacheDir(), DefaultCacheDir)
 				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
 				assert.Equal(d.PluginDir(), "foo")
-				assert.Equal(d.DaemonSockPath(), DefaultDownloadUnixSocketPath)
-			},
-		},
-		{
-			name:    "new dfpath by daemonSockPath",
-			options: []Option{WithDownloadUnixSocketPath("foo")},
-			expect: func(t *testing.T, options []Option) {
-				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
-				d, err := New(options...)
-				assert.NoError(err)
-				assert.Equal(d.WorkHome(), DefaultWorkHome)
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.DataDir(), DefaultDataDir)
-				assert.Equal(d.DataDirMode(), DefaultDataDirMode)
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
-				assert.Equal(d.DaemonSockPath(), "foo")
 			},
 		},
 	}

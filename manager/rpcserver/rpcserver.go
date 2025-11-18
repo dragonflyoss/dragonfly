@@ -26,7 +26,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	managerserver "d7y.io/dragonfly/v2/pkg/rpc/manager/server"
 )
 
@@ -46,22 +45,18 @@ type Server struct {
 
 	// Searcher interface.
 	searcher searcher.Searcher
-
-	// Object storage interface.
-	objectStorage objectstorage.ObjectStorage
 }
 
 // New returns a new manager server from the given options.
 func New(
 	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher,
-	objectStorage objectstorage.ObjectStorage, opts ...grpc.ServerOption) (*Server, *grpc.Server, error) {
+	opts ...grpc.ServerOption) (*Server, *grpc.Server, error) {
 	s := &Server{
-		config:        cfg,
-		db:            database.DB,
-		rdb:           database.RDB,
-		cache:         cache,
-		searcher:      searcher,
-		objectStorage: objectStorage,
+		config:   cfg,
+		db:       database.DB,
+		rdb:      database.RDB,
+		cache:    cache,
+		searcher: searcher,
 	}
 
 	return s, managerserver.New(

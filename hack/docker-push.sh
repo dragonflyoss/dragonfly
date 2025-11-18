@@ -15,9 +15,6 @@ docker-push() {
 
 main() {
     case "${1-}" in
-    dfdaemon)
-        docker-push dfdaemon
-        ;;
     scheduler)
         docker-push scheduler
         ;;

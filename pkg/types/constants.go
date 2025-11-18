@@ -22,21 +22,6 @@ const (
 
 	// SchedulerName is name of scheduler.
 	SchedulerName = "scheduler"
-
-	// DfdaemonName is name of dfdaemon.
-	DfdaemonName = "dfdaemon"
-
-	// DaemonName is daemon name of dfdaemon.
-	DaemonName = "daemon"
-
-	// DfgetName is dfget name of dfdaemon.
-	DfgetName = "dfget"
-
-	// DfcacheName is dfcache name of dfdaemon.
-	DfcacheName = "dfcache"
-
-	// DfstoreName is dfstore name of dfdaemon.
-	DfstoreName = "dfstore"
 )
 
 const (
@@ -48,9 +33,6 @@ const (
 
 	// SchedulerMetricsName is name of Scheduler metrics.
 	SchedulerMetricsName = "scheduler"
-
-	// DfdaemonMetricsName is name of dfdaemon metrics.
-	DfdaemonMetricsName = "dfdaemon"
 )
 
 const (

@@ -95,70 +95,6 @@ func InitScheduler(logLevel string, console bool, dir string, rotateConfig LogRo
 	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
-func InitDaemon(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
-	if console {
-		return createConsoleLogger(logLevel)
-	}
-
-	logDir := filepath.Join(dir, types.DaemonName)
-	var meta = []logInitMeta{
-		{
-			fileName:             CoreLogFileName,
-			setSugaredLoggerFunc: SetCoreLogger,
-		},
-		{
-			fileName:             GrpcLogFileName,
-			setSugaredLoggerFunc: SetGrpcLogger,
-		},
-		{
-			fileName:             GinLogFileName,
-			setSugaredLoggerFunc: SetGinLogger,
-		},
-		{
-			fileName:             GCLogFileName,
-			setSugaredLoggerFunc: SetGCLogger,
-		},
-	}
-
-	return createFileLogger(logLevel, meta, logDir, rotateConfig)
-}
-
-func InitDfget(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
-	if console {
-		return createConsoleLogger(logLevel)
-	}
-
-	logDir := filepath.Join(dir, types.DfgetName)
-	var meta = []logInitMeta{
-		{
-			fileName:             CoreLogFileName,
-			setSugaredLoggerFunc: SetCoreLogger,
-		},
-		{
-			fileName:             GrpcLogFileName,
-			setSugaredLoggerFunc: SetGrpcLogger,
-		},
-	}
-
-	return createFileLogger(logLevel, meta, logDir, rotateConfig)
-}
-
-func InitDfcache(logLevel string, dir string, rotateConfig LogRotateConfig) error {
-	logDir := filepath.Join(dir, types.DfcacheName)
-	var meta = []logInitMeta{
-		{
-			fileName:             CoreLogFileName,
-			setSugaredLoggerFunc: SetCoreLogger,
-		},
-		{
-			fileName:             GrpcLogFileName,
-			setSugaredLoggerFunc: SetGrpcLogger,
-		},
-	}
-
-	return createFileLogger(logLevel, meta, logDir, rotateConfig)
-}
-
 func createConsoleLogger(logLevel string) error {
 	levels = nil
 	config := zap.NewDevelopmentConfig()
@@ -185,10 +121,6 @@ func createConsoleLogger(logLevel string) error {
 		SetGrpcLogger(sugar)
 		SetGinLogger(sugar)
 		SetGCLogger(sugar)
-		SetStorageGCLogger(sugar)
-		SetKeepAliveLogger(sugar)
-		SetStatSeedLogger(log)
-		SetDownloadLogger(log)
 		SetJobLogger(sugar)
 	}
 	levels = append(levels, config.Level)
