@@ -51,6 +51,7 @@ type PreheatRequest struct {
 	TaskUUID            string            `json:"task_uuid" validate:"omitempty"`
 	ObjectStorage       *v2.ObjectStorage `json:"object_storage" validate:"omitempty"`
 	Hdfs                *v2.HDFS          `json:"hdfs" validate:"omitempty"`
+	OutputPath          *string           `json:"output_path" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.
