@@ -117,6 +117,7 @@ func (g gc) Start(ctx context.Context) {
 		go func() {
 			task := v.(Task)
 			tick := time.NewTicker(task.Interval)
+			defer tick.Stop()
 			for {
 				select {
 				case <-tick.C:
