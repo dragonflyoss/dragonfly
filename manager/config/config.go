@@ -84,6 +84,12 @@ type ServerConfig struct {
 
 	// REST server configuration.
 	REST RESTConfig `yaml:"rest" mapstructure:"rest"`
+
+    // Server storage data directory.
+    DataDir string `yaml:"dataDir" mapstructure:"dataDir"`
+
+    // Server work home diectory.
+    WorkHome string `yaml:"workHome" mapstructure:"workHome"`
 }
 
 type AuthConfig struct {

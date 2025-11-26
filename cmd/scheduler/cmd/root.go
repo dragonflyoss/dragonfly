@@ -112,6 +112,9 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 		options = append(options, dfpath.WithPluginDir(cfg.PluginDir))
 	}
 
+    if cfg.WorkHome != "" {
+            options = append(options, dfpath.WithWorkHome(cfg.WorkHome))
+    }
 	return dfpath.New(options...)
 }
 

@@ -105,6 +105,9 @@ type ServerConfig struct {
 
 	// Server plugin directory.
 	PluginDir string `yaml:"pluginDir" mapstructure:"pluginDir"`
+
+    // Server work home diectory.
+    WorkHome string `yaml:"workHome" mapstructure:"workHome"`
 }
 
 type GRPCTLSServerConfig struct {
