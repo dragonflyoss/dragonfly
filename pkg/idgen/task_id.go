@@ -186,3 +186,19 @@ func TaskIDV2ByContent(content string) string {
 func PersistentCacheTaskIDByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
 }
+
+// CacheTaskIDV2ByURLBased generates v2 version of cache task id by url based.
+func CacheTaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
+	url, err := neturl.FilterQueryParams(url, filteredQueryParams)
+	if err != nil {
+		url = ""
+	}
+
+	params := []string{url, tag, application}
+	if pieceLength != nil {
+		params = append(params, strconv.FormatUint(*pieceLength, 10))
+	}
+
+	params = append(params, commonv2.TaskType_CACHE.String())
+	return pkgdigest.SHA256FromStrings(params...)
+}
