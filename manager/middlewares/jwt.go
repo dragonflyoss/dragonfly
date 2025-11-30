@@ -17,7 +17,6 @@
 package middlewares
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/service"
 	"d7y.io/dragonfly/v2/manager/types"
+	pkgcontext "d7y.io/dragonfly/v2/pkg/context"
 )
 
 const (
@@ -75,7 +75,11 @@ func Jwt(cfg config.JWTConfig, service service.Service) (*jwt.GinJWTMiddleware, 
 				return "", jwt.ErrMissingLoginValues
 			}
 
-			user, err := service.SignIn(context.TODO(), json)
+			// Create context from gin context with timeout.
+			ctx, cancel := pkgcontext.CopyWithDefaultTimeout(c.Request.Context())
+			defer cancel()
+
+			user, err := service.SignIn(ctx, json)
 			if err != nil {
 				return "", jwt.ErrFailedAuthentication
 			}
