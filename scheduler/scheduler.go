@@ -36,7 +36,9 @@ import (
 	"d7y.io/dragonfly/v2/pkg/gc"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
+	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/announcer"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -96,6 +98,13 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 
 	// Initialize dial options of manager grpc client.
 	managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
+	// Attach JWT per-RPC creds for inter-component calls if a key is provided.
+	if key := cfg.Auth.JWT.Key; key != "" {
+		claims := auth.DurationClaims(types.SchedulerName, types.ManagerName, 10*time.Minute)
+		if token, err := auth.SignHS256(key, claims); err == nil {
+			managerDialOptions = append(managerDialOptions, grpc.WithPerRPCCredentials(auth.NewPerRPCCreds(token)))
+		}
+	}
 	if cfg.Manager.TLS != nil {
 		clientTransportCredentials, err := rpc.NewClientCredentials(cfg.Manager.TLS.CACert, cfg.Manager.TLS.Cert, cfg.Manager.TLS.Key)
 		if err != nil {
