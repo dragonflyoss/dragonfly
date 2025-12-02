@@ -64,6 +64,9 @@ type Config struct {
 
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
+
+	// Auth configuration.
+	Auth AuthConfig `yaml:"auth" mapstructure:"auth"`
 }
 
 type ServerConfig struct {
@@ -317,6 +320,25 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
+type AuthConfig struct {
+	// JWT configuration.
+	JWT JWTConfig `yaml:"jwt" mapstructure:"jwt"`
+}
+
+type JWTConfig struct {
+	// Realm name to display to the user, default value is Dragonfly.
+	Realm string `yaml:"realm" mapstructure:"realm"`
+
+	// Key is secret key used for signing. Please change the key in production
+	Key string `yaml:"key" mapstructure:"key"`
+
+	// Timeout is duration that a jwt token is valid.
+	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
+
+	// MaxRefresh allows clients to refresh their token until MaxRefresh has passed.
+	MaxRefresh time.Duration `yaml:"maxRefresh" mapstructure:"maxRefresh"`
+}
+
 // New default configuration.
 func New() *Config {
 	return &Config{
@@ -388,6 +410,13 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
+		},
+		Auth: AuthConfig{
+			JWT: JWTConfig{
+				Realm:      "Dragonfly",
+				Timeout:    14 * 24 * time.Hour,
+				MaxRefresh: 7 * 24 * time.Hour,
+			},
 		},
 	}
 }
@@ -550,6 +579,20 @@ func (cfg *Config) Validate() error {
 		if cfg.Metrics.Addr == "" {
 			return errors.New("metrics requires parameter addr")
 		}
+	}
+
+	// Auth validation
+	if cfg.Auth.JWT.Realm == "" {
+		return errors.New("jwt requires parameter realm")
+	}
+	if cfg.Auth.JWT.Key == "" {
+		return errors.New("jwt requires parameter key")
+	}
+	if cfg.Auth.JWT.Timeout == 0 {
+		return errors.New("jwt requires parameter timeout")
+	}
+	if cfg.Auth.JWT.MaxRefresh == 0 {
+		return errors.New("jwt requires parameter maxRefresh")
 	}
 
 	return nil
