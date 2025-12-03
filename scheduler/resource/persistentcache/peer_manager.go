@@ -379,7 +379,7 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 			err      error
 		)
 
-		// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-peers:", keys could be:
+		// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-peers-for-persistent-cache-task:", keys could be:
 		// "{prefix}{peerID1}", "{prefix}{peerID2}", "{prefix}{peerID3}", ...
 		// Scan all keys with prefix.
 		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersForPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID))

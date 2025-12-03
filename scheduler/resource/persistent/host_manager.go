@@ -88,7 +88,7 @@ func newHostManager(cfg *config.Config, gc pkggc.GC, rdb redis.UniversalClient) 
 // Load returns host by a key.
 func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 	log := logger.WithHostID(hostID)
-	rawHost, err := h.rdb.HGetAll(ctx, pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result()
+	rawHost, err := h.rdb.HGetAll(ctx, pkgredis.MakePersistentHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result()
 	if err != nil {
 		log.Errorf("getting host failed from redis: %v", err)
 		return nil, false
@@ -598,8 +598,8 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID),
-		pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID),
+		pkgredis.MakePersistentHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID),
+		pkgredis.MakePersistentHostsInScheduler(h.config.Manager.SchedulerClusterID),
 	}
 
 	// Prepare arguments.
@@ -701,8 +701,8 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID),
-		pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID),
+		pkgredis.MakePersistentHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID),
+		pkgredis.MakePersistentHostsInScheduler(h.config.Manager.SchedulerClusterID),
 	}
 
 	// Prepare arguments.
@@ -733,7 +733,7 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 			err      error
 		)
 
-		hostKeys, cursor, err = h.rdb.SScan(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), cursor, "*", 10).Result()
+		hostKeys, cursor, err = h.rdb.SScan(ctx, pkgredis.MakePersistentHostsInScheduler(h.config.Manager.SchedulerClusterID), cursor, "*", 10).Result()
 		if err != nil {
 			logger.Error("scan hosts failed")
 			return nil, err
@@ -759,7 +759,7 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 
 // LoadRandom loads host randomly through the set of redis.
 func (h *hostManager) LoadRandom(ctx context.Context, n int, blocklist set.SafeSet[string]) ([]*Host, error) {
-	hostKeys, err := h.rdb.SMembers(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)).Result()
+	hostKeys, err := h.rdb.SMembers(ctx, pkgredis.MakePersistentHostsInScheduler(h.config.Manager.SchedulerClusterID)).Result()
 	if err != nil {
 		logger.Error("smembers hosts failed")
 		return nil, err
