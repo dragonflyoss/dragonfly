@@ -228,7 +228,7 @@ func (s *service) loadAllPeersByTaskID(ctx context.Context, schedulerClusterID u
 
 // loadPeer loads a peer from Redis based on the provided key.
 func (s *service) loadPeer(ctx context.Context, schedulerClusterID uint, id string) (*types.PersistentCachePeer, error) {
-	peerKey := pkgredis.MakePersistentCachePeerKeyInScheduler(schedulerClusterID, id)
+	peerKey := pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(schedulerClusterID, id)
 	rawPeer, err := s.rdb.HGetAll(ctx, peerKey).Result()
 	if err != nil {
 		return nil, err

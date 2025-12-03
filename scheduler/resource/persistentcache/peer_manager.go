@@ -98,7 +98,7 @@ func newPeerManager(cfg *config.Config, rdb redis.UniversalClient, taskManager T
 // Load returns persistent cache peer by a key.
 func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 	log := logger.WithPeerID(peerID)
-	rawPeer, err := p.rdb.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
+	rawPeer, err := p.rdb.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
 	if err != nil {
 		log.Errorf("getting peer failed from redis: %v", err)
 		return nil, false
@@ -259,7 +259,7 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peer.ID),
+		pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.ID),
 		pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
 		pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
 		pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
@@ -343,7 +343,7 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCachePeerKeyInScheduler(p.config.Manager.SchedulerClusterID, peerID),
+		pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID),
 		pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
 		pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
 		pkgredis.MakePersistentCachePeersOfPersistentCacheHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
@@ -382,7 +382,7 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 		// For example, if {prefix} is "scheduler:scheduler-clusters:1:persistent-cache-peers:", keys could be:
 		// "{prefix}{peerID1}", "{prefix}{peerID2}", "{prefix}{peerID3}", ...
 		// Scan all keys with prefix.
-		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersInScheduler(p.config.Manager.SchedulerClusterID))
+		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersForPersistentCacheTaskInScheduler(p.config.Manager.SchedulerClusterID))
 		peerKeys, cursor, err = p.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
 		if err != nil {
 			logger.Errorf("scan tasks failed: %v", err)
