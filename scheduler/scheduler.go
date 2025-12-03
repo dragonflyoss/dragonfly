@@ -42,6 +42,7 @@ import (
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/rpcserver"
@@ -70,6 +71,9 @@ type Server struct {
 
 	// Resource interface.
 	resource standard.Resource
+
+	// Persistent resource interface.
+	persistentResource persistent.Resource
 
 	// Persistent cache resource interface.
 	persistentCacheResource persistentcache.Resource
@@ -178,8 +182,15 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 		}
 	}
 
-	// Initialize persistent cache resource.
 	if rdb != nil {
+		// Initialize persistent resource.
+		s.persistentResource, err = persistent.New(cfg, s.gc, rdb, peerClientTransportCredentials)
+		if err != nil {
+			logger.Errorf("failed to create persistent resource: %v", err)
+			return nil, err
+		}
+
+		// Initialize persistent cache resource.
 		s.persistentCacheResource, err = persistentcache.New(cfg, s.gc, rdb, peerClientTransportCredentials)
 		if err != nil {
 			logger.Errorf("failed to create persistent cache resource: %v", err)
@@ -201,7 +212,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	}
 
 	// Initialize scheduling.
-	scheduling := scheduling.New(&cfg.Scheduler, s.persistentCacheResource, dynconfig, d.PluginDir())
+	scheduling := scheduling.New(&cfg.Scheduler, s.persistentResource, s.persistentCacheResource, dynconfig, d.PluginDir())
 
 	// Initialize server options of scheduler grpc server.
 	schedulerServerOptions := []grpc.ServerOption{}

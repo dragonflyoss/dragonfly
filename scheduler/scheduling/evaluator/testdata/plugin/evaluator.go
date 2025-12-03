@@ -17,6 +17,7 @@
 package main
 
 import (
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
@@ -30,6 +31,16 @@ func (e *evaluator) EvaluateParents(parents []*standard.Peer, child *standard.Pe
 
 // IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
 func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
+	return true
+}
+
+// EvaluatePersistentParents sort persistent parents by evaluating multiple feature scores.
+func (e *evaluator) EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer {
+	return []*persistent.Peer{&persistent.Peer{}}
+}
+
+// IsBadPersistentParent determine if persistent peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadPersistentParent(peer *persistent.Peer) bool {
 	return true
 }
 

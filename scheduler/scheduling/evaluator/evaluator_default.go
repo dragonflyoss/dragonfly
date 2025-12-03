@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"d7y.io/dragonfly/v2/pkg/types"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
@@ -48,6 +49,14 @@ const (
 
 	// defaultConcurrencyWeight is the weight of concurrency.
 	defaultConcurrencyWeight = 0.2
+)
+
+const (
+	// defaultIDCAffinityWeightForPersistentTask is the weight of host type for persistent task.
+	defaultIDCAffinityWeightForPersistentTask = 0.7
+
+	// defaultLocationAffinityWeightForPersistentTask is the weight of location affinity for persistent task.
+	defaultLocationAffinityWeightForPersistentTask = 0.3
 )
 
 const (
@@ -264,6 +273,41 @@ func (e *evaluatorDefault) calculateConcurrencyScore(parent *standard.Peer, chil
 	}
 
 	return 1 / concurrencyRatio
+}
+
+// EvaluatePersistentParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+//
+// This function evaluates each parent peer using multiple metrics including IDC affinity and location affinity.
+// The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
+// parents appearing first in the returned slice.
+func (e *evaluatorDefault) EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer {
+	sort.Slice(
+		parents,
+		func(i, j int) bool {
+			return e.evaluatePersistentParents(parents[i], child) > e.evaluatePersistentParents(parents[j], child)
+		},
+	)
+
+	return parents
+}
+
+// evaluatePersistentParents evaluates and scores a parent peer for selection as a download source for a child peer.
+// The score ranges from 0.0 to 1.0, where a higher value indicates a better parent candidate.
+//
+// This function combines two key metrics to comprehensively evaluate parent peer quality:
+// 1. IDC Affinity Score: Measures network proximity based on Internet Data Center(IDC) affinity.
+// 2. Location Affinity Score: Measures geographic proximity based on location affinity.
+//
+// Formula: TotalScore = (IDCAffinityScore * 0.7) + (LocationAffinityScore * 0.3)
+func (e *evaluatorDefault) evaluatePersistentParents(parent *persistent.Peer, child *persistent.Peer) float64 {
+	idcAffinityScore := e.calculateIDCAffinityScore(parent.Host.Network.IDC, child.Host.Network.IDC)
+	locationAffinityScore := e.calculateLocationAffinityScore(parent.Host.Network.Location, child.Host.Network.Location)
+	child.Log.Debugf("[evaluator] evaluate persistent parent %s: idcAffinityScore=%.4f, locationAffinityScore=%.4f",
+		parent.ID, idcAffinityScore, locationAffinityScore)
+
+	return defaultIDCAffinityWeightForPersistentTask*idcAffinityScore +
+		defaultLocationAffinityWeightForPersistentTask*locationAffinityScore
 }
 
 // EvaluatePersistentCacheParents sorts and returns a list of parent peers ordered by their suitability as download sources.

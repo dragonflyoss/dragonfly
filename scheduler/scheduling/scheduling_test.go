@@ -48,6 +48,7 @@ import (
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	configmocks "d7y.io/dragonfly/v2/scheduler/config/mocks"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling/evaluator"
@@ -220,9 +221,10 @@ func TestScheduling_New(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 
-			tc.expect(t, New(mockSchedulerConfig, persistentCacheResource, dynconfig, tc.pluginDir))
+			tc.expect(t, New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, tc.pluginDir))
 		})
 	}
 }
@@ -435,6 +437,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			stream := schedulerv2mocks.NewMockScheduler_AnnouncePeerServer(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -450,7 +453,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			blocklist := set.NewSafeSet[string]()
 
 			tc.mock(cancel, peer, seedPeer, blocklist, stream, stream.EXPECT(), dynconfig.EXPECT())
-			scheduling := New(mockSchedulerConfig, persistentCacheResource, dynconfig, mockPluginDir)
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
 			tc.expect(t, peer, scheduling.ScheduleCandidateParents(ctx, peer, blocklist))
 		})
 	}
@@ -706,6 +709,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			stream := schedulerv1mocks.NewMockScheduler_ReportPieceResultServer(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -721,7 +725,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			blocklist := set.NewSafeSet[string]()
 
 			tc.mock(cancel, peer, seedPeer, blocklist, stream, stream.EXPECT(), dynconfig.EXPECT())
-			scheduling := New(mockSchedulerConfig, persistentCacheResource, dynconfig, mockPluginDir)
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
 			scheduling.ScheduleParentAndCandidateParents(ctx, peer, blocklist)
 			tc.expect(t, peer)
 		})
@@ -992,6 +996,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
@@ -1010,7 +1015,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 
 			blocklist := set.NewSafeSet[string]()
 			tc.mock(peer, mockPeers, blocklist, dynconfig.EXPECT())
-			scheduling := New(mockSchedulerConfig, persistentCacheResource, dynconfig, mockPluginDir)
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
 			parents, found := scheduling.FindCandidateParents(context.Background(), peer, blocklist)
 			tc.expect(t, peer, mockPeers, parents, found)
 		})
@@ -1251,6 +1256,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
 			persistentCacheResource := persistentcache.NewMockResource(ctl)
 			mockHost := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
@@ -1269,7 +1275,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 
 			blocklist := set.NewSafeSet[string]()
 			tc.mock(peer, mockPeers, blocklist, dynconfig.EXPECT())
-			scheduling := New(mockSchedulerConfig, persistentCacheResource, dynconfig, mockPluginDir)
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
 			parents, found := scheduling.FindParentAndCandidateParents(context.Background(), peer, blocklist)
 			tc.expect(t, peer, mockPeers, parents, found)
 		})

@@ -22,6 +22,7 @@ import (
 	"github.com/montanaflynn/stats"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
@@ -64,6 +65,14 @@ type Evaluator interface {
 	// IsBadParent determines whether a peer is unsuitable to be selected as a parent
 	// for downloading pieces.
 	IsBadParent(peer *standard.Peer) bool
+
+	// EvaluatePersistentParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer
+
+	// IsBadPersistentParent determines whether a peer is unsuitable to be selected as a persistent parent
+	// for downloading pieces.
+	IsBadPersistentParent(peer *persistent.Peer) bool
 
 	// EvaluatePersistentCacheParents sorts and returns a list of parent peers ordered by their suitability as download sources.
 	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
@@ -140,6 +149,25 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	logger.Debugf("peer %s meet the normal distribution, costs mean is %.2f and standard deviation is %.2f, peer is bad node: %t",
 		peer.ID, mean, stdev, isBadParent)
 	return isBadParent
+}
+
+// IsBadPersistentParent determines whether a persistent peer is unsuitable to be selected as a parent
+// for replication. It evaluates the peer based on its current state.
+//
+// A persistent peer is considered a bad parent if it is in an unsuitable state:
+// - Pending: waiting to start.
+// - Uploading: currently uploading data.
+// - ReceivedEmpty: received an empty response.
+// - ReceivedNormal: received normal data but not yet completed.
+// - Failed: has failed.
+func (e *evaluator) IsBadPersistentParent(peer *persistent.Peer) bool {
+	if peer.FSM.Is(persistent.PeerStatePending) || peer.FSM.Is(persistent.PeerStateUploading) || peer.FSM.Is(persistent.PeerStateReceivedEmpty) ||
+		peer.FSM.Is(persistent.PeerStateReceivedNormal) || peer.FSM.Is(persistent.PeerStateFailed) {
+		peer.Log.Debugf("persistent peer is bad node because peer status is %s", peer.FSM.Current())
+		return true
+	}
+
+	return false
 }
 
 // IsBadPersistentCacheParent determines whether a persistent cache peer is unsuitable to be selected as a parent
