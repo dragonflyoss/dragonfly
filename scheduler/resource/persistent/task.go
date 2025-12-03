@@ -146,14 +146,6 @@ func NewTask(id, tag, application, state string, persistentReplicaCount, pieceLe
 
 // SizeScope return task size scope type.
 func (t *Task) SizeScope() commonv2.SizeScope {
-	if t.ContentLength < 0 {
-		return commonv2.SizeScope_UNKNOW
-	}
-
-	if t.TotalPieceCount < 0 {
-		return commonv2.SizeScope_UNKNOW
-	}
-
 	if t.ContentLength == EmptyFileSize {
 		return commonv2.SizeScope_EMPTY
 	}

@@ -106,7 +106,7 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 	}
 
 	// Set time fields from raw task.
-	ttl, err := strconv.ParseUint(rawTask["ttl"], 10, 64)
+	ttl, err := strconv.ParseInt(rawTask["ttl"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing ttl failed: %v", err)
 		return nil, false

@@ -127,7 +127,7 @@ func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 	}
 
 	// Set time fields from raw task.
-	cost, err := strconv.ParseUint(rawPeer["cost"], 10, 64)
+	cost, err := strconv.ParseInt(rawPeer["cost"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing cost failed: %v", err)
 		return nil, false
