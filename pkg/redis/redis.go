@@ -44,18 +44,6 @@ const (
 	// SchedulerClustersNamespace prefix of scheduler clusters namespace cache key.
 	SchedulerClustersNamespace = "scheduler-clusters"
 
-	// PersistentCacheTasksNamespace prefix of tasks namespace cache key.
-	PersistentCacheTasksNamespace = "persistent-cache-tasks"
-
-	// PersistentCacheHostsNamespace prefix of persistent cache hosts namespace cache key.
-	PersistentCacheHostsNamespace = "persistent-cache-hosts"
-
-	// PersistentCachePeersForPersistentCacheTaskNamespace prefix of persistent cache peers namespace cache key for persistent cache task.
-	PersistentCachePeersForPersistentCacheTaskNamespace = "persistent-cache-peers-for-persistent-cache-task"
-
-	// PersistentPeersForPersistentCacheTaskNamespace prefix of persistent peers namespace cache key for persistent cache task.
-	PersistentPeersForPersistentCacheTaskNamespace = "persistent-peers-for-persistent-cache-task"
-
 	// PersistentTasksNamespace prefix of tasks namespace cache key.
 	PersistentTasksNamespace = "persistent-tasks"
 
@@ -67,6 +55,18 @@ const (
 
 	// PersistentPeersForPersistentTaskNamespace prefix of persistent peers namespace cache key for persistent task.
 	PersistentPeersForPersistentTaskNamespace = "persistent-peers-for-persistent-task"
+
+	// PersistentCacheTasksNamespace prefix of tasks namespace cache key.
+	PersistentCacheTasksNamespace = "persistent-cache-tasks"
+
+	// PersistentCacheHostsNamespace prefix of persistent cache hosts namespace cache key.
+	PersistentCacheHostsNamespace = "persistent-cache-hosts"
+
+	// PersistentCachePeersForPersistentCacheTaskNamespace prefix of persistent cache peers namespace cache key for persistent cache task.
+	PersistentCachePeersForPersistentCacheTaskNamespace = "persistent-cache-peers-for-persistent-cache-task"
+
+	// PersistentPeersForPersistentCacheTaskNamespace prefix of persistent peers namespace cache key for persistent cache task.
+	PersistentPeersForPersistentCacheTaskNamespace = "persistent-peers-for-persistent-cache-task"
 
 	// ApplicationsNamespace prefix of applications namespace cache key.
 	ApplicationsNamespace = "applications"
