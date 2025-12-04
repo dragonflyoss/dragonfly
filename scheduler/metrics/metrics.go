@@ -457,6 +457,174 @@ var (
 		Help:      "Counter of the number of failed of the download persistent cache piece.",
 	}, []string{"host_type"})
 
+	AnnouncePersistentPeerCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_persistent_peer_total",
+		Help:      "Counter of the number of the announcing peer.",
+	})
+
+	AnnouncePersistentPeerFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_persistent_peer_failure_total",
+		Help:      "Counter of the number of failed of the announcing peer.",
+	})
+
+	StatPersistentPeerCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_persistent_peer_total",
+		Help:      "Counter of the number of the stat peer.",
+	})
+
+	StatPersistentPeerFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_persistent_peer_failure_total",
+		Help:      "Counter of the number of failed of the stat peer.",
+	})
+
+	DeletePersistentPeerCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "delete_persistent_peer_total",
+		Help:      "Counter of the number of the deleting peer.",
+	})
+
+	DeletePersistentPeerFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "delete_persistent_peer_failure_total",
+		Help:      "Counter of the number of failed of the deleting peer.",
+	})
+
+	UploadPersistentTaskStartedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_persistent_task_started_total",
+		Help:      "Counter of the number of the started uploading peer.",
+	})
+
+	UploadPersistentTaskStartedFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_persistent_task_started_failure_total",
+		Help:      "Counter of the number of failed of the started uploading peer.",
+	})
+
+	UploadPersistentTaskFinishedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_persistent_task_finished_total",
+		Help:      "Counter of the number of the finished uploading peer.",
+	})
+
+	UploadPersistentTaskFinishedFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_persistent_task_finished_failure_total",
+		Help:      "Counter of the number of failed of the finished uploading peer.",
+	})
+
+	UploadPersistentTaskFailedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_persistent_task_failed_total",
+		Help:      "Counter of the number of the failed uploading peer.",
+	})
+
+	UploadPersistentTaskFailedFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "upload_peer_failed_failure_total",
+		Help:      "Counter of the number of failed of the failed uploading peer.",
+	})
+
+	StatPersistentTaskCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_persistent_task_total",
+		Help:      "Counter of the number of the stat task.",
+	})
+
+	StatPersistentTaskFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_persistent_task_failure_total",
+		Help:      "Counter of the number of failed of the stat task.",
+	})
+
+	DeletePersistentTaskCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "delete_persistent_task_total",
+		Help:      "Counter of the number of the delete task.",
+	})
+
+	DeletePersistentTaskFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "delete_persistent_task_failure_total",
+		Help:      "Counter of the number of failed of the delete task.",
+	})
+
+	RegisterPersistentPeerCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "register_persistent_peer_total",
+		Help:      "Counter of the number of the register persistent peer.",
+	}, []string{"host_type"})
+
+	RegisterPersistentPeerFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "register_persistent_peer_failure_total",
+		Help:      "Counter of the number of failed of the register persistent peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPeerStartedCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_peer_started_total",
+		Help:      "Counter of the number of the download persistent peer started.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPeerStartedFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_peer_started_failure_total",
+		Help:      "Counter of the number of failed of the download persistent peer started.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPeerCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_peer_finished_total",
+		Help:      "Counter of the number of the download persistent peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPeerFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_peer_finished_failure_total",
+		Help:      "Counter of the number of failed of the download persistent peer.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPieceCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_piece_finished_total",
+		Help:      "Counter of the number of the download persistent piece.",
+	}, []string{"host_type"})
+
+	DownloadPersistentPieceFailureCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "download_persistent_piece_finished_failure_total",
+		Help:      "Counter of the number of failed of the download persistent piece.",
+	}, []string{"host_type"})
+
 	PreheatImageCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,

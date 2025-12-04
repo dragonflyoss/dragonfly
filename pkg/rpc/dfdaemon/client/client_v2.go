@@ -142,6 +142,18 @@ type V2 interface {
 	// ListTaskEntries lists task entries.
 	ListTaskEntries(context.Context, *dfdaemonv2.ListTaskEntriesRequest, ...grpc.CallOption) (*dfdaemonv2.ListTaskEntriesResponse, error)
 
+	// DownloadPersistentTask downloads persistent task from p2p network.
+	DownloadPersistentTask(context.Context, *dfdaemonv2.DownloadPersistentTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentTaskClient, error)
+
+	// UpdatePersistentTask updates persistent task information.
+	UpdatePersistentTask(context.Context, *dfdaemonv2.UpdatePersistentTaskRequest, ...grpc.CallOption) error
+
+	// StatPersistentTask stats persistent task information.
+	StatPersistentTask(context.Context, *dfdaemonv2.StatPersistentTaskRequest, ...grpc.CallOption) (*commonv2.PersistentTask, error)
+
+	// DeletePersistentTask deletes persistent task from p2p network.
+	DeletePersistentTask(context.Context, *dfdaemonv2.DeletePersistentTaskRequest, ...grpc.CallOption) error
+
 	// DownloadPersistentCacheTask downloads persistent cache task from p2p network.
 	DownloadPersistentCacheTask(context.Context, *dfdaemonv2.DownloadPersistentCacheTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error)
 
@@ -247,6 +259,37 @@ func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, 
 	defer cancel()
 
 	_, err := v.DfdaemonUploadClient.DeleteTask(ctx, req, opts...)
+	return err
+}
+
+// DownloadPersistentTask downloads persistent task from p2p network.
+func (v *v2) DownloadPersistentTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentTaskClient, error) {
+	return v.DfdaemonUploadClient.DownloadPersistentTask(ctx, req, opts...)
+}
+
+// UpdatePersistentTask updates persistent task information.
+func (v *v2) UpdatePersistentTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentTaskRequest, opts ...grpc.CallOption) error {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	_, err := v.DfdaemonUploadClient.UpdatePersistentTask(ctx, req, opts...)
+	return err
+}
+
+// StatPersistentTask stats persistent task information.
+func (v *v2) StatPersistentTask(ctx context.Context, req *dfdaemonv2.StatPersistentTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentTask, error) {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	return v.DfdaemonUploadClient.StatPersistentTask(ctx, req, opts...)
+}
+
+// DeletePersistentTask deletes persistent task from p2p network.
+func (v *v2) DeletePersistentTask(ctx context.Context, req *dfdaemonv2.DeletePersistentTaskRequest, opts ...grpc.CallOption) error {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	_, err := v.DfdaemonUploadClient.DeletePersistentTask(ctx, req, opts...)
 	return err
 }
 

@@ -51,6 +51,7 @@ import (
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
@@ -68,6 +69,9 @@ const (
 type V2 struct {
 	// Resource interface.
 	resource standard.Resource
+
+	// Persistent resource interface.
+	persistentResource persistent.Resource
 
 	// Persistent cache resource interface.
 	persistentCacheResource persistentcache.Resource
@@ -92,6 +96,7 @@ type V2 struct {
 func NewV2(
 	cfg *config.Config,
 	resource standard.Resource,
+	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
 	job job.Job,
@@ -100,6 +105,7 @@ func NewV2(
 ) *V2 {
 	return &V2{
 		resource:                resource,
+		persistentResource:      persistentResource,
 		persistentCacheResource: persistentCacheResource,
 		scheduling:              scheduling,
 		job:                     job,
@@ -734,174 +740,341 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		}
 	}
 
+	// Handle the persistent host. If redis is not enabled,
+	// it will not support the persistent feature.
+	if v.persistentResource == nil {
+		persistentHost, loaded := v.persistentResource.HostManager().Load(ctx, req.Host.GetId())
+		if !loaded {
+			persistentHost = persistent.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
+				req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
+				req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
+				persistent.CPU{
+					LogicalCount:   req.Host.Cpu.GetLogicalCount(),
+					PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
+					Percent:        req.Host.Cpu.GetPercent(),
+					ProcessPercent: req.Host.Cpu.GetProcessPercent(),
+					Times: persistent.CPUTimes{
+						User:      req.Host.Cpu.Times.GetUser(),
+						System:    req.Host.Cpu.Times.GetSystem(),
+						Idle:      req.Host.Cpu.Times.GetIdle(),
+						Nice:      req.Host.Cpu.Times.GetNice(),
+						Iowait:    req.Host.Cpu.Times.GetIowait(),
+						Irq:       req.Host.Cpu.Times.GetIrq(),
+						Softirq:   req.Host.Cpu.Times.GetSoftirq(),
+						Steal:     req.Host.Cpu.Times.GetSteal(),
+						Guest:     req.Host.Cpu.Times.GetGuest(),
+						GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+					},
+				},
+				persistent.Memory{
+					Total:              req.Host.Memory.GetTotal(),
+					Available:          req.Host.Memory.GetAvailable(),
+					Used:               req.Host.Memory.GetUsed(),
+					UsedPercent:        req.Host.Memory.GetUsedPercent(),
+					ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
+					Free:               req.Host.Memory.GetFree(),
+				},
+				persistent.Network{
+					TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
+					UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
+					Location:                 req.Host.Network.GetLocation(),
+					IDC:                      req.Host.Network.GetIdc(),
+					RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+					MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+					TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+					MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
+				},
+				persistent.Disk{
+					Total:             req.Host.Disk.GetTotal(),
+					Free:              req.Host.Disk.GetFree(),
+					Used:              req.Host.Disk.GetUsed(),
+					UsedPercent:       req.Host.Disk.GetUsedPercent(),
+					InodesTotal:       req.Host.Disk.GetInodesTotal(),
+					InodesUsed:        req.Host.Disk.GetInodesUsed(),
+					InodesFree:        req.Host.Disk.GetInodesFree(),
+					InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
+					WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
+					ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
+				},
+				persistent.Build{
+					GitVersion: req.Host.Build.GetGitVersion(),
+					GitCommit:  req.Host.Build.GetGitCommit(),
+					GoVersion:  req.Host.Build.GetGoVersion(),
+					Platform:   req.Host.Build.GetPlatform(),
+				},
+				req.GetInterval().AsDuration(),
+				time.Now(),
+				time.Now(),
+				logger.WithHostID(req.Host.GetId()),
+			)
+
+			persistentHost.Log.Infof("announce new persistent host: %#v", req)
+			if err := v.persistentResource.HostManager().Store(ctx, persistentHost); err != nil {
+				persistentHost.Log.Errorf("store persistent host failed: %s", err)
+				return err
+			}
+		} else {
+			// persistentHost already exists and updates properties.
+			persistentHost.Port = req.Host.GetPort()
+			persistentHost.DownloadPort = req.Host.GetDownloadPort()
+			persistentHost.ProxyPort = req.Host.GetProxyPort()
+			persistentHost.Type = types.HostType(req.Host.GetType())
+			persistentHost.DisableShared = req.Host.GetDisableShared()
+			persistentHost.SchedulerClusterID = req.Host.GetSchedulerClusterId()
+			persistentHost.OS = req.Host.GetOs()
+			persistentHost.Platform = req.Host.GetPlatform()
+			persistentHost.PlatformFamily = req.Host.GetPlatformFamily()
+			persistentHost.PlatformVersion = req.Host.GetPlatformVersion()
+			persistentHost.KernelVersion = req.Host.GetKernelVersion()
+			persistentHost.UpdatedAt = time.Now()
+
+			if req.Host.GetCpu() != nil {
+				persistentHost.CPU = persistent.CPU{
+					LogicalCount:   req.Host.Cpu.GetLogicalCount(),
+					PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
+					Percent:        req.Host.Cpu.GetPercent(),
+					ProcessPercent: req.Host.Cpu.GetProcessPercent(),
+					Times: persistent.CPUTimes{
+						User:      req.Host.Cpu.Times.GetUser(),
+						System:    req.Host.Cpu.Times.GetSystem(),
+						Idle:      req.Host.Cpu.Times.GetIdle(),
+						Nice:      req.Host.Cpu.Times.GetNice(),
+						Iowait:    req.Host.Cpu.Times.GetIowait(),
+						Irq:       req.Host.Cpu.Times.GetIrq(),
+						Softirq:   req.Host.Cpu.Times.GetSoftirq(),
+						Steal:     req.Host.Cpu.Times.GetSteal(),
+						Guest:     req.Host.Cpu.Times.GetGuest(),
+						GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+					},
+				}
+			}
+
+			if req.Host.GetMemory() != nil {
+				persistentHost.Memory = persistent.Memory{
+					Total:              req.Host.Memory.GetTotal(),
+					Available:          req.Host.Memory.GetAvailable(),
+					Used:               req.Host.Memory.GetUsed(),
+					UsedPercent:        req.Host.Memory.GetUsedPercent(),
+					ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
+					Free:               req.Host.Memory.GetFree(),
+				}
+			}
+
+			if req.Host.GetNetwork() != nil {
+				persistentHost.Network = persistent.Network{
+					TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
+					UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
+					Location:                 req.Host.Network.GetLocation(),
+					IDC:                      req.Host.Network.GetIdc(),
+					RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+					MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+					TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+					MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
+				}
+			}
+
+			if req.Host.GetDisk() != nil {
+				persistentHost.Disk = persistent.Disk{
+					Total:             req.Host.Disk.GetTotal(),
+					Free:              req.Host.Disk.GetFree(),
+					Used:              req.Host.Disk.GetUsed(),
+					UsedPercent:       req.Host.Disk.GetUsedPercent(),
+					InodesTotal:       req.Host.Disk.GetInodesTotal(),
+					InodesUsed:        req.Host.Disk.GetInodesUsed(),
+					InodesFree:        req.Host.Disk.GetInodesFree(),
+					InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
+					WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
+					ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
+				}
+			}
+
+			if req.Host.GetBuild() != nil {
+				persistentHost.Build = persistent.Build{
+					GitVersion: req.Host.Build.GetGitVersion(),
+					GitCommit:  req.Host.Build.GetGitCommit(),
+					GoVersion:  req.Host.Build.GetGoVersion(),
+					Platform:   req.Host.Build.GetPlatform(),
+				}
+			}
+
+			if req.GetInterval() != nil {
+				persistentHost.AnnounceInterval = req.GetInterval().AsDuration()
+			}
+
+			persistentHost.Log.Infof("update persistent host: %#v", req)
+			if err := v.persistentResource.HostManager().Store(ctx, persistentHost); err != nil {
+				persistentHost.Log.Errorf("store persistent host failed: %s", err)
+				return err
+			}
+		}
+	}
+
 	// Handle the persistent cache host. If redis is not enabled,
 	// it will not support the persistent cache feature.
 	if v.persistentCacheResource == nil {
-		return nil
-	}
-
-	persistentCacheHost, loaded := v.persistentCacheResource.HostManager().Load(ctx, req.Host.GetId())
-	if !loaded {
-		persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
-			req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
-			req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
-			persistentcache.CPU{
-				LogicalCount:   req.Host.Cpu.GetLogicalCount(),
-				PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
-				Percent:        req.Host.Cpu.GetPercent(),
-				ProcessPercent: req.Host.Cpu.GetProcessPercent(),
-				Times: persistentcache.CPUTimes{
-					User:      req.Host.Cpu.Times.GetUser(),
-					System:    req.Host.Cpu.Times.GetSystem(),
-					Idle:      req.Host.Cpu.Times.GetIdle(),
-					Nice:      req.Host.Cpu.Times.GetNice(),
-					Iowait:    req.Host.Cpu.Times.GetIowait(),
-					Irq:       req.Host.Cpu.Times.GetIrq(),
-					Softirq:   req.Host.Cpu.Times.GetSoftirq(),
-					Steal:     req.Host.Cpu.Times.GetSteal(),
-					Guest:     req.Host.Cpu.Times.GetGuest(),
-					GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+		persistentCacheHost, loaded := v.persistentCacheResource.HostManager().Load(ctx, req.Host.GetId())
+		if !loaded {
+			persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
+				req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
+				req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
+				persistentcache.CPU{
+					LogicalCount:   req.Host.Cpu.GetLogicalCount(),
+					PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
+					Percent:        req.Host.Cpu.GetPercent(),
+					ProcessPercent: req.Host.Cpu.GetProcessPercent(),
+					Times: persistentcache.CPUTimes{
+						User:      req.Host.Cpu.Times.GetUser(),
+						System:    req.Host.Cpu.Times.GetSystem(),
+						Idle:      req.Host.Cpu.Times.GetIdle(),
+						Nice:      req.Host.Cpu.Times.GetNice(),
+						Iowait:    req.Host.Cpu.Times.GetIowait(),
+						Irq:       req.Host.Cpu.Times.GetIrq(),
+						Softirq:   req.Host.Cpu.Times.GetSoftirq(),
+						Steal:     req.Host.Cpu.Times.GetSteal(),
+						Guest:     req.Host.Cpu.Times.GetGuest(),
+						GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+					},
 				},
-			},
-			persistentcache.Memory{
-				Total:              req.Host.Memory.GetTotal(),
-				Available:          req.Host.Memory.GetAvailable(),
-				Used:               req.Host.Memory.GetUsed(),
-				UsedPercent:        req.Host.Memory.GetUsedPercent(),
-				ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
-				Free:               req.Host.Memory.GetFree(),
-			},
-			persistentcache.Network{
-				TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
-				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
-				Location:                 req.Host.Network.GetLocation(),
-				IDC:                      req.Host.Network.GetIdc(),
-				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
-				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
-				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
-				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
-			},
-			persistentcache.Disk{
-				Total:             req.Host.Disk.GetTotal(),
-				Free:              req.Host.Disk.GetFree(),
-				Used:              req.Host.Disk.GetUsed(),
-				UsedPercent:       req.Host.Disk.GetUsedPercent(),
-				InodesTotal:       req.Host.Disk.GetInodesTotal(),
-				InodesUsed:        req.Host.Disk.GetInodesUsed(),
-				InodesFree:        req.Host.Disk.GetInodesFree(),
-				InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
-				WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
-				ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
-			},
-			persistentcache.Build{
-				GitVersion: req.Host.Build.GetGitVersion(),
-				GitCommit:  req.Host.Build.GetGitCommit(),
-				GoVersion:  req.Host.Build.GetGoVersion(),
-				Platform:   req.Host.Build.GetPlatform(),
-			},
-			req.GetInterval().AsDuration(),
-			time.Now(),
-			time.Now(),
-			logger.WithHostID(req.Host.GetId()),
-		)
-
-		persistentCacheHost.Log.Infof("announce new persistent cache host: %#v", req)
-		if err := v.persistentCacheResource.HostManager().Store(ctx, persistentCacheHost); err != nil {
-			persistentCacheHost.Log.Errorf("store persistent cache host failed: %s", err)
-			return err
-		}
-	} else {
-		// persistentCacheHost already exists and updates properties.
-		persistentCacheHost.Port = req.Host.GetPort()
-		persistentCacheHost.DownloadPort = req.Host.GetDownloadPort()
-		persistentCacheHost.ProxyPort = req.Host.GetProxyPort()
-		persistentCacheHost.Type = types.HostType(req.Host.GetType())
-		persistentCacheHost.DisableShared = req.Host.GetDisableShared()
-		persistentCacheHost.SchedulerClusterID = req.Host.GetSchedulerClusterId()
-		persistentCacheHost.OS = req.Host.GetOs()
-		persistentCacheHost.Platform = req.Host.GetPlatform()
-		persistentCacheHost.PlatformFamily = req.Host.GetPlatformFamily()
-		persistentCacheHost.PlatformVersion = req.Host.GetPlatformVersion()
-		persistentCacheHost.KernelVersion = req.Host.GetKernelVersion()
-		persistentCacheHost.UpdatedAt = time.Now()
-
-		if req.Host.GetCpu() != nil {
-			persistentCacheHost.CPU = persistentcache.CPU{
-				LogicalCount:   req.Host.Cpu.GetLogicalCount(),
-				PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
-				Percent:        req.Host.Cpu.GetPercent(),
-				ProcessPercent: req.Host.Cpu.GetProcessPercent(),
-				Times: persistentcache.CPUTimes{
-					User:      req.Host.Cpu.Times.GetUser(),
-					System:    req.Host.Cpu.Times.GetSystem(),
-					Idle:      req.Host.Cpu.Times.GetIdle(),
-					Nice:      req.Host.Cpu.Times.GetNice(),
-					Iowait:    req.Host.Cpu.Times.GetIowait(),
-					Irq:       req.Host.Cpu.Times.GetIrq(),
-					Softirq:   req.Host.Cpu.Times.GetSoftirq(),
-					Steal:     req.Host.Cpu.Times.GetSteal(),
-					Guest:     req.Host.Cpu.Times.GetGuest(),
-					GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+				persistentcache.Memory{
+					Total:              req.Host.Memory.GetTotal(),
+					Available:          req.Host.Memory.GetAvailable(),
+					Used:               req.Host.Memory.GetUsed(),
+					UsedPercent:        req.Host.Memory.GetUsedPercent(),
+					ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
+					Free:               req.Host.Memory.GetFree(),
 				},
+				persistentcache.Network{
+					TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
+					UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
+					Location:                 req.Host.Network.GetLocation(),
+					IDC:                      req.Host.Network.GetIdc(),
+					RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+					MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+					TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+					MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
+				},
+				persistentcache.Disk{
+					Total:             req.Host.Disk.GetTotal(),
+					Free:              req.Host.Disk.GetFree(),
+					Used:              req.Host.Disk.GetUsed(),
+					UsedPercent:       req.Host.Disk.GetUsedPercent(),
+					InodesTotal:       req.Host.Disk.GetInodesTotal(),
+					InodesUsed:        req.Host.Disk.GetInodesUsed(),
+					InodesFree:        req.Host.Disk.GetInodesFree(),
+					InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
+					WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
+					ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
+				},
+				persistentcache.Build{
+					GitVersion: req.Host.Build.GetGitVersion(),
+					GitCommit:  req.Host.Build.GetGitCommit(),
+					GoVersion:  req.Host.Build.GetGoVersion(),
+					Platform:   req.Host.Build.GetPlatform(),
+				},
+				req.GetInterval().AsDuration(),
+				time.Now(),
+				time.Now(),
+				logger.WithHostID(req.Host.GetId()),
+			)
+
+			persistentCacheHost.Log.Infof("announce new persistent cache host: %#v", req)
+			if err := v.persistentCacheResource.HostManager().Store(ctx, persistentCacheHost); err != nil {
+				persistentCacheHost.Log.Errorf("store persistent cache host failed: %s", err)
+				return err
 			}
-		}
+		} else {
+			// persistentCacheHost already exists and updates properties.
+			persistentCacheHost.Port = req.Host.GetPort()
+			persistentCacheHost.DownloadPort = req.Host.GetDownloadPort()
+			persistentCacheHost.ProxyPort = req.Host.GetProxyPort()
+			persistentCacheHost.Type = types.HostType(req.Host.GetType())
+			persistentCacheHost.DisableShared = req.Host.GetDisableShared()
+			persistentCacheHost.SchedulerClusterID = req.Host.GetSchedulerClusterId()
+			persistentCacheHost.OS = req.Host.GetOs()
+			persistentCacheHost.Platform = req.Host.GetPlatform()
+			persistentCacheHost.PlatformFamily = req.Host.GetPlatformFamily()
+			persistentCacheHost.PlatformVersion = req.Host.GetPlatformVersion()
+			persistentCacheHost.KernelVersion = req.Host.GetKernelVersion()
+			persistentCacheHost.UpdatedAt = time.Now()
 
-		if req.Host.GetMemory() != nil {
-			persistentCacheHost.Memory = persistentcache.Memory{
-				Total:              req.Host.Memory.GetTotal(),
-				Available:          req.Host.Memory.GetAvailable(),
-				Used:               req.Host.Memory.GetUsed(),
-				UsedPercent:        req.Host.Memory.GetUsedPercent(),
-				ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
-				Free:               req.Host.Memory.GetFree(),
+			if req.Host.GetCpu() != nil {
+				persistentCacheHost.CPU = persistentcache.CPU{
+					LogicalCount:   req.Host.Cpu.GetLogicalCount(),
+					PhysicalCount:  req.Host.Cpu.GetPhysicalCount(),
+					Percent:        req.Host.Cpu.GetPercent(),
+					ProcessPercent: req.Host.Cpu.GetProcessPercent(),
+					Times: persistentcache.CPUTimes{
+						User:      req.Host.Cpu.Times.GetUser(),
+						System:    req.Host.Cpu.Times.GetSystem(),
+						Idle:      req.Host.Cpu.Times.GetIdle(),
+						Nice:      req.Host.Cpu.Times.GetNice(),
+						Iowait:    req.Host.Cpu.Times.GetIowait(),
+						Irq:       req.Host.Cpu.Times.GetIrq(),
+						Softirq:   req.Host.Cpu.Times.GetSoftirq(),
+						Steal:     req.Host.Cpu.Times.GetSteal(),
+						Guest:     req.Host.Cpu.Times.GetGuest(),
+						GuestNice: req.Host.Cpu.Times.GetGuestNice(),
+					},
+				}
 			}
-		}
 
-		if req.Host.GetNetwork() != nil {
-			persistentCacheHost.Network = persistentcache.Network{
-				TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
-				UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
-				Location:                 req.Host.Network.GetLocation(),
-				IDC:                      req.Host.Network.GetIdc(),
-				RxBandwidth:              req.Host.Network.GetRxBandwidth(),
-				MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
-				TxBandwidth:              req.Host.Network.GetTxBandwidth(),
-				MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
+			if req.Host.GetMemory() != nil {
+				persistentCacheHost.Memory = persistentcache.Memory{
+					Total:              req.Host.Memory.GetTotal(),
+					Available:          req.Host.Memory.GetAvailable(),
+					Used:               req.Host.Memory.GetUsed(),
+					UsedPercent:        req.Host.Memory.GetUsedPercent(),
+					ProcessUsedPercent: req.Host.Memory.GetProcessUsedPercent(),
+					Free:               req.Host.Memory.GetFree(),
+				}
 			}
-		}
 
-		if req.Host.GetDisk() != nil {
-			persistentCacheHost.Disk = persistentcache.Disk{
-				Total:             req.Host.Disk.GetTotal(),
-				Free:              req.Host.Disk.GetFree(),
-				Used:              req.Host.Disk.GetUsed(),
-				UsedPercent:       req.Host.Disk.GetUsedPercent(),
-				InodesTotal:       req.Host.Disk.GetInodesTotal(),
-				InodesUsed:        req.Host.Disk.GetInodesUsed(),
-				InodesFree:        req.Host.Disk.GetInodesFree(),
-				InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
-				WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
-				ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
+			if req.Host.GetNetwork() != nil {
+				persistentCacheHost.Network = persistentcache.Network{
+					TCPConnectionCount:       req.Host.Network.GetTcpConnectionCount(),
+					UploadTCPConnectionCount: req.Host.Network.GetUploadTcpConnectionCount(),
+					Location:                 req.Host.Network.GetLocation(),
+					IDC:                      req.Host.Network.GetIdc(),
+					RxBandwidth:              req.Host.Network.GetRxBandwidth(),
+					MaxRxBandwidth:           req.Host.Network.GetMaxRxBandwidth(),
+					TxBandwidth:              req.Host.Network.GetTxBandwidth(),
+					MaxTxBandwidth:           req.Host.Network.GetMaxTxBandwidth(),
+				}
 			}
-		}
 
-		if req.Host.GetBuild() != nil {
-			persistentCacheHost.Build = persistentcache.Build{
-				GitVersion: req.Host.Build.GetGitVersion(),
-				GitCommit:  req.Host.Build.GetGitCommit(),
-				GoVersion:  req.Host.Build.GetGoVersion(),
-				Platform:   req.Host.Build.GetPlatform(),
+			if req.Host.GetDisk() != nil {
+				persistentCacheHost.Disk = persistentcache.Disk{
+					Total:             req.Host.Disk.GetTotal(),
+					Free:              req.Host.Disk.GetFree(),
+					Used:              req.Host.Disk.GetUsed(),
+					UsedPercent:       req.Host.Disk.GetUsedPercent(),
+					InodesTotal:       req.Host.Disk.GetInodesTotal(),
+					InodesUsed:        req.Host.Disk.GetInodesUsed(),
+					InodesFree:        req.Host.Disk.GetInodesFree(),
+					InodesUsedPercent: req.Host.Disk.GetInodesUsedPercent(),
+					WriteBandwidth:    req.Host.Disk.GetWriteBandwidth(),
+					ReadBandwidth:     req.Host.Disk.GetReadBandwidth(),
+				}
 			}
-		}
 
-		if req.GetInterval() != nil {
-			persistentCacheHost.AnnounceInterval = req.GetInterval().AsDuration()
-		}
+			if req.Host.GetBuild() != nil {
+				persistentCacheHost.Build = persistentcache.Build{
+					GitVersion: req.Host.Build.GetGitVersion(),
+					GitCommit:  req.Host.Build.GetGitCommit(),
+					GoVersion:  req.Host.Build.GetGoVersion(),
+					Platform:   req.Host.Build.GetPlatform(),
+				}
+			}
 
-		persistentCacheHost.Log.Infof("update persistent cache host: %#v", req)
-		if err := v.persistentCacheResource.HostManager().Store(ctx, persistentCacheHost); err != nil {
-			persistentCacheHost.Log.Errorf("store persistent cache host failed: %s", err)
-			return err
+			if req.GetInterval() != nil {
+				persistentCacheHost.AnnounceInterval = req.GetInterval().AsDuration()
+			}
+
+			persistentCacheHost.Log.Infof("update persistent cache host: %#v", req)
+			if err := v.persistentCacheResource.HostManager().Store(ctx, persistentCacheHost); err != nil {
+				persistentCacheHost.Log.Errorf("store persistent cache host failed: %s", err)
+				return err
+			}
 		}
 	}
 
@@ -1041,6 +1214,39 @@ func (v *V2) DeleteHost(_ctx context.Context, req *schedulerv2.DeleteHostRequest
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(req.GetHostId())
+
+	// Handle the persistent host for deletion.
+	if v.persistentResource != nil {
+		peers, err := v.persistentResource.PeerManager().LoadAllByHostID(ctx, req.GetHostId())
+		if err != nil {
+			log.Errorf("load persistent peers failed: %s", err)
+		}
+
+		for _, peer := range peers {
+			if err := v.persistentResource.PeerManager().Delete(ctx, peer.ID); err != nil {
+				log.Errorf("delete persistent peer failed: %s", err)
+			}
+
+			// If peer is persistent, replicate the task to another peer.
+			if peer.FSM.Is(persistent.PeerStateSucceeded) && peer.Persistent {
+				blocklist := set.NewSafeSet[string]()
+				blocklist.Add(peer.Host.ID)
+				go func(peer *persistent.Peer, blocklist set.SafeSet[string]) {
+					log.Infof("replicate persistent task %s", peer.Task.ID)
+					if err := v.replicatePersistentTask(context.Background(), peer, blocklist); err != nil {
+						log.Errorf("replicate persistent task failed %s", err)
+					}
+
+					log.Infof("replicate persistent task %s finished", peer.Task.ID)
+				}(peer, blocklist)
+			}
+		}
+
+		if err := v.persistentResource.HostManager().Delete(ctx, req.GetHostId()); err != nil {
+			log.Errorf("delete persistent host failed: %s", err)
+			return err
+		}
+	}
 
 	// Handle the persistent cache host for deletion.
 	if v.persistentCacheResource != nil {
@@ -1673,6 +1879,1209 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 		return status.Errorf(codes.FailedPrecondition, "%s peer is forbidden", commonv2.Priority_LEVEL1.String())
 	default:
 		return status.Errorf(codes.InvalidArgument, "invalid priority %#v", priority)
+	}
+
+	return nil
+}
+
+// AnnouncePersistentPeer announces persistent peer to scheduler.
+func (v *V2) AnnouncePersistentPeer(stream schedulerv2.Scheduler_AnnouncePersistentPeerServer) error {
+	if v.persistentResource == nil {
+		return status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info("context was done")
+			return ctx.Err()
+		default:
+		}
+
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+
+			logger.Errorf("receive error: %s", err.Error())
+			return err
+		}
+
+		log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+		switch announcePersistentPeerRequest := req.GetRequest().(type) {
+		case *schedulerv2.AnnouncePersistentPeerRequest_RegisterPersistentPeerRequest:
+			registerPersistentPeerRequest := announcePersistentPeerRequest.RegisterPersistentPeerRequest
+			log.Info("receive RegisterPersistentPeerRequest")
+			if err := v.handleRegisterPersistentPeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPersistentPeerRequest.GetPersistent(), registerPersistentPeerRequest.ConcurrentPieceCount); err != nil {
+				// If the peer register failed, and set the peer state to failed. Peer will not need to report
+				// the message of the peer download failed.
+				if err := v.handleDownloadPersistentPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
+					log.Error(err)
+					return err
+				}
+
+				log.Error(err)
+				return err
+			}
+		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPersistentPeerStartedRequest:
+			log.Info("receive DownloadPersistentPeerStartedRequest")
+			if err := v.handleDownloadPersistentPeerStartedRequest(ctx, req.GetPeerId()); err != nil {
+				// If the peer started failed, and set the peer state to failed. Peer will not need to report
+				// the message of the peer download failed.
+				if err := v.handleDownloadPersistentPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
+					log.Error(err)
+					return err
+				}
+
+				log.Error(err)
+				return err
+			}
+		case *schedulerv2.AnnouncePersistentPeerRequest_ReschedulePersistentPeerRequest:
+			reschedulePersistentPeerRequest := announcePersistentPeerRequest.ReschedulePersistentPeerRequest
+			log.Info("receive ReschedulePersistentPeerRequest")
+			if err := v.handleReschedulePersistentPeerRequest(ctx, stream, req.GetTaskId(), req.GetPeerId(), reschedulePersistentPeerRequest); err != nil {
+				// If the peer reschedule failed, and set the peer state to failed. Peer will not need to report
+				// the message of the peer download failed.
+				if err := v.handleDownloadPersistentPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
+					log.Error(err)
+					return err
+				}
+
+				log.Error(err)
+				return err
+			}
+		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPersistentPeerFinishedRequest:
+			log.Info("receive DownloadPersistentPeerFinishedRequest")
+			if err := v.handleDownloadPersistentPeerFinishedRequest(ctx, req.GetPeerId()); err != nil {
+				// If the peer finished failed, and set the peer state to failed. Peer will not need to report
+				// the message of the peer download failed.
+				if err := v.handleDownloadPersistentPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
+					log.Error(err)
+					return err
+				}
+
+				log.Error(err)
+				return err
+			}
+
+			// If the task is succeeded, return nil directly and close the stream.
+			return nil
+		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPersistentPeerFailedRequest:
+			log.Info("receive DownloadPersistentPeerFailedRequest")
+			if err := v.handleDownloadPersistentPeerFailedRequest(ctx, req.GetPeerId()); err != nil {
+				log.Error(err)
+				return err
+			}
+
+			// If the task is failed, return nil directly and close the stream.
+			return nil
+		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceFinishedRequest:
+			downloadPieceFinishedRequest := announcePersistentPeerRequest.DownloadPieceFinishedRequest
+
+			log.Info("receive DownloadPieceFinishedRequest")
+			go func() {
+				if err := v.handleDownloadPersistentPieceFinishedRequest(context.Background(), req.GetPeerId(), downloadPieceFinishedRequest); err != nil {
+					log.Error(err)
+				}
+			}()
+		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceFailedRequest:
+			downloadPieceFailedRequest := announcePersistentPeerRequest.DownloadPieceFailedRequest
+
+			log.Info("receive DownloadPieceFailedRequest")
+			go func() {
+				if err := v.handleDownloadPersistentPieceFailedRequest(context.Background(), req.GetPeerId(), downloadPieceFailedRequest); err != nil {
+					log.Error(err)
+				}
+			}()
+		default:
+			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentPeerRequest)
+			log.Error(msg)
+			return status.Error(codes.FailedPrecondition, msg)
+		}
+	}
+}
+
+// handleRegisterPersistentPeerRequest handles RegisterPersistentPeerRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentPeerServer, hostID, taskID, peerID string, persistent bool, concurrentPieceCount *uint32) error {
+	host, loaded := v.persistentResource.HostManager().Load(ctx, hostID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "host %s not found", hostID)
+	}
+
+	task, loaded := v.persistentResource.TaskManager().Load(ctx, taskID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "task %s not found", taskID)
+	}
+
+	options := []persistent.PeerOption{}
+	if concurrentPieceCount != nil {
+		options = append(options, persistent.WithConcurrentPieceCount(*concurrentPieceCount))
+	}
+
+	peer := persistent.NewPeer(peerID, persistent.PeerStatePending, persistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
+
+	// Collect RegisterPersistentPeerCount metrics.
+	metrics.RegisterPersistentPeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+
+	// Handle task with persistent  peer register request.
+	if !peer.Task.FSM.Is(persistent.TaskStateSucceeded) {
+		// Collect RegisterPersistentPeerFailureCount metrics.
+		metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, "persistent task is not succeeded")
+	} else {
+		peer.Task.UpdatedAt = time.Now()
+	}
+
+	// FSM event state transition by size scope.
+	sizeScope := peer.Task.SizeScope()
+	switch sizeScope {
+	case commonv2.SizeScope_EMPTY:
+		// Return an EmptyTaskResponse directly.
+		peer.Log.Info("scheduling as SizeScope_EMPTY")
+		if err := peer.FSM.Event(ctx, persistent.PeerEventRegisterEmpty); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		// Update metadata of the persistent task.
+		if err := v.persistentResource.TaskManager().Store(ctx, peer.Task); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		// Update metadata of the persistent peer.
+		if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		if err := stream.Send(&schedulerv2.AnnouncePersistentPeerResponse{
+			Response: &schedulerv2.AnnouncePersistentPeerResponse_EmptyPersistentTaskResponse{
+				EmptyPersistentTaskResponse: &schedulerv2.EmptyPersistentTaskResponse{},
+			},
+		}); err != nil {
+			peer.Log.Error(err)
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return nil
+	case commonv2.SizeScope_NORMAL, commonv2.SizeScope_TINY, commonv2.SizeScope_SMALL, commonv2.SizeScope_UNKNOW:
+		peer.Log.Info("scheduling as SizeScope_NORMAL")
+		if err := peer.FSM.Event(ctx, persistent.PeerEventRegisterNormal); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		// Scheduling parent for the peer.
+		blocklist := set.NewSafeSet[string]()
+		blocklist.Add(peer.ID)
+
+		parents, found := v.scheduling.FindCandidatePersistentParents(ctx, peer, blocklist)
+		if !found {
+			// Collect RegisterPersistentPeerFailureCount metrics.
+			metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+			return status.Error(codes.FailedPrecondition, "no candidate parents found")
+		}
+
+		currentPersistentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, taskID)
+		if err != nil {
+			// Collect RegisterPersistentPeerFailureCount metrics.
+			metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		currentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentReplicaCount(ctx, taskID)
+		if err != nil {
+			// Collect RegisterPersistentPeerFailureCount metrics.
+			metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		candidateParents := make([]*commonv2.PersistentPeer, 0, len(parents))
+		for _, parent := range parents {
+			candidateParents = append(candidateParents, &commonv2.PersistentPeer{
+				Id:                   parent.ID,
+				Persistent:           parent.Persistent,
+				ConcurrentPieceCount: parent.ConcurrentPieceCount,
+				Cost:                 durationpb.New(parent.Cost),
+				State:                parent.FSM.Current(),
+				Task: &commonv2.PersistentTask{
+					Id:                            parent.Task.ID,
+					PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
+					CurrentPersistentReplicaCount: currentPersistentReplicaCount,
+					CurrentReplicaCount:           currentReplicaCount,
+					Tag:                           &parent.Task.Tag,
+					Application:                   &parent.Task.Application,
+					PieceLength:                   parent.Task.PieceLength,
+					ContentLength:                 parent.Task.ContentLength,
+					PieceCount:                    parent.Task.TotalPieceCount,
+					State:                         parent.Task.FSM.Current(),
+					Ttl:                           durationpb.New(parent.Task.TTL),
+					CreatedAt:                     timestamppb.New(parent.Task.CreatedAt),
+					UpdatedAt:                     timestamppb.New(parent.Task.UpdatedAt),
+				},
+				Host: &commonv2.Host{
+					Id:              parent.Host.ID,
+					Type:            uint32(parent.Host.Type),
+					Hostname:        parent.Host.Hostname,
+					Ip:              parent.Host.IP,
+					Port:            parent.Host.Port,
+					DownloadPort:    parent.Host.DownloadPort,
+					ProxyPort:       parent.Host.ProxyPort,
+					Os:              parent.Host.OS,
+					Platform:        parent.Host.Platform,
+					PlatformFamily:  parent.Host.PlatformFamily,
+					PlatformVersion: parent.Host.PlatformVersion,
+					KernelVersion:   parent.Host.KernelVersion,
+					Cpu: &commonv2.CPU{
+						LogicalCount:   parent.Host.CPU.LogicalCount,
+						PhysicalCount:  parent.Host.CPU.PhysicalCount,
+						Percent:        parent.Host.CPU.Percent,
+						ProcessPercent: parent.Host.CPU.ProcessPercent,
+						Times: &commonv2.CPUTimes{
+							User:      parent.Host.CPU.Times.User,
+							System:    parent.Host.CPU.Times.System,
+							Idle:      parent.Host.CPU.Times.Idle,
+							Nice:      parent.Host.CPU.Times.Nice,
+							Iowait:    parent.Host.CPU.Times.Iowait,
+							Irq:       parent.Host.CPU.Times.Irq,
+							Softirq:   parent.Host.CPU.Times.Softirq,
+							Steal:     parent.Host.CPU.Times.Steal,
+							Guest:     parent.Host.CPU.Times.Guest,
+							GuestNice: parent.Host.CPU.Times.GuestNice,
+						},
+					},
+					Memory: &commonv2.Memory{
+						Total:              parent.Host.Memory.Total,
+						Available:          parent.Host.Memory.Available,
+						Used:               parent.Host.Memory.Used,
+						UsedPercent:        parent.Host.Memory.UsedPercent,
+						ProcessUsedPercent: parent.Host.Memory.ProcessUsedPercent,
+						Free:               parent.Host.Memory.Free,
+					},
+					Network: &commonv2.Network{
+						TcpConnectionCount:       parent.Host.Network.TCPConnectionCount,
+						UploadTcpConnectionCount: parent.Host.Network.UploadTCPConnectionCount,
+						Location:                 &parent.Host.Network.Location,
+						Idc:                      &parent.Host.Network.IDC,
+						RxBandwidth:              &parent.Host.Network.RxBandwidth,
+						MaxRxBandwidth:           parent.Host.Network.MaxRxBandwidth,
+						TxBandwidth:              &parent.Host.Network.TxBandwidth,
+						MaxTxBandwidth:           parent.Host.Network.MaxTxBandwidth,
+					},
+					Disk: &commonv2.Disk{
+						Total:             parent.Host.Disk.Total,
+						Free:              parent.Host.Disk.Free,
+						Used:              parent.Host.Disk.Used,
+						UsedPercent:       parent.Host.Disk.UsedPercent,
+						InodesTotal:       parent.Host.Disk.InodesTotal,
+						InodesUsed:        parent.Host.Disk.InodesUsed,
+						InodesFree:        parent.Host.Disk.InodesFree,
+						InodesUsedPercent: parent.Host.Disk.InodesUsedPercent,
+						ReadBandwidth:     parent.Host.Disk.ReadBandwidth,
+						WriteBandwidth:    parent.Host.Disk.WriteBandwidth,
+					},
+					Build: &commonv2.Build{
+						GitVersion:  parent.Host.Build.GitVersion,
+						GitCommit:   &parent.Host.Build.GitCommit,
+						GoVersion:   &parent.Host.Build.GoVersion,
+						RustVersion: &parent.Host.Build.RustVersion,
+						Platform:    &parent.Host.Build.Platform,
+					},
+					SchedulerClusterId: parent.Host.SchedulerClusterID,
+					DisableShared:      parent.Host.DisableShared,
+				},
+				CreatedAt: timestamppb.New(parent.CreatedAt),
+				UpdatedAt: timestamppb.New(parent.UpdatedAt),
+			})
+
+		}
+
+		// Update metadata of the persistent task.
+		if err := v.persistentResource.TaskManager().Store(ctx, peer.Task); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		// Update metadata of the persistent peer.
+		if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		if err := stream.Send(&schedulerv2.AnnouncePersistentPeerResponse{
+			Response: &schedulerv2.AnnouncePersistentPeerResponse_NormalPersistentTaskResponse{
+				NormalPersistentTaskResponse: &schedulerv2.NormalPersistentTaskResponse{
+					CandidateParents: candidateParents,
+				},
+			},
+		}); err != nil {
+			peer.Log.Error(err)
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return nil
+	default:
+		return status.Errorf(codes.FailedPrecondition, "invalid size cope %#v", sizeScope)
+	}
+}
+
+// handleDownloadPersistentPeerStartedRequest handles DownloadPersistentPeerStartedRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleDownloadPersistentPeerStartedRequest(ctx context.Context, peerID string) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	// Collect DownloadPersistentPeerStartedCount metrics.
+	metrics.DownloadPersistentPeerStartedCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+
+	// Handle peer with peer started request.
+	if err := peer.FSM.Event(ctx, persistent.PeerEventDownload); err != nil {
+		// Collect DownloadPersistentPeerStartedFailureCount metrics.
+		metrics.DownloadPersistentPeerStartedFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		// Collect DownloadPersistentPeerStartedFailureCount metrics.
+		metrics.DownloadPersistentPeerStartedFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+// handleReschedulePersistentPeerRequest handles ReschedulePersistentPeerRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleReschedulePersistentPeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentPeerServer, taskID, peerID string, req *schedulerv2.ReschedulePersistentPeerRequest) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	// Scheduling parent for the peer.
+	blocklist := set.NewSafeSet[string]()
+	blocklist.Add(peer.ID)
+
+	// Add block parents to blocklist.
+	for _, parent := range peer.BlockParents {
+		blocklist.Add(parent)
+	}
+
+	// Add block parents to blocklist by client report.
+	for _, parent := range req.GetCandidateParents() {
+		blocklist.Add(parent.GetId())
+	}
+	peer.BlockParents = blocklist.Values()
+
+	parents, found := v.scheduling.FindCandidatePersistentParents(ctx, peer, blocklist)
+	if !found {
+		// Collect RegisterPersistentPeerFailureCount metrics.
+		metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.FailedPrecondition, "no candidate parents found")
+	}
+
+	currentPersistentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, taskID)
+	if err != nil {
+		// Collect RegisterPersistentPeerFailureCount metrics.
+		metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	currentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentReplicaCount(ctx, taskID)
+	if err != nil {
+		// Collect RegisterPersistentPeerFailureCount metrics.
+		metrics.RegisterPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	candidateParents := make([]*commonv2.PersistentPeer, 0, len(parents))
+	for _, parent := range parents {
+		candidateParents = append(candidateParents, &commonv2.PersistentPeer{
+			Id:                   parent.ID,
+			Persistent:           parent.Persistent,
+			ConcurrentPieceCount: parent.ConcurrentPieceCount,
+			Cost:                 durationpb.New(parent.Cost),
+			State:                parent.FSM.Current(),
+			Task: &commonv2.PersistentTask{
+				Id:                            parent.Task.ID,
+				PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
+				CurrentPersistentReplicaCount: currentPersistentReplicaCount,
+				CurrentReplicaCount:           currentReplicaCount,
+				Tag:                           &parent.Task.Tag,
+				Application:                   &parent.Task.Application,
+				PieceLength:                   parent.Task.PieceLength,
+				ContentLength:                 parent.Task.ContentLength,
+				PieceCount:                    parent.Task.TotalPieceCount,
+				State:                         parent.Task.FSM.Current(),
+				Ttl:                           durationpb.New(parent.Task.TTL),
+				CreatedAt:                     timestamppb.New(parent.Task.CreatedAt),
+				UpdatedAt:                     timestamppb.New(parent.Task.UpdatedAt),
+			},
+			Host: &commonv2.Host{
+				Id:              parent.Host.ID,
+				Type:            uint32(parent.Host.Type),
+				Hostname:        parent.Host.Hostname,
+				Ip:              parent.Host.IP,
+				Port:            parent.Host.Port,
+				DownloadPort:    parent.Host.DownloadPort,
+				ProxyPort:       parent.Host.ProxyPort,
+				Os:              parent.Host.OS,
+				Platform:        parent.Host.Platform,
+				PlatformFamily:  parent.Host.PlatformFamily,
+				PlatformVersion: parent.Host.PlatformVersion,
+				KernelVersion:   parent.Host.KernelVersion,
+				Cpu: &commonv2.CPU{
+					LogicalCount:   parent.Host.CPU.LogicalCount,
+					PhysicalCount:  parent.Host.CPU.PhysicalCount,
+					Percent:        parent.Host.CPU.Percent,
+					ProcessPercent: parent.Host.CPU.ProcessPercent,
+					Times: &commonv2.CPUTimes{
+						User:      parent.Host.CPU.Times.User,
+						System:    parent.Host.CPU.Times.System,
+						Idle:      parent.Host.CPU.Times.Idle,
+						Nice:      parent.Host.CPU.Times.Nice,
+						Iowait:    parent.Host.CPU.Times.Iowait,
+						Irq:       parent.Host.CPU.Times.Irq,
+						Softirq:   parent.Host.CPU.Times.Softirq,
+						Steal:     parent.Host.CPU.Times.Steal,
+						Guest:     parent.Host.CPU.Times.Guest,
+						GuestNice: parent.Host.CPU.Times.GuestNice,
+					},
+				},
+				Memory: &commonv2.Memory{
+					Total:              parent.Host.Memory.Total,
+					Available:          parent.Host.Memory.Available,
+					Used:               parent.Host.Memory.Used,
+					UsedPercent:        parent.Host.Memory.UsedPercent,
+					ProcessUsedPercent: parent.Host.Memory.ProcessUsedPercent,
+					Free:               parent.Host.Memory.Free,
+				},
+				Network: &commonv2.Network{
+					TcpConnectionCount:       parent.Host.Network.TCPConnectionCount,
+					UploadTcpConnectionCount: parent.Host.Network.UploadTCPConnectionCount,
+					Location:                 &parent.Host.Network.Location,
+					Idc:                      &parent.Host.Network.IDC,
+					RxBandwidth:              &parent.Host.Network.RxBandwidth,
+					MaxRxBandwidth:           parent.Host.Network.MaxRxBandwidth,
+					TxBandwidth:              &parent.Host.Network.TxBandwidth,
+					MaxTxBandwidth:           parent.Host.Network.MaxTxBandwidth,
+				},
+				Disk: &commonv2.Disk{
+					Total:             parent.Host.Disk.Total,
+					Free:              parent.Host.Disk.Free,
+					Used:              parent.Host.Disk.Used,
+					UsedPercent:       parent.Host.Disk.UsedPercent,
+					InodesTotal:       parent.Host.Disk.InodesTotal,
+					InodesUsed:        parent.Host.Disk.InodesUsed,
+					InodesFree:        parent.Host.Disk.InodesFree,
+					InodesUsedPercent: parent.Host.Disk.InodesUsedPercent,
+					ReadBandwidth:     parent.Host.Disk.ReadBandwidth,
+					WriteBandwidth:    parent.Host.Disk.WriteBandwidth,
+				},
+				Build: &commonv2.Build{
+					GitVersion:  parent.Host.Build.GitVersion,
+					GitCommit:   &parent.Host.Build.GitCommit,
+					GoVersion:   &parent.Host.Build.GoVersion,
+					RustVersion: &parent.Host.Build.RustVersion,
+					Platform:    &parent.Host.Build.Platform,
+				},
+				SchedulerClusterId: parent.Host.SchedulerClusterID,
+				DisableShared:      parent.Host.DisableShared,
+			},
+			CreatedAt: timestamppb.New(parent.CreatedAt),
+			UpdatedAt: timestamppb.New(parent.UpdatedAt),
+		})
+	}
+
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if err := stream.Send(&schedulerv2.AnnouncePersistentPeerResponse{
+		Response: &schedulerv2.AnnouncePersistentPeerResponse_NormalPersistentTaskResponse{
+			NormalPersistentTaskResponse: &schedulerv2.NormalPersistentTaskResponse{
+				CandidateParents: candidateParents,
+			},
+		},
+	}); err != nil {
+		peer.Log.Error(err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+// handleDownloadPersistentPeerFinishedRequest handles DownloadPersistentPeerFinishedRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleDownloadPersistentPeerFinishedRequest(ctx context.Context, peerID string) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	// Handle peer with peer finished request.
+	peer.Cost = time.Since(peer.CreatedAt)
+	if err := peer.FSM.Event(ctx, persistent.PeerEventSucceeded); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Collect DownloadPersistentPeerCount metrics.
+	metrics.DownloadPersistentPeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+	return nil
+}
+
+// handleDownloadPersistentPeerFailedRequest handles DownloadPersistentPeerFailedRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleDownloadPersistentPeerFailedRequest(ctx context.Context, peerID string) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	// Handle peer with peer failed request.
+	if err := peer.FSM.Event(ctx, persistent.PeerEventFailed); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Collect DownloadPersistentPeerCount and DownloadPersistentPeerFailureCount metrics.
+	metrics.DownloadPersistentPeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+	metrics.DownloadPersistentPeerFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+	return nil
+}
+
+// handleDownloadPersistentPieceFinishedRequest handles DownloadPersistentPieceFinishedRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleDownloadPersistentPieceFinishedRequest(ctx context.Context, peerID string, req *schedulerv2.DownloadPieceFinishedRequest) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	piece := req.GetPiece()
+	peer.FinishedPieces.Set(uint(piece.GetNumber()))
+	peer.UpdatedAt = time.Now()
+
+	parent, loadedParent := v.persistentResource.PeerManager().Load(ctx, piece.GetParentId())
+	if loadedParent {
+		parent.UpdatedAt = time.Now()
+		parent.Host.UpdatedAt = time.Now()
+	}
+
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Update metadata of the persistent peer's parent.
+	if err := v.persistentResource.PeerManager().Store(ctx, parent); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Collect DownloadPersistentPieceCount metrics.
+	metrics.DownloadPersistentPieceCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+	return nil
+}
+
+// handleDownloadPersistentPieceFailedRequest handles DownloadPersistentPieceFailedRequest of AnnouncePersistentPeerRequest.
+func (v *V2) handleDownloadPersistentPieceFailedRequest(ctx context.Context, peerID string, req *schedulerv2.DownloadPieceFailedRequest) error {
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, peerID)
+	if !loaded {
+		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
+	}
+
+	// Collect DownloadPersistentPieceCount and DownloadPersistentPieceFailureCount metrics.
+	metrics.DownloadPersistentPieceCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+	metrics.DownloadPersistentPieceFailureCount.WithLabelValues(peer.Host.Type.Name()).Inc()
+
+	if req.Temporary {
+		// Handle peer with piece temporary failed request.
+		peer.UpdatedAt = time.Now()
+		blocklist := set.NewSafeSet[string]()
+		blocklist.Add(peer.ID)
+
+		// Add block parents to blocklist.
+		for _, parent := range peer.BlockParents {
+			blocklist.Add(parent)
+		}
+
+		// Add parent to blocklist, because download piece from parent failed.
+		blocklist.Add(req.GetParentId())
+
+		peer.BlockParents = blocklist.Values()
+		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
+			parent.Host.UploadFailedCount.Inc()
+		}
+
+		// Update metadata of the persistent peer.
+		if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return nil
+	}
+
+	return status.Error(codes.FailedPrecondition, "download piece failed")
+}
+
+// StatPersistentPeer checks information of persistent peer.
+func (v *V2) StatPersistentPeer(ctx context.Context, req *schedulerv2.StatPersistentPeerRequest) (*commonv2.PersistentPeer, error) {
+	if v.persistentResource == nil {
+		return nil, status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	log := logger.WithPeer(req.HostId, req.TaskId, req.PeerId)
+	log.Info("stat persistent peer")
+
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, req.GetPeerId())
+	if !loaded {
+		log.Errorf("persistent peer %s not found", req.GetPeerId())
+		return nil, status.Errorf(codes.NotFound, "persistent peer %s not found", req.GetPeerId())
+	}
+
+	currentPersistentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, peer.Task.ID)
+	if err != nil {
+		log.Errorf("load current persistent replica count failed %s", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	currentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentReplicaCount(ctx, peer.Task.ID)
+	if err != nil {
+		log.Errorf("load current replica count failed %s", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &commonv2.PersistentPeer{
+		Id:                   peer.ID,
+		Persistent:           peer.Persistent,
+		ConcurrentPieceCount: peer.ConcurrentPieceCount,
+		State:                peer.FSM.Current(),
+		Cost:                 durationpb.New(peer.Cost),
+		CreatedAt:            timestamppb.New(peer.CreatedAt),
+		UpdatedAt:            timestamppb.New(peer.UpdatedAt),
+		Task: &commonv2.PersistentTask{
+			Id:                            peer.Task.ID,
+			PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
+			CurrentPersistentReplicaCount: currentPersistentReplicaCount,
+			CurrentReplicaCount:           currentReplicaCount,
+			Tag:                           &peer.Task.Tag,
+			Application:                   &peer.Task.Application,
+			PieceLength:                   peer.Task.PieceLength,
+			ContentLength:                 peer.Task.ContentLength,
+			PieceCount:                    uint32(peer.Task.TotalPieceCount),
+			State:                         peer.Task.FSM.Current(),
+			Ttl:                           durationpb.New(peer.Task.TTL),
+			CreatedAt:                     timestamppb.New(peer.Task.CreatedAt),
+			UpdatedAt:                     timestamppb.New(peer.Task.UpdatedAt),
+		},
+		Host: &commonv2.Host{
+			Id:              peer.Host.ID,
+			Type:            uint32(peer.Host.Type),
+			Hostname:        peer.Host.Hostname,
+			Ip:              peer.Host.IP,
+			Port:            peer.Host.Port,
+			DownloadPort:    peer.Host.DownloadPort,
+			ProxyPort:       peer.Host.ProxyPort,
+			Os:              peer.Host.OS,
+			Platform:        peer.Host.Platform,
+			PlatformFamily:  peer.Host.PlatformFamily,
+			PlatformVersion: peer.Host.PlatformVersion,
+			KernelVersion:   peer.Host.KernelVersion,
+			Cpu: &commonv2.CPU{
+				LogicalCount:   peer.Host.CPU.LogicalCount,
+				PhysicalCount:  peer.Host.CPU.PhysicalCount,
+				Percent:        peer.Host.CPU.Percent,
+				ProcessPercent: peer.Host.CPU.ProcessPercent,
+				Times: &commonv2.CPUTimes{
+					User:      peer.Host.CPU.Times.User,
+					System:    peer.Host.CPU.Times.System,
+					Idle:      peer.Host.CPU.Times.Idle,
+					Nice:      peer.Host.CPU.Times.Nice,
+					Iowait:    peer.Host.CPU.Times.Iowait,
+					Irq:       peer.Host.CPU.Times.Irq,
+					Softirq:   peer.Host.CPU.Times.Softirq,
+					Steal:     peer.Host.CPU.Times.Steal,
+					Guest:     peer.Host.CPU.Times.Guest,
+					GuestNice: peer.Host.CPU.Times.GuestNice,
+				},
+			},
+			Memory: &commonv2.Memory{
+				Total:              peer.Host.Memory.Total,
+				Available:          peer.Host.Memory.Available,
+				Used:               peer.Host.Memory.Used,
+				UsedPercent:        peer.Host.Memory.UsedPercent,
+				ProcessUsedPercent: peer.Host.Memory.ProcessUsedPercent,
+				Free:               peer.Host.Memory.Free,
+			},
+			Network: &commonv2.Network{
+				TcpConnectionCount:       peer.Host.Network.TCPConnectionCount,
+				UploadTcpConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
+				Location:                 &peer.Host.Network.Location,
+				Idc:                      &peer.Host.Network.IDC,
+				RxBandwidth:              &peer.Host.Network.RxBandwidth,
+				MaxRxBandwidth:           peer.Host.Network.MaxRxBandwidth,
+				TxBandwidth:              &peer.Host.Network.TxBandwidth,
+				MaxTxBandwidth:           peer.Host.Network.MaxTxBandwidth,
+			},
+			Disk: &commonv2.Disk{
+				Total:             peer.Host.Disk.Total,
+				Free:              peer.Host.Disk.Free,
+				Used:              peer.Host.Disk.Used,
+				UsedPercent:       peer.Host.Disk.UsedPercent,
+				InodesTotal:       peer.Host.Disk.InodesTotal,
+				InodesUsed:        peer.Host.Disk.InodesUsed,
+				InodesFree:        peer.Host.Disk.InodesFree,
+				InodesUsedPercent: peer.Host.Disk.InodesUsedPercent,
+				WriteBandwidth:    peer.Host.Disk.WriteBandwidth,
+				ReadBandwidth:     peer.Host.Disk.ReadBandwidth,
+			},
+			Build: &commonv2.Build{
+				GitVersion:  peer.Host.Build.GitVersion,
+				GitCommit:   &peer.Host.Build.GitCommit,
+				GoVersion:   &peer.Host.Build.GoVersion,
+				RustVersion: &peer.Host.Build.RustVersion,
+				Platform:    &peer.Host.Build.Platform,
+			},
+			SchedulerClusterId: uint64(v.config.Manager.SchedulerClusterID),
+			DisableShared:      peer.Host.DisableShared,
+		},
+	}, nil
+}
+
+// DeletePersistentPeer releases persistent peer in scheduler.
+func (v *V2) DeletePersistentPeer(_ctx context.Context, req *schedulerv2.DeletePersistentPeerRequest) error {
+	if v.persistentResource == nil {
+		return status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	// Context use background to avoid the context canceled by the client and
+	// the peer deletion operation is not completed.
+	ctx := context.Background()
+	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("delete persistent peer")
+
+	peer, found := v.persistentResource.PeerManager().Load(ctx, req.GetPeerId())
+	if !found {
+		log.Errorf("persistent peer %s not found", req.GetPeerId())
+		return status.Errorf(codes.NotFound, "persistent peer %s not found", req.GetPeerId())
+	}
+
+	if err := v.persistentResource.PeerManager().Delete(ctx, req.GetPeerId()); err != nil {
+		log.Errorf("delete persistent peer %s error %s", req.GetPeerId(), err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Delete the persistent task from the peer, if delete failed, skip it.
+	addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
+	if err != nil {
+		peer.Log.Errorf("get dfdaemon client failed %s", err)
+		return err
+	}
+
+	advertiseIP := v.config.Server.AdvertiseIP.String()
+	if err := dfdaemonClient.DeletePersistentTask(ctx, &dfdaemonv2.DeletePersistentTaskRequest{TaskId: peer.Task.ID, RemoteIp: &advertiseIP}); err != nil {
+		peer.Log.Errorf("delete persistent task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
+	}
+
+	// Select the remote peer to copy the replica and trigger the download task with asynchronous.
+	blocklist := set.NewSafeSet[string]()
+	blocklist.Add(req.GetHostId())
+	go func(peer *persistent.Peer, blocklist set.SafeSet[string]) {
+		log.Infof("replicate persistent task %s", peer.Task.ID)
+		if err := v.replicatePersistentTask(context.Background(), peer, blocklist); err != nil {
+			log.Errorf("replicate persistent task failed %s", err)
+		}
+
+		log.Infof("replicate persistent task %s finished", peer.Task.ID)
+	}(peer, blocklist)
+
+	return nil
+}
+
+// UploadPersistentTaskStarted uploads the metadata of the persistent task started.
+func (v *V2) UploadPersistentTaskStarted(ctx context.Context, req *schedulerv2.UploadPersistentTaskStartedRequest) error {
+	if v.persistentResource == nil {
+		return status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent task started")
+
+	host, loaded := v.persistentResource.HostManager().Load(ctx, req.GetHostId())
+	if !loaded {
+		log.Error("host not found")
+		return status.Errorf(codes.NotFound, "host %s not found", req.GetHostId())
+	}
+
+	// Handle task with task started request, new task and store it.
+	task, loaded := v.persistentResource.TaskManager().Load(ctx, req.GetTaskId())
+	if loaded && !task.FSM.Can(persistent.TaskEventUpload) {
+		log.Errorf("persistent task %s is %s cannot upload", task.ID, task.FSM.Current())
+		return status.Errorf(codes.AlreadyExists, "persistent task %s is %s cannot upload", task.ID, task.FSM.Current())
+	}
+
+	task = persistent.NewTask(req.GetTaskId(), req.GetTag(), req.GetApplication(), persistent.TaskStatePending, req.GetPersistentReplicaCount(),
+		req.GetPieceLength(), req.GetContentLength(), req.GetPieceCount(), req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
+
+	if err := task.FSM.Event(ctx, persistent.TaskEventUpload); err != nil {
+		log.Errorf("task fsm event failed: %s", err.Error())
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if err := v.persistentResource.TaskManager().Store(ctx, task); err != nil {
+		log.Errorf("store persistent task %s error %s", task.ID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Handle peer with task started request, new peer and store it.
+	if peer, loaded := v.persistentResource.PeerManager().Load(ctx, req.GetPeerId()); loaded {
+		log.Error("persistent peer already exists")
+		return status.Errorf(codes.AlreadyExists, "persistent peer %s already exists", peer.ID)
+	}
+
+	peer := persistent.NewPeer(req.GetPeerId(), persistent.PeerStatePending, true, bitset.New(uint(req.GetPieceCount())), nil, task, host, 0, time.Now(), time.Now(), log)
+
+	if err := peer.FSM.Event(ctx, persistent.PeerEventUpload); err != nil {
+		log.Errorf("peer fsm event failed: %s", err.Error())
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		log.Errorf("store persistent peer %s error %s", peer.ID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+// UploadPersistentTaskFinished uploads the metadata of the persistent task finished.
+func (v *V2) UploadPersistentTaskFinished(ctx context.Context, req *schedulerv2.UploadPersistentTaskFinishedRequest) (*commonv2.PersistentTask, error) {
+	if v.persistentResource == nil {
+		return nil, status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent task finished")
+
+	// Handle peer with task finished request, load peer and update it.
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, req.GetPeerId())
+	if !loaded {
+		log.Error("persistent peer not found")
+		return nil, status.Errorf(codes.NotFound, "persistent peer %s not found", req.GetPeerId())
+	}
+
+	peer.FinishedPieces.SetAll()
+	if err := peer.FSM.Event(ctx, persistent.PeerEventSucceeded); err != nil {
+		log.Errorf("peer fsm event failed: %s", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	peer.Cost = time.Since(peer.CreatedAt)
+	peer.UpdatedAt = time.Now()
+
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		log.Errorf("store persistent peer %s error %s", peer.ID, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Handle task with peer finished request, load task and update it.
+	if err := peer.Task.FSM.Event(ctx, persistent.TaskEventSucceeded); err != nil {
+		log.Errorf("task fsm event failed: %s", err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	peer.Task.UpdatedAt = time.Now()
+
+	if err := v.persistentResource.TaskManager().Store(ctx, peer.Task); err != nil {
+		log.Errorf("store persistent task %s error %s", peer.Task.ID, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	currentPersistentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, peer.Task.ID)
+	if err != nil {
+		log.Errorf("load current persistent replica count failed %s", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	currentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentReplicaCount(ctx, peer.Task.ID)
+	if err != nil {
+		log.Errorf("load current replica count failed %s", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	persistentTask := &commonv2.PersistentTask{
+		Id:                            peer.Task.ID,
+		PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
+		CurrentPersistentReplicaCount: currentPersistentReplicaCount,
+		CurrentReplicaCount:           currentReplicaCount,
+		Tag:                           &peer.Task.Tag,
+		Application:                   &peer.Task.Application,
+		PieceLength:                   peer.Task.PieceLength,
+		ContentLength:                 peer.Task.ContentLength,
+		PieceCount:                    peer.Task.TotalPieceCount,
+		State:                         peer.Task.FSM.Current(),
+		Ttl:                           durationpb.New(peer.Task.TTL),
+		CreatedAt:                     timestamppb.New(peer.Task.CreatedAt),
+		UpdatedAt:                     timestamppb.New(peer.Task.UpdatedAt),
+	}
+
+	// Select the remote peer to copy the replica and trigger the download task with asynchronous.
+	blocklist := set.NewSafeSet[string]()
+	blocklist.Add(peer.Host.ID)
+	go func(peer *persistent.Peer, blocklist set.SafeSet[string]) {
+		log.Infof("replicate persistent task %s", peer.Task.ID)
+		if err := v.replicatePersistentTask(context.Background(), peer, blocklist); err != nil {
+			log.Errorf("replicate persistent task failed %s", err)
+		}
+
+		log.Infof("replicate persistent task %s finished", peer.Task.ID)
+	}(peer, blocklist)
+
+	return persistentTask, nil
+}
+
+// replicatePersistentTask replicates the persistent task to the remote peer.
+func (v *V2) replicatePersistentTask(ctx context.Context, peer *persistent.Peer, blocklist set.SafeSet[string]) error {
+	cachedParents, hosts, found := v.scheduling.FindReplicatePersistentHosts(ctx, peer.Task, blocklist)
+	if !found {
+		peer.Log.Warn("no replicate hosts found")
+		return nil
+	}
+
+	// Replicate the persistent task to the cached parent, set the persistent flag to true
+	// because the cached parent has the temporary cache.
+	for _, cachedParent := range cachedParents {
+		go func(*persistent.Task, *persistent.Peer) {
+			peer.Log.Infof("replicate to cached parent %s", cachedParent.ID)
+			if err := v.persistPersistentTaskByPeer(context.Background(), peer, cachedParent); err != nil {
+				peer.Log.Errorf("replicate to cached parent %s failed %s", cachedParent.ID, err)
+			}
+
+			peer.Log.Infof("replicate to cached parent %s finished", cachedParent.ID)
+		}(peer.Task, cachedParent)
+	}
+
+	// Replicate the persistent task to the host, trigger the download task from the other peer,
+	// because the host has no cache.
+	for _, host := range hosts {
+		go func(*persistent.Task, *persistent.Host) {
+			peer.Log.Infof("replicate to host %s", host.ID)
+			if err := v.downloadPersistentTaskByPeer(context.Background(), peer.Task, host); err != nil {
+				peer.Log.Errorf("replicate to host %s failed %s", host.ID, err)
+			}
+
+			peer.Log.Infof("replicate to host %s finished", host.ID)
+		}(peer.Task, host)
+	}
+
+	return nil
+}
+
+// downloadPersistentTaskByPeer downloads the persistent task by peer.
+func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.Task, host *persistent.Host) error {
+	addr := fmt.Sprintf("%s:%d", host.IP, host.DownloadPort)
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
+	if err != nil {
+		task.Log.Errorf("get dfdaemon client failed %s", err)
+		return err
+	}
+
+	advertiseIP := v.config.Server.AdvertiseIP.String()
+	stream, err := dfdaemonClient.DownloadPersistentTask(ctx, &dfdaemonv2.DownloadPersistentTaskRequest{
+		TaskId:      task.ID,
+		Persistent:  true,
+		Tag:         &task.Tag,
+		Application: &task.Application,
+		RemoteIp:    &advertiseIP,
+	})
+	if err != nil {
+		task.Log.Errorf("download persistent task failed %s", err)
+		return err
+	}
+
+	// Wait for the download persistent task to complete.
+	for {
+		_, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				task.Log.Info("download persistent task finished")
+				return nil
+			}
+
+			task.Log.Errorf("download persistent task failed %s", err)
+			return err
+		}
+	}
+}
+
+// persistPersistentTaskByPeer persists the persistent task by peer.
+func (v *V2) persistPersistentTaskByPeer(ctx context.Context, peer *persistent.Peer, cachedParent *persistent.Peer) error {
+	addr := fmt.Sprintf("%s:%d", cachedParent.Host.IP, cachedParent.Host.DownloadPort)
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
+	if err != nil {
+		peer.Log.Errorf("get dfdaemon client failed %s", err)
+		return err
+	}
+
+	advertiseIP := v.config.Server.AdvertiseIP.String()
+	if err := dfdaemonClient.UpdatePersistentTask(ctx, &dfdaemonv2.UpdatePersistentTaskRequest{
+		TaskId:     peer.Task.ID,
+		Persistent: true,
+		RemoteIp:   &advertiseIP,
+	}); err != nil {
+		peer.Log.Errorf("update persistent task failed %s", err)
+		return err
+	}
+
+	cachedParent.Persistent = true
+	if err := v.persistentResource.PeerManager().Store(ctx, cachedParent); err != nil {
+		peer.Log.Errorf("store persistent peer %s error %s", cachedParent.ID, err)
+		return err
+	}
+
+	return nil
+}
+
+// UploadPersistentTaskFailed uploads the metadata of the persistent task failed.
+func (v *V2) UploadPersistentTaskFailed(ctx context.Context, req *schedulerv2.UploadPersistentTaskFailedRequest) error {
+	if v.persistentResource == nil {
+		return status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	log := logger.WithPeer(req.GetHostId(), req.GetTaskId(), req.GetPeerId())
+	log.Info("upload persistent task failed")
+
+	// Handle peer with task failed request, load peer and update it.
+	peer, loaded := v.persistentResource.PeerManager().Load(ctx, req.GetPeerId())
+	if !loaded {
+		log.Error("persistent peer not found")
+		return status.Errorf(codes.NotFound, "persistent peer %s not found", req.GetPeerId())
+	}
+
+	if err := peer.FSM.Event(ctx, persistent.PeerEventFailed); err != nil {
+		log.Errorf("peer fsm event failed: %s", err.Error())
+		return status.Error(codes.Internal, err.Error())
+	}
+	peer.UpdatedAt = time.Now()
+
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		log.Errorf("store persistent peer %s error %s", peer.ID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// Handle task with peer failed request, load task and update it.
+	if err := peer.Task.FSM.Event(ctx, persistent.TaskEventSucceeded); err != nil {
+		log.Errorf("task fsm event failed: %s", err.Error())
+		return status.Error(codes.Internal, err.Error())
+	}
+	peer.Task.UpdatedAt = time.Now()
+
+	if err := v.persistentResource.TaskManager().Store(ctx, peer.Task); err != nil {
+		log.Errorf("store persistent task %s error %s", peer.Task.ID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+// StatPersistentTask checks information of persistent task.
+func (v *V2) StatPersistentTask(ctx context.Context, req *schedulerv2.StatPersistentTaskRequest) (*commonv2.PersistentTask, error) {
+	if v.persistentResource == nil {
+		return nil, status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
+	log.Info("stat persistent task")
+
+	task, loaded := v.persistentResource.TaskManager().Load(ctx, req.GetTaskId())
+	if !loaded {
+		log.Errorf("persistent task %s not found", req.GetTaskId())
+		return nil, status.Errorf(codes.NotFound, "persistent task %s not found", req.GetTaskId())
+	}
+
+	currentPersistentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentPersistentReplicaCount(ctx, task.ID)
+	if err != nil {
+		log.Errorf("load current persistent replica count failed %s", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	currentReplicaCount, err := v.persistentResource.TaskManager().LoadCurrentReplicaCount(ctx, task.ID)
+	if err != nil {
+		log.Errorf("load current replica count failed %s", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &commonv2.PersistentTask{
+		Id:                            task.ID,
+		PersistentReplicaCount:        task.PersistentReplicaCount,
+		CurrentPersistentReplicaCount: currentPersistentReplicaCount,
+		CurrentReplicaCount:           currentReplicaCount,
+		Tag:                           &task.Tag,
+		Application:                   &task.Application,
+		PieceLength:                   task.PieceLength,
+		ContentLength:                 task.ContentLength,
+		PieceCount:                    task.TotalPieceCount,
+		State:                         task.FSM.Current(),
+		Ttl:                           durationpb.New(task.TTL),
+		CreatedAt:                     timestamppb.New(task.CreatedAt),
+		UpdatedAt:                     timestamppb.New(task.UpdatedAt),
+	}, nil
+}
+
+// DeletePersistentTask releases persistent task in scheduler.
+func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.DeletePersistentCacheTaskRequest) error {
+	if v.persistentCacheResource == nil {
+		return status.Error(codes.FailedPrecondition, "redis is not enabled")
+	}
+
+	// Context use background to avoid the context canceled by the client and
+	// the task deletion operation is not completed.
+	ctx := context.Background()
+	log := logger.WithHostAndTaskID(req.GetHostId(), req.GetTaskId())
+	log.Info("delete persistent task")
+
+	// Delete the persistent peers in the redis and peer.
+	peers, err := v.persistentResource.PeerManager().LoadAllByTaskID(ctx, req.GetTaskId())
+	if err != nil {
+		log.Errorf("load persistent peers by task %s error %s", req.GetTaskId(), err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	for _, peer := range peers {
+		if err := v.persistentResource.PeerManager().Delete(ctx, peer.ID); err != nil {
+			log.Errorf("delete persistent peer %s error %s", peer.ID, err)
+			continue
+		}
+
+		// Delete the persistent task from the peer, if delete failed, skip it.
+		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+		dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
+		if err != nil {
+			peer.Log.Errorf("get dfdaemon client failed %s", err)
+			continue
+		}
+
+		advertiseIP := v.config.Server.AdvertiseIP.String()
+		if err := dfdaemonClient.DeletePersistentTask(ctx, &dfdaemonv2.DeletePersistentTaskRequest{TaskId: peer.Task.ID, RemoteIp: &advertiseIP}); err != nil {
+			peer.Log.Errorf("delete persistent task %s from peer %s failed %s", peer.Task.ID, peer.ID, err)
+			continue
+		}
+	}
+
+	// Delete the persistent task in the redis.
+	if err := v.persistentResource.TaskManager().Delete(ctx, req.GetTaskId()); err != nil {
+		log.Errorf("delete persistent task %s error %s", req.GetTaskId(), err)
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	return nil
