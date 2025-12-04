@@ -145,6 +145,25 @@ func (mr *MockV2MockRecorder) DeletePersistentCacheTask(arg0, arg1 any, arg2 ...
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePersistentCacheTask", reflect.TypeOf((*MockV2)(nil).DeletePersistentCacheTask), varargs...)
 }
 
+// DeletePersistentTask mocks base method.
+func (m *MockV2) DeletePersistentTask(arg0 context.Context, arg1 *dfdaemon.DeletePersistentTaskRequest, arg2 ...grpc.CallOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeletePersistentTask", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePersistentTask indicates an expected call of DeletePersistentTask.
+func (mr *MockV2MockRecorder) DeletePersistentTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePersistentTask", reflect.TypeOf((*MockV2)(nil).DeletePersistentTask), varargs...)
+}
+
 // DeleteTask mocks base method.
 func (m *MockV2) DeleteTask(arg0 context.Context, arg1 *dfdaemon.DeleteTaskRequest, arg2 ...grpc.CallOption) error {
 	m.ctrl.T.Helper()
@@ -182,6 +201,26 @@ func (mr *MockV2MockRecorder) DownloadPersistentCacheTask(arg0, arg1 any, arg2 .
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadPersistentCacheTask", reflect.TypeOf((*MockV2)(nil).DownloadPersistentCacheTask), varargs...)
+}
+
+// DownloadPersistentTask mocks base method.
+func (m *MockV2) DownloadPersistentTask(arg0 context.Context, arg1 *dfdaemon.DownloadPersistentTaskRequest, arg2 ...grpc.CallOption) (dfdaemon.DfdaemonUpload_DownloadPersistentTaskClient, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DownloadPersistentTask", varargs...)
+	ret0, _ := ret[0].(dfdaemon.DfdaemonUpload_DownloadPersistentTaskClient)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DownloadPersistentTask indicates an expected call of DownloadPersistentTask.
+func (mr *MockV2MockRecorder) DownloadPersistentTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadPersistentTask", reflect.TypeOf((*MockV2)(nil).DownloadPersistentTask), varargs...)
 }
 
 // DownloadPiece mocks base method.
@@ -264,6 +303,26 @@ func (mr *MockV2MockRecorder) StatPersistentCacheTask(arg0, arg1 any, arg2 ...an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatPersistentCacheTask", reflect.TypeOf((*MockV2)(nil).StatPersistentCacheTask), varargs...)
 }
 
+// StatPersistentTask mocks base method.
+func (m *MockV2) StatPersistentTask(arg0 context.Context, arg1 *dfdaemon.StatPersistentTaskRequest, arg2 ...grpc.CallOption) (*common.PersistentTask, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "StatPersistentTask", varargs...)
+	ret0, _ := ret[0].(*common.PersistentTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StatPersistentTask indicates an expected call of StatPersistentTask.
+func (mr *MockV2MockRecorder) StatPersistentTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatPersistentTask", reflect.TypeOf((*MockV2)(nil).StatPersistentTask), varargs...)
+}
+
 // StatTask mocks base method.
 func (m *MockV2) StatTask(arg0 context.Context, arg1 *dfdaemon.StatTaskRequest, arg2 ...grpc.CallOption) (*common.Task, error) {
 	m.ctrl.T.Helper()
@@ -321,4 +380,23 @@ func (mr *MockV2MockRecorder) UpdatePersistentCacheTask(arg0, arg1 any, arg2 ...
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePersistentCacheTask", reflect.TypeOf((*MockV2)(nil).UpdatePersistentCacheTask), varargs...)
+}
+
+// UpdatePersistentTask mocks base method.
+func (m *MockV2) UpdatePersistentTask(arg0 context.Context, arg1 *dfdaemon.UpdatePersistentTaskRequest, arg2 ...grpc.CallOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdatePersistentTask", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePersistentTask indicates an expected call of UpdatePersistentTask.
+func (mr *MockV2MockRecorder) UpdatePersistentTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePersistentTask", reflect.TypeOf((*MockV2)(nil).UpdatePersistentTask), varargs...)
 }

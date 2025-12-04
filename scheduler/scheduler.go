@@ -230,7 +230,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 		schedulerServerOptions = append(schedulerServerOptions, grpc.Creds(rpc.NewInsecureCredentials()))
 	}
 
-	svr := rpcserver.New(cfg, resource, s.persistentCacheResource, scheduling, s.job, dynconfig, schedulerServerOptions...)
+	svr := rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, schedulerServerOptions...)
 	s.grpcServer = svr
 
 	// Initialize metrics.

@@ -742,7 +742,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 	// Handle the persistent host. If redis is not enabled,
 	// it will not support the persistent feature.
-	if v.persistentResource == nil {
+	if v.persistentResource != nil {
 		persistentHost, loaded := v.persistentResource.HostManager().Load(ctx, req.Host.GetId())
 		if !loaded {
 			persistentHost = persistent.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
@@ -911,7 +911,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 	// Handle the persistent cache host. If redis is not enabled,
 	// it will not support the persistent cache feature.
-	if v.persistentCacheResource == nil {
+	if v.persistentCacheResource != nil {
 		persistentCacheHost, loaded := v.persistentCacheResource.HostManager().Load(ctx, req.Host.GetId())
 		if !loaded {
 			persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
@@ -2006,7 +2006,7 @@ func (v *V2) AnnouncePersistentPeer(stream schedulerv2.Scheduler_AnnouncePersist
 }
 
 // handleRegisterPersistentPeerRequest handles RegisterPersistentPeerRequest of AnnouncePersistentPeerRequest.
-func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentPeerServer, hostID, taskID, peerID string, persistent bool, concurrentPieceCount *uint32) error {
+func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentPeerServer, hostID, taskID, peerID string, isPersistent bool, concurrentPieceCount *uint32) error {
 	host, loaded := v.persistentResource.HostManager().Load(ctx, hostID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "host %s not found", hostID)
@@ -2022,7 +2022,7 @@ func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream sch
 		options = append(options, persistent.WithConcurrentPieceCount(*concurrentPieceCount))
 	}
 
-	peer := persistent.NewPeer(peerID, persistent.PeerStatePending, persistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
+	peer := persistent.NewPeer(peerID, persistent.PeerStatePending, isPersistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
 
 	// Collect RegisterPersistentPeerCount metrics.
 	metrics.RegisterPersistentPeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()
@@ -2896,11 +2896,11 @@ func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.
 
 	advertiseIP := v.config.Server.AdvertiseIP.String()
 	stream, err := dfdaemonClient.DownloadPersistentTask(ctx, &dfdaemonv2.DownloadPersistentTaskRequest{
-		TaskId:      task.ID,
-		Persistent:  true,
-		Tag:         &task.Tag,
-		Application: &task.Application,
-		RemoteIp:    &advertiseIP,
+		Persistent:       true,
+		Tag:              &task.Tag,
+		Application:      &task.Application,
+		RemoteIp:         &advertiseIP,
+		NeedPieceContent: false,
 	})
 	if err != nil {
 		task.Log.Errorf("download persistent task failed %s", err)
@@ -3038,8 +3038,8 @@ func (v *V2) StatPersistentTask(ctx context.Context, req *schedulerv2.StatPersis
 }
 
 // DeletePersistentTask releases persistent task in scheduler.
-func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.DeletePersistentCacheTaskRequest) error {
-	if v.persistentCacheResource == nil {
+func (v *V2) DeletePersistentTask(_ctx context.Context, req *schedulerv2.DeletePersistentTaskRequest) error {
+	if v.persistentResource == nil {
 		return status.Error(codes.FailedPrecondition, "redis is not enabled")
 	}
 
@@ -3209,7 +3209,7 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 }
 
 // handleRegisterPersistentCachePeerRequest handles RegisterPersistentCachePeerRequest of AnnouncePersistentCachePeerRequest.
-func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentCachePeerServer, hostID, taskID, peerID string, persistent bool, concurrentPieceCount *uint32) error {
+func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, stream schedulerv2.Scheduler_AnnouncePersistentCachePeerServer, hostID, taskID, peerID string, isPersistent bool, concurrentPieceCount *uint32) error {
 	host, loaded := v.persistentCacheResource.HostManager().Load(ctx, hostID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "host %s not found", hostID)
@@ -3225,7 +3225,7 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 		options = append(options, persistentcache.WithConcurrentPieceCount(*concurrentPieceCount))
 	}
 
-	peer := persistentcache.NewPeer(peerID, persistentcache.PeerStatePending, persistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
+	peer := persistentcache.NewPeer(peerID, persistentcache.PeerStatePending, isPersistent, &bitset.BitSet{}, []string{}, task, host, 0, time.Now(), time.Now(), logger.WithPeer(hostID, taskID, peerID), options...)
 
 	// Collect RegisterPersistentCachePeerCount metrics.
 	metrics.RegisterPersistentCachePeerCount.WithLabelValues(peer.Host.Type.Name()).Inc()

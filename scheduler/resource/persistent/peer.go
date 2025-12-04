@@ -125,11 +125,11 @@ type Peer struct {
 }
 
 // New persistent peer instance.
-func NewPeer(id, state string, persistent bool, finishedPieces *bitset.BitSet, blockParents []string, task *Task, host *Host,
+func NewPeer(id, state string, isPersistent bool, finishedPieces *bitset.BitSet, blockParents []string, task *Task, host *Host,
 	cost time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith, options ...PeerOption) *Peer {
 	p := &Peer{
 		ID:                   id,
-		Persistent:           persistent,
+		Persistent:           isPersistent,
 		ConcurrentPieceCount: defaultConcurrentPieceCount,
 		FinishedPieces:       finishedPieces,
 		Task:                 task,
