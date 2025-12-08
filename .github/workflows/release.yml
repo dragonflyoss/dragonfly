@@ -19,7 +19,7 @@ jobs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
           submodules: recursive
@@ -73,7 +73,7 @@ jobs:
     runs-on: oracle-vm-24cpu-96gb-x86-64
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
           submodules: recursive
