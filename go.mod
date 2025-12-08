@@ -9,7 +9,7 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.10.3
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/bits-and-blooms/bitset v1.24.4
-	github.com/casbin/casbin/v2 v2.81.0
+	github.com/casbin/casbin/v2 v2.134.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/containerd/containerd v1.6.38
@@ -96,10 +96,11 @@ require (
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
-	github.com/casbin/govaluate v1.1.0 // indirect
+	github.com/casbin/govaluate v1.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/containerd/errdefs v0.1.0 // indirect
