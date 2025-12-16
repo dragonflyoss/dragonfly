@@ -72,7 +72,7 @@ type SeedPeer interface {
 	Serve() error
 
 	// Stop seed peer service.
-	Stop() error
+	Stop()
 }
 
 // seedPeer contains content for seed peer.
@@ -381,9 +381,6 @@ func (s *seedPeer) Serve() error {
 }
 
 // Stop seed peer service.
-func (s *seedPeer) Stop() error {
-	s.clientPool.Stop()
-
+func (s *seedPeer) Stop() {
 	close(s.done)
-	return nil
 }

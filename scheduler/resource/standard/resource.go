@@ -49,7 +49,7 @@ type Resource interface {
 	Serve() error
 
 	// Stop resource service.
-	Stop() error
+	Stop()
 }
 
 // resource contains content for resource.
@@ -147,12 +147,10 @@ func (r *resource) Serve() error {
 }
 
 // Stop resource service.
-func (r *resource) Stop() error {
-	r.peerClientPool.Stop()
-
+func (r *resource) Stop() {
 	if r.config.SeedPeer.Enable {
-		return r.seedPeer.Stop()
+		r.seedPeer.Stop()
 	}
 
-	return nil
+	r.peerClientPool.Stop()
 }

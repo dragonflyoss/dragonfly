@@ -323,11 +323,8 @@ func (s *Server) Stop() {
 	}
 
 	// Stop resource.
-	if err := s.resource.Stop(); err != nil {
-		logger.Errorf("stop resource failed %s", err.Error())
-	} else {
-		logger.Info("stop resource closed")
-	}
+	s.resource.Stop()
+	logger.Info("stop resource closed")
 
 	// Stop GC.
 	s.gc.Stop()

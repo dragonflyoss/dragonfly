@@ -73,11 +73,9 @@ func (mr *MockSeedPeerMockRecorder) Serve() *gomock.Call {
 }
 
 // Stop mocks base method.
-func (m *MockSeedPeer) Stop() error {
+func (m *MockSeedPeer) Stop() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stop")
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "Stop")
 }
 
 // Stop indicates an expected call of Stop.
