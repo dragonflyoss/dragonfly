@@ -283,6 +283,26 @@ func (mr *MockV2MockRecorder) ListTaskEntries(arg0, arg1 any, arg2 ...any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskEntries", reflect.TypeOf((*MockV2)(nil).ListTaskEntries), varargs...)
 }
 
+// StatLocalTask mocks base method.
+func (m *MockV2) StatLocalTask(arg0 context.Context, arg1 *dfdaemon.StatLocalTaskRequest, arg2 ...grpc.CallOption) (*dfdaemon.StatLocalTaskResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "StatLocalTask", varargs...)
+	ret0, _ := ret[0].(*dfdaemon.StatLocalTaskResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StatLocalTask indicates an expected call of StatLocalTask.
+func (mr *MockV2MockRecorder) StatLocalTask(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatLocalTask", reflect.TypeOf((*MockV2)(nil).StatLocalTask), varargs...)
+}
+
 // StatPersistentCacheTask mocks base method.
 func (m *MockV2) StatPersistentCacheTask(arg0 context.Context, arg1 *dfdaemon.StatPersistentCacheTaskRequest, arg2 ...grpc.CallOption) (*common.PersistentCacheTask, error) {
 	m.ctrl.T.Helper()

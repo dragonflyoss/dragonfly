@@ -136,6 +136,9 @@ type V2 interface {
 	// StatTask stats task information.
 	StatTask(context.Context, *dfdaemonv2.StatTaskRequest, ...grpc.CallOption) (*commonv2.Task, error)
 
+	// StatLocalTask stats local task information.
+	StatLocalTask(context.Context, *dfdaemonv2.StatLocalTaskRequest, ...grpc.CallOption) (*dfdaemonv2.StatLocalTaskResponse, error)
+
 	// DeleteTask deletes task from p2p network.
 	DeleteTask(context.Context, *dfdaemonv2.DeleteTaskRequest, ...grpc.CallOption) error
 
@@ -251,6 +254,14 @@ func (v *v2) StatTask(ctx context.Context, req *dfdaemonv2.StatTaskRequest, opts
 	defer cancel()
 
 	return v.DfdaemonUploadClient.StatTask(ctx, req, opts...)
+}
+
+// StatLocalTask stats local task information.
+func (v *v2) StatLocalTask(ctx context.Context, req *dfdaemonv2.StatLocalTaskRequest, opts ...grpc.CallOption) (*dfdaemonv2.StatLocalTaskResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	return v.DfdaemonUploadClient.StatLocalTask(ctx, req, opts...)
 }
 
 // DeleteTask deletes task from p2p network.

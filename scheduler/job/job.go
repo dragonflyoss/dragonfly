@@ -929,10 +929,9 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 			}
 
 			advertiseIP := j.config.Server.AdvertiseIP.String()
-			if _, err = dfdaemonClient.StatTask(ctx, &dfdaemonv2.StatTaskRequest{
-				TaskId:    req.TaskID,
-				RemoteIp:  &advertiseIP,
-				LocalOnly: true,
+			if _, err = dfdaemonClient.StatLocalTask(ctx, &dfdaemonv2.StatLocalTaskRequest{
+				TaskId:   req.TaskID,
+				RemoteIp: &advertiseIP,
 			}); err != nil {
 				log.Errorf("[get-task] stat task failed: %s", err.Error())
 				return nil
