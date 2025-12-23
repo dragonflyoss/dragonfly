@@ -141,7 +141,7 @@ func TestTaskManager_Load(t *testing.T) {
 					pkgredis.MakePersistentTaskKeyInScheduler(42, "goodtask"),
 				).SetVal(mockData)
 			},
-			expectedTask:   NewTask("goodtask", "tag_value", "app_value", TaskStateSucceeded, 2, 1024, 2048, 2, 5*time.Minute, time.Now(), time.Now(), logger.WithTaskID("goodtask")),
+			expectedTask:   NewTask("goodtask", TaskStateSucceeded, 2, 2048, 2, 5*time.Minute, time.Now(), time.Now(), logger.WithTaskID("goodtask")),
 			expectedLoaded: true,
 		},
 	}
@@ -166,10 +166,7 @@ func TestTaskManager_Load(t *testing.T) {
 			if tt.expectedLoaded {
 				assert.NotNil(t, got)
 				assert.Equal(t, tt.expectedTask.ID, got.ID)
-				assert.Equal(t, tt.expectedTask.Tag, got.Tag)
-				assert.Equal(t, tt.expectedTask.Application, got.Application)
 				assert.Equal(t, tt.expectedTask.PersistentReplicaCount, got.PersistentReplicaCount)
-				assert.Equal(t, tt.expectedTask.PieceLength, got.PieceLength)
 				assert.Equal(t, tt.expectedTask.ContentLength, got.ContentLength)
 				assert.Equal(t, tt.expectedTask.TotalPieceCount, got.TotalPieceCount)
 				assert.Equal(t, tt.expectedTask.FSM.Current(), got.FSM.Current())

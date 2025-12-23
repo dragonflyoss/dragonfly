@@ -87,12 +87,6 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 		return nil, false
 	}
 
-	pieceLength, err := strconv.ParseUint(rawTask["piece_length"], 10, 64)
-	if err != nil {
-		log.Errorf("parsing piece length failed: %v", err)
-		return nil, false
-	}
-
 	contentLength, err := strconv.ParseUint(rawTask["content_length"], 10, 64)
 	if err != nil {
 		log.Errorf("parsing content length failed: %v", err)
@@ -126,11 +120,8 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 
 	return NewTask(
 		rawTask["id"],
-		rawTask["tag"],
-		rawTask["application"],
 		rawTask["state"],
 		persistentReplicaCount,
-		pieceLength,
 		contentLength,
 		uint32(totalPieceCount),
 		time.Duration(ttl),
@@ -166,24 +157,18 @@ local task_key = KEYS[1]  -- Key for the task hash
 -- Extract arguments
 local task_id = ARGV[1]
 local persistent_replica_count = ARGV[2]
-local tag = ARGV[3]
-local application = ARGV[4]
-local piece_length = ARGV[5]
-local content_length = ARGV[6]
-local total_piece_count = ARGV[7]
-local state = ARGV[8]
-local created_at = ARGV[9]
-local updated_at = ARGV[10]
-local ttl = tonumber(ARGV[11])
-local ttl_seconds = tonumber(ARGV[12])
+local content_length = ARGV[3]
+local total_piece_count = ARGV[4]
+local state = ARGV[5]
+local created_at = ARGV[6]
+local updated_at = ARGV[7]
+local ttl = tonumber(ARGV[8])
+local ttl_seconds = tonumber(ARGV[9])
 
 -- Perform HSET operation to store task details
 redis.call("HSET", task_key,
     "id", task_id,
     "persistent_replica_count", persistent_replica_count,
-    "tag", tag,
-    "application", application,
-    "piece_length", piece_length,
     "content_length", content_length,
     "total_piece_count", total_piece_count,
     "state", state,
@@ -209,9 +194,6 @@ return true
 	args := []any{
 		task.ID,
 		task.PersistentReplicaCount,
-		task.Tag,
-		task.Application,
-		task.PieceLength,
 		task.ContentLength,
 		task.TotalPieceCount,
 		task.FSM.Current(),

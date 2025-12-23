@@ -70,15 +70,6 @@ type Task struct {
 	// when the task is deleted by the user.
 	PersistentReplicaCount uint64
 
-	// Tag is used to distinguish different persistent tasks.
-	Tag string
-
-	// Application of persistent task.
-	Application string
-
-	// Persistet task piece length.
-	PieceLength uint64
-
 	// ContentLength is persistent task total content length.
 	ContentLength uint64
 
@@ -102,15 +93,11 @@ type Task struct {
 }
 
 // New persistent task instance.
-func NewTask(id, tag, application, state string, persistentReplicaCount, pieceLength, contentLength uint64,
-	totalPieceCount uint32, ttl time.Duration, createdAt, updatedAt time.Time,
+func NewTask(id, state string, persistentReplicaCount, contentLength uint64, totalPieceCount uint32, ttl time.Duration, createdAt, updatedAt time.Time,
 	log *logger.SugaredLoggerOnWith) *Task {
 	t := &Task{
 		ID:                     id,
 		PersistentReplicaCount: persistentReplicaCount,
-		Tag:                    tag,
-		Application:            application,
-		PieceLength:            pieceLength,
 		ContentLength:          contentLength,
 		TotalPieceCount:        totalPieceCount,
 		TTL:                    ttl,

@@ -2110,9 +2110,6 @@ func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream sch
 					PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
 					CurrentPersistentReplicaCount: currentPersistentReplicaCount,
 					CurrentReplicaCount:           currentReplicaCount,
-					Tag:                           &parent.Task.Tag,
-					Application:                   &parent.Task.Application,
-					PieceLength:                   parent.Task.PieceLength,
 					ContentLength:                 parent.Task.ContentLength,
 					PieceCount:                    parent.Task.TotalPieceCount,
 					State:                         parent.Task.FSM.Current(),
@@ -2307,9 +2304,6 @@ func (v *V2) handleReschedulePersistentPeerRequest(ctx context.Context, stream s
 				PersistentReplicaCount:        parent.Task.PersistentReplicaCount,
 				CurrentPersistentReplicaCount: currentPersistentReplicaCount,
 				CurrentReplicaCount:           currentReplicaCount,
-				Tag:                           &parent.Task.Tag,
-				Application:                   &parent.Task.Application,
-				PieceLength:                   parent.Task.PieceLength,
 				ContentLength:                 parent.Task.ContentLength,
 				PieceCount:                    parent.Task.TotalPieceCount,
 				State:                         parent.Task.FSM.Current(),
@@ -2571,9 +2565,6 @@ func (v *V2) StatPersistentPeer(ctx context.Context, req *schedulerv2.StatPersis
 			PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
 			CurrentPersistentReplicaCount: currentPersistentReplicaCount,
 			CurrentReplicaCount:           currentReplicaCount,
-			Tag:                           &peer.Task.Tag,
-			Application:                   &peer.Task.Application,
-			PieceLength:                   peer.Task.PieceLength,
 			ContentLength:                 peer.Task.ContentLength,
 			PieceCount:                    uint32(peer.Task.TotalPieceCount),
 			State:                         peer.Task.FSM.Current(),
@@ -2729,8 +2720,8 @@ func (v *V2) UploadPersistentTaskStarted(ctx context.Context, req *schedulerv2.U
 		return status.Errorf(codes.AlreadyExists, "persistent task %s is %s cannot upload", task.ID, task.FSM.Current())
 	}
 
-	task = persistent.NewTask(req.GetTaskId(), req.GetTag(), req.GetApplication(), persistent.TaskStatePending, req.GetPersistentReplicaCount(),
-		req.GetPieceLength(), req.GetContentLength(), req.GetPieceCount(), req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
+	task = persistent.NewTask(req.GetTaskId(), persistent.TaskStatePending, req.GetPersistentReplicaCount(),
+		req.GetContentLength(), req.GetPieceCount(), req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
 
 	if err := task.FSM.Event(ctx, persistent.TaskEventUpload); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
@@ -2821,9 +2812,6 @@ func (v *V2) UploadPersistentTaskFinished(ctx context.Context, req *schedulerv2.
 		PersistentReplicaCount:        peer.Task.PersistentReplicaCount,
 		CurrentPersistentReplicaCount: currentPersistentReplicaCount,
 		CurrentReplicaCount:           currentReplicaCount,
-		Tag:                           &peer.Task.Tag,
-		Application:                   &peer.Task.Application,
-		PieceLength:                   peer.Task.PieceLength,
 		ContentLength:                 peer.Task.ContentLength,
 		PieceCount:                    peer.Task.TotalPieceCount,
 		State:                         peer.Task.FSM.Current(),
@@ -2897,8 +2885,6 @@ func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.
 	advertiseIP := v.config.Server.AdvertiseIP.String()
 	stream, err := dfdaemonClient.DownloadPersistentTask(ctx, &dfdaemonv2.DownloadPersistentTaskRequest{
 		Persistent:       true,
-		Tag:              &task.Tag,
-		Application:      &task.Application,
 		RemoteIp:         &advertiseIP,
 		NeedPieceContent: false,
 	})
@@ -3025,9 +3011,6 @@ func (v *V2) StatPersistentTask(ctx context.Context, req *schedulerv2.StatPersis
 		PersistentReplicaCount:        task.PersistentReplicaCount,
 		CurrentPersistentReplicaCount: currentPersistentReplicaCount,
 		CurrentReplicaCount:           currentReplicaCount,
-		Tag:                           &task.Tag,
-		Application:                   &task.Application,
-		PieceLength:                   task.PieceLength,
 		ContentLength:                 task.ContentLength,
 		PieceCount:                    task.TotalPieceCount,
 		State:                         task.FSM.Current(),

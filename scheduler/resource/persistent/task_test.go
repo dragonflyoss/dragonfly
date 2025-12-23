@@ -31,11 +31,8 @@ func TestNewTask(t *testing.T) {
 	tests := []struct {
 		name                   string
 		id                     string
-		tag                    string
-		application            string
 		state                  string
 		persistentReplicaCount uint64
-		pieceLength            uint64
 		contentLength          uint64
 		totalPieceCount        uint32
 		ttl                    time.Duration
@@ -47,11 +44,8 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with pending state",
 			id:                     "task-1",
-			tag:                    "tag-1",
-			application:            "app-1",
 			state:                  TaskStatePending,
 			persistentReplicaCount: 3,
-			pieceLength:            1024 * 1024,
 			contentLength:          1024 * 1024 * 10,
 			totalPieceCount:        10,
 			ttl:                    time.Hour,
@@ -62,11 +56,8 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with uploading state",
 			id:                     "task-2",
-			tag:                    "tag-2",
-			application:            "app-2",
 			state:                  TaskStateUploading,
 			persistentReplicaCount: 5,
-			pieceLength:            1024 * 1024,
 			contentLength:          1024 * 1024 * 20,
 			totalPieceCount:        20,
 			ttl:                    2 * time.Hour,
@@ -77,11 +68,8 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with tiny file",
 			id:                     "task-3",
-			tag:                    "tag-3",
-			application:            "app-3",
 			state:                  TaskStateSucceeded,
 			persistentReplicaCount: 2,
-			pieceLength:            128,
 			contentLength:          TinyFileSize,
 			totalPieceCount:        1,
 			ttl:                    30 * time.Minute,
@@ -95,11 +83,8 @@ func TestNewTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := NewTask(
 				tc.id,
-				tc.tag,
-				tc.application,
 				tc.state,
 				tc.persistentReplicaCount,
-				tc.pieceLength,
 				tc.contentLength,
 				tc.totalPieceCount,
 				tc.ttl,
@@ -109,10 +94,7 @@ func TestNewTask(t *testing.T) {
 			)
 
 			assert.Equal(t, tc.id, task.ID)
-			assert.Equal(t, tc.tag, task.Tag)
-			assert.Equal(t, tc.application, task.Application)
 			assert.Equal(t, tc.persistentReplicaCount, task.PersistentReplicaCount)
-			assert.Equal(t, tc.pieceLength, task.PieceLength)
 			assert.Equal(t, tc.contentLength, task.ContentLength)
 			assert.Equal(t, tc.totalPieceCount, task.TotalPieceCount)
 			assert.Equal(t, tc.ttl, task.TTL)
