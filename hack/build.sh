@@ -6,6 +6,7 @@ set -o pipefail
 
 SCHEDULER_BINARY_NAME=scheduler
 MANAGER_BINARY_NAME=manager
+INJECTOR_BINARY_NAME=injector
 
 PKG=d7y.io/dragonfly/v2
 BUILD_IMAGE=golang:1.23.8-alpine3.20
@@ -54,6 +55,10 @@ build-manager-local() {
     build-local ${MANAGER_BINARY_NAME} manager
 }
 
+build-injector-local() {
+    build-local ${INJECTOR_BINARY_NAME} injector
+}
+
 build-docker() {
     cd "${BUILD_SOURCE_HOME}" || return
     docker run \
@@ -85,6 +90,10 @@ build-manager-docker() {
     build-docker ${MANAGER_BINARY_NAME} manager
 }
 
+build-injector-docker() {
+    build-docker ${INJECTOR_BINARY_NAME} injector
+}
+
 build-manager-console() {
     set -x
     CONSOLE_DIR=$(echo $CUR_DIR | sed 's#hack#manager/console#')
@@ -108,6 +117,9 @@ main() {
         manager)
             build-manager-docker
             ;;
+        injector)
+            build-injector-docker
+            ;;
         manager-console)
             build-manager-console
             ;;
@@ -124,6 +136,9 @@ main() {
             ;;
         manager)
             build-manager-local
+            ;;
+        injector)
+            build-injector-local
             ;;
         manager-console)
             build-manager-console
