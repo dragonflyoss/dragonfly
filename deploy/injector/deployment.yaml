@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dragonfly-injector
+  namespace: dragonfly-system
+  labels:
+    app: dragonfly
+    component: injector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dragonfly
+      component: injector
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: injector
+    spec:
+      serviceAccountName: dragonfly-injector
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: injector
+          image: dragonflyoss/injector:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/dragonfly/bin/injector
+          args:
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address=:8443
+            - --metrics-secure=true
+            - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --webhook-cert-name=tls.crt
+            - --webhook-cert-key=tls.key
+            - --leader-elect=true
+          ports:
+            - name: webhook
+              containerPort: 9443
+              protocol: TCP
+            - name: metrics
+              containerPort: 8443
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+            - name: config
+              mountPath: /etc/dragonfly-injector
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: cert
+          secret:
+            secretName: dragonfly-injector-webhook-cert
+            defaultMode: 420
+        - name: config
+          configMap:
+            name: dragonfly-injector-config
+            defaultMode: 420
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: dragonfly
+                    component: injector
+                topologyKey: kubernetes.io/hostname
