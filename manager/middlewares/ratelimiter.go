@@ -19,10 +19,11 @@ package middlewares
 import (
 	"net/http"
 
-	"d7y.io/dragonfly/v2/internal/ratelimiter"
-	"d7y.io/dragonfly/v2/manager/types"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+
+	"d7y.io/dragonfly/v2/internal/ratelimiter"
+	"d7y.io/dragonfly/v2/manager/types"
 )
 
 // CreateJobRateLimiter create job rate limiter middleware
