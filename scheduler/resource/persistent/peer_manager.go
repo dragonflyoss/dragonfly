@@ -217,8 +217,8 @@ local host_id = ARGV[7]
 local cost = ARGV[8]
 local created_at = ARGV[9]
 local updated_at = ARGV[10]
-local ttl_seconds = tonumber(ARGV[11])
-local concurrent_piece_count = ARGV[12]
+local concurrent_piece_count = ARGV[11]
+local ttl_seconds = tonumber(ARGV[12])
 
 -- Store peer information
 redis.call("HSET", peer_key,
