@@ -20,6 +20,9 @@ main() {
         ;;
     manager)
         docker-push manager
+        ;;
+    injector)
+        docker-push injector
     esac
 }
 
