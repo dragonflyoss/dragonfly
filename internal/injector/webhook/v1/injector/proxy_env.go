@@ -35,7 +35,7 @@ func (pei *ProxyEnvInjector) Inject(pod *corev1.Pod, config *InjectConf) {
 	logger.V(1).Info("Injecting proxy environment variables", "pod", pod.Name)
 
 	envs := envsFromConfig(config)
-	
+
 	// Inject environment variables to all containers
 	for i := range pod.Spec.Containers {
 		injectContainerEnv(&pod.Spec.Containers[i], envs)
@@ -75,7 +75,7 @@ func injectContainerEnv(container *corev1.Container, envs []corev1.EnvVar) {
 				break
 			}
 		}
-		
+
 		// Only inject if it doesn't exist
 		if !exists {
 			container.Env = append(container.Env, env)
