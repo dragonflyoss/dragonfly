@@ -23,6 +23,32 @@ It aims to provide a best‑practice, standards‑based solution for cloud‑nat
 improving large‑scale delivery of files, container images, OCI artifacts, AI/ML models, caches,
 logs, dependencies, etc.
 
+## Components
+
+### Dragonfly Injector
+
+A Kubernetes Mutating Admission Webhook that automatically injects Dragonfly P2P capabilities into pods.
+The injector simplifies pod configuration by automating the injection of:
+
+- **P2P Proxy Environment Variables**: Routes application traffic through Dragonfly's P2P network
+- **Dfdaemon Socket Mounts**: Enables CLI tools to communicate with dfdaemon
+- **CLI Tools**: Injects dfget and other tools via init container for base images that don't include them
+
+The injector supports both namespace-level (via labels) and pod-level (via annotations) injection policies.
+
+**Quick Start:**
+```bash
+# Deploy the injector
+kubectl apply -k deploy/injector/
+
+# Enable injection for a namespace
+kubectl label namespace my-namespace dragonfly.io/inject=true
+```
+
+For detailed documentation, see:
+- [Injector README](cmd/injector/README.md)
+- [Deployment Guide](deploy/injector/DEPLOYMENT.md)
+
 ## Documentation
 
 You can find the full documentation on the [d7y.io][d7y.io].
