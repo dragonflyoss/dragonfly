@@ -4642,10 +4642,13 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 					peers[hostID] = &schedulerv2.PeerImage{
 						Ip:           peer.IP,
 						Hostname:     peer.Hostname,
-						CachedLayers: []*schedulerv2.Layer{{Url: url}},
+						CachedLayers: []*schedulerv2.Layer{{Url: url, IsFinished: &peer.IsFinished}},
 					}
 				} else {
-					peers[hostID].CachedLayers = append(peers[hostID].CachedLayers, &schedulerv2.Layer{Url: url})
+					peers[hostID].CachedLayers = append(peers[hostID].CachedLayers, &schedulerv2.Layer{
+						Url:        url,
+						IsFinished: &peer.IsFinished,
+					})
 				}
 				mu.Unlock()
 			}
@@ -4882,6 +4885,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 
 			log := logger.WithStatFileAndTaskID(url, taskID)
 			log.Infof("get task request: %#v", getTaskRequest)
+
 			task, err := v.job.GetTask(ctx, getTaskRequest, log)
 			if err != nil {
 				log.Errorf("get task failed: %s", err.Error())
@@ -4894,9 +4898,15 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerFile{
-						Ip:       peer.IP,
-						Hostname: peer.Hostname,
+						Ip:          peer.IP,
+						Hostname:    peer.Hostname,
+						CachedFiles: []*schedulerv2.File{{Url: url, IsFinished: &peer.IsFinished}},
 					}
+				} else {
+					peers[hostID].CachedFiles = append(peers[hostID].CachedFiles, &schedulerv2.File{
+						Url:        url,
+						IsFinished: &peer.IsFinished,
+					})
 				}
 				mu.Unlock()
 			}
