@@ -4,7 +4,8 @@ A Kubernetes Mutating Admission Webhook that automatically injects Dragonfly P2P
 
 ## Overview
 
-The Dragonfly Injector simplifies Kubernetes pod configuration by automating the injection of Dragonfly's P2P proxy settings, dfdaemon socket mounts, and CLI tools through annotation-based policies.
+The Dragonfly Injector simplifies Kubernetes pod configuration by automating the injection of Dragonfly's P2P proxy
+settings, dfdaemon socket mounts, and CLI tools through annotation-based policies.
 
 ## Features
 

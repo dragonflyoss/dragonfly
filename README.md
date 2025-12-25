@@ -37,6 +37,7 @@ The injector simplifies pod configuration by automating the injection of:
 The injector supports both namespace-level (via labels) and pod-level (via annotations) injection policies.
 
 **Quick Start:**
+
 ```bash
 # Deploy the injector
 kubectl apply -k deploy/injector/
@@ -46,6 +47,7 @@ kubectl label namespace my-namespace dragonfly.io/inject=true
 ```
 
 For detailed documentation, see:
+
 - [Injector README](cmd/injector/README.md)
 - [Deployment Guide](deploy/injector/DEPLOYMENT.md)
 

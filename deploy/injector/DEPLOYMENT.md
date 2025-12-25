@@ -159,6 +159,7 @@ kubectl get pod test-pod -n test-injection -o yaml | grep -A 10 "dragonfly"
 ```
 
 You should see:
+
 - Environment variables (NODE_NAME, DRAGONFLY_PROXY_PORT, DRAGONFLY_INJECT_PROXY, DRAGONFLY_TOOLS_PATH)
 - Init container (d7y-cli-tools)
 - Volume mounts (dfdaemon-unix-sock, d7y-cli-tools-volume)
@@ -191,6 +192,7 @@ kubectl describe certificate -n dragonfly-system dragonfly-injector-serving-cert
 **Symptoms**: Pods created but no dragonfly resources injected
 
 **Solutions**:
+
 - Verify namespace has the label: `kubectl get namespace <namespace> --show-labels`
 - Check webhook configuration: `kubectl get mutatingwebhookconfiguration`
 - Check injector logs for errors
@@ -201,6 +203,7 @@ kubectl describe certificate -n dragonfly-system dragonfly-injector-serving-cert
 **Symptoms**: Webhook fails with TLS/certificate errors
 
 **Solutions**:
+
 - Verify cert-manager is running: `kubectl get pods -n cert-manager`
 - Check certificate status: `kubectl get certificate -n dragonfly-system`
 - Check certificate secret exists: `kubectl get secret dragonfly-injector-webhook-cert -n dragonfly-system`
@@ -211,6 +214,7 @@ kubectl describe certificate -n dragonfly-system dragonfly-injector-serving-cert
 **Symptoms**: Pod creation times out or fails
 
 **Solutions**:
+
 - Check injector pod health: `kubectl get pods -n dragonfly-system`
 - Increase webhook timeout in webhook.yaml
 - Check network policies aren't blocking webhook traffic
@@ -221,6 +225,7 @@ kubectl describe certificate -n dragonfly-system dragonfly-injector-serving-cert
 **Symptoms**: Multiple injectors trying to be leader
 
 **Solutions**:
+
 - Check RBAC permissions for leases
 - Check injector logs for leader election messages
 - Verify only one leader is active
@@ -240,12 +245,14 @@ Then access metrics at `https://localhost:8443/metrics`
 ### Health Checks
 
 Health endpoint:
+
 ```bash
 kubectl port-forward -n dragonfly-system deployment/dragonfly-injector 8081:8081
 curl http://localhost:8081/healthz
 ```
 
 Readiness endpoint:
+
 ```bash
 curl http://localhost:8081/readyz
 ```
@@ -256,10 +263,13 @@ curl http://localhost:8081/readyz
 
 1. Update the image tag in kustomization.yaml or deployment
 2. Apply the changes:
+
    ```bash
    kubectl apply -k deploy/injector/
    ```
+
 3. Wait for rollout to complete:
+
    ```bash
    kubectl rollout status deployment/dragonfly-injector -n dragonfly-system
    ```
@@ -303,6 +313,7 @@ kubectl delete namespace dragonfly-system
 To use custom certificates instead of cert-manager:
 
 1. Create a secret with your certificates:
+
    ```bash
    kubectl create secret tls dragonfly-injector-webhook-cert \
      --cert=path/to/tls.crt \
@@ -320,6 +331,7 @@ For production deployments:
 1. Increase replica count in deployment.yaml
 2. Enable leader election (already enabled by default)
 3. Configure pod disruption budget:
+
    ```yaml
    apiVersion: policy/v1
    kind: PodDisruptionBudget
@@ -370,6 +382,7 @@ spec:
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/dragonflyoss/dragonfly/issues
+
+- [GitHub Issues](https://github.com/dragonflyoss/dragonfly/issues)
 - Slack: #dragonfly on CNCF Slack
-- Documentation: https://d7y.io/
+- [Documentation](https://d7y.io/)
