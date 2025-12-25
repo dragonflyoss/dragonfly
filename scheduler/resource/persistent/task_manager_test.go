@@ -141,7 +141,7 @@ func TestTaskManager_Load(t *testing.T) {
 					pkgredis.MakePersistentTaskKeyInScheduler(42, "goodtask"),
 				).SetVal(mockData)
 			},
-			expectedTask:   NewTask("goodtask", TaskStateSucceeded, 2, 2048, 2, 5*time.Minute, time.Now(), time.Now(), logger.WithTaskID("goodtask")),
+			expectedTask:   NewTask("goodtask", "url", "key", "secret", TaskStateSucceeded, 2, 2048, 2, 5*time.Minute, time.Now(), time.Now(), logger.WithTaskID("goodtask")),
 			expectedLoaded: true,
 		},
 	}

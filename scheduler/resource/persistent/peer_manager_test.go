@@ -159,6 +159,9 @@ func TestPeerManager_Load(t *testing.T) {
 				mockHostManager.Load(gomock.Any(), gomock.Any()).Return(&mockRawHost, true).Times(1)
 				mockTaskManager.Load(gomock.Any(), gomock.Any()).Return(NewTask(
 					"task1",
+					"url",
+					"region",
+					"endpoint",
 					TaskStateSucceeded,
 					1,
 					2048,
@@ -300,6 +303,9 @@ func TestPeerManager_LoadAll(t *testing.T) {
 				mockHostManager.Load(gomock.Any(), gomock.Any()).Return(&mockRawHost, true).Times(1)
 				mockTaskManager.Load(gomock.Any(), gomock.Any()).Return(NewTask(
 					"task1",
+					"url",
+					"region",
+					"endpoint",
 					TaskStateSucceeded,
 					1,
 					2048,
@@ -447,6 +453,9 @@ func TestPeerManager_LoadAllByTaskID(t *testing.T) {
 				mockHostManager.Load(gomock.Any(), gomock.Any()).Return(&mockRawHost, true).Times(1)
 				mockTaskManager.Load(gomock.Any(), gomock.Any()).Return(NewTask(
 					"task1",
+					"url",
+					"region",
+					"endpoint",
 					TaskStateSucceeded,
 					1,
 					2048,
@@ -671,6 +680,9 @@ func TestPeerManager_LoadPersistentAllByTaskID(t *testing.T) {
 				mockHostManager.Load(gomock.Any(), gomock.Any()).Return(&mockRawHost, true).Times(1)
 				mockTaskManager.Load(gomock.Any(), gomock.Any()).Return(NewTask(
 					"task1",
+					"url",
+					"region",
+					"endpoint",
 					TaskStateSucceeded,
 					1,
 					2048,
@@ -884,6 +896,9 @@ func TestPeerManager_LoadAllByHostID(t *testing.T) {
 				mockHostManager.Load(gomock.Any(), gomock.Any()).Return(&mockRawHost, true).Times(1)
 				mockTaskManager.Load(gomock.Any(), gomock.Any()).Return(NewTask(
 					"task1",
+					"url",
+					"region",
+					"endpoint",
 					TaskStateSucceeded,
 					1,
 					2048,

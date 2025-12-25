@@ -31,6 +31,9 @@ func TestNewTask(t *testing.T) {
 	tests := []struct {
 		name                   string
 		id                     string
+		url                    string
+		objectStorageRegion    string
+		objectStorageEndpoint  string
 		state                  string
 		persistentReplicaCount uint64
 		contentLength          uint64
@@ -44,6 +47,9 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with pending state",
 			id:                     "task-1",
+			url:                    "url",
+			objectStorageRegion:    "region",
+			objectStorageEndpoint:  "endpoint",
 			state:                  TaskStatePending,
 			persistentReplicaCount: 3,
 			contentLength:          1024 * 1024 * 10,
@@ -56,6 +62,9 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with uploading state",
 			id:                     "task-2",
+			url:                    "url",
+			objectStorageRegion:    "region",
+			objectStorageEndpoint:  "endpoint",
 			state:                  TaskStateUploading,
 			persistentReplicaCount: 5,
 			contentLength:          1024 * 1024 * 20,
@@ -68,6 +77,9 @@ func TestNewTask(t *testing.T) {
 		{
 			name:                   "new task with tiny file",
 			id:                     "task-3",
+			url:                    "url",
+			objectStorageRegion:    "region",
+			objectStorageEndpoint:  "endpoint",
 			state:                  TaskStateSucceeded,
 			persistentReplicaCount: 2,
 			contentLength:          TinyFileSize,
@@ -83,6 +95,9 @@ func TestNewTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := NewTask(
 				tc.id,
+				tc.url,
+				tc.objectStorageRegion,
+				tc.objectStorageEndpoint,
 				tc.state,
 				tc.persistentReplicaCount,
 				tc.contentLength,
@@ -94,6 +109,9 @@ func TestNewTask(t *testing.T) {
 			)
 
 			assert.Equal(t, tc.id, task.ID)
+			assert.Equal(t, tc.url, task.URL)
+			assert.Equal(t, tc.objectStorageRegion, task.ObjectStorageRegion)
+			assert.Equal(t, tc.objectStorageEndpoint, task.ObjectStorageEndpoint)
 			assert.Equal(t, tc.persistentReplicaCount, task.PersistentReplicaCount)
 			assert.Equal(t, tc.contentLength, task.ContentLength)
 			assert.Equal(t, tc.totalPieceCount, task.TotalPieceCount)

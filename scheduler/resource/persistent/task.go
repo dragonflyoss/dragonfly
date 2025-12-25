@@ -65,6 +65,15 @@ type Task struct {
 	// ID is task id.
 	ID string
 
+	// URL is download url.
+	URL string
+
+	// ObjectStorageRegion is object storage region.
+	ObjectStorageRegion string
+
+	// ObjectStorageEndpoint is object storage endpoint.
+	ObjectStorageEndpoint string
+
 	// Replica count of the persistent task. The persistent task will
 	// not be deleted when dfdamon runs garbage collection. It only be deleted
 	// when the task is deleted by the user.
@@ -93,10 +102,13 @@ type Task struct {
 }
 
 // New persistent task instance.
-func NewTask(id, state string, persistentReplicaCount, contentLength uint64, totalPieceCount uint32, ttl time.Duration, createdAt, updatedAt time.Time,
+func NewTask(id, url, objectStorageRegion, objectStorageEndpoint, state string, persistentReplicaCount, contentLength uint64, totalPieceCount uint32, ttl time.Duration, createdAt, updatedAt time.Time,
 	log *logger.SugaredLoggerOnWith) *Task {
 	t := &Task{
 		ID:                     id,
+		URL:                    url,
+		ObjectStorageRegion:    objectStorageRegion,
+		ObjectStorageEndpoint:  objectStorageEndpoint,
 		PersistentReplicaCount: persistentReplicaCount,
 		ContentLength:          contentLength,
 		TotalPieceCount:        totalPieceCount,

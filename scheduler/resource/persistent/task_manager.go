@@ -120,6 +120,9 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 
 	return NewTask(
 		rawTask["id"],
+		rawTask["url"],
+		rawTask["object_storage_region"],
+		rawTask["object_storage_endpoint"],
 		rawTask["state"],
 		persistentReplicaCount,
 		contentLength,
@@ -156,18 +159,24 @@ local task_key = KEYS[1]  -- Key for the task hash
 
 -- Extract arguments
 local task_id = ARGV[1]
-local persistent_replica_count = ARGV[2]
-local content_length = ARGV[3]
-local total_piece_count = ARGV[4]
-local state = ARGV[5]
-local created_at = ARGV[6]
-local updated_at = ARGV[7]
-local ttl = tonumber(ARGV[8])
-local ttl_seconds = tonumber(ARGV[9])
+local url = ARGV[2]
+local object_storage_region = ARGV[3]
+local object_storage_endpoint = ARGV[4]
+local persistent_replica_count = ARGV[5]
+local content_length = ARGV[6]
+local total_piece_count = ARGV[7]
+local state = ARGV[8]
+local created_at = ARGV[9]
+local updated_at = ARGV[10]
+local ttl = tonumber(ARGV[11])
+local ttl_seconds = tonumber(ARGV[12])
 
 -- Perform HSET operation to store task details
 redis.call("HSET", task_key,
     "id", task_id,
+    "url", url,
+    "object_storage_region", object_storage_region,
+    "object_storage_endpoint", object_storage_endpoint,
     "persistent_replica_count", persistent_replica_count,
     "content_length", content_length,
     "total_piece_count", total_piece_count,
@@ -193,6 +202,9 @@ return true
 	// Prepare arguments.
 	args := []any{
 		task.ID,
+		task.URL,
+		task.ObjectStorageRegion,
+		task.ObjectStorageEndpoint,
 		task.PersistentReplicaCount,
 		task.ContentLength,
 		task.TotalPieceCount,

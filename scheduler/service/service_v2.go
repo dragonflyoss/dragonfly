@@ -2838,7 +2838,7 @@ func (v *V2) UploadPersistentTaskStarted(ctx context.Context, req *schedulerv2.U
 		return status.Errorf(codes.AlreadyExists, "persistent task %s is %s cannot upload", task.ID, task.FSM.Current())
 	}
 
-	task = persistent.NewTask(req.GetTaskId(), persistent.TaskStatePending, req.GetPersistentReplicaCount(),
+	task = persistent.NewTask(req.GetTaskId(), req.GetUrl(), req.GetObjectStorage().GetRegion(), req.GetObjectStorage().GetEndpoint(), persistent.TaskStatePending, req.GetPersistentReplicaCount(),
 		req.GetContentLength(), req.GetPieceCount(), req.GetTtl().AsDuration(), time.Now(), time.Now(), log)
 
 	if err := task.FSM.Event(ctx, persistent.TaskEventUpload); err != nil {
@@ -3001,6 +3001,11 @@ func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.
 
 	advertiseIP := v.config.Server.AdvertiseIP.String()
 	stream, err := dfdaemonClient.DownloadPersistentTask(ctx, &dfdaemonv2.DownloadPersistentTaskRequest{
+		Url: task.URL,
+		ObjectStorage: &commonv2.ObjectStorage{
+			Region:   &task.ObjectStorageRegion,
+			Endpoint: &task.ObjectStorageEndpoint,
+		},
 		Persistent:       true,
 		RemoteIp:         &advertiseIP,
 		NeedPieceContent: false,
