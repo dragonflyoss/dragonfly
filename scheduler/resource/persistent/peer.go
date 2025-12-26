@@ -150,7 +150,7 @@ func NewPeer(id, state string, isPersistent bool, finishedPieces *bitset.BitSet,
 			fsm.EventDesc{Name: PeerEventRegisterNormal, Src: []string{PeerStatePending, PeerStateFailed}, Dst: PeerStateReceivedNormal},
 			fsm.EventDesc{Name: PeerEventDownload, Src: []string{PeerStateReceivedEmpty, PeerStateReceivedNormal}, Dst: PeerStateRunning},
 			fsm.EventDesc{Name: PeerEventSucceeded, Src: []string{PeerStateUploading, PeerStateRunning}, Dst: PeerStateSucceeded},
-			fsm.EventDesc{Name: PeerEventFailed, Src: []string{PeerStateUploading, PeerStateRunning}, Dst: PeerStateFailed},
+			fsm.EventDesc{Name: PeerEventFailed, Src: []string{PeerStatePending, PeerStateReceivedEmpty, PeerStateReceivedNormal, PeerStateUploading, PeerStateRunning}, Dst: PeerStateFailed},
 		},
 		fsm.Callbacks{
 			PeerEventUpload: func(ctx context.Context, e *fsm.Event) {
