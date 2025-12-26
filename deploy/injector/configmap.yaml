@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dragonfly-injector-config
+  namespace: dragonfly-system
+  labels:
+    app: dragonfly
+    component: injector
+data:
+  config.yaml: |
+    # Enable or disable the injector
+    enable: true
+    
+    # Dragonfly dfdaemon proxy port
+    proxy_port: 4001
+    
+    # CLI tools image (supports multi-arch via manifest list)
+    cli_tools_image: "dragonflyoss/toolkits:latest"
+    
+    # Directory path where CLI tools are stored in the image
+    cli_tools_dir_path: "/dragonfly-tools"

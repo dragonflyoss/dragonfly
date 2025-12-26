@@ -1,0 +1,56 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dragonfly-injector-serving-cert
+  namespace: dragonfly-system
+  labels:
+    app: dragonfly
+    component: injector
+spec:
+  # Secret name where the certificate will be stored
+  secretName: dragonfly-injector-webhook-cert
+  
+  # Certificate duration and renewal
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  
+  # Subject information
+  subject:
+    organizations:
+      - dragonfly
+  
+  # Common name for the certificate
+  commonName: dragonfly-injector-webhook-service.dragonfly-system.svc
+  
+  # DNS names for the certificate
+  dnsNames:
+    - dragonfly-injector-webhook-service.dragonfly-system.svc
+    - dragonfly-injector-webhook-service.dragonfly-system.svc.cluster.local
+  
+  # Issuer reference (uses cluster default issuer)
+  issuerRef:
+    kind: Issuer
+    name: dragonfly-injector-selfsigned-issuer
+  
+  # Private key configuration
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  
+  # Usages
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: dragonfly-injector-selfsigned-issuer
+  namespace: dragonfly-system
+  labels:
+    app: dragonfly
+    component: injector
+spec:
+  selfSigned: {}
