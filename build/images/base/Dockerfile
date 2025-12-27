@@ -1,4 +1,4 @@
-FROM quay.io/iovisor/bpftrace:v0.13.0
+FROM quay.io/iovisor/bpftrace:v0.13.0@sha256:9e4fc2ae9ddcf48d2d92aa429391bad67bef01fad83a3703aae3ee1c246954cc
 
 ENV DEBIAN_FRONTEND noninteractive
 
