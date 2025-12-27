@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=alpine:3.21
 
-FROM golang:1.23.8-alpine3.21 AS builder
+FROM golang:1.24.11-alpine3.21@sha256:59a9237590705e00dd04bb43f9f75562caced1393b8767b4666a658daeb93e61 AS builder
 
 ARG GOPROXY
 ARG GOTAGS
