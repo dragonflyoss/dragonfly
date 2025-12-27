@@ -2,7 +2,7 @@
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
-Dragonfly is a P2P file distribution and image acceleration system written in Go 1.23.8. It consists of multiple components: manager (cluster management and web portal), scheduler (download optimization), dfget (P2P download client), dfcache (P2P cache operations), and dfstore (object storage with P2P cache).
+Dragonfly is a P2P file distribution and image acceleration system written in Go 1.24.11. It consists of multiple components: manager (cluster management and web portal), scheduler (download optimization), dfget (P2P download client), dfcache (P2P cache operations), and dfstore (object storage with P2P cache).
 
 ## Working Effectively
 
@@ -113,7 +113,7 @@ After making changes, always validate:
 
 ### Important Files
 - `Makefile`: All build, test, and lint targets
-- `go.mod`: Go 1.23.8 dependencies
+- `go.mod`: Go 1.24.11 dependencies
 - `.golangci.yml`: Linting configuration
 - `.markdownlint.yml`: Markdown linting rules
 
@@ -155,7 +155,7 @@ go mod download
 ### Build Issues
 - **"build-manager-console" fails**: This is expected. The console frontend is not included. Use individual component build targets.
 - **Missing tools**: Install golangci-lint and ginkgo as shown in bootstrap section.
-- **Go version**: Requires Go 1.23.8 as specified in go.mod.
+- **Go version**: Requires Go 1.24.11 as specified in go.mod.
 
 ### Test Issues
 - **Unit test failures**: Some tests may fail in sandboxed environments due to network/permission restrictions. This is expected.
