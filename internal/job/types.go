@@ -111,12 +111,13 @@ type ListTaskEntriesResponse struct {
 
 // Peer represents the peer information.
 type Peer struct {
-	ID        string    `json:"id"`
-	Hostname  string    `json:"hostname"`
-	IP        string    `json:"ip"`
-	HostType  string    `json:"host_type"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         string    `json:"id"`
+	Hostname   string    `json:"hostname"`
+	IP         string    `json:"ip"`
+	HostType   string    `json:"host_type"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	IsFinished bool      `json:"IsFinished"`
 }
 
 // DeleteTaskRequest defines the request parameters for deleting task.
