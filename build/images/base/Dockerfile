@@ -1,4 +1,4 @@
-FROM quay.io/iovisor/bpftrace:v0.13.0
+FROM quay.io/iovisor/bpftrace:v0.13.0@sha256:9e4fc2ae9ddcf48d2d92aa429391bad67bef01fad83a3703aae3ee1c246954cc
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -11,9 +11,9 @@ RUN apt-get update \
 ENV PATH=/go/bin:/usr/local/go/bin:$PATH
 
 ENV GOPATH=/go
-ENV GOLANG_VERSION 1.23.8
-ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go1.23.8.linux-amd64.tar.gz
-ENV GOLANG_DOWNLOAD_SHA256 000a5b1fca4f75895f78befeb2eecf10bfff3c428597f3f1e69133b63b911b02
+ENV GOLANG_VERSION 1.24.11
+ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go1.24.11.linux-amd64.tar.gz
+ENV GOLANG_DOWNLOAD_SHA256 bceca00afaac856bc48b4cc33db7cd9eb383c81811379faed3bdbc80edb0af65
 
 ARG GOPROXY
 
