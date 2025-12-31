@@ -28,12 +28,12 @@ build-dirs:
 .PHONY: build-dirs
 
 # Build dragonfly.
-docker-build: docker-build-scheduler docker-build-manager
+docker-build: docker-build-scheduler docker-build-manager docker-build-injector
 	@echo "Build image done."
 .PHONY: docker-build
 
 # Push dragonfly images.
-docker-push: docker-push-scheduler docker-push-manager
+docker-push: docker-push-scheduler docker-push-manager docker-push-injector
 	@echo "Push image done."
 .PHONY: docker-push
 
@@ -61,8 +61,20 @@ docker-push-manager: docker-build-manager
 	./hack/docker-push.sh manager
 .PHONY: docker-push-manager
 
+# Build injector image.
+docker-build-injector:
+	@echo "Begin to use docker build injector image."
+	./hack/docker-build.sh injector
+.PHONY: docker-build-injector
+
+# Push injector image.
+docker-push-injector: docker-build-injector
+	@echo "Begin to push injector docker image."
+	./hack/docker-push.sh injector
+.PHONY: docker-push-injector
+
 # Build dragonfly.
-build: build-manager build-scheduler
+build: build-manager build-scheduler build-injector
 .PHONY: build
 
 # Build scheduler.
@@ -100,6 +112,18 @@ install-manager:
 	@echo "Begin to install manager."
 	./hack/install.sh install manager
 .PHONY: install-manager
+
+# Build injector.
+build-injector: build-dirs
+	@echo "Begin to build injector."
+	./hack/build.sh injector
+.PHONY: build-injector
+
+# Install injector.
+install-injector:
+	@echo "Begin to install injector."
+	./hack/install.sh install injector
+.PHONY: install-injector
 
 # Run unittests.
 test:

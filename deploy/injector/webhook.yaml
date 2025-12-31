@@ -1,0 +1,50 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: dragonfly-injector-webhook
+  labels:
+    app: dragonfly
+    component: injector
+  annotations:
+    cert-manager.io/inject-ca-from: dragonfly-system/dragonfly-injector-serving-cert
+webhooks:
+  - name: mpod-v1.d7y.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dragonfly-injector-webhook-service
+        namespace: dragonfly-system
+        path: /mutate--v1-pod
+        port: 443
+      # caBundle is automatically injected by cert-manager
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    namespaceSelector:
+      matchExpressions:
+        - key: dragonfly.io/inject
+          operator: In
+          values:
+            - "true"
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - dragonfly-system
+    objectSelector: {}
+    reinvocationPolicy: Never
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+        scope: "*"
+    sideEffects: None
+    timeoutSeconds: 10

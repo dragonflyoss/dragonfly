@@ -53,6 +53,9 @@ main() {
     manager)
         git-submodule
         docker-build manager
+        ;;
+    injector)
+        docker-build injector
     esac
 }
 
