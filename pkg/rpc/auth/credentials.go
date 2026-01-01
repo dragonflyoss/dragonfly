@@ -23,5 +23,6 @@ func (c *PerRPCCreds) GetRequestMetadata(ctx context.Context, uri ...string) (ma
 	}, nil
 }
 
-// For now keep false to avoid breaking existing insecure transports; can be tightened later.
+// RequireTransportSecurity returns false for backward compatibility with existing deployments.
+// In production, configure TLS separately via server.TLS config to secure JWT transmission.
 func (c *PerRPCCreds) RequireTransportSecurity() bool { return false }

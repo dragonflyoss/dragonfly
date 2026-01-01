@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	jwtlib "github.com/golang-jwt/jwt/v5"
@@ -15,16 +16,24 @@ type Claims struct {
 	Expires  time.Time `json:"exp"`
 }
 
-// internal registry for per-component server keys (temporary until config wiring is complete).
-var serverKeys = map[string]string{}
+// Global registry for per-component server keys with thread-safe access.
+// This allows components to register their JWT keys at startup for use in interceptors.
+var (
+	serverKeysMu sync.RWMutex
+	serverKeys   = map[string]string{}
+)
 
 // SetServerKey sets the shared signing key for a component's server (e.g., "manager", "scheduler").
 func SetServerKey(component, key string) {
+	serverKeysMu.Lock()
+	defer serverKeysMu.Unlock()
 	serverKeys[component] = key
 }
 
 // GetServerKey retrieves the key for a component server.
 func GetServerKey(component string) string {
+	serverKeysMu.RLock()
+	defer serverKeysMu.RUnlock()
 	return serverKeys[component]
 }
 
