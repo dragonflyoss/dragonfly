@@ -100,10 +100,14 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
 	// Attach JWT per-RPC creds for inter-component calls if a key is provided.
 	if key := cfg.Auth.JWT.Key; key != "" {
-		claims := auth.DurationClaims(types.SchedulerName, types.ManagerName, 10*time.Minute)
-		if token, err := auth.SignHS256(key, claims); err == nil {
-			managerDialOptions = append(managerDialOptions, grpc.WithPerRPCCredentials(auth.NewPerRPCCreds(token)))
+		// Use configured JWT timeout instead of hardcoded value to match server validation expectations.
+		claims := auth.DurationClaims(types.SchedulerName, types.ManagerName, cfg.Auth.JWT.Timeout)
+		token, err := auth.SignHS256(key, claims)
+		if err != nil {
+			logger.Errorf("failed to sign JWT for manager client: %v", err)
+			return nil, err
 		}
+		managerDialOptions = append(managerDialOptions, grpc.WithPerRPCCredentials(auth.NewPerRPCCreds(token)))
 	}
 	if cfg.Manager.TLS != nil {
 		clientTransportCredentials, err := rpc.NewClientCredentials(cfg.Manager.TLS.CACert, cfg.Manager.TLS.Cert, cfg.Manager.TLS.Key)
