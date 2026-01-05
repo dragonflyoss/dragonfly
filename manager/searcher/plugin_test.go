@@ -44,7 +44,7 @@ func TestLoadPlugin(t *testing.T) {
 	output, err = cmd.CombinedOutput()
 	assert.Nil(err)
 	if err != nil {
-		t.Fatalf(string(output))
+		t.Fatalf("command failed: %s", string(output))
 		return
 	}
 
@@ -53,7 +53,7 @@ func TestLoadPlugin(t *testing.T) {
 	output, err = cmd.CombinedOutput()
 	assert.Nil(err)
 	if err != nil {
-		t.Fatalf(string(output))
+		t.Fatalf("command failed: %s", string(output))
 		return
 	}
 
@@ -66,7 +66,7 @@ func TestLoadPlugin(t *testing.T) {
 	output, err = cmd.CombinedOutput()
 	assert.Nil(err)
 	if err != nil {
-		t.Fatalf(string(output))
+		t.Fatalf("command failed: %s", string(output))
 		return
 	}
 }
