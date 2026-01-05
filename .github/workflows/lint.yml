@@ -23,7 +23,7 @@ jobs:
       - name: Golangci lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
         with:
-          version: v2.3
+          version: v2.7
 
       - name: Markdown lint
         uses: docker://avtodev/markdown-lint:v1@sha256:6aeedc2f49138ce7a1cd0adffc1b1c0321b841dc2102408967d9301c031949ee

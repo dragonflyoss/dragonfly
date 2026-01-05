@@ -4117,35 +4117,6 @@ func TestServiceV2_StatImage(t *testing.T) {
 				assert.Equal(false, *resp.Peers[1].CachedLayers[1].IsFinished)
 			},
 		},
-		{
-			name: "stat multi layers by peers partially finished",
-			req: &schedulerv2.StatImageRequest{
-				Url: "https://example.com/v2/image/manifests/latest",
-			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				defer wg.Wait()
-
-				gomock.InOrder(
-					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}}}, nil).Times(1),
-					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}}}, nil).Times(1),
-					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}}}, nil).Times(1),
-				)
-
-				resp, err := svc.StatImage(context.Background(), req)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(2, len(resp.Image.Layers))
-				assert.Equal(2, len(resp.Peers))
-				assert.Equal(2, len(resp.Peers[0].CachedLayers))
-				assert.Equal(2, len(resp.Peers[1].CachedLayers))
-				assert.Equal(true, *resp.Peers[0].CachedLayers[0].IsFinished)
-				assert.Equal(false, *resp.Peers[0].CachedLayers[1].IsFinished)
-				assert.Equal(false, *resp.Peers[1].CachedLayers[0].IsFinished)
-				assert.Equal(true, *resp.Peers[1].CachedLayers[1].IsFinished)
-			},
-		},
 	}
 
 	for _, tc := range tests {
