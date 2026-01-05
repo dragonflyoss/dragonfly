@@ -12,7 +12,7 @@ require (
 	github.com/casbin/casbin/v2 v2.81.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/containerd/containerd v1.6.38
+	github.com/containerd/containerd v1.7.30
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/docker/go-connections v0.6.0
@@ -64,11 +64,11 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.41.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
 	google.golang.org/api v0.248.0
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.11
@@ -92,7 +92,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
-	github.com/Microsoft/hcsshim v0.9.12 // indirect
+	github.com/Microsoft/hcsshim v0.11.7 // indirect
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -102,12 +102,12 @@ require (
 	github.com/casbin/govaluate v1.1.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
+	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/distribution/reference v0.5.0 // indirect
+	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
@@ -207,11 +207,11 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.20.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
@@ -219,4 +219,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
+	gotest.tools/v3 v3.5.2 // indirect
 )
