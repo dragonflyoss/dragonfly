@@ -711,8 +711,7 @@ return true
 	}
 
 	// Execute the script.
-	err := script.Run(ctx, h.rdb, keys, args...).Err()
-	if err != nil {
+	if err := script.Run(ctx, h.rdb, keys, args...).Err(); err != nil {
 		log.Errorf("delete host failed: %v", err)
 		return err
 	}
