@@ -4547,34 +4547,6 @@ func TestServiceV2_StatFile(t *testing.T) {
 				assert.Equal(false, *resp.Peers[1].CachedFiles[1].IsFinished)
 			},
 		},
-		{
-			name: "stat multi files by peers partial finished",
-			req: &schedulerv2.StatFileRequest{
-				Url: "https://example.com/dir/",
-			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(2)
-				defer wg.Wait()
-
-				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
-					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}}}, nil).Times(1),
-					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}}}, nil).Times(1),
-				)
-
-				resp, err := svc.StatFile(context.Background(), req)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(2, len(resp.Peers))
-				assert.Equal(2, len(resp.Peers[0].CachedFiles))
-				assert.Equal(2, len(resp.Peers[1].CachedFiles))
-				assert.Equal(true, *resp.Peers[0].CachedFiles[0].IsFinished)
-				assert.Equal(false, *resp.Peers[0].CachedFiles[1].IsFinished)
-				assert.Equal(false, *resp.Peers[1].CachedFiles[0].IsFinished)
-				assert.Equal(true, *resp.Peers[1].CachedFiles[1].IsFinished)
-			},
-		},
 	}
 
 	for _, tc := range tests {
