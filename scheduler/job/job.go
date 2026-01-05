@@ -946,7 +946,7 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 				HostType:   host.Type.Name(),
 				CreatedAt:  host.CreatedAt.Load(),
 				UpdatedAt:  host.UpdatedAt.Load(),
-				IsFinished: localTask.FinishedAt != nil,
+				IsFinished: localTask.GetFinishedAt() != nil,
 			})
 			mu.Unlock()
 
