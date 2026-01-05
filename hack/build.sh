@@ -8,7 +8,7 @@ SCHEDULER_BINARY_NAME=scheduler
 MANAGER_BINARY_NAME=manager
 
 PKG=d7y.io/dragonfly/v2
-BUILD_IMAGE=golang:1.24.11-alpine3.21
+BUILD_IMAGE=golang:1.25.5-alpine3.21
 
 VERSION=$(git rev-parse --short HEAD)
 BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')

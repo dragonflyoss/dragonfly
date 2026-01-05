@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.24.11
+go 1.25.5
 
 require (
 	d7y.io/api/v2 v2.2.8

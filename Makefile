@@ -13,8 +13,6 @@
 # limitations under the License.
 
 PROJECT_NAME := "d7y.io/dragonfly/v2"
-SEMVER := "2.3.5"
-VERSION_RELEASE := "1"
 PKG := "$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/ | grep -v '\(/test/\)')
 GIT_COMMIT := $(shell git rev-parse --verify HEAD --short=7)
