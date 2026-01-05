@@ -222,8 +222,7 @@ return true
 	}
 
 	// Execute the script.
-	err := script.Run(ctx, t.rdb, keys, args...).Err()
-	if err != nil {
+	if err := script.Run(ctx, t.rdb, keys, args...).Err(); err != nil {
 		task.Log.Errorf("store task failed: %v", err)
 		return err
 	}

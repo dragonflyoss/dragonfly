@@ -282,8 +282,7 @@ return true
 	}
 
 	// Execute the script.
-	err = script.Run(ctx, p.rdb, keys, args...).Err()
-	if err != nil {
+	if err = script.Run(ctx, p.rdb, keys, args...).Err(); err != nil {
 		peer.Log.Errorf("store peer failed: %v", err)
 		return err
 	}

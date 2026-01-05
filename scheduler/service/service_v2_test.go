@@ -4059,6 +4059,93 @@ func TestServiceV2_StatImage(t *testing.T) {
 				assert.Equal(0, len(resp.Peers))
 			},
 		},
+		{
+			name: "stat multi layers by peers all finished",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Image.Layers))
+				assert.Equal(2, len(resp.Peers))
+				assert.Equal(2, len(resp.Peers[0].CachedLayers))
+				assert.Equal(2, len(resp.Peers[1].CachedLayers))
+				assert.Equal(true, *resp.Peers[0].CachedLayers[0].IsFinished)
+				assert.Equal(true, *resp.Peers[0].CachedLayers[1].IsFinished)
+				assert.Equal(true, *resp.Peers[1].CachedLayers[0].IsFinished)
+				assert.Equal(true, *resp.Peers[1].CachedLayers[1].IsFinished)
+			},
+		},
+		{
+			name: "stat multi layers by peers no finished",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Image.Layers))
+				assert.Equal(2, len(resp.Peers))
+				assert.Equal(2, len(resp.Peers[0].CachedLayers))
+				assert.Equal(2, len(resp.Peers[1].CachedLayers))
+				assert.Equal(false, *resp.Peers[0].CachedLayers[0].IsFinished)
+				assert.Equal(false, *resp.Peers[0].CachedLayers[1].IsFinished)
+				assert.Equal(false, *resp.Peers[1].CachedLayers[0].IsFinished)
+				assert.Equal(false, *resp.Peers[1].CachedLayers[1].IsFinished)
+			},
+		},
+		{
+			name: "stat multi layers by peers partially finished",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Image.Layers))
+				assert.Equal(2, len(resp.Peers))
+				assert.Equal(2, len(resp.Peers[0].CachedLayers))
+				assert.Equal(2, len(resp.Peers[1].CachedLayers))
+				assert.Equal(true, *resp.Peers[0].CachedLayers[0].IsFinished)
+				assert.Equal(false, *resp.Peers[0].CachedLayers[1].IsFinished)
+				assert.Equal(false, *resp.Peers[1].CachedLayers[0].IsFinished)
+				assert.Equal(true, *resp.Peers[1].CachedLayers[1].IsFinished)
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -4402,6 +4489,62 @@ func TestServiceV2_StatFile(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat multi files by peers all finished",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: true}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: true}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Peers))
+				assert.Equal(2, len(resp.Peers[0].CachedFiles))
+				assert.Equal(2, len(resp.Peers[1].CachedFiles))
+				assert.Equal(true, *resp.Peers[0].CachedFiles[0].IsFinished)
+				assert.Equal(true, *resp.Peers[0].CachedFiles[1].IsFinished)
+				assert.Equal(true, *resp.Peers[1].CachedFiles[0].IsFinished)
+				assert.Equal(true, *resp.Peers[1].CachedFiles[1].IsFinished)
+			},
+		},
+		{
+			name: "stat multi files by peers no finished",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/dir/file1.txt"}, {Url: "https://example.com/dir/file2.txt"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}, {IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-2", IsFinished: false}, {IP: "127.0.0.1", Hostname: "peer-1", IsFinished: false}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatFile(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(2, len(resp.Peers))
+				assert.Equal(2, len(resp.Peers[0].CachedFiles))
+				assert.Equal(2, len(resp.Peers[1].CachedFiles))
+				assert.Equal(false, *resp.Peers[0].CachedFiles[0].IsFinished)
+				assert.Equal(false, *resp.Peers[0].CachedFiles[1].IsFinished)
+				assert.Equal(false, *resp.Peers[1].CachedFiles[0].IsFinished)
+				assert.Equal(false, *resp.Peers[1].CachedFiles[1].IsFinished)
 			},
 		},
 	}

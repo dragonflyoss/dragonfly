@@ -1996,32 +1996,24 @@ func (v *V2) AnnouncePersistentPeer(stream schedulerv2.Scheduler_AnnouncePersist
 			return nil
 		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceFinishedRequest:
 			log.Info("receive DownloadPieceFinishedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentPieceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceFinishedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			if err := v.handleDownloadPersistentPieceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceFinishedRequest); err != nil {
+				log.Error(err)
+			}
 		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceBackToSourceFinishedRequest:
 			log.Info("receive DownloadPieceBackToSourceFinishedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentPieceBackToSourceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceBackToSourceFinishedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			if err := v.handleDownloadPersistentPieceBackToSourceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceBackToSourceFinishedRequest); err != nil {
+				log.Error(err)
+			}
 		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceFailedRequest:
 			log.Info("receive DownloadPieceFailedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentPieceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceFailedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			if err := v.handleDownloadPersistentPieceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceFailedRequest); err != nil {
+				log.Error(err)
+			}
 		case *schedulerv2.AnnouncePersistentPeerRequest_DownloadPieceBackToSourceFailedRequest:
-			log.Info("receive DownloadPieceFailedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentPieceBackToSourceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceBackToSourceFailedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			log.Info("receive DownloadPieceBackToSourceFailedRequest")
+			if err := v.handleDownloadPersistentPieceBackToSourceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentPeerRequest.DownloadPieceBackToSourceFailedRequest); err != nil {
+				log.Error(err)
+			}
 		default:
 			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentPeerRequest)
 			log.Error(msg)
@@ -2546,17 +2538,17 @@ func (v *V2) handleDownloadPersistentPieceFinishedRequest(ctx context.Context, p
 	peer.FinishedPieces.Set(uint(piece.GetNumber()))
 	peer.UpdatedAt = time.Now()
 
+	// Update metadata of the persistent peer.
+	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
 	parent, loadedParent := v.persistentResource.PeerManager().Load(ctx, piece.GetParentId())
 	if !loadedParent {
 		return status.Errorf(codes.NotFound, "parent peer %s not found", piece.GetParentId())
 	}
 	parent.UpdatedAt = time.Now()
 	parent.Host.UpdatedAt = time.Now()
-
-	// Update metadata of the persistent peer.
-	if err := v.persistentResource.PeerManager().Store(ctx, peer); err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
 
 	// Update metadata of the persistent peer's parent.
 	if err := v.persistentResource.PeerManager().Store(ctx, parent); err != nil {
@@ -3288,18 +3280,14 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 			return nil
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPieceFinishedRequest:
 			log.Info("receive DownloadPieceFinishedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentCachePieceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentCachePeerRequest.DownloadPieceFinishedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			if err := v.handleDownloadPersistentCachePieceFinishedRequest(context.Background(), req.GetPeerId(), announcePersistentCachePeerRequest.DownloadPieceFinishedRequest); err != nil {
+				log.Error(err)
+			}
 		case *schedulerv2.AnnouncePersistentCachePeerRequest_DownloadPieceFailedRequest:
 			log.Info("receive DownloadPieceFailedRequest")
-			go func() {
-				if err := v.handleDownloadPersistentCachePieceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentCachePeerRequest.DownloadPieceFailedRequest); err != nil {
-					log.Error(err)
-				}
-			}()
+			if err := v.handleDownloadPersistentCachePieceFailedRequest(context.Background(), req.GetPeerId(), announcePersistentCachePeerRequest.DownloadPieceFailedRequest); err != nil {
+				log.Error(err)
+			}
 		default:
 			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentCachePeerRequest)
 			log.Error(msg)
@@ -3784,17 +3772,17 @@ func (v *V2) handleDownloadPersistentCachePieceFinishedRequest(ctx context.Conte
 	peer.FinishedPieces.Set(uint(piece.GetNumber()))
 	peer.UpdatedAt = time.Now()
 
+	// Update metadata of the persistent cache peer.
+	if err := v.persistentCacheResource.PeerManager().Store(ctx, peer); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
 	parent, loadedParent := v.persistentCacheResource.PeerManager().Load(ctx, piece.GetParentId())
 	if !loadedParent {
 		return status.Errorf(codes.NotFound, "parent peer %s not found", piece.GetParentId())
 	}
 	parent.UpdatedAt = time.Now()
 	parent.Host.UpdatedAt = time.Now()
-
-	// Update metadata of the persistent cache peer.
-	if err := v.persistentCacheResource.PeerManager().Store(ctx, peer); err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
 
 	// Update metadata of the persistent cache peer's parent.
 	if err := v.persistentCacheResource.PeerManager().Store(ctx, parent); err != nil {
@@ -4647,10 +4635,13 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 					peers[hostID] = &schedulerv2.PeerImage{
 						Ip:           peer.IP,
 						Hostname:     peer.Hostname,
-						CachedLayers: []*schedulerv2.Layer{{Url: url}},
+						CachedLayers: []*schedulerv2.Layer{{Url: url, IsFinished: &peer.IsFinished}},
 					}
 				} else {
-					peers[hostID].CachedLayers = append(peers[hostID].CachedLayers, &schedulerv2.Layer{Url: url})
+					peers[hostID].CachedLayers = append(peers[hostID].CachedLayers, &schedulerv2.Layer{
+						Url:        url,
+						IsFinished: &peer.IsFinished,
+					})
 				}
 				mu.Unlock()
 			}
@@ -4887,6 +4878,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 
 			log := logger.WithStatFileAndTaskID(url, taskID)
 			log.Infof("get task request: %#v", getTaskRequest)
+
 			task, err := v.job.GetTask(ctx, getTaskRequest, log)
 			if err != nil {
 				log.Errorf("get task failed: %s", err.Error())
@@ -4899,9 +4891,15 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerFile{
-						Ip:       peer.IP,
-						Hostname: peer.Hostname,
+						Ip:          peer.IP,
+						Hostname:    peer.Hostname,
+						CachedFiles: []*schedulerv2.File{{Url: url, IsFinished: &peer.IsFinished}},
 					}
+				} else {
+					peers[hostID].CachedFiles = append(peers[hostID].CachedFiles, &schedulerv2.File{
+						Url:        url,
+						IsFinished: &peer.IsFinished,
+					})
 				}
 				mu.Unlock()
 			}

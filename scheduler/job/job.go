@@ -929,22 +929,24 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 			}
 
 			advertiseIP := j.config.Server.AdvertiseIP.String()
-			if _, err = dfdaemonClient.StatLocalTask(ctx, &dfdaemonv2.StatLocalTaskRequest{
+			localTask, err := dfdaemonClient.StatLocalTask(ctx, &dfdaemonv2.StatLocalTaskRequest{
 				TaskId:   req.TaskID,
 				RemoteIp: &advertiseIP,
-			}); err != nil {
+			})
+			if err != nil {
 				log.Errorf("[get-task] stat task failed: %s", err.Error())
 				return nil
 			}
 
 			mu.Lock()
 			resp.Peers = append(resp.Peers, &internaljob.Peer{
-				ID:        host.ID,
-				Hostname:  host.Hostname,
-				IP:        host.IP,
-				HostType:  host.Type.Name(),
-				CreatedAt: host.CreatedAt.Load(),
-				UpdatedAt: host.UpdatedAt.Load(),
+				ID:         host.ID,
+				Hostname:   host.Hostname,
+				IP:         host.IP,
+				HostType:   host.Type.Name(),
+				CreatedAt:  host.CreatedAt.Load(),
+				UpdatedAt:  host.UpdatedAt.Load(),
+				IsFinished: localTask.GetFinishedAt() != nil,
 			})
 			mu.Unlock()
 
