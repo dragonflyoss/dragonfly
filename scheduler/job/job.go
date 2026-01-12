@@ -23,7 +23,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/dragonflyoss/machinery/v1"
@@ -279,7 +281,7 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 		return nil, err
 	}
 
-	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
 	log.Infof("[preheat]: selected seed peer %s", addr)
 
 	// TODO(chlins): reuse the client if we encounter the performance issue in future.
@@ -363,7 +365,7 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 		return nil, err
 	}
 
-	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
 	log.Infof("[preheat]: selected seed peer %s", addr)
 
 	client, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
@@ -445,7 +447,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 					port     = seedPeer.Port
 				)
 
-				addr := fmt.Sprintf("%s:%d", ip, port)
+				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg, _ := errgroup.WithContext(ctx)
 				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
@@ -665,7 +667,7 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 					port     = peer.Port
 				)
 
-				addr := fmt.Sprintf("%s:%d", ip, port)
+				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg, _ := errgroup.WithContext(ctx)
 				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
@@ -921,7 +923,7 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	eg.SetLimit(int(req.ConcurrentPeerCount))
 	for _, host := range hosts {
 		eg.Go(func() error {
-			addr := fmt.Sprintf("%s:%d", host.IP, host.Port)
+			addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
 			dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 			if err != nil {
 				log.Warnf("[get-task] get client from %s failed: %s", addr, err.Error())
@@ -996,7 +998,7 @@ func (j *job) deleteTask(ctx context.Context, data string) (string, error) {
 	for _, finishedPeer := range finishedPeers {
 		log := logger.WithDeleteTaskJobAndPeer(req.GroupUUID, req.TaskUUID, finishedPeer.Host.ID, finishedPeer.Task.ID, finishedPeer.ID)
 
-		addr := fmt.Sprintf("%s:%d", finishedPeer.Host.IP, finishedPeer.Host.Port)
+		addr := net.JoinHostPort(finishedPeer.Host.IP, strconv.Itoa(int(finishedPeer.Host.Port)))
 		dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 		if err != nil {
 			log.Errorf("[delete-task] get client from %s failed: %s", addr, err.Error())
@@ -1058,7 +1060,7 @@ func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntr
 		selected = peers[0]
 	}
 
-	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
 	log.Infof("[list-task-entries] selected seed peer %s for task %s", addr, req.TaskID)
 
 	dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)

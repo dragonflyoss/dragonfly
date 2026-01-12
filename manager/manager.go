@@ -303,6 +303,7 @@ func (s *Server) Serve() error {
 		return fmt.Errorf("format ip failed: %s", ip)
 	}
 
+	// NOTE: ip.FormatIP already returns bracketed IPv6 (e.g. "[::]"), so JoinHostPort would double-bracket.
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, s.config.Server.GRPC.Port.Start))
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %v", err)
