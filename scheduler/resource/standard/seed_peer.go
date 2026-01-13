@@ -22,6 +22,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -123,7 +125,7 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 		return err
 	}
 
-	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
 	logger.Infof("selected seed peer %s for task %s", addr, taskID)
 
 	client, err := s.clientPool.Get(addr, s.dialOptions...)
@@ -173,7 +175,7 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 		return nil, nil, err
 	}
 
-	addr := fmt.Sprintf("%s:%d", selected.IP, selected.Port)
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
 	logger.Infof("selected seed peer %s for task %s", addr, task.ID)
 
 	// TODO(chlins): reuse the client if we encounter the performance issue in future.
@@ -341,7 +343,7 @@ func (s *seedPeer) refresh(ctx context.Context) error {
 	healthyHosts := &sync.Map{}
 	// Do the health check for each seed peer.
 	for _, host := range hosts {
-		addr := fmt.Sprintf("%s:%d", host.IP, host.Port)
+		addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
 		if err := healthclient.Check(ctx, addr, s.dialOptions...); err != nil {
 			logger.Errorf("failed to check the healthy for seed peer %s: %v", addr, err)
 		} else {
