@@ -39,6 +39,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 )
 
 const (
@@ -61,6 +62,7 @@ const (
 // New returns a grpc server instance and register service on grpc server.
 func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedulerv2.SchedulerServer, opts ...grpc.ServerOption) *grpc.Server {
 	limiter := rpc.NewRateLimiterInterceptor(DefaultQPS, DefaultBurst)
+	jwtKey := auth.GetServerKey("scheduler")
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),
@@ -75,6 +77,7 @@ func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedu
 			MaxConnectionAgeGrace: DefaultMaxConnectionAgeGrace,
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			auth.UnaryServerJWTInterceptor(jwtKey, "scheduler"),
 			grpc_ratelimit.UnaryServerInterceptor(limiter),
 			rpc.ConvertErrorUnaryServerInterceptor,
 			grpc_prometheus.UnaryServerInterceptor,
@@ -83,6 +86,7 @@ func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedu
 			grpc_recovery.UnaryServerInterceptor(),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			auth.StreamServerJWTInterceptor(jwtKey, "scheduler"),
 			grpc_ratelimit.StreamServerInterceptor(limiter),
 			rpc.ConvertErrorStreamServerInterceptor,
 			grpc_prometheus.StreamServerInterceptor,

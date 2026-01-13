@@ -39,6 +39,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 )
 
 const (
@@ -61,6 +62,7 @@ const (
 // New returns grpc server instance and register service on grpc server.
 func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, opts ...grpc.ServerOption) *grpc.Server {
 	limiter := rpc.NewRateLimiterInterceptor(DefaultQPS, DefaultBurst)
+	jwtKey := auth.GetServerKey("manager")
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),
@@ -75,6 +77,7 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 			MaxConnectionAgeGrace: DefaultMaxConnectionAgeGrace,
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			auth.UnaryServerJWTInterceptor(jwtKey, "manager"),
 			grpc_ratelimit.UnaryServerInterceptor(limiter),
 			grpc_prometheus.UnaryServerInterceptor,
 			grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
@@ -82,6 +85,7 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 			grpc_recovery.UnaryServerInterceptor(),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			auth.StreamServerJWTInterceptor(jwtKey, "manager"),
 			grpc_ratelimit.StreamServerInterceptor(limiter),
 			grpc_prometheus.StreamServerInterceptor,
 			grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
