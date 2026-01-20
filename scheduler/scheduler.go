@@ -18,10 +18,10 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -34,7 +34,6 @@ import (
 	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
 	"d7y.io/dragonfly/v2/pkg/gc"
-	"d7y.io/dragonfly/v2/pkg/net/ip"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
@@ -291,14 +290,7 @@ func (s *Server) Serve() error {
 		logger.Info("resource start successfully")
 	}()
 
-	// Generate GRPC listener.
-	ip, ok := ip.FormatIP(s.config.Server.ListenIP.String())
-	if !ok {
-		return fmt.Errorf("format ip failed: %s", ip)
-	}
-
-	// NOTE: ip.FormatIP already returns bracketed IPv6 (e.g. "[::]"), so JoinHostPort would double-bracket.
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, s.config.Server.Port))
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.config.Server.ListenIP.String(), strconv.Itoa(s.config.Server.Port)))
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %s", err.Error())
 	}
