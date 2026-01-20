@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/go-http-utils/headers"
@@ -962,7 +964,7 @@ func (v *V1) registerSmallTask(ctx context.Context, peer *resource.Peer) (*sched
 		DirectPiece: &schedulerv1.RegisterResult_SinglePiece{
 			SinglePiece: &schedulerv1.SinglePiece{
 				DstPid:    candidateParent.ID,
-				DstAddr:   fmt.Sprintf("%s:%d", candidateParent.Host.IP, candidateParent.Host.DownloadPort),
+				DstAddr:   net.JoinHostPort(candidateParent.Host.IP, strconv.Itoa(int(candidateParent.Host.DownloadPort))),
 				PieceInfo: pieceInfo,
 			},
 		},

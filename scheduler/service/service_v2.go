@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -2785,7 +2787,7 @@ func (v *V2) DeletePersistentPeer(_ctx context.Context, req *schedulerv2.DeleteP
 	}
 
 	// Delete the persistent task from the peer, if delete failed, skip it.
-	addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+	addr := net.JoinHostPort(peer.Host.IP, strconv.Itoa(int(peer.Host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -2988,7 +2990,7 @@ func (v *V2) replicatePersistentTask(ctx context.Context, peer *persistent.Peer,
 
 // downloadPersistentTaskByPeer downloads the persistent task by peer.
 func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.Task, host *persistent.Host) error {
-	addr := fmt.Sprintf("%s:%d", host.IP, host.DownloadPort)
+	addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -3029,7 +3031,7 @@ func (v *V2) downloadPersistentTaskByPeer(ctx context.Context, task *persistent.
 
 // persistPersistentTaskByPeer persists the persistent task by peer.
 func (v *V2) persistPersistentTaskByPeer(ctx context.Context, peer *persistent.Peer, cachedParent *persistent.Peer) error {
-	addr := fmt.Sprintf("%s:%d", cachedParent.Host.IP, cachedParent.Host.DownloadPort)
+	addr := net.JoinHostPort(cachedParent.Host.IP, strconv.Itoa(int(cachedParent.Host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -3165,7 +3167,7 @@ func (v *V2) DeletePersistentTask(_ctx context.Context, req *schedulerv2.DeleteP
 		}
 
 		// Delete the persistent task from the peer, if delete failed, skip it.
-		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+		addr := net.JoinHostPort(peer.Host.IP, strconv.Itoa(int(peer.Host.DownloadPort)))
 		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 		dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 		if err != nil {
@@ -3991,7 +3993,7 @@ func (v *V2) DeletePersistentCachePeer(_ctx context.Context, req *schedulerv2.De
 	}
 
 	// Delete the persistent cache task from the peer, if delete failed, skip it.
-	addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+	addr := net.JoinHostPort(peer.Host.IP, strconv.Itoa(int(peer.Host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -4198,7 +4200,7 @@ func (v *V2) replicatePersistentCacheTask(ctx context.Context, peer *persistentc
 
 // downloadPersistentCacheTaskByPeer downloads the persistent cache task by peer.
 func (v *V2) downloadPersistentCacheTaskByPeer(ctx context.Context, task *persistentcache.Task, host *persistentcache.Host) error {
-	addr := fmt.Sprintf("%s:%d", host.IP, host.DownloadPort)
+	addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -4236,7 +4238,7 @@ func (v *V2) downloadPersistentCacheTaskByPeer(ctx context.Context, task *persis
 
 // persistPersistentCacheTaskByPeer persists the persistent cache task by peer.
 func (v *V2) persistPersistentCacheTaskByPeer(ctx context.Context, peer *persistentcache.Peer, cachedParent *persistentcache.Peer) error {
-	addr := fmt.Sprintf("%s:%d", cachedParent.Host.IP, cachedParent.Host.DownloadPort)
+	addr := net.JoinHostPort(cachedParent.Host.IP, strconv.Itoa(int(cachedParent.Host.DownloadPort)))
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 	if err != nil {
@@ -4375,7 +4377,7 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 		}
 
 		// Delete the persistent cache task from the peer, if delete failed, skip it.
-		addr := fmt.Sprintf("%s:%d", peer.Host.IP, peer.Host.DownloadPort)
+		addr := net.JoinHostPort(peer.Host.IP, strconv.Itoa(int(peer.Host.DownloadPort)))
 		dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 		dfdaemonClient, err := v.resource.PeerClientPool().Get(addr, dialOptions...)
 		if err != nil {

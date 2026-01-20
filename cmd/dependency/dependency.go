@@ -25,6 +25,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -123,7 +124,7 @@ func InitMonitor(ctx context.Context, pprofPort int, tracingConfig base.TracingC
 
 // startStatsView starts the statsview server on the specified port.
 func startStatsView(port int) func() {
-	addr := fmt.Sprintf("%s:%d", net.IPv4zero.String(), port)
+	addr := net.JoinHostPort(net.IPv4zero.String(), strconv.Itoa(port))
 	viewer.SetConfiguration(viewer.WithAddr(addr))
 	sv := statsview.New()
 

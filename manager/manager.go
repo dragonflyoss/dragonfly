@@ -19,10 +19,10 @@ package manager
 import (
 	"context"
 	"embed"
-	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/static"
@@ -44,7 +44,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/service"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
-	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 )
@@ -297,13 +296,7 @@ func (s *Server) Serve() error {
 	s.gc.Start(context.Background())
 	logger.Info("started gc server")
 
-	// Generate GRPC listener.
-	ip, ok := ip.FormatIP(s.config.Server.GRPC.ListenIP.String())
-	if !ok {
-		return fmt.Errorf("format ip failed: %s", ip)
-	}
-
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, s.config.Server.GRPC.Port.Start))
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.config.Server.GRPC.ListenIP.String(), strconv.Itoa(s.config.Server.GRPC.Port.Start)))
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %v", err)
 	}

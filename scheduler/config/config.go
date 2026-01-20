@@ -18,8 +18,8 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
@@ -554,7 +554,7 @@ func (cfg *Config) Convert() error {
 
 	// TODO Compatible with deprecated fields host and port of redis of job.
 	if len(cfg.Database.Redis.Addrs) == 0 && len(cfg.Job.Redis.Addrs) == 0 && cfg.Job.Redis.Host != "" && cfg.Job.Redis.Port > 0 {
-		cfg.Database.Redis.Addrs = []string{fmt.Sprintf("%s:%d", cfg.Job.Redis.Host, cfg.Job.Redis.Port)}
+		cfg.Database.Redis.Addrs = []string{net.JoinHostPort(cfg.Job.Redis.Host, strconv.Itoa(cfg.Job.Redis.Port))}
 	}
 
 	// TODO Compatible with deprecated fields master name of redis of job.
