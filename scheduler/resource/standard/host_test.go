@@ -34,6 +34,7 @@ var (
 	mockRawHost = Host{
 		ID:              mockHostID,
 		Type:            types.HostTypeNormal,
+		Name:            "default-host",
 		Hostname:        "foo",
 		IP:              "127.0.0.1",
 		Port:            8003,
@@ -56,6 +57,7 @@ var (
 	mockRawSeedHost = Host{
 		ID:              mockSeedHostID,
 		Type:            types.HostTypeSuperSeed,
+		Name:            "default-seed-host",
 		Hostname:        "bar",
 		IP:              "127.0.0.1",
 		Port:            8003,
@@ -154,6 +156,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -180,6 +183,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawSeedHost.ID)
 				assert.Equal(host.Type, mockRawSeedHost.Type)
+				assert.Equal(host.Name, mockRawSeedHost.Name)
 				assert.Equal(host.Hostname, mockRawSeedHost.Hostname)
 				assert.Equal(host.IP, mockRawSeedHost.IP)
 				assert.Equal(host.Port, mockRawSeedHost.Port)
@@ -207,6 +211,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -232,6 +237,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -259,6 +265,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -286,6 +293,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -314,6 +322,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -342,6 +351,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -370,6 +380,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -397,6 +408,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -425,6 +437,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -453,6 +466,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -481,6 +495,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -509,6 +524,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -537,6 +553,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -565,6 +582,7 @@ func TestHost_NewHost(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Type, types.HostTypeNormal)
+				assert.Equal(host.Name, mockRawHost.Name)
 				assert.Equal(host.Hostname, mockRawHost.Hostname)
 				assert.Equal(host.IP, mockRawHost.IP)
 				assert.Equal(host.Port, mockRawHost.Port)
@@ -589,7 +607,7 @@ func TestHost_NewHost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type,
 				tc.options...))
 		})
@@ -636,7 +654,7 @@ func TestHost_LoadPeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
@@ -681,7 +699,7 @@ func TestHost_StorePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(tc.peerID, mockTask, host)
@@ -727,7 +745,7 @@ func TestHost_DeletePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
@@ -779,7 +797,7 @@ func TestHost_LeavePeers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
@@ -831,7 +849,7 @@ func TestHost_FreeUploadCount(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Hostname,
+				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
 				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)

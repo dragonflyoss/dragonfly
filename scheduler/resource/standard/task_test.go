@@ -188,7 +188,7 @@ func TestTask_LoadPeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -257,7 +257,7 @@ func TestTask_LoadRandomPeers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -295,7 +295,7 @@ func TestTask_StorePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(tc.peerID, task, mockHost)
@@ -337,7 +337,7 @@ func TestTask_DeletePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -376,7 +376,7 @@ func TestTask_PeerCount(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -474,7 +474,7 @@ func TestTask_AddPeerEdge(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -578,7 +578,7 @@ func TestTask_DeletePeerInEdges(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -680,7 +680,7 @@ func TestTask_DeletePeerOutEdges(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -767,7 +767,7 @@ func TestTask_CanAddPeerEdge(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -830,7 +830,7 @@ func TestTask_PeerDegree(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -893,7 +893,7 @@ func TestTask_PeerInDegree(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -956,7 +956,7 @@ func TestTask_PeerOutDegree(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 
@@ -1038,7 +1038,7 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -1102,10 +1102,10 @@ func TestTask_LoadSeedPeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockSeedHost := NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -1169,10 +1169,10 @@ func TestTask_IsSeedPeerFailed(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockSeedHost := NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
@@ -1559,7 +1559,7 @@ func TestTask_ReportPieceResultToPeers(t *testing.T) {
 			stream := v1mocks.NewMockScheduler_ReportPieceResultServer(ctl)
 
 			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)

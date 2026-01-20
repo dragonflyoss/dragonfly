@@ -3,7 +3,7 @@ module d7y.io/dragonfly/v2
 go 1.25.5
 
 require (
-	d7y.io/api/v2 v2.2.8
+	d7y.io/api/v2 v2.2.9
 	github.com/Showmax/go-fqdn v1.0.0
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/appleboy/gin-jwt/v2 v2.10.3

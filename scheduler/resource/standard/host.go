@@ -144,6 +144,9 @@ type Host struct {
 	// Type is host type.
 	Type types.HostType
 
+	// Name is the instance name.
+	Name string
+
 	// Hostname is host name.
 	Hostname string
 
@@ -398,7 +401,7 @@ type Disk struct {
 
 // New host instance.
 func NewHost(
-	id, ip, hostname string, port, downloadPort, proxyPort int32,
+	id, ip, name, hostname string, port, downloadPort, proxyPort int32,
 	typ types.HostType, options ...HostOption,
 ) *Host {
 	// Calculate default of the concurrent upload limit by host type.
@@ -411,6 +414,7 @@ func NewHost(
 		ID:                         id,
 		Type:                       typ,
 		IP:                         ip,
+		Name:                       name,
 		Hostname:                   hostname,
 		Port:                       port,
 		DownloadPort:               downloadPort,

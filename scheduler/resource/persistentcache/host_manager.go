@@ -431,6 +431,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 
 	return NewHost(
 		rawHost["id"],
+		rawHost["name"],
 		rawHost["hostname"],
 		rawHost["ip"],
 		rawHost["os"],
@@ -467,68 +468,70 @@ local hosts_set_key = KEYS[2]  -- Key for the set of hosts
 -- Extract host fields from arguments
 local host_id = ARGV[1]
 local host_type = ARGV[2]
-local hostname = ARGV[3]
-local ip = ARGV[4]
-local port = ARGV[5]
-local download_port = ARGV[6]
-local proxy_port = ARGV[7]
-local disable_shared = tonumber(ARGV[8])
-local os = ARGV[9]
-local platform = ARGV[10]
-local platform_family = ARGV[11]
-local platform_version = ARGV[12]
-local kernel_version = ARGV[13]
-local cpu_logical_count = ARGV[14]
-local cpu_physical_count = ARGV[15]
-local cpu_percent = ARGV[16]
-local cpu_process_percent = ARGV[17]
-local cpu_times_user = ARGV[18]
-local cpu_times_system = ARGV[19]
-local cpu_times_idle = ARGV[20]
-local cpu_times_nice = ARGV[21]
-local cpu_times_iowait = ARGV[22]
-local cpu_times_irq = ARGV[23]
-local cpu_times_softirq = ARGV[24]
-local cpu_times_steal = ARGV[25]
-local cpu_times_guest = ARGV[26]
-local cpu_times_guest_nice = ARGV[27]
-local memory_total = ARGV[28]
-local memory_available = ARGV[29]
-local memory_used = ARGV[30]
-local memory_used_percent = ARGV[31]
-local memory_process_used_percent = ARGV[32]
-local memory_free = ARGV[33]
-local network_tcp_connection_count = ARGV[34]
-local network_upload_tcp_connection_count = ARGV[35]
-local network_location = ARGV[36]
-local network_idc = ARGV[37]
-local network_rx_bandwidth = ARGV[38]
-local network_max_rx_bandwidth = ARGV[39]
-local network_tx_bandwidth = ARGV[40]
-local network_max_tx_bandwidth = ARGV[41]
-local disk_total = ARGV[42]
-local disk_free = ARGV[43]
-local disk_used = ARGV[44]
-local disk_used_percent = ARGV[45]
-local disk_inodes_total = ARGV[46]
-local disk_inodes_used = ARGV[47]
-local disk_inodes_free = ARGV[48]
-local disk_inodes_used_percent = ARGV[49]
-local disk_write_bandwidth = ARGV[50]
-local disk_read_bandwidth = ARGV[51]
-local build_git_version = ARGV[52]
-local build_git_commit = ARGV[53]
-local build_go_version = ARGV[54]
-local build_platform = ARGV[55]
-local scheduler_cluster_id = ARGV[56]
-local announce_interval = ARGV[57]
-local created_at = ARGV[58]
-local updated_at = ARGV[59]
+local name = ARGV[3]
+local hostname = ARGV[4]
+local ip = ARGV[5]
+local port = ARGV[6]
+local download_port = ARGV[7]
+local proxy_port = ARGV[8]
+local disable_shared = tonumber(ARGV[9])
+local os = ARGV[10]
+local platform = ARGV[11]
+local platform_family = ARGV[12]
+local platform_version = ARGV[13]
+local kernel_version = ARGV[14]
+local cpu_logical_count = ARGV[15]
+local cpu_physical_count = ARGV[16]
+local cpu_percent = ARGV[17]
+local cpu_process_percent = ARGV[18]
+local cpu_times_user = ARGV[19]
+local cpu_times_system = ARGV[20]
+local cpu_times_idle = ARGV[21]
+local cpu_times_nice = ARGV[22]
+local cpu_times_iowait = ARGV[23]
+local cpu_times_irq = ARGV[24]
+local cpu_times_softirq = ARGV[25]
+local cpu_times_steal = ARGV[26]
+local cpu_times_guest = ARGV[27]
+local cpu_times_guest_nice = ARGV[28]
+local memory_total = ARGV[29]
+local memory_available = ARGV[30]
+local memory_used = ARGV[31]
+local memory_used_percent = ARGV[32]
+local memory_process_used_percent = ARGV[33]
+local memory_free = ARGV[34]
+local network_tcp_connection_count = ARGV[35]
+local network_upload_tcp_connection_count = ARGV[36]
+local network_location = ARGV[37]
+local network_idc = ARGV[38]
+local network_rx_bandwidth = ARGV[39]
+local network_max_rx_bandwidth = ARGV[40]
+local network_tx_bandwidth = ARGV[41]
+local network_max_tx_bandwidth = ARGV[42]
+local disk_total = ARGV[43]
+local disk_free = ARGV[44]
+local disk_used = ARGV[45]
+local disk_used_percent = ARGV[46]
+local disk_inodes_total = ARGV[47]
+local disk_inodes_used = ARGV[48]
+local disk_inodes_free = ARGV[49]
+local disk_inodes_used_percent = ARGV[50]
+local disk_write_bandwidth = ARGV[51]
+local disk_read_bandwidth = ARGV[52]
+local build_git_version = ARGV[53]
+local build_git_commit = ARGV[54]
+local build_go_version = ARGV[55]
+local build_platform = ARGV[56]
+local scheduler_cluster_id = ARGV[57]
+local announce_interval = ARGV[58]
+local created_at = ARGV[59]
+local updated_at = ARGV[60]
 
 -- Perform HSET operation
 redis.call("HSET", host_key,
     "id", host_id,
     "type", host_type,
+    "name", name,
     "hostname", hostname,
     "ip", ip,
     "port", port,
@@ -606,6 +609,7 @@ return true
 	args := []any{
 		host.ID,
 		host.Type.Name(),
+		host.Name,
 		host.Hostname,
 		host.IP,
 		host.Port,

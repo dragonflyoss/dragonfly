@@ -362,6 +362,7 @@ func (v *V2) StatPeer(ctx context.Context, req *schedulerv2.StatPeerRequest) (*c
 	resp.Host = &commonv2.Host{
 		Id:              peer.Host.ID,
 		Type:            uint32(peer.Host.Type),
+		Name:            peer.Host.Name,
 		Hostname:        peer.Host.Hostname,
 		Ip:              peer.Host.IP,
 		Port:            peer.Host.Port,
@@ -641,7 +642,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 		}
 
 		host = standard.NewHost(
-			req.Host.GetId(), req.Host.GetIp(), req.Host.GetHostname(),
+			req.Host.GetId(), req.Host.GetIp(), req.Host.GetName(), req.Host.GetHostname(),
 			req.Host.GetPort(), req.Host.GetDownloadPort(), req.Host.GetProxyPort(), types.HostType(req.Host.GetType()),
 			options...,
 		)
@@ -745,7 +746,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 	if v.persistentResource != nil {
 		persistentHost, loaded := v.persistentResource.HostManager().Load(ctx, req.Host.GetId())
 		if !loaded {
-			persistentHost = persistent.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
+			persistentHost = persistent.NewHost(req.Host.GetId(), req.Host.GetName(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
 				req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
 				req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
 				persistent.CPU{
@@ -914,7 +915,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 	if v.persistentCacheResource != nil {
 		persistentCacheHost, loaded := v.persistentCacheResource.HostManager().Load(ctx, req.Host.GetId())
 		if !loaded {
-			persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
+			persistentCacheHost = persistentcache.NewHost(req.Host.GetId(), req.Host.GetName(), req.Host.GetHostname(), req.Host.GetIp(), req.Host.GetOs(),
 				req.Host.GetPlatform(), req.Host.GetPlatformFamily(), req.Host.GetPlatformVersion(), req.Host.GetKernelVersion(), req.Host.GetPort(),
 				req.Host.GetDownloadPort(), req.Host.GetProxyPort(), req.Host.GetSchedulerClusterId(), req.Host.GetDisableShared(), types.HostType(req.Host.GetType()),
 				persistentcache.CPU{
@@ -1095,6 +1096,7 @@ func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (
 		hosts = append(hosts, &commonv2.Host{
 			Id:              host.ID,
 			Type:            uint32(host.Type),
+			Name:            host.Name,
 			Hostname:        host.Hostname,
 			Ip:              host.IP,
 			Port:            host.Port,
@@ -2186,6 +2188,7 @@ func (v *V2) handleRegisterPersistentPeerRequest(ctx context.Context, stream sch
 				Host: &commonv2.Host{
 					Id:              parent.Host.ID,
 					Type:            uint32(parent.Host.Type),
+					Name:            parent.Host.Name,
 					Hostname:        parent.Host.Hostname,
 					Ip:              parent.Host.IP,
 					Port:            parent.Host.Port,
@@ -2389,6 +2392,7 @@ func (v *V2) handleReschedulePersistentPeerRequest(ctx context.Context, stream s
 			Host: &commonv2.Host{
 				Id:              parent.Host.ID,
 				Type:            uint32(parent.Host.Type),
+				Name:            parent.Host.Name,
 				Hostname:        parent.Host.Hostname,
 				Ip:              parent.Host.IP,
 				Port:            parent.Host.Port,
@@ -2685,6 +2689,7 @@ func (v *V2) StatPersistentPeer(ctx context.Context, req *schedulerv2.StatPersis
 		Host: &commonv2.Host{
 			Id:              peer.Host.ID,
 			Type:            uint32(peer.Host.Type),
+			Name:            peer.Host.Name,
 			Hostname:        peer.Host.Hostname,
 			Ip:              peer.Host.IP,
 			Port:            peer.Host.Port,
@@ -3416,6 +3421,7 @@ func (v *V2) handleRegisterPersistentCachePeerRequest(ctx context.Context, strea
 				Host: &commonv2.Host{
 					Id:              parent.Host.ID,
 					Type:            uint32(parent.Host.Type),
+					Name:            parent.Host.Name,
 					Hostname:        parent.Host.Hostname,
 					Ip:              parent.Host.IP,
 					Port:            parent.Host.Port,
@@ -3623,6 +3629,7 @@ func (v *V2) handleReschedulePersistentCachePeerRequest(ctx context.Context, str
 			Host: &commonv2.Host{
 				Id:              parent.Host.ID,
 				Type:            uint32(parent.Host.Type),
+				Name:            parent.Host.Name,
 				Hostname:        parent.Host.Hostname,
 				Ip:              parent.Host.IP,
 				Port:            parent.Host.Port,
@@ -3888,6 +3895,7 @@ func (v *V2) StatPersistentCachePeer(ctx context.Context, req *schedulerv2.StatP
 		Host: &commonv2.Host{
 			Id:              peer.Host.ID,
 			Type:            uint32(peer.Host.Type),
+			Name:            peer.Host.Name,
 			Hostname:        peer.Host.Hostname,
 			Ip:              peer.Host.IP,
 			Port:            peer.Host.Port,

@@ -246,13 +246,14 @@ func TestNewHost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := NewHost(
-				tc.id, tc.hostname, tc.ip, tc.os, tc.platform, tc.platformFamily, tc.platformVersion,
+				tc.id, tc.name, tc.hostname, tc.ip, tc.os, tc.platform, tc.platformFamily, tc.platformVersion,
 				tc.kernelVersion, tc.port, tc.downloadPort, tc.proxyPort, tc.schedulerClusterId, tc.disableShared,
 				tc.typ, tc.cpu, tc.memory, tc.network, tc.disk, tc.build, tc.announceInterval,
 				tc.createdAt, tc.updatedAt, tc.log,
 			)
 
 			assert.Equal(t, tc.id, got.ID)
+			assert.Equal(t, tc.name, got.Name)
 			assert.Equal(t, tc.hostname, got.Hostname)
 			assert.Equal(t, tc.ip, got.IP)
 			assert.Equal(t, tc.os, got.OS)

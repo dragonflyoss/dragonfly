@@ -804,12 +804,12 @@ func TestServiceV1_RegisterPeerTask(t *testing.T) {
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
 			mockSeedHost := resource.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			mockSeedPeer := resource.NewPeer(mockSeedPeerID, mockTask, mockSeedHost)
 			tc.mock(
@@ -1067,7 +1067,7 @@ func TestServiceV1_ReportPieceResult(t *testing.T) {
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -1216,7 +1216,7 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -1573,7 +1573,7 @@ func TestServiceV1_AnnounceTask(t *testing.T) {
 			peerManager := resource.NewMockPeerManager(ctl)
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -1642,7 +1642,7 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockSeedPeerID, mockTask, mockHost)
@@ -2071,7 +2071,7 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
 			host := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
@@ -2147,7 +2147,7 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 			hostManager := resource.NewMockHostManager(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			host := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockSeedPeerID, mockTask, host)
@@ -2251,7 +2251,7 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			seedPeer := resource.NewMockSeedPeer(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockPeerID, task, mockHost)
@@ -2637,10 +2637,10 @@ func TestServiceV1_triggerTask(t *testing.T) {
 			svc := NewV1(tc.config, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockSeedHost := resource.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -2817,7 +2817,7 @@ func TestServiceV1_storeHost(t *testing.T) {
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 			hostManager := resource.NewMockHostManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 
 			tc.mock(mockHost, hostManager, res.EXPECT(), hostManager.EXPECT(), dynconfig.EXPECT())
@@ -2836,7 +2836,7 @@ func TestServiceV1_storePeer(t *testing.T) {
 			name: "peer already exists",
 			run: func(t *testing.T, svc *V1, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				mockHost := resource.NewHost(
-					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 				mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -2856,7 +2856,7 @@ func TestServiceV1_storePeer(t *testing.T) {
 			name: "peer does not exists",
 			run: func(t *testing.T, svc *V1, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				mockHost := resource.NewHost(
-					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 				gomock.InOrder(
@@ -2956,7 +2956,7 @@ func TestServiceV1_triggerSeedPeerTask(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			seedPeer := resource.NewMockSeedPeer(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockPeerID, task, mockHost)
@@ -3036,7 +3036,7 @@ func TestServiceV1_handleBeginOfPiece(t *testing.T) {
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -3051,7 +3051,7 @@ func TestServiceV1_handleBeginOfPiece(t *testing.T) {
 
 func TestServiceV1_handlePieceSuccess(t *testing.T) {
 	mockHost := resource.NewHost(
-		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 		mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 	mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 
@@ -3333,7 +3333,7 @@ func TestServiceV1_handlePieceFail(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -3457,7 +3457,7 @@ func TestServiceV1_handlePeerSuccess(t *testing.T) {
 			mockRawHost.IP = ip
 			mockRawHost.DownloadPort = int32(port)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
@@ -3537,7 +3537,7 @@ func TestServiceV1_handlePeerFail(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 			peer := resource.NewPeer(mockSeedPeerID, mockTask, mockHost)
