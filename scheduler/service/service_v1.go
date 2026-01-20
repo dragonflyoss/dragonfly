@@ -534,7 +534,7 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 		}
 
 		host = resource.NewHost(
-			req.GetId(), req.GetIp(), req.GetHostname(), req.GetPort(), req.GetDownloadPort(), req.GetProxyPort(),
+			req.GetId(), req.GetIp(), req.GetHostname(), req.GetHostname(), req.GetPort(), req.GetDownloadPort(), req.GetProxyPort(),
 			types.ParseHostType(req.GetType()), options...,
 		)
 
@@ -823,7 +823,7 @@ func (v *V1) storeHost(_ context.Context, peerHost *schedulerv1.PeerHost) *resou
 		}
 
 		host := resource.NewHost(
-			peerHost.Id, peerHost.Ip, peerHost.Hostname,
+			peerHost.Id, peerHost.Ip, peerHost.Hostname, peerHost.Hostname,
 			peerHost.RpcPort, peerHost.DownPort, peerHost.ProxyPort, types.HostTypeNormal,
 			options...,
 		)

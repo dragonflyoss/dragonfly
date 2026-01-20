@@ -272,18 +272,18 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			parents := []*standard.Peer{
 				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", "host1", false), "127.0.0.1", "host1",
+					idgen.HostIDV2("127.0.0.1", "host1", false), "127.0.0.1", "default-pod-1", "host1",
 					8003, 8001, 8004, types.HostTypeNormal)),
 				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.2", "host2", false), "127.0.0.2", "host2",
+					idgen.HostIDV2("127.0.0.2", "host2", false), "127.0.0.2", "default-pod-2", "host2",
 					8003, 8001, 8004, types.HostTypeNormal)),
 				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.3", "host3", false), "127.0.0.3", "host3",
+					idgen.HostIDV2("127.0.0.3", "host3", false), "127.0.0.3", "default-pod-3", "host3",
 					8003, 8001, 8004, types.HostTypeNormal)),
 			}
 
 			child := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -386,11 +386,11 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 			parent := standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type))
 
 			child := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -477,7 +477,7 @@ func TestEvaluatorDefault_calculateLoadQualityScore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -565,7 +565,7 @@ func TestEvaluatorDefault_calculatePeakBandwidthUsageScore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -642,7 +642,7 @@ func TestEvaluatorDefault_calculateBandwidthDurationScore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -719,7 +719,7 @@ func TestEvaluatorDefault_calculateConcurrencyScore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type))
 
 			e := newEvaluatorDefault()
@@ -770,7 +770,7 @@ func TestEvaluatorDefault_calculateHostTypeScore(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHost := standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
@@ -845,10 +845,10 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			dstHost := standard.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			srcHost := standard.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 			e := newEvaluatorDefault()
 			tc.mock(dstHost, srcHost)
@@ -984,7 +984,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 
 func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 	mockHost := standard.NewHost(
-		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
+		mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 	mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 

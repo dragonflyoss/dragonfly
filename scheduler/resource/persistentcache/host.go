@@ -31,6 +31,9 @@ type Host struct {
 	// Type is host type.
 	Type types.HostType
 
+	// Name is the instance name.
+	Name string
+
 	// Hostname is host name.
 	Hostname string
 
@@ -248,13 +251,14 @@ type Disk struct {
 
 // NewHost returns a new host.
 func NewHost(
-	id, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort, proxyPort int32,
+	id, name, hostname, ip, os, platform, platformFamily, platformVersion, kernelVersion string, port, downloadPort, proxyPort int32,
 	schedulerClusterId uint64, disableShared bool, typ types.HostType, cpu CPU, memory Memory, network Network, disk Disk,
 	build Build, announceInterval time.Duration, createdAt, updatedAt time.Time, log *logger.SugaredLoggerOnWith,
 ) *Host {
 	return &Host{
 		ID:                 id,
 		Type:               types.HostType(typ),
+		Name:               name,
 		Hostname:           hostname,
 		IP:                 ip,
 		Port:               port,
