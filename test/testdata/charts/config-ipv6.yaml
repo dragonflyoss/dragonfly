@@ -1,0 +1,194 @@
+manager:
+  image:
+    repository: dragonflyoss/manager
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: "0"
+      memory: "0"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+  extraVolumeMounts:
+  - name: logs
+    mountPath: "/var/log/"
+  - name: artifact
+    mountPath: /tmp/artifact
+  extraVolumes:
+  - name: logs
+    emptyDir: { }
+  - name: artifact
+    hostPath:
+      path: /tmp/artifact
+  metrics:
+    enable: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+    cache:
+      redis:
+        ttl: 5s
+      local:
+        ttl: 3s
+    job:
+      rateLimit:
+        fillInterval: 1m
+        capacity: 100
+        quantum: 100
+    network:
+      enableIPv6: true
+
+scheduler:
+  image:
+    repository: dragonflyoss/scheduler
+    tag: latest
+  replicas: 3
+  resources:
+    requests:
+      cpu: "0"
+      memory: "0"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  service:
+    type: NodePort
+    nodePort: 30802
+  extraVolumeMounts:
+  - name: logs
+    mountPath: "/var/log/"
+  - name: artifact
+    mountPath: /tmp/artifact
+  extraVolumes:
+  - name: logs
+    emptyDir: { }
+  - name: artifact
+    hostPath:
+      path: /tmp/artifact
+  metrics:
+    enable: true
+    enableHost: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+    scheduler:
+      algorithm: default
+      retryBackToSourceLimit: 7
+      retryLimit: 10
+      retryInterval: 800ms
+      gc:
+        hostGCInterval: 2m
+    dynconfig:
+      refreshInterval: 5s
+    network:
+      enableIPv6: true
+
+seedClient:
+  enable: true
+  replicas: 3
+  image:
+    repository: dragonflyoss/client
+    tag: latest
+  resources:
+    requests:
+      cpu: "0"
+      memory: "0"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  extraVolumeMounts:
+  - name: logs
+    mountPath: "/var/log/"
+  - name: artifact
+    mountPath: /tmp/artifact
+  extraVolumes:
+  - name: logs
+    emptyDir: { }
+  - name: artifact
+    hostPath:
+      path: /tmp/artifact
+  config:
+    host:
+      schedulerClusterID: 1
+    dynconfig:
+      refreshInterval: 5s
+    scheduler:
+      announceInterval: 10s
+    log:
+      level: debug
+    proxy:
+      prefetch: true
+      registryMirror:
+        addr: https://index.docker.io
+      rules:
+      - regex: blobs/sha256.*
+      - regex: file-server.*
+      - regex: dufs.dragonfly-e2e.svc.*
+    network:
+      enableIPv6: true
+
+client:
+  enable: true
+  image:
+    repository: dragonflyoss/client
+    tag: latest
+  resources:
+    requests:
+      cpu: "0"
+      memory: "0"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  # Allow client daemonSet to create a pod on master node for testing when the daemon goes offline.
+  tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Exists"
+      effect: "NoSchedule"
+  extraVolumeMounts:
+  - name: logs
+    mountPath: "/var/log/"
+  - name: artifact
+    mountPath: /tmp/artifact
+  extraVolumes:
+  - name: logs
+    emptyDir: { }
+  - name: artifact
+    hostPath:
+      path: /tmp/artifact
+  dfinit:
+    enable: true
+    image:
+      repository: dragonflyoss/dfinit
+      tag: latest
+    config:
+      containerRuntime:
+        containerd:
+          configPath: /etc/containerd/config.toml
+          registries:
+            - hostNamespace: docker.io
+              serverAddr: https://index.docker.io
+              capabilities: ["pull", "resolve"]
+            - hostNamespace: ghcr.io
+              serverAddr: https://ghcr.io
+              capabilities: ["pull", "resolve"]
+  config:
+    host:
+      schedulerClusterID: 1
+    dynconfig:
+      refreshInterval: 1s
+    scheduler:
+      announceInterval: 1s
+    log:
+      level: debug
+    proxy:
+      prefetch: false
+      registryMirror:
+        addr: https://index.docker.io
+      rules:
+      - regex: blobs/sha256.*
+      - regex: file-server.*
+      - regex: dufs.dragonfly-e2e.svc.*
+    network:
+      enableIPv6: true
