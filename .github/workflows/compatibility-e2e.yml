@@ -31,22 +31,22 @@ jobs:
         include:
           - module: manager
             image: manager
-            image-tag: v2.3.5
+            image-tag: v2.4.1-beta.1
             chart-name: manager
-            skip: "Rate Limit | preheat files in cache"
+            skip: "Rate Limit"
           - module: scheduler
             image: scheduler
-            image-tag: v2.3.5
+            image-tag: v2.4.1-beta.1
             chart-name: scheduler
-            skip: "Rate Limit | preheat files in cache"
+            skip: "Rate Limit"
           - module: client
             image: client
-            image-tag: v1.2.0
+            image-tag: v1.2.4
             chart-name: client
             skip: "Rate Limit"
           - module: seed-client
             image: client
-            image-tag: v1.2.0
+            image-tag: v1.2.4
             chart-name: seed-client
             skip: "Rate Limit"
 

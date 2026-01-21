@@ -28,10 +28,13 @@ jobs:
       matrix:
         module:
           - "normal"
+          - "ipv6"
         include:
           - module: normal
             charts-config: test/testdata/charts/config.yaml
-            # rate limit will be tested in another job
+            skip: "Rate Limit"
+          - module: ipv6
+            charts-config: test/testdata/charts/config-ipv6.yaml
             skip: "Rate Limit"
 
     steps:
