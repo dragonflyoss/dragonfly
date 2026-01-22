@@ -111,7 +111,7 @@ seedClient:
     dynconfig:
       refreshInterval: 5s
     scheduler:
-      announceInterval: 10s
+      announceInterval: 15s
     log:
       level: debug
     proxy:
@@ -171,9 +171,9 @@ client:
     host:
       schedulerClusterID: 1
     dynconfig:
-      refreshInterval: 1s
+      refreshInterval: 5s
     scheduler:
-      announceInterval: 1s
+      announceInterval: 15s
     log:
       level: debug
     proxy:

@@ -31,14 +31,14 @@ func DockerCommand(arg ...string) *exec.Cmd {
 	container := kindDockerContainer
 	extArgs := []string{"exec", "-i", container}
 	extArgs = append(extArgs, arg...)
-	fmt.Println(fmt.Sprintf(`docker %s exec: "%s"`, container, strings.Join(arg, `" "`)))
+	fmt.Printf(`docker %s exec: "%s"\n`, container, strings.Join(arg, `" "`))
 	return exec.Command("docker", extArgs...)
 }
 
 func DockerCopy(dst, src string) *exec.Cmd {
 	container := kindDockerContainer
 	args := []string{"cp", src, fmt.Sprintf("%s:%s", container, dst)}
-	fmt.Println(fmt.Sprintf(`docker cp %s to %s:%s"`, src, container, dst))
+	fmt.Printf(`docker cp %s to %s:%s"\n`, src, container, dst)
 	return exec.Command("docker", args...)
 }
 
@@ -49,7 +49,7 @@ func CriCtlCommand(arg ...string) *exec.Cmd {
 }
 
 func KubeCtlCommand(arg ...string) *exec.Cmd {
-	fmt.Println(fmt.Sprintf(`kubectl command: "kubectl" "%s"`, strings.Join(arg, `" "`)))
+	fmt.Printf(`kubectl command: "kubectl" "%s"\n`, strings.Join(arg, `" "`))
 	return exec.Command("kubectl", arg...)
 }
 
@@ -76,9 +76,9 @@ func (p *PodExec) Command(arg ...string) *exec.Cmd {
 	if p.container != "" {
 		extArgs = []string{"-n", p.namespace, "exec", "-c", p.container, p.name, "--"}
 	}
-	extArgs = append(extArgs, arg...)
-	fmt.Println(fmt.Sprintf(`pod %s/%s exec: "%s"`, p.namespace, p.name, strings.Join(arg, `" "`)))
 
+	extArgs = append(extArgs, arg...)
+	fmt.Printf(`pod %s/%s exec: "%s"\n`, p.namespace, p.name, strings.Join(arg, `" "`))
 	return KubeCtlCommand(extArgs...)
 }
 
@@ -88,10 +88,8 @@ func (p *PodExec) CurlCommand(method string, header map[string]string, data map[
 		extArgs = append(extArgs, "-X", method)
 	}
 
-	if header != nil {
-		for k, v := range header {
-			extArgs = append(extArgs, "-H", fmt.Sprintf("%s:%s", k, v))
-		}
+	for k, v := range header {
+		extArgs = append(extArgs, "-H", fmt.Sprintf("%s:%s", k, v))
 	}
 
 	if data != nil {
