@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"time"
 
 	caches "github.com/go-gorm/caches/v4"
 	"github.com/redis/go-redis/v9"
@@ -36,6 +38,11 @@ import (
 const (
 	// DefaultClusterName name for the cluster.
 	DefaultClusterName = "cluster-1"
+)
+
+const (
+	// DragonflyPATEnvName is the environment variable name for generating personal access token.
+	DragonflyPATEnvName = "DRAGONFLY_PAT"
 )
 
 type Database struct {
@@ -225,6 +232,20 @@ func seed(db *gorm.DB) error {
 		if err := db.Model(models.Config{}).Create(&models.Config{
 			Name:  models.ConfigGC,
 			Value: string(gcConfigVal),
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	// If DRAGONFLY_PAT is set, create a default personal access token for user ID 1(root user).
+	if pat := os.Getenv(DragonflyPATEnvName); pat != "" {
+		if err := db.Model(models.PersonalAccessToken{}).Create(&models.PersonalAccessToken{
+			Name:      "default",
+			Token:     pat,
+			Scopes:    types.DefaultPersonalAccessTokenScopes,
+			State:     models.PersonalAccessTokenStateActive,
+			ExpiredAt: time.Now().AddDate(10, 0, 0),
+			UserID:    1,
 		}).Error; err != nil {
 			return err
 		}
