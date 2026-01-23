@@ -18,12 +18,10 @@ package service
 
 import (
 	"context"
-	"encoding/base64"
-
-	"github.com/google/uuid"
 
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
+	"d7y.io/dragonfly/v2/pkg/auth"
 )
 
 func (s *service) CreatePersonalAccessToken(ctx context.Context, json types.CreatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error) {
@@ -34,7 +32,7 @@ func (s *service) CreatePersonalAccessToken(ctx context.Context, json types.Crea
 	personalAccessToken := models.PersonalAccessToken{
 		Name:      json.Name,
 		BIO:       json.BIO,
-		Token:     s.generatePersonalAccessToken(),
+		Token:     auth.GeneratePersonalAccessToken(),
 		Scopes:    json.Scopes,
 		State:     models.PersonalAccessTokenStateActive,
 		ExpiredAt: json.ExpiredAt,
@@ -100,8 +98,4 @@ func (s *service) GetPersonalAccessTokens(ctx context.Context, q types.GetPerson
 	}
 
 	return personalAccessToken, count, nil
-}
-
-func (s *service) generatePersonalAccessToken() string {
-	return base64.RawURLEncoding.EncodeToString([]byte(uuid.NewString()))
 }

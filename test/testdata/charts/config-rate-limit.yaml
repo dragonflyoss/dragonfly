@@ -102,9 +102,9 @@ seedClient:
     download:
       rateLimit: 1MiB
     dynconfig:
-      refreshInterval: 1s
+      refreshInterval: 5s
     scheduler:
-      announceInterval: 1s
+      announceInterval: 15s
     log:
       level: debug
     proxy:
@@ -164,9 +164,9 @@ client:
     download:
       rateLimit: 1MiB
     dynconfig:
-      refreshInterval: 1s
+      refreshInterval: 5s
     scheduler:
-      announceInterval: 1s
+      announceInterval: 15s
     log:
       level: debug
     proxy:

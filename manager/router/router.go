@@ -201,9 +201,8 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	config.GET(":id", h.GetConfig)
 	config.GET("", h.GetConfigs)
 
-	// TODO Add auth to the following routes and fix the tests.
 	// Job.
-	job := apiv1.Group("/jobs")
+	job := apiv1.Group("/jobs", jwt.MiddlewareFunc(), rbac)
 	job.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	job.DELETE(":id", h.DestroyJob)
 	job.PATCH(":id", h.UpdateJob)

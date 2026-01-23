@@ -85,7 +85,6 @@ var _ = AfterSuite(func() {
 	if err := util.GetFileServer().Purge(); err != nil {
 		fmt.Printf("failed to purge the e2e file server: %v\n", err)
 	}
-
 })
 
 var _ = BeforeSuite(func() {
@@ -97,6 +96,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	gitCommit := strings.Fields(string(rawGitCommit))[0]
 	fmt.Printf("git commit: %s\n", gitCommit)
+
 	// Wait for peers to start and announce to scheduler.
 	time.Sleep(5 * time.Minute)
 })
