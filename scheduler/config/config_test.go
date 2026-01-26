@@ -75,11 +75,12 @@ func TestConfig_Load(t *testing.T) {
 			},
 		},
 		Server: ServerConfig{
-			AdvertiseIP:   net.ParseIP("127.0.0.1"),
-			AdvertisePort: 8004,
-			ListenIP:      net.ParseIP("0.0.0.0"),
-			Port:          8002,
-			Host:          "foo",
+			AdvertiseIP:      net.ParseIP("127.0.0.1"),
+			AdvertisePort:    8004,
+			ListenIP:         net.ParseIP("0.0.0.0"),
+			Port:             8002,
+			Host:             "foo",
+			RequestRateLimit: 100,
 			TLS: &GRPCTLSServerConfig{
 				CACert: "foo",
 				Cert:   "foo",
@@ -288,6 +289,19 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "server tls requires parameter key")
+			},
+		},
+		{
+			name:   "server requires parameter requestRateLimit",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager = mockManagerConfig
+				cfg.Job = mockJobConfig
+				cfg.Server.RequestRateLimit = 0
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "server requires parameter requestRateLimit")
 			},
 		},
 		{

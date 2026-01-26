@@ -43,6 +43,10 @@ const (
 
 	// DefaultServerAdvertisePort is default advertise port for server.
 	DefaultServerAdvertisePort = 8002
+
+	// DefaultServerRequestRateLimit is the default number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	DefaultServerRequestRateLimit = 4000
 )
 
 const (
