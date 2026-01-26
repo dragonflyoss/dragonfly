@@ -17,6 +17,7 @@ server:
       caCert: foo
       cert: foo
       key: foo
+    requestRateLimit: 100
   rest:
     addr: :8080
     tls:

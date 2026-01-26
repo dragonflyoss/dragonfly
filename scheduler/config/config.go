@@ -85,6 +85,10 @@ type ServerConfig struct {
 	// TLS server configuration.
 	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 
+	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
+
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 
@@ -325,13 +329,14 @@ func New() *Config {
 			},
 		},
 		Server: ServerConfig{
-			Port:          DefaultServerPort,
-			AdvertisePort: DefaultServerAdvertisePort,
-			Host:          fqdn.FQDNHostname,
-			LogLevel:      "info",
-			LogMaxSize:    DefaultLogRotateMaxSize,
-			LogMaxAge:     DefaultLogRotateMaxAge,
-			LogMaxBackups: DefaultLogRotateMaxBackups,
+			Port:             DefaultServerPort,
+			AdvertisePort:    DefaultServerAdvertisePort,
+			Host:             fqdn.FQDNHostname,
+			RequestRateLimit: DefaultServerRequestRateLimit,
+			LogLevel:         "info",
+			LogMaxSize:       DefaultLogRotateMaxSize,
+			LogMaxAge:        DefaultLogRotateMaxAge,
+			LogMaxBackups:    DefaultLogRotateMaxBackups,
 		},
 		Scheduler: SchedulerConfig{
 			Algorithm:              DefaultSchedulerAlgorithm,
@@ -421,6 +426,10 @@ func (cfg *Config) Validate() error {
 		if cfg.Server.TLS.Key == "" {
 			return errors.New("server tls requires parameter key")
 		}
+	}
+
+	if cfg.Server.RequestRateLimit <= 0 {
+		return errors.New("server requires parameter requestRateLimit")
 	}
 
 	if cfg.Scheduler.Algorithm == "" {

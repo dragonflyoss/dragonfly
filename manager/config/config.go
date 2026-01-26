@@ -306,6 +306,10 @@ type GRPCConfig struct {
 
 	// TLS server configuration.
 	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
+
+	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
 }
 
 type TCPListenPortRange struct {
@@ -384,6 +388,7 @@ func New() *Config {
 					Start: DefaultGRPCPort,
 					End:   DefaultGRPCPort,
 				},
+				RequestRateLimit: DefaultServerGRPCRequestRateLimit,
 			},
 			REST: RESTConfig{
 				Addr: DefaultRESTAddr,
@@ -482,6 +487,10 @@ func (cfg *Config) Validate() error {
 		if cfg.Server.GRPC.TLS.Key == "" {
 			return errors.New("grpc tls requires parameter key")
 		}
+	}
+
+	if cfg.Server.GRPC.RequestRateLimit <= 0 {
+		return errors.New("grpc requires parameter requestRateLimit")
 	}
 
 	if cfg.Server.REST.TLS != nil {

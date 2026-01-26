@@ -8,6 +8,7 @@ server:
     caCert: foo
     cert: foo
     key: foo
+  requestRateLimit: 100
   cacheDir: foo
   logDir: foo
   pluginDir: foo

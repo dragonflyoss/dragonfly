@@ -41,6 +41,10 @@ const (
 	// DefaultGRPCPort is default port for grpc server.
 	DefaultGRPCPort = 65003
 
+	// DefaultServerGRPCRequestRateLimit is the default number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	DefaultServerGRPCRequestRateLimit = 4000
+
 	// DefaultRESTAddr is default address for rest server.
 	DefaultRESTAddr = ":8080"
 )

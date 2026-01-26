@@ -42,12 +42,6 @@ import (
 )
 
 const (
-	// DefaultQPS is default qps of grpc server.
-	DefaultQPS = 20 * 1000
-
-	// DefaultBurst is default burst of grpc server.
-	DefaultBurst = 30 * 1000
-
 	// DefaultMaxConnectionIdle is default max connection idle of grpc keepalive.
 	DefaultMaxConnectionIdle = 10 * time.Minute
 
@@ -59,8 +53,8 @@ const (
 )
 
 // New returns grpc server instance and register service on grpc server.
-func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, opts ...grpc.ServerOption) *grpc.Server {
-	limiter := rpc.NewRateLimiterInterceptor(DefaultQPS, DefaultBurst)
+func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, opts ...grpc.ServerOption) *grpc.Server {
+	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),

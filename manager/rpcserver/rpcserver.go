@@ -62,6 +62,7 @@ func New(
 	return s, managerserver.New(
 		newManagerServerV1(s.config, database, s.cache, s.searcher),
 		newManagerServerV2(s.config, database, s.cache, s.searcher),
+		cfg.Server.GRPC.RequestRateLimit,
 		opts...), nil
 }
 
