@@ -139,8 +139,9 @@ func seed(db *gorm.DB) error {
 			ClientConfig: map[string]any{
 				"load_limit": schedulerconfig.DefaultPeerConcurrentUploadLimit,
 			},
-			Scopes:    map[string]any{},
-			IsDefault: true,
+			SeedClientConfig: map[string]any{},
+			Scopes:           map[string]any{},
+			IsDefault:        true,
 		}).Error; err != nil {
 			return err
 		}

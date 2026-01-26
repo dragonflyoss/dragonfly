@@ -46,13 +46,18 @@ type JSONMap map[string]any
 
 func (m JSONMap) Value() (driver.Value, error) {
 	if m == nil {
-		return nil, nil
+		return "{}", nil
 	}
 	ba, err := m.MarshalJSON()
 	return string(ba), err
 }
 
 func (m *JSONMap) Scan(val any) error {
+	if val == nil {
+		*m = JSONMap(map[string]any{})
+		return nil
+	}
+
 	var ba []byte
 	switch v := val.(type) {
 	case []byte:
@@ -62,6 +67,12 @@ func (m *JSONMap) Scan(val any) error {
 	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", val))
 	}
+
+	if len(ba) == 0 || string(ba) == "null" {
+		*m = JSONMap(map[string]any{})
+		return nil
+	}
+
 	t := map[string]any{}
 	err := json.Unmarshal(ba, &t)
 	*m = JSONMap(t)
@@ -111,6 +122,11 @@ func (a Array) Value() (driver.Value, error) {
 }
 
 func (a *Array) Scan(val any) error {
+	if val == nil {
+		*a = Array([]string{})
+		return nil
+	}
+
 	var ba []byte
 	switch v := val.(type) {
 	case []byte:
@@ -120,6 +136,12 @@ func (a *Array) Scan(val any) error {
 	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", val))
 	}
+
+	if len(ba) == 0 || string(ba) == "null" {
+		*a = Array([]string{})
+		return nil
+	}
+
 	t := []string{}
 	err := json.Unmarshal(ba, &t)
 	*a = Array(t)

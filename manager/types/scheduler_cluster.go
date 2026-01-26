@@ -26,23 +26,25 @@ type AddSchedulerToSchedulerClusterParams struct {
 }
 
 type CreateSchedulerClusterRequest struct {
-	Name              string                        `json:"name" binding:"required"`
-	BIO               string                        `json:"bio" binding:"omitempty"`
-	Config            *SchedulerClusterConfig       `json:"config" binding:"required"`
-	ClientConfig      *SchedulerClusterClientConfig `json:"client_config" binding:"required"`
-	Scopes            *SchedulerClusterScopes       `json:"scopes" binding:"omitempty"`
-	IsDefault         bool                          `json:"is_default" binding:"omitempty"`
-	SeedPeerClusterID uint                          `json:"seed_peer_cluster_id" binding:"omitempty"`
+	Name              string                            `json:"name" binding:"required"`
+	BIO               string                            `json:"bio" binding:"omitempty"`
+	Config            *SchedulerClusterConfig           `json:"config" binding:"required"`
+	ClientConfig      *SchedulerClusterClientConfig     `json:"client_config" binding:"required"`
+	SeedClientConfig  *SchedulerClusterSeedClientConfig `json:"seed_client_config" binding:"required"`
+	Scopes            *SchedulerClusterScopes           `json:"scopes" binding:"omitempty"`
+	IsDefault         bool                              `json:"is_default" binding:"omitempty"`
+	SeedPeerClusterID uint                              `json:"seed_peer_cluster_id" binding:"omitempty"`
 }
 
 type UpdateSchedulerClusterRequest struct {
-	Name              string                        `json:"name" binding:"omitempty"`
-	BIO               string                        `json:"bio" binding:"omitempty"`
-	Config            *SchedulerClusterConfig       `json:"config" binding:"omitempty"`
-	ClientConfig      *SchedulerClusterClientConfig `json:"client_config" binding:"omitempty"`
-	Scopes            *SchedulerClusterScopes       `json:"scopes" binding:"omitempty"`
-	IsDefault         bool                          `json:"is_default" binding:"omitempty"`
-	SeedPeerClusterID uint                          `json:"seed_peer_cluster_id" binding:"omitempty"`
+	Name              string                            `json:"name" binding:"omitempty"`
+	BIO               string                            `json:"bio" binding:"omitempty"`
+	Config            *SchedulerClusterConfig           `json:"config" binding:"omitempty"`
+	ClientConfig      *SchedulerClusterClientConfig     `json:"client_config" binding:"omitempty"`
+	SeedClientConfig  *SchedulerClusterSeedClientConfig `json:"seed_client_config" binding:"omitempty"`
+	Scopes            *SchedulerClusterScopes           `json:"scopes" binding:"omitempty"`
+	IsDefault         bool                              `json:"is_default" binding:"omitempty"`
+	SeedPeerClusterID uint                              `json:"seed_peer_cluster_id" binding:"omitempty"`
 }
 
 type GetSchedulerClustersQuery struct {
@@ -58,7 +60,45 @@ type SchedulerClusterConfig struct {
 }
 
 type SchedulerClusterClientConfig struct {
-	LoadLimit uint32 `yaml:"loadLimit" mapstructure:"loadLimit" json:"load_limit" binding:"omitempty,gte=1,lte=2000"`
+	LoadLimit uint32                          `yaml:"loadLimit" mapstructure:"loadLimit" json:"load_limit" binding:"omitempty,gte=1,lte=2000"`
+	BlockList SchedulerClusterConfigBlockList `yaml:"blockList" mapstructure:"blockList" json:"block_list" binding:"omitempty"`
+}
+
+type SchedulerClusterSeedClientConfig struct {
+	BlockList SchedulerClusterConfigBlockList `yaml:"blockList" mapstructure:"blockList" json:"block_list" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigBlockList struct {
+	Task                *SchedulerClusterConfigTaskBlockList                `yaml:"task" mapstructure:"task" json:"task" binding:"omitempty"`
+	PersistentTask      *SchedulerClusterConfigPersistentTaskBlockList      `yaml:"persistent_task" mapstructure:"persistent_task" json:"persistent_task" binding:"omitempty"`
+	PersistentCacheTask *SchedulerClusterConfigPersistentCacheTaskBlockList `yaml:"persistent_cache_task" mapstructure:"persistent_cache_task" json:"persistent_cache_task" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigTaskBlockList struct {
+	Download *SchedulerClusterConfigDownloadBlockList `yaml:"download" mapstructure:"download" json:"download" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigPersistentTaskBlockList struct {
+	Download *SchedulerClusterConfigDownloadBlockList `yaml:"download" mapstructure:"download" json:"download" binding:"omitempty"`
+	Upload   *SchedulerClusterConfigUploadBlockList   `yaml:"upload" mapstructure:"upload" json:"upload" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigPersistentCacheTaskBlockList struct {
+	Download *SchedulerClusterConfigDownloadBlockList `yaml:"download" mapstructure:"download" json:"download" binding:"omitempty"`
+	Upload   *SchedulerClusterConfigUploadBlockList   `yaml:"upload" mapstructure:"upload" json:"upload" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigDownloadBlockList struct {
+	Applications []string `yaml:"applications" mapstructure:"applications" json:"applications" binding:"omitempty"`
+	URLs         []string `yaml:"urls" mapstructure:"urls" json:"urls" binding:"omitempty"`
+	Tags         []string `yaml:"tags" mapstructure:"tags" json:"tags" binding:"omitempty"`
+	Priorities   []string `yaml:"priorities" mapstructure:"priorities" json:"priorities" binding:"omitempty"`
+}
+
+type SchedulerClusterConfigUploadBlockList struct {
+	Applications []string `yaml:"applications" mapstructure:"applications" json:"applications" binding:"omitempty"`
+	URLs         []string `yaml:"urls" mapstructure:"urls" json:"urls" binding:"omitempty"`
+	Tags         []string `yaml:"tags" mapstructure:"tags" json:"tags" binding:"omitempty"`
 }
 
 type SchedulerClusterScopes struct {
