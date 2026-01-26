@@ -31,8 +31,10 @@ download:
   server:
     # socketPath is the unix socket path for dfdaemon GRPC service.
     socketPath: /var/run/dragonfly/dfdaemon.sock
-  # rateLimit is the default rate limit of the download speed in KiB/MiB/GiB per second, default is 10GiB/s.
-  rateLimit: 10GiB
+  # bandwidthLimit is the default rate limit of the download speed in KB/MB/GB per second, default is 10GB/s.
+  bandwidthLimit: 50GB
+  # backToSourceBandwidthLimit is the default rate limit of the download speed in KB/MB/GB per second, default is 50GB/s.
+  backToSourceBandwidthLimit: 50GB
   # pieceTimeout is the timeout for downloading a piece from source.
   pieceTimeout: 40s
   # concurrentPieceCount is the number of concurrent pieces to download.
@@ -62,8 +64,8 @@ upload:
 #
   # disableShared indicates whether disable to share data for other peers.
   disableShared: false
-  # rateLimit is the default rate limit of the upload speed in KiB/MiB/GiB per second, default is 10GiB/s.
-  rateLimit: 10GiB
+  # bandwidthLimit is the default rate limit of the upload speed in KB/MB/GB per second, default is 50GB/s.
+  bandwidthLimit: 50GB
 
 manager:
   # addr is manager addresses.
