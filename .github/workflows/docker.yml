@@ -137,11 +137,11 @@ jobs:
         env:
           COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
 
-      - uses: anchore/sbom-action@0b82b0b1a22399a1c542d4d656f70cd903571b5c # v0.21.1
+      - uses: anchore/sbom-action@62ad5284b8ced813296287a0b63906cb364b73ee # v0.22.0
         with:
           image: dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
 
-      - uses: anchore/sbom-action@0b82b0b1a22399a1c542d4d656f70cd903571b5c # v0.21.1
+      - uses: anchore/sbom-action@62ad5284b8ced813296287a0b63906cb364b73ee # v0.22.0
         with:
           image: ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
 
