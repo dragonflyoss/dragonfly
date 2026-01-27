@@ -42,5 +42,6 @@ func New(
 	return server.New(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
 		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
+		cfg.Server.RequestRateLimit,
 		opts...)
 }

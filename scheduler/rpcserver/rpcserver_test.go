@@ -67,7 +67,7 @@ func TestRPCServer_New(t *testing.T) {
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
 			job := jobmocks.NewMockJob(ctl)
 
-			svr := New(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig)
+			svr := New(&config.Config{Scheduler: mockSchedulerConfig, Server: config.ServerConfig{RequestRateLimit: 100}}, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig)
 			tc.expect(t, svr)
 		})
 	}
