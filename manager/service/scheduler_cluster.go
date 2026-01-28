@@ -36,18 +36,24 @@ func (s *service) CreateSchedulerCluster(ctx context.Context, json types.CreateS
 		return nil, err
 	}
 
+	seedClientConfig, err := structure.StructToMap(json.SeedClientConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	scopes, err := structure.StructToMap(json.Scopes)
 	if err != nil {
 		return nil, err
 	}
 
 	schedulerCluster := models.SchedulerCluster{
-		Name:         json.Name,
-		BIO:          json.BIO,
-		Config:       config,
-		ClientConfig: clientConfig,
-		Scopes:       scopes,
-		IsDefault:    json.IsDefault,
+		Name:             json.Name,
+		BIO:              json.BIO,
+		Config:           config,
+		ClientConfig:     clientConfig,
+		SeedClientConfig: seedClientConfig,
+		Scopes:           scopes,
+		IsDefault:        json.IsDefault,
 	}
 
 	if err := s.db.WithContext(ctx).Create(&schedulerCluster).Error; err != nil {
@@ -100,6 +106,14 @@ func (s *service) UpdateSchedulerCluster(ctx context.Context, id uint, json type
 		}
 	}
 
+	var seedClientConfig map[string]any
+	if json.SeedClientConfig != nil {
+		seedClientConfig, err = structure.StructToMap(json.SeedClientConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var scopes map[string]any
 	if json.Scopes != nil {
 		scopes, err = structure.StructToMap(json.Scopes)
@@ -110,11 +124,12 @@ func (s *service) UpdateSchedulerCluster(ctx context.Context, id uint, json type
 
 	schedulerCluster := models.SchedulerCluster{}
 	if err := s.db.WithContext(ctx).First(&schedulerCluster, id).Updates(models.SchedulerCluster{
-		Name:         json.Name,
-		BIO:          json.BIO,
-		Config:       config,
-		ClientConfig: clientConfig,
-		Scopes:       scopes,
+		Name:             json.Name,
+		BIO:              json.BIO,
+		Config:           config,
+		ClientConfig:     clientConfig,
+		SeedClientConfig: seedClientConfig,
+		Scopes:           scopes,
 	}).Error; err != nil {
 		return nil, err
 	}

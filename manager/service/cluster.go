@@ -59,12 +59,13 @@ func (s *service) CreateCluster(ctx context.Context, json types.CreateClusterReq
 	}
 
 	schedulerCluster := models.SchedulerCluster{
-		Name:         json.Name,
-		BIO:          json.BIO,
-		Config:       schedulerClusterConfig,
-		ClientConfig: peerClusterConfig,
-		Scopes:       scopes,
-		IsDefault:    json.IsDefault,
+		Name:             json.Name,
+		BIO:              json.BIO,
+		Config:           schedulerClusterConfig,
+		ClientConfig:     peerClusterConfig,
+		SeedClientConfig: seedPeerClusterConfig,
+		Scopes:           scopes,
+		IsDefault:        json.IsDefault,
 	}
 
 	if err := tx.WithContext(ctx).Create(&schedulerCluster).Error; err != nil {
@@ -210,11 +211,12 @@ func (s *service) UpdateCluster(ctx context.Context, id uint, json types.UpdateC
 
 	schedulerCluster := models.SchedulerCluster{}
 	if err := tx.WithContext(ctx).Preload("SeedPeerClusters").First(&schedulerCluster, id).Updates(models.SchedulerCluster{
-		Name:         json.Name,
-		BIO:          json.BIO,
-		Config:       schedulerClusterConfig,
-		ClientConfig: peerClusterConfig,
-		Scopes:       scopes,
+		Name:             json.Name,
+		BIO:              json.BIO,
+		Config:           schedulerClusterConfig,
+		ClientConfig:     peerClusterConfig,
+		SeedClientConfig: seedPeerClusterConfig,
+		Scopes:           scopes,
 	}).Error; err != nil {
 		tx.Rollback()
 		return nil, err

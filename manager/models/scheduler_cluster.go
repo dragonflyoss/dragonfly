@@ -22,6 +22,7 @@ type SchedulerCluster struct {
 	BIO              string            `gorm:"column:bio;type:varchar(1024);comment:biography" json:"bio"`
 	Config           JSONMap           `gorm:"column:config;not null;comment:configuration" json:"config"`
 	ClientConfig     JSONMap           `gorm:"column:client_config;not null;comment:client configuration" json:"client_config"`
+	SeedClientConfig JSONMap           `gorm:"column:seed_client_config;not null;comment:seed client configuration" json:"seed_client_config"`
 	Scopes           JSONMap           `gorm:"column:scopes;comment:match scopes" json:"scopes"`
 	IsDefault        bool              `gorm:"column:is_default;not null;default:false;comment:default scheduler cluster" json:"is_default"`
 	SeedPeerClusters []SeedPeerCluster `gorm:"many2many:seed_peer_cluster_scheduler_cluster;" json:"seed_peer_clusters"`

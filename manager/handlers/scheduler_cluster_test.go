@@ -39,6 +39,16 @@ var (
 		   "client_config": {
 			  "load_limit": 1
 		   },
+		   "seed_client_config": {
+		        "block_list": {
+				    "task": {
+					    "download": {
+						    "urls": ["https://example.com/foo.zip"],
+							"tags": ["test-block"]
+						}
+					}
+				}
+		   },
 		   "config": {
 			  "candidate_parent_limit": 1,
 			  "filter_parent_limit": 10
@@ -54,6 +64,14 @@ var (
 		IsDefault:    false,
 		Config:       models.JSONMap{"CandidateParentLimit": 1, "FilterParentLimit": 10},
 		ClientConfig: models.JSONMap{"LoadLimit": 1},
+		SeedClientConfig: models.JSONMap{"BlockList": models.JSONMap{
+			"Task": models.JSONMap{
+				"Download": models.JSONMap{
+					"URLs": []string{"https://example.com/foo.zip"},
+					"Tags": []string{"test-block"},
+				},
+			},
+		}},
 	}
 	mockUnmarshalSchedulerClusterModel = &models.SchedulerCluster{
 		BaseModel:    mockBaseModel,
@@ -62,6 +80,14 @@ var (
 		IsDefault:    false,
 		Config:       models.JSONMap{"CandidateParentLimit": float64(1), "FilterParentLimit": float64(10)},
 		ClientConfig: models.JSONMap{"LoadLimit": float64(1)},
+		SeedClientConfig: models.JSONMap{"BlockList": map[string]any{
+			"Task": map[string]any{
+				"Download": map[string]any{
+					"URLs": []any{"https://example.com/foo.zip"},
+					"Tags": []any{"test-block"},
+				},
+			},
+		}},
 	}
 )
 
