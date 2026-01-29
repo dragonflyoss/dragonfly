@@ -127,9 +127,6 @@ type V2 interface {
 	// SyncPieces syncs pieces from the other peers.
 	SyncPieces(context.Context, *dfdaemonv2.SyncPiecesRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_SyncPiecesClient, error)
 
-	// DownloadPiece downloads piece from the other peer.
-	DownloadPiece(context.Context, *dfdaemonv2.DownloadPieceRequest, ...grpc.CallOption) (*dfdaemonv2.DownloadPieceResponse, error)
-
 	// DownloadTask downloads task from p2p network.
 	DownloadTask(context.Context, string, *dfdaemonv2.DownloadTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadTaskClient, error)
 
@@ -221,18 +218,6 @@ func (v *v2) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, 
 	defer cancel()
 
 	return v.DfdaemonUploadClient.SyncPieces(
-		context.WithValue(ctx, pkgbalancer.ContextKey, req.TaskId),
-		req,
-		opts...,
-	)
-}
-
-// DownloadPiece downloads piece from the other peer.
-func (v *v2) DownloadPiece(ctx context.Context, req *dfdaemonv2.DownloadPieceRequest, opts ...grpc.CallOption) (*dfdaemonv2.DownloadPieceResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	return v.DfdaemonUploadClient.DownloadPiece(
 		context.WithValue(ctx, pkgbalancer.ContextKey, req.TaskId),
 		req,
 		opts...,
