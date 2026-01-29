@@ -737,6 +737,36 @@ func (s *managerServerV2) listSchedulersByClusterID(ctx context.Context, req *ma
 		return nil, err
 	}
 
+	var schedulerCluster models.SchedulerCluster
+	if err := s.db.First(&schedulerCluster, "id = ?", req.SchedulerClusterId).Error; err != nil {
+		log.Errorf("failed to get scheduler cluster by id %d: %s", req.SchedulerClusterId, err.Error())
+		return nil, err
+	}
+
+	config, err := schedulerCluster.Config.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster config: %s", err.Error())
+		return nil, err
+	}
+
+	clientConfig, err := schedulerCluster.ClientConfig.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster client config: %s", err.Error())
+		return nil, err
+	}
+
+	scopes, err := schedulerCluster.Scopes.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster scopes: %s", err.Error())
+		return nil, err
+	}
+
+	seedClientConfig, err := schedulerCluster.SeedClientConfig.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster seed client config: %s", err.Error())
+		return nil, err
+	}
+
 	for _, scheduler := range schedulers {
 		// Marshal features of scheduler.
 		features, err := scheduler.Features.MarshalJSON()
@@ -754,6 +784,15 @@ func (s *managerServerV2) listSchedulersByClusterID(ctx context.Context, req *ma
 			State:              scheduler.State,
 			Features:           features,
 			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
+			SchedulerCluster: &managerv2.SchedulerCluster{
+				Id:               uint64(schedulerCluster.ID),
+				Name:             schedulerCluster.Name,
+				Bio:              schedulerCluster.BIO,
+				Config:           config,
+				ClientConfig:     clientConfig,
+				Scopes:           scopes,
+				SeedClientConfig: seedClientConfig,
+			},
 		})
 	}
 

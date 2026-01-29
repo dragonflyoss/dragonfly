@@ -223,26 +223,6 @@ func (mr *MockV2MockRecorder) DownloadPersistentTask(arg0, arg1 any, arg2 ...any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadPersistentTask", reflect.TypeOf((*MockV2)(nil).DownloadPersistentTask), varargs...)
 }
 
-// DownloadPiece mocks base method.
-func (m *MockV2) DownloadPiece(arg0 context.Context, arg1 *dfdaemon.DownloadPieceRequest, arg2 ...grpc.CallOption) (*dfdaemon.DownloadPieceResponse, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "DownloadPiece", varargs...)
-	ret0, _ := ret[0].(*dfdaemon.DownloadPieceResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DownloadPiece indicates an expected call of DownloadPiece.
-func (mr *MockV2MockRecorder) DownloadPiece(arg0, arg1 any, arg2 ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadPiece", reflect.TypeOf((*MockV2)(nil).DownloadPiece), varargs...)
-}
-
 // DownloadTask mocks base method.
 func (m *MockV2) DownloadTask(arg0 context.Context, arg1 string, arg2 *dfdaemon.DownloadTaskRequest, arg3 ...grpc.CallOption) (dfdaemon.DfdaemonUpload_DownloadTaskClient, error) {
 	m.ctrl.T.Helper()
