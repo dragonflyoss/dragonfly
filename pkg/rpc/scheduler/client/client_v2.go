@@ -30,6 +30,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
@@ -145,11 +146,11 @@ type V2 interface {
 	// AnnounceHost announces host to scheduler.
 	AnnounceHost(context.Context, *schedulerv2.AnnounceHostRequest, ...grpc.CallOption) error
 
+	// ListHosts lists hosts in scheduler.
+	ListHosts(ctx context.Context, taskID string, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error)
+
 	// DeleteHost releases host in scheduler.
 	DeleteHost(context.Context, *schedulerv2.DeleteHostRequest, ...grpc.CallOption) error
-
-	// SyncProbes sync probes of the host.
-	SyncProbes(context.Context, *schedulerv2.SyncProbesRequest, ...grpc.CallOption) (schedulerv2.Scheduler_SyncProbesClient, error)
 
 	// Close tears down the ClientConn and all underlying connections.
 	Close() error
@@ -253,6 +254,18 @@ func (v *v2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 	return eg.Wait()
 }
 
+// ListHosts lists host in all schedulers.
+func (v *v2) ListHosts(ctx context.Context, taskID string, opts ...grpc.CallOption) (*schedulerv2.ListHostsResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	return v.SchedulerClient.ListHosts(
+		context.WithValue(ctx, pkgbalancer.ContextKey, taskID),
+		new(emptypb.Empty),
+		opts...,
+	)
+}
+
 // DeleteHost releases host in all schedulers.
 func (v *v2) DeleteHost(ctx context.Context, req *schedulerv2.DeleteHostRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
@@ -281,18 +294,4 @@ func (v *v2) DeleteHost(ctx context.Context, req *schedulerv2.DeleteHostRequest,
 	}
 
 	return eg.Wait()
-}
-
-// SyncProbes sync probes of the host.
-func (v *v2) SyncProbes(ctx context.Context, req *schedulerv2.SyncProbesRequest, opts ...grpc.CallOption) (schedulerv2.Scheduler_SyncProbesClient, error) {
-	stream, err := v.SchedulerClient.SyncProbes(
-		context.WithValue(ctx, pkgbalancer.ContextKey, req.Host.Id),
-		opts...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Send begin of piece.
-	return stream, stream.Send(req)
 }

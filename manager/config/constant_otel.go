@@ -19,9 +19,11 @@ package config
 import "go.opentelemetry.io/otel/attribute"
 
 const (
-	AttributeID          = attribute.Key("d7y.manager.id")
-	AttributePreheatType = attribute.Key("d7y.manager.preheat.type")
-	AttributePreheatURL  = attribute.Key("d7y.manager.preheat.url")
+	AttributeID           = attribute.Key("d7y.manager.id")
+	AttributePreheatType  = attribute.Key("d7y.manager.preheat.type")
+	AttributePreheatURL   = attribute.Key("d7y.manager.preheat.url")
+	AttributeDeleteTaskID = attribute.Key("d7y.manager.delete_task.id")
+	AttributeGetTaskID    = attribute.Key("d7y.manager.get_task.id")
 )
 
 const (
@@ -29,4 +31,6 @@ const (
 	SpanSyncPeers        = "sync-peers"
 	SpanGetLayers        = "get-layers"
 	SpanAuthWithRegistry = "auth-with-registry"
+	SpanDeleteTask       = "delete-task"
+	SpanGetTask          = "get-task"
 )

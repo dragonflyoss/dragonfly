@@ -34,7 +34,7 @@ const (
 	// Failed download task type is source
 	FailTypeBackSource = "source"
 
-	// Failed download task type is init, indecates not yet register to scheduler
+	// Failed download task type is init, indicates not yet register to scheduler
 	FailTypeInit = "init"
 
 	// SeedPeerDownload type is p2p
@@ -58,6 +58,13 @@ var (
 		Subsystem: types.DfdaemonMetricsName,
 		Name:      "proxy_request_via_dragonfly_total",
 		Help:      "Counter of the total proxy request via Dragonfly.",
+	})
+
+	ProxyErrorRequestViaDragonflyCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.DfdaemonMetricsName,
+		Name:      "proxy_error_request_via_dragonfly_total",
+		Help:      "Counter of the total error proxy request via Dragonfly.",
 	})
 
 	ProxyRequestNotViaDragonflyCount = promauto.NewCounter(prometheus.CounterOpts{
@@ -163,6 +170,13 @@ var (
 		Subsystem: types.DfdaemonMetricsName,
 		Name:      "prefetch_task_total",
 		Help:      "Counter of the total prefetched tasks.",
+	})
+
+	BackSourceTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.DfdaemonMetricsName,
+		Name:      "back_source_total",
+		Help:      "Total bytes of back source.",
 	})
 
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{

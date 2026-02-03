@@ -65,6 +65,14 @@ const (
 	PreheatFileType PreheatType = "file"
 )
 
+// defaultHTTPTransport is the default http transport.
+var defaultHTTPTransport = &http.Transport{
+	MaxIdleConns:        400,
+	MaxIdleConnsPerHost: 20,
+	MaxConnsPerHost:     50,
+	IdleConnTimeout:     120 * time.Second,
+}
+
 // accessURLPattern is the pattern of access url.
 var accessURLPattern, _ = regexp.Compile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
 
@@ -76,14 +84,27 @@ type Preheat interface {
 
 // preheat is an implementation of Preheat.
 type preheat struct {
-	job             *internaljob.Job
-	registryTimeout time.Duration
-	rootCAs         *x509.CertPool
+	job                *internaljob.Job
+	certificateChain   [][]byte
+	rootCAs            *x509.CertPool
+	insecureSkipVerify bool
+	registryTimeout    time.Duration
 }
 
 // newPreheat creates a new Preheat.
-func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool) (Preheat, error) {
-	return &preheat{job, registryTimeout, rootCAs}, nil
+func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool, insecureSkipVerify bool) (Preheat, error) {
+	p := &preheat{
+		job:                job,
+		rootCAs:            rootCAs,
+		insecureSkipVerify: insecureSkipVerify,
+		registryTimeout:    registryTimeout,
+	}
+
+	if rootCAs != nil {
+		p.certificateChain = rootCAs.Subjects()
+	}
+
+	return p, nil
 }
 
 // CreatePreheat creates a preheat job.
@@ -109,8 +130,12 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 				URL:                 json.URL,
 				Tag:                 json.Tag,
 				FilteredQueryParams: json.FilteredQueryParams,
-				PieceLength:         json.PieceLength,
 				Headers:             json.Headers,
+				Scope:               json.Scope,
+				ConcurrentCount:     json.ConcurrentCount,
+				CertificateChain:    p.certificateChain,
+				InsecureSkipVerify:  p.insecureSkipVerify,
+				Timeout:             json.Timeout,
 			},
 		}
 	default:
@@ -118,7 +143,11 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 	}
 
 	// Initialize queues.
-	queues := getSchedulerQueues(schedulers)
+	queues, err := getSchedulerQueues(schedulers)
+	if err != nil {
+		return nil, err
+	}
+
 	return p.createGroupJob(ctx, files, queues)
 }
 
@@ -176,26 +205,29 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 		return nil, err
 	}
 
-	opts := []imageAuthClientOption{
-		withHTTPClient(&http.Client{
-			Timeout: p.registryTimeout,
-			Transport: &http.Transport{
-				DialContext:     nethttp.NewSafeDialer().DialContext,
-				TLSClientConfig: &tls.Config{RootCAs: p.rootCAs},
-			},
-		}),
-		withBasicAuth(args.Username, args.Password),
-	}
 	// Background:
-	//   Harbor uses the V1 preheat request and will carry the auth info in the headers.
+	// Harbor uses the V1 preheat request and will carry the auth info in the headers.
+	options := []imageAuthClientOption{}
 	header := nethttp.MapToHeader(args.Headers)
 	if token := header.Get("Authorization"); len(token) > 0 {
-		opts = append(opts, withIssuedToken(token))
+		options = append(options, withIssuedToken(token))
 		header.Set("Authorization", token)
 	}
 
+	httpClient := &http.Client{
+		Timeout: p.registryTimeout,
+		Transport: &http.Transport{
+			DialContext:         nethttp.NewSafeDialer().DialContext,
+			TLSClientConfig:     &tls.Config{RootCAs: p.rootCAs, InsecureSkipVerify: p.insecureSkipVerify},
+			MaxIdleConns:        defaultHTTPTransport.MaxIdleConns,
+			MaxIdleConnsPerHost: defaultHTTPTransport.MaxIdleConnsPerHost,
+			MaxConnsPerHost:     defaultHTTPTransport.MaxConnsPerHost,
+			IdleConnTimeout:     defaultHTTPTransport.IdleConnTimeout,
+		},
+	}
+
 	// Init docker auth client.
-	client, err := newImageAuthClient(image, opts...)
+	client, err := newImageAuthClient(image, httpClient, &typesregistry.AuthConfig{Username: args.Username, Password: args.Password}, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +255,7 @@ func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([
 	// set authorization header
 	header.Set("Authorization", client.GetAuthToken())
 
-	// prase image layers to preheat
+	// parse image layers to preheat
 	layers, err := p.parseLayers(manifests, args, header.Clone(), image)
 	if err != nil {
 		return nil, err
@@ -319,8 +351,12 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 				URL:                 image.blobsURL(v.Digest.String()),
 				Tag:                 args.Tag,
 				FilteredQueryParams: args.FilteredQueryParams,
-				PieceLength:         args.PieceLength,
 				Headers:             nethttp.HeaderToMap(header),
+				Scope:               args.Scope,
+				ConcurrentCount:     args.ConcurrentCount,
+				CertificateChain:    p.certificateChain,
+				InsecureSkipVerify:  p.insecureSkipVerify,
+				Timeout:             args.Timeout,
 			}
 
 			layers = append(layers, layer)
@@ -332,23 +368,6 @@ func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.Preh
 
 // imageAuthClientOption is an option for imageAuthClient.
 type imageAuthClientOption func(*imageAuthClient)
-
-// withBasicAuth sets basic auth for imageAuthClient.
-func withBasicAuth(username, password string) imageAuthClientOption {
-	return func(c *imageAuthClient) {
-		c.authConfig = &typesregistry.AuthConfig{
-			Username: username,
-			Password: password,
-		}
-	}
-}
-
-// withHTTPClient sets http client for imageAuthClient.
-func withHTTPClient(client *http.Client) imageAuthClientOption {
-	return func(c *imageAuthClient) {
-		c.httpClient = client
-	}
-}
 
 // withIssuedToken sets the issuedToken for imageAuthClient.
 func withIssuedToken(token string) imageAuthClientOption {
@@ -375,9 +394,10 @@ type imageAuthClient struct {
 }
 
 // newImageAuthClient creates a new imageAuthClient.
-func newImageAuthClient(image *preheatImage, opts ...imageAuthClientOption) (*imageAuthClient, error) {
+func newImageAuthClient(image *preheatImage, httpClient *http.Client, authConfig *typesregistry.AuthConfig, opts ...imageAuthClientOption) (*imageAuthClient, error) {
 	d := &imageAuthClient{
-		httpClient:              http.DefaultClient,
+		httpClient:              httpClient,
+		authConfig:              authConfig,
 		interceptorTokenHandler: newInterceptorTokenHandler(),
 	}
 
@@ -385,7 +405,7 @@ func newImageAuthClient(image *preheatImage, opts ...imageAuthClientOption) (*im
 		opt(d)
 	}
 
-	// return earlier if issued token is not empty
+	// Return earlier if issued token is not empty.
 	if len(d.issuedToken) > 0 {
 		return d, nil
 	}

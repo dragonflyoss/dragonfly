@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/casbin/casbin/v2"
+	casbin "github.com/casbin/casbin/v2"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/static"
 	ginzap "github.com/gin-contrib/zap"
@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/internal/ratelimiter"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/handlers"
@@ -43,7 +44,8 @@ const (
 	OtelServiceName         = "dragonfly-manager"
 )
 
-func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer, assets static.ServeFileSystem) (*gin.Engine, error) {
+func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer,
+	limiter ratelimiter.JobRateLimiter, assets static.ServeFileSystem) (*gin.Engine, error) {
 	// Set mode.
 	if !cfg.Verbose {
 		gin.SetMode(gin.ReleaseMode)
@@ -74,6 +76,9 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// CORS middleware.
 	r.Use(middlewares.CORS())
+
+	// Server middleware.
+	r.Use(middlewares.Server())
 
 	// gzip middleware.
 	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".js", ".css"})))
@@ -159,6 +164,10 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	s.GET(":id", h.GetScheduler)
 	s.GET("", h.GetSchedulers)
 
+	// Scheduler Feature.
+	sf := apiv1.Group("/scheduler-features", jwt.MiddlewareFunc(), rbac)
+	sf.GET("", h.GetSchedulerFeatures)
+
 	// Seed Peer Cluster.
 	spc := apiv1.Group("/seed-peer-clusters", jwt.MiddlewareFunc(), rbac)
 	spc.POST("", h.CreateSeedPeerCluster)
@@ -202,7 +211,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	// TODO Add auth to the following routes and fix the tests.
 	// Job.
 	job := apiv1.Group("/jobs")
-	job.POST("", h.CreateJob)
+	job.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	job.DELETE(":id", h.DestroyJob)
 	job.PATCH(":id", h.UpdateJob)
 	job.GET(":id", h.GetJob)
@@ -215,13 +224,6 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	cs.PATCH(":id", h.UpdateApplication)
 	cs.GET(":id", h.GetApplication)
 	cs.GET("", h.GetApplications)
-
-	// Model.
-	model := apiv1.Group("/models", jwt.MiddlewareFunc(), rbac)
-	model.DELETE(":id", h.DestroyModel)
-	model.PATCH(":id", h.UpdateModel)
-	model.GET(":id", h.GetModel)
-	model.GET("", h.GetModels)
 
 	// Personal Access Token.
 	pat := apiv1.Group("/personal-access-tokens", jwt.MiddlewareFunc(), rbac)

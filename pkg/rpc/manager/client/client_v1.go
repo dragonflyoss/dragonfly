@@ -33,7 +33,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	managerv1 "d7y.io/api/v2/pkg/apis/manager/v1"
-	securityv1 "d7y.io/api/v2/pkg/apis/security/v1"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/dfnet"
@@ -70,9 +69,8 @@ func GetV1ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V
 	}
 
 	return &v1{
-		ManagerClient:     managerv1.NewManagerClient(conn),
-		CertificateClient: securityv1.NewCertificateClient(conn),
-		ClientConn:        conn,
+		ManagerClient: managerv1.NewManagerClient(conn),
+		ClientConn:    conn,
 	}, nil
 }
 
@@ -103,7 +101,7 @@ type V1 interface {
 	// Update scheduler configuration.
 	UpdateScheduler(context.Context, *managerv1.UpdateSchedulerRequest, ...grpc.CallOption) (*managerv1.Scheduler, error)
 
-	// List acitve schedulers configuration.
+	// List active schedulers configuration.
 	ListSchedulers(context.Context, *managerv1.ListSchedulersRequest, ...grpc.CallOption) (*managerv1.ListSchedulersResponse, error)
 
 	// Get object storage configuration.
@@ -115,9 +113,6 @@ type V1 interface {
 	// List applications configuration.
 	ListApplications(context.Context, *managerv1.ListApplicationsRequest, ...grpc.CallOption) (*managerv1.ListApplicationsResponse, error)
 
-	// Create model and update data of model to object storage.
-	CreateModel(context.Context, *managerv1.CreateModelRequest, ...grpc.CallOption) error
-
 	// KeepAlive with manager.
 	KeepAlive(time.Duration, *managerv1.KeepAliveRequest, <-chan struct{}, ...grpc.CallOption)
 
@@ -128,11 +123,10 @@ type V1 interface {
 // v1 provides v1 version of the manager grpc function.
 type v1 struct {
 	managerv1.ManagerClient
-	securityv1.CertificateClient
 	*grpc.ClientConn
 }
 
-// List acitve seed peers configuration.
+// List active seed peers configuration.
 func (v *v1) ListSeedPeers(ctx context.Context, req *managerv1.ListSeedPeersRequest, opts ...grpc.CallOption) (*managerv1.ListSeedPeersResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
@@ -164,7 +158,7 @@ func (v *v1) UpdateScheduler(ctx context.Context, req *managerv1.UpdateScheduler
 	return v.ManagerClient.UpdateScheduler(ctx, req, opts...)
 }
 
-// List acitve schedulers configuration.
+// List active schedulers configuration.
 func (v *v1) ListSchedulers(ctx context.Context, req *managerv1.ListSchedulersRequest, opts ...grpc.CallOption) (*managerv1.ListSchedulersResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
@@ -196,16 +190,7 @@ func (v *v1) ListApplications(ctx context.Context, req *managerv1.ListApplicatio
 	return v.ManagerClient.ListApplications(ctx, req, opts...)
 }
 
-// Create model and update data of model to object storage.
-func (v *v1) CreateModel(ctx context.Context, req *managerv1.CreateModelRequest, opts ...grpc.CallOption) error {
-	ctx, cancel := context.WithTimeout(ctx, createModelContextTimeout)
-	defer cancel()
-
-	_, err := v.ManagerClient.CreateModel(ctx, req, opts...)
-	return err
-}
-
-// List acitve schedulers configuration.
+// List active schedulers configuration.
 func (v *v1) KeepAlive(interval time.Duration, keepalive *managerv1.KeepAliveRequest, done <-chan struct{}, opts ...grpc.CallOption) {
 	log := logger.WithKeepAlive(keepalive.Hostname, keepalive.Ip, keepalive.SourceType.Enum().String(), keepalive.ClusterId)
 retry:

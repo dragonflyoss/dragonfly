@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine3.17
+FROM golang:1.23.0-alpine3.20
 
 ARG GOPROXY
 ARG GOTAGS

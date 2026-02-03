@@ -1,6 +1,5 @@
 server:
   name: foo
-  workHome: foo
   cacheDir: foo
   logDir: foo
   logMaxSize: 512
@@ -13,6 +12,10 @@ server:
     port:
       start: 65003
       end: 65003
+    tls:
+      caCert: foo
+      cert: foo
+      key: foo
   rest:
     addr: :8080
     tls:
@@ -36,9 +39,9 @@ database:
     dbname: foo
     tlsConfig: preferred
     tls:
+      caCert: foo
       cert: foo
       key: foo
-      ca: foo
       insecureSkipVerify: true
     migrate: true
   postgres:
@@ -72,6 +75,10 @@ cache:
     ttl: 1s
 
 job:
+  gc:
+    interval: 1s
+    ttl: 1s
+    batchSize: 100
   preheat:
     registryTimeout: 1m
     tls:
@@ -79,6 +86,7 @@ job:
   syncPeers:
     interval: 13h
     timeout: 2m
+    batchSize: 50
 
 objectStorage:
   enable: true
@@ -89,25 +97,9 @@ objectStorage:
   region: baz
   s3ForcePathStyle: false
 
-security:
-  autoIssueCert: true
-  caCert: testdata/ca.crt
-  caKey: testdata/ca.key
-  tlsPolicy: force
-  certSpec:
-    dnsNames:
-      - foo
-    ipAddresses:
-      - 0.0.0.0
-    validityPeriod: 1s
-
 metrics:
   enable: true
   addr: :8000
 
 network:
   enableIPv6: true
-
-trainer:
-  enable: true
-  bucketName: models

@@ -28,6 +28,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
+	"google.golang.org/grpc/credentials/insecure"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
@@ -83,6 +84,42 @@ func GetV2(ctx context.Context, dynconfig config.DynconfigInterface, opts ...grp
 	}, nil
 }
 
+// GetV2ByAddr returns v2 version of the dfdaemon client by address.
+func GetV2ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V2, error) {
+	conn, err := grpc.DialContext(
+		ctx,
+		target,
+		append([]grpc.DialOption{
+			grpc.WithIdleTimeout(0),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(math.MaxInt32),
+				grpc.MaxCallSendMsgSize(math.MaxInt32),
+			),
+			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
+				grpc_prometheus.UnaryClientInterceptor,
+				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
+				grpc_retry.UnaryClientInterceptor(
+					grpc_retry.WithMax(maxRetries),
+					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
+				),
+			)),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
+				grpc_prometheus.StreamClientInterceptor,
+				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
+			)),
+		}, opts...)...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v2{
+		DfdaemonUploadClient: dfdaemonv2.NewDfdaemonUploadClient(conn),
+		ClientConn:           conn,
+	}, nil
+}
+
 // V2 is the interface for v2 version of the grpc client.
 type V2 interface {
 	// SyncPieces syncs pieces from the other peers.
@@ -94,14 +131,20 @@ type V2 interface {
 	// DownloadTask downloads task from p2p network.
 	DownloadTask(context.Context, string, *dfdaemonv2.DownloadTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadTaskClient, error)
 
-	// DownloadCacheTask downloads cache task from p2p network.
-	DownloadCacheTask(context.Context, *dfdaemonv2.DownloadCacheTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadCacheTaskClient, error)
+	// StatTask stats task information.
+	StatTask(context.Context, *dfdaemonv2.StatTaskRequest, ...grpc.CallOption) (*commonv2.Task, error)
 
-	// StatCacheTask stats cache task information.
-	StatCacheTask(context.Context, *dfdaemonv2.StatCacheTaskRequest, ...grpc.CallOption) (*commonv2.CacheTask, error)
+	// DeleteTask deletes task from p2p network.
+	DeleteTask(context.Context, *dfdaemonv2.DeleteTaskRequest, ...grpc.CallOption) error
 
-	// DeleteCacheTask deletes cache task from p2p network.
-	DeleteCacheTask(context.Context, *dfdaemonv2.DeleteCacheTaskRequest, ...grpc.CallOption) error
+	// DownloadPersistentCacheTask downloads persistent cache task from p2p network.
+	DownloadPersistentCacheTask(context.Context, *dfdaemonv2.DownloadPersistentCacheTaskRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error)
+
+	// StatPersistentCacheTask stats persistent cache task information.
+	StatPersistentCacheTask(context.Context, *dfdaemonv2.StatPersistentCacheTaskRequest, ...grpc.CallOption) (*commonv2.PersistentCacheTask, error)
+
+	// DeletePersistentCacheTask deletes persistent cache task from p2p network.
+	DeletePersistentCacheTask(context.Context, *dfdaemonv2.DeletePersistentCacheTaskRequest, ...grpc.CallOption) error
 
 	// Close tears down the ClientConn and all underlying connections.
 	Close() error
@@ -147,24 +190,41 @@ func (v *v2) DownloadTask(ctx context.Context, taskID string, req *dfdaemonv2.Do
 	)
 }
 
-// DownloadCacheTask downloads cache task from p2p network.
-func (v *v2) DownloadCacheTask(ctx context.Context, req *dfdaemonv2.DownloadCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadCacheTaskClient, error) {
-	return v.DfdaemonUploadClient.DownloadCacheTask(ctx, req, opts...)
-}
-
-// StatCacheTask stats cache task information.
-func (v *v2) StatCacheTask(ctx context.Context, req *dfdaemonv2.StatCacheTaskRequest, opts ...grpc.CallOption) (*commonv2.CacheTask, error) {
+// StatTask stats task information.
+func (v *v2) StatTask(ctx context.Context, req *dfdaemonv2.StatTaskRequest, opts ...grpc.CallOption) (*commonv2.Task, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	return v.DfdaemonUploadClient.StatCacheTask(ctx, req, opts...)
+	return v.DfdaemonUploadClient.StatTask(ctx, req, opts...)
 }
 
-// DeleteCacheTask deletes cache task from p2p network.
-func (v *v2) DeleteCacheTask(ctx context.Context, req *dfdaemonv2.DeleteCacheTaskRequest, opts ...grpc.CallOption) error {
+// DeleteTask deletes task from p2p network.
+func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	_, err := v.DfdaemonUploadClient.DeleteCacheTask(ctx, req, opts...)
+	_, err := v.DfdaemonUploadClient.DeleteTask(ctx, req, opts...)
+	return err
+}
+
+// DownloadPersistentCacheTask downloads persistent cache task from p2p network.
+func (v *v2) DownloadPersistentCacheTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error) {
+	return v.DfdaemonUploadClient.DownloadPersistentCacheTask(ctx, req, opts...)
+}
+
+// StatPersistentCacheTask stats persistent cache task information.
+func (v *v2) StatPersistentCacheTask(ctx context.Context, req *dfdaemonv2.StatPersistentCacheTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentCacheTask, error) {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	return v.DfdaemonUploadClient.StatPersistentCacheTask(ctx, req, opts...)
+}
+
+// DeletePersistentCacheTask deletes persistent cache task from p2p network.
+func (v *v2) DeletePersistentCacheTask(ctx context.Context, req *dfdaemonv2.DeletePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
+	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	defer cancel()
+
+	_, err := v.DfdaemonUploadClient.DeletePersistentCacheTask(ctx, req, opts...)
 	return err
 }

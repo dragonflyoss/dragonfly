@@ -23,6 +23,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 
 	"d7y.io/dragonfly/v2/internal/job"
+	"d7y.io/dragonfly/v2/manager/metrics"
 	_ "d7y.io/dragonfly/v2/manager/models" // nolint
 	"d7y.io/dragonfly/v2/manager/types"
 )
@@ -45,6 +46,8 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 		return
 	}
 
+	// Collect CreateJobCount metrics.
+	metrics.CreateJobCount.WithLabelValues(json.Type).Inc()
 	switch json.Type {
 	case job.PreheatJob:
 		var json types.CreatePreheatJobRequest
@@ -54,6 +57,60 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 		}
 
 		job, err := h.service.CreatePreheatJob(ctx.Request.Context(), json)
+		if err != nil {
+			ctx.Error(err) // nolint: errcheck
+			return
+		}
+
+		ctx.JSON(http.StatusOK, job)
+	case job.SyncPeersJob:
+		var json types.CreateSyncPeersJobRequest
+		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+
+		// CreateSyncPeersJob is a sync operation, so don't need to return the job id,
+		// and not record the job information in the database. If return success, need to
+		// query the peers table to get the latest data.
+		if err := h.service.CreateSyncPeersJob(ctx.Request.Context(), json); err != nil {
+			ctx.Error(err) // nolint: errcheck
+			return
+		}
+
+		ctx.JSON(http.StatusOK, http.StatusText(http.StatusOK))
+	case job.GetTaskJob:
+		var json types.CreateGetTaskJobRequest
+		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+
+		if json.Args.TaskID == "" && json.Args.URL == "" {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id or url is required"})
+			return
+		}
+
+		job, err := h.service.CreateGetTaskJob(ctx.Request.Context(), json)
+		if err != nil {
+			ctx.Error(err) // nolint: errcheck
+			return
+		}
+
+		ctx.JSON(http.StatusOK, job)
+	case job.DeleteTaskJob:
+		var json types.CreateDeleteTaskJobRequest
+		if err := ctx.ShouldBindBodyWith(&json, binding.JSON); err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+
+		if json.Args.TaskID == "" && json.Args.URL == "" {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "invalid params: task_id or url is required"})
+			return
+		}
+
+		job, err := h.service.CreateDeleteTaskJob(ctx.Request.Context(), json)
 		if err != nil {
 			ctx.Error(err) // nolint: errcheck
 			return

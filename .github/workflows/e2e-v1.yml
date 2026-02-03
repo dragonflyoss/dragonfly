@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
+permissions:  
+  contents: read
+
 env:
   KIND_VERSION: v0.12.0
   CONTAINERD_VERSION: v1.5.2
@@ -28,9 +31,7 @@ jobs:
         module:
           - "normal"
           - "concurent-back-source"
-          - "grpc-tls"
           - "disable-seed-peer"
-          - "grpc-tls-ipv6"
           - "ipv6"
           - "split-running-tasks"
           - "cache-list-metadata"
@@ -42,17 +43,11 @@ jobs:
           - module: concurent-back-source
             charts-config: test/testdata/charts/config-concurent-back-source.yaml
             skip: ""
-          - module: grpc-tls
-            charts-config: test/testdata/charts/config-grpc-tls.yaml
-            skip: ""
           - module: disable-seed-peer
             charts-config: test/testdata/charts/config-disable-seed-peer.yaml
             skip: preheat
           - module: ipv6
             charts-config: test/testdata/charts/config-ipv6.yaml
-            skip: ""
-          - module: grpc-tls-ipv6
-            charts-config: test/testdata/charts/config-grpc-tls-ipv6.yaml
             skip: ""
           - module: split-running-tasks
             charts-config: test/testdata/charts/config-split-running-tasks.yaml
@@ -65,7 +60,7 @@ jobs:
             skip: ""
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
         with:
           tool-cache: false
           android: true
@@ -76,12 +71,12 @@ jobs:
           swap-storage: true
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a
         with:
           go-version-file: go.mod
 
@@ -91,13 +86,13 @@ jobs:
           mkdir -p /tmp/artifact
 
       - name: Setup buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
         id: buildx
         with:
           install: true
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -105,7 +100,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Build Scheduler Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: .
           file: build/images/scheduler/Dockerfile
@@ -116,7 +111,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build Manager Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: .
           file: build/images/manager/Dockerfile
@@ -127,7 +122,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build Dfdaemon Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: .
           file: build/images/dfdaemon/Dockerfile
@@ -138,7 +133,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build No Content Length Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: test/tools/no-content-length/
           file: test/tools/no-content-length/Dockerfile
@@ -149,7 +144,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Setup Kind
-        uses: helm/kind-action@v1.10.0
+        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde
         with:
           version: ${{ env.KIND_VERSION }}
           config: ${{ env.KIND_CONFIG_PATH }}
@@ -194,14 +189,14 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@7f8b4b4bde536c465e797be725718b88c5d95e0e
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt
           flags: e2etests
 
       - name: Upload Logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         if: always()
         with:
           name: ${{ matrix.module }}-e2e-tests-logs

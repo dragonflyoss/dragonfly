@@ -29,6 +29,12 @@ const (
 
 	// SyncPeersJob is the name of syncing peers job.
 	SyncPeersJob = "sync_peers"
+
+	// GetTaskJob is the name of getting task job.
+	GetTaskJob = "get_task"
+
+	// DeleteTaskJob is the name of deleting task job.
+	DeleteTaskJob = "delete_task"
 )
 
 // Machinery server configuration.

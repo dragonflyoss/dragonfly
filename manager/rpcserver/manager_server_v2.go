@@ -161,7 +161,7 @@ func (s *managerServerV2) GetSeedPeer(ctx context.Context, req *managerv2.GetSee
 	return &pbSeedPeer, nil
 }
 
-// List acitve seed peers configuration.
+// List active seed peers configuration.
 func (s *managerServerV2) ListSeedPeers(ctx context.Context, req *managerv2.ListSeedPeersRequest) (*managerv2.ListSeedPeersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	log.Debugf("list seed peers, version %s, commit %s", req.Version, req.Commit)
@@ -463,12 +463,19 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Use default scheduler features if not set, compatible with the old version.
+	schedulerFeatures := types.DefaultSchedulerFeatures
+	if req.GetFeatures() != nil {
+		schedulerFeatures = req.GetFeatures()
+	}
+
 	if err := s.db.WithContext(ctx).Model(&scheduler).Updates(models.Scheduler{
 		IDC:                req.GetIdc(),
 		Location:           req.GetLocation(),
 		IP:                 req.GetIp(),
 		Port:               req.GetPort(),
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
+		Features:           schedulerFeatures,
 	}).Error; err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -501,13 +508,19 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 
 // Create scheduler and associate cluster.
 func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.UpdateSchedulerRequest) (*managerv2.Scheduler, error) {
+	// Use default scheduler features if not set, compatible with the old version.
+	schedulerFeatures := types.DefaultSchedulerFeatures
+	if req.GetFeatures() != nil {
+		schedulerFeatures = req.GetFeatures()
+	}
+
 	scheduler := models.Scheduler{
 		Hostname:           req.GetHostname(),
 		IDC:                req.GetIdc(),
 		Location:           req.GetLocation(),
 		IP:                 req.GetIp(),
 		Port:               req.GetPort(),
-		Features:           types.DefaultSchedulerFeatures,
+		Features:           schedulerFeatures,
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
 	}
 
@@ -534,7 +547,7 @@ func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.Up
 	}, nil
 }
 
-// List acitve schedulers configuration.
+// List active schedulers configuration.
 func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
@@ -542,7 +555,7 @@ func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.Lis
 
 	// Cache hit.
 	var pbListSchedulersResponse managerv2.ListSchedulersResponse
-	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip)
+	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip, req.Version)
 
 	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
 		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
@@ -557,7 +570,7 @@ func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.Lis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Remove schedulers which not have scehdule featrue. As OceanBase does not support JSON type,
+	// Remove schedulers which not have schedule feature. As OceanBase does not support JSON type,
 	// it is not possible to use datatypes.JSONQuery for filtering.
 	var tmpSchedulerClusters []models.SchedulerCluster
 	for _, schedulerCluster := range schedulerClusters {

@@ -23,6 +23,7 @@ import (
 type MockV2 struct {
 	ctrl     *gomock.Controller
 	recorder *MockV2MockRecorder
+	isgomock struct{}
 }
 
 // MockV2MockRecorder is the mock recorder for MockV2.
@@ -152,6 +153,26 @@ func (mr *MockV2MockRecorder) DeleteTask(arg0, arg1 any, arg2 ...any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTask", reflect.TypeOf((*MockV2)(nil).DeleteTask), varargs...)
 }
 
+// ListHosts mocks base method.
+func (m *MockV2) ListHosts(ctx context.Context, taskID string, opts ...grpc.CallOption) (*scheduler.ListHostsResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, taskID}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListHosts", varargs...)
+	ret0, _ := ret[0].(*scheduler.ListHostsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListHosts indicates an expected call of ListHosts.
+func (mr *MockV2MockRecorder) ListHosts(ctx, taskID any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, taskID}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHosts", reflect.TypeOf((*MockV2)(nil).ListHosts), varargs...)
+}
+
 // StatPeer mocks base method.
 func (m *MockV2) StatPeer(arg0 context.Context, arg1 *scheduler.StatPeerRequest, arg2 ...grpc.CallOption) (*common.Peer, error) {
 	m.ctrl.T.Helper()
@@ -190,24 +211,4 @@ func (mr *MockV2MockRecorder) StatTask(arg0, arg1 any, arg2 ...any) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatTask", reflect.TypeOf((*MockV2)(nil).StatTask), varargs...)
-}
-
-// SyncProbes mocks base method.
-func (m *MockV2) SyncProbes(arg0 context.Context, arg1 *scheduler.SyncProbesRequest, arg2 ...grpc.CallOption) (scheduler.Scheduler_SyncProbesClient, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "SyncProbes", varargs...)
-	ret0, _ := ret[0].(scheduler.Scheduler_SyncProbesClient)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SyncProbes indicates an expected call of SyncProbes.
-func (mr *MockV2MockRecorder) SyncProbes(arg0, arg1 any, arg2 ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncProbes", reflect.TypeOf((*MockV2)(nil).SyncProbes), varargs...)
 }

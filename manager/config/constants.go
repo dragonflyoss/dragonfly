@@ -53,10 +53,10 @@ const (
 	DefaultJWTRealm = "Dragonfly"
 
 	// DefaultJWTTimeout is default of timeout in jwt.
-	DefaultJWTTimeout = 2 * 24 * time.Hour
+	DefaultJWTTimeout = 14 * 24 * time.Hour
 
 	// DefaultJWTMaxRefresh is default of max refresh in jwt.
-	DefaultJWTMaxRefresh = 2 * 24 * time.Hour
+	DefaultJWTMaxRefresh = 7 * 24 * time.Hour
 )
 
 const (
@@ -90,6 +90,15 @@ const (
 )
 
 const (
+	// DefaultJobGCInterval is the default interval for gc job.
+	DefaultJobGCInterval = 6 * time.Hour
+
+	// DefaultJobGCTTL is the default ttl for job.
+	DefaultJobGCTTL = 12 * time.Hour
+
+	// DefaultJobGCBatchSize is the default batch size for operating on the database in gc job.
+	DefaultJobGCBatchSize = 5000
+
 	// DefaultJobPreheatRegistryTimeout is the default timeout for requesting registry to get token and manifest.
 	DefaultJobPreheatRegistryTimeout = 1 * time.Minute
 
@@ -101,6 +110,13 @@ const (
 
 	// DefaultJobSyncPeersTimeout is the default timeout for syncing all peers information from the scheduler.
 	DefaultJobSyncPeersTimeout = 10 * time.Minute
+
+	// DefaultClusterJobRateLimit is default rate limit(requests per second) for job Open API by cluster.
+	DefaultClusterJobRateLimit = 10
+
+	// DefaultJobSyncPeersBatchSize is the default batch size for syncing all peers information from the scheduler and
+	// operating on the database.
+	DefaultJobSyncPeersBatchSize = 500
 )
 
 const (
@@ -155,9 +171,4 @@ var (
 var (
 	// DefaultNetworkEnableIPv6 is default value of enableIPv6.
 	DefaultNetworkEnableIPv6 = false
-)
-
-var (
-	// DefaultTrainerBucketName is default object storage bucket name of model.
-	DefaultTrainerBucketName = "models"
 )

@@ -28,11 +28,9 @@ import (
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
-	"d7y.io/dragonfly/v2/scheduler/networktopology"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
 	"d7y.io/dragonfly/v2/scheduler/service"
-	"d7y.io/dragonfly/v2/scheduler/storage"
 )
 
 // schedulerServerV1 is v1 version of the scheduler grpc server.
@@ -47,31 +45,26 @@ func newSchedulerServerV1(
 	resource resource.Resource,
 	scheduling scheduling.Scheduling,
 	dynconfig config.DynconfigInterface,
-	storage storage.Storage,
-	networkTopology networktopology.NetworkTopology,
 ) schedulerv1.SchedulerServer {
-	return &schedulerServerV1{service.NewV1(cfg, resource, scheduling, dynconfig, storage, networkTopology)}
+	return &schedulerServerV1{service.NewV1(cfg, resource, scheduling, dynconfig)}
 }
 
 // RegisterPeerTask registers peer and triggers seed peer download task.
 func (s *schedulerServerV1) RegisterPeerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest) (*schedulerv1.RegisterResult, error) {
-	// FIXME Scheudler will not generate task id.
+	// FIXME Scheduler will not generate task id.
 	if req.TaskId == "" {
 		req.TaskId = idgen.TaskIDV1(req.Url, req.UrlMeta)
 	}
-
-	tag := req.UrlMeta.Tag
-	application := req.UrlMeta.Application
 	priority := req.UrlMeta.Priority
 
 	// Collect RegisterPeerCount metrics.
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), commonv1.TaskType_Normal.String(),
-		tag, application, types.HostTypeNormalName).Inc()
+		types.HostTypeNormalName).Inc()
 	resp, err := s.service.RegisterPeerTask(ctx, req)
 	if err != nil {
 		// Collect RegisterPeerFailureCount metrics.
 		metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), commonv1.TaskType_Normal.String(),
-			tag, application, types.HostTypeNormalName).Inc()
+			types.HostTypeNormalName).Inc()
 	}
 
 	return resp, err
@@ -157,17 +150,4 @@ func (s *schedulerServerV1) LeaveHost(ctx context.Context, req *schedulerv1.Leav
 	}
 
 	return new(emptypb.Empty), nil
-}
-
-// SyncProbes sync probes of the host.
-func (s *schedulerServerV1) SyncProbes(stream schedulerv1.Scheduler_SyncProbesServer) error {
-	// Collect SyncProbesCount metrics.
-	metrics.SyncProbesCount.Inc()
-	if err := s.service.SyncProbes(stream); err != nil {
-		// Collect SyncProbesFailureCount metrics.
-		metrics.SyncProbesFailureCount.Inc()
-		return err
-	}
-
-	return nil
 }

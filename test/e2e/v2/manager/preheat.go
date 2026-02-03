@@ -17,12 +17,9 @@
 package manager
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 
@@ -64,7 +61,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			fileMetadata := util.FileMetadata{
-				ID:     "e8ef42dcc1e8da5e77b19bf39532f91f0bfeb85ed0d3ce277e1823f91c5a255a",
+				ID:     "b0a5cfd4ccf5310803675f742dedc435a64e9a5f539f48fedbef6c30aac18b7c",
 				Sha256: "80f1d8cd843a98b23b30e90e7e43a14e05935351f354d678bc465f7be66ef3dd",
 			}
 
@@ -111,55 +108,8 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			fileMetadata := util.FileMetadata{
-				ID:     "bf3cd4dd9b582ac4a9253d28d38f0d2cb942455572a2a2d2fc9a82e1e83eda4f",
+				ID:     "802e3df5384438deaed066ca445489f6e314ebb6a2d4728d020e75a08d281942",
 				Sha256: "4c7f0f298ab3350859f90664d706b8ccaa95072f1f1f3dd74f559642e5483cd5",
-			}
-
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := 0; i < 3; i++ {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, fileMetadata.ID)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(fileMetadata.Sha256).To(Equal(sha256sum))
-		})
-	})
-
-	Context("/bin/i386 file", func() {
-		It("preheat files should be ok", Label("preheat", "file"), func() {
-			managerPod, err := util.ManagerExec(0)
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-
-			req, err := structure.StructToMap(types.CreatePreheatJobRequest{
-				Type: internaljob.PreheatJob,
-				Args: types.PreheatArgs{
-					Type: "file",
-					URL:  util.GetFileURL("/bin/i386"),
-				},
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			out, err := managerPod.CurlCommand("POST", map[string]string{"Content-Type": "application/json"}, req,
-				"http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs").CombinedOutput()
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Println(string(out))
-
-			job := &models.Job{}
-			err = json.Unmarshal(out, job)
-			fmt.Println(err)
-			Expect(err).NotTo(HaveOccurred())
-
-			done := waitForDone(job, managerPod)
-			Expect(done).Should(BeTrue())
-
-			fileMetadata := util.FileMetadata{
-				ID:     "c6273a9e7140bc2af543fbb15e16186e8f07b054f7bfd1556dce5a76dba7dd28",
-				Sha256: "a1cbf1bf2d66757121677fd7fefafacd4f843a2cb44a451131002803bae56a65",
 			}
 
 			seedClientPods := make([]*util.PodExec, 3)
@@ -205,7 +155,7 @@ var _ = Describe("Preheat with Manager", func() {
 			Expect(done).Should(BeTrue())
 
 			fileMetadata := util.FileMetadata{
-				ID:     "b9615c0754d6e5dafe0b3b8b1aafc836635efd528a3815288646728c946a0469",
+				ID:     "4f1de4716ec6d1ca56daf1f5dd2520a8f6a826d90474f596cdf99a5c88fef982",
 				Sha256: "5a963cbdd08df27651e9c9d006567267ebb3c80f7b8fc0f218ade5771df2998b",
 			}
 
@@ -251,11 +201,11 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "22b576f99cff7676bdb10a4fdf1f1ae5163ccf9023d07d5f1be355a86c3e99e7",
+					ID:     "b6922209dc9616f8736a860e93c3cd7288a4e801517f88eec3df514606d18cdf",
 					Sha256: "a711f05d33845e2e9deffcfcc5adf082d7c6e97e3e3a881d193d9aae38f092a8",
 				},
 				{
-					ID:     "3ef8cc79ebac6ad32b68e0ea4b0a863b808b72377e645d1d87c73d073aea18d8",
+					ID:     "c0dfae864ae65c285676063eb148d0a0064d5c6c39367fee0bcc1f3700c39c31",
 					Sha256: "f643e116a03d9604c344edb345d7592c48cc00f2a4848aaf773411f4fb30d2f5",
 				},
 			}
@@ -305,23 +255,23 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "db5beca8a19049e0420e4efa08983e6b22162c1192de39a363ed16ea6459ee28",
+					ID:     "c8ca6a17354d3a79397eef26803e5af84d00a3fd64b0f823922086a31ebdee18",
 					Sha256: "f1f1039835051ecc04909f939530e86a20f02d2ce5ad7a81c0fa3616f7303944",
 				},
 				{
-					ID:     "b89495f24d34cae8e9174df15b60d34d490547d3029e3c187079cc3b475ff250",
+					ID:     "b8de5865e2ebf537279683adfbdb5f858b0c7212e5744a1df233086496c245d7",
 					Sha256: "c1d6d1b2d5a367259e6e51a7f4d1ccd66a28cc9940d6599d8a8ea9544dd4b4a8",
 				},
 				{
-					ID:     "efc4e319971484d86cc43a48a9e3eccc23736cabc50ba4d1e707a841eaf42e12",
+					ID:     "e4bf0d4b551afda56f9627c81ee02ab4360865d37c7dd43586e37f26f4386806",
 					Sha256: "871ab018db94b4ae7b137764837bc4504393a60656ba187189e985cd809064f7",
 				},
 				{
-					ID:     "5ff373729cb097252966b0fad599bad4c87e0dc96bf77c65b91badc99d2f7e99",
+					ID:     "7da0721fd078dd46a63298747ffde8fcbe12b53378f282c9def693615ac7993e",
 					Sha256: "f1a1d290795d904815786e41d39a41dc1af5de68a9e9020baba8bd83b32d8f95",
 				},
 				{
-					ID:     "99e12b50d80a25090c7928fe3ce35ca97bd373c45fe90870b3b70884bf9c34c9",
+					ID:     "3639c8c5712e77acd3751142c83150c0a12284a54fa41224a1c7acc0e343020d",
 					Sha256: "f1ffc4b5459e82dc8e7ddd1d1a2ec469e85a1f076090c22851a1f2ce6f71e1a6",
 				},
 			}
@@ -340,7 +290,7 @@ var _ = Describe("Preheat with Manager", func() {
 			}
 		})
 
-		It("preheat image for linux/arm64 platform  should be ok", Label("preheat", "image"), func() {
+		It("preheat image for linux/arm64 platform should be ok", Label("preheat", "image"), func() {
 			managerPod, err := util.ManagerExec(0)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
@@ -369,23 +319,23 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "4fed91258f022c3f8eb8c0408e871bff653bf8015f9e9ec71bd03a2bb639119b",
+					ID:     "9869dbb01ac214e90e4ae667e42d50210c2ff1e63292d73b14f0a7a2226c0320",
 					Sha256: "a0d7a8f11f7e25ca59f0bf470187dd9aa27e7ca951cf67a53c750deea5d3b076",
 				},
 				{
-					ID:     "fb47239bde6b518227ccce5ed86b0b1570a9e42ba94ca72f99f5db640350e22a",
+					ID:     "ab049caee13f77d91568d954a5d32f5d2354497cab098887a8a663656daa9840",
 					Sha256: "a880266d3b77f75696023df2da1ef66c3c565e0f70596242395c9e68de955c7c",
 				},
 				{
-					ID:     "efc4e319971484d86cc43a48a9e3eccc23736cabc50ba4d1e707a841eaf42e12",
+					ID:     "e4bf0d4b551afda56f9627c81ee02ab4360865d37c7dd43586e37f26f4386806",
 					Sha256: "871ab018db94b4ae7b137764837bc4504393a60656ba187189e985cd809064f7",
 				},
 				{
-					ID:     "7860f1bd9cc5eca105df4c40719351562f04f5f0bda7805c34ed475ddd66d778",
+					ID:     "a26e1ac8b70926f45766fcf886f23a833793c39c62237bcda9ffeb158131c0d6",
 					Sha256: "9b5952218d7711195c6c6fbddbef2780507d20851ca68845d180397d1348f0d8",
 				},
 				{
-					ID:     "34be7b23dcbb09487133810e30c1e701a4285f742d4dbe6f6fda496014f90af6",
+					ID:     "7376f665077e91cd0dc410c00242ab88775e3eae19eca4b7b3a29ded14fc3754",
 					Sha256: "889f4c960ac4ff70774e9c4cfa64efc4823ade0702d0f96c20ff0054ffbbe504",
 				},
 			}
@@ -405,32 +355,3 @@ var _ = Describe("Preheat with Manager", func() {
 		})
 	})
 })
-
-func waitForDone(preheat *models.Job, pod *util.PodExec) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-ticker.C:
-			out, err := pod.CurlCommand("", nil, nil,
-				fmt.Sprintf("http://dragonfly-manager.dragonfly-system.svc:8080/api/v1/jobs/%d", preheat.ID)).CombinedOutput()
-			fmt.Println(string(out))
-			Expect(err).NotTo(HaveOccurred())
-			err = json.Unmarshal(out, preheat)
-			Expect(err).NotTo(HaveOccurred())
-			switch preheat.State {
-			case machineryv1tasks.StateSuccess:
-				return true
-			case machineryv1tasks.StateFailure:
-				return false
-			default:
-			}
-		}
-	}
-}

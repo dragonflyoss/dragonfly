@@ -101,6 +101,7 @@ type Service interface {
 	UpdateScheduler(context.Context, uint, types.UpdateSchedulerRequest) (*models.Scheduler, error)
 	GetScheduler(context.Context, uint) (*models.Scheduler, error)
 	GetSchedulers(context.Context, types.GetSchedulersQuery) ([]models.Scheduler, int64, error)
+	GetSchedulerFeatures(context.Context) []string
 
 	CreateBucket(context.Context, types.CreateBucketRequest) error
 	DestroyBucket(context.Context, string) error
@@ -114,6 +115,9 @@ type Service interface {
 	GetConfigs(context.Context, types.GetConfigsQuery) ([]models.Config, int64, error)
 
 	CreatePreheatJob(context.Context, types.CreatePreheatJobRequest) (*models.Job, error)
+	CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error
+	CreateDeleteTaskJob(context.Context, types.CreateDeleteTaskJobRequest) (*models.Job, error)
+	CreateGetTaskJob(context.Context, types.CreateGetTaskJobRequest) (*models.Job, error)
 	DestroyJob(context.Context, uint) error
 	UpdateJob(context.Context, uint, types.UpdateJobRequest) (*models.Job, error)
 	GetJob(context.Context, uint) (*models.Job, error)
@@ -127,11 +131,6 @@ type Service interface {
 	UpdateApplication(context.Context, uint, types.UpdateApplicationRequest) (*models.Application, error)
 	GetApplication(context.Context, uint) (*models.Application, error)
 	GetApplications(context.Context, types.GetApplicationsQuery) ([]models.Application, int64, error)
-
-	DestroyModel(context.Context, uint) error
-	UpdateModel(context.Context, uint, types.UpdateModelRequest) (*models.Model, error)
-	GetModel(context.Context, uint) (*models.Model, error)
-	GetModels(context.Context, types.GetModelsQuery) ([]models.Model, int64, error)
 
 	CreatePersonalAccessToken(context.Context, types.CreatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error)
 	DestroyPersonalAccessToken(context.Context, uint) error
@@ -150,7 +149,7 @@ type service struct {
 	objectStorage objectstorage.ObjectStorage
 }
 
-// NewREST returns a new REST instence
+// NewREST returns a new REST instance
 func New(cfg *config.Config, database *database.Database, cache *cache.Cache, job *job.Job, enforcer *casbin.Enforcer, objectStorage objectstorage.ObjectStorage) Service {
 	return &service{
 		config:        cfg,

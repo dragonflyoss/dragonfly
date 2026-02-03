@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main, release-*]
 
-env:
-  GO_VERSION: '1.21'
+permissions:  
+  contents: read
 
 jobs:
   check_size:
@@ -16,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 1
 
       - name: Check large files
-        uses: actionsdesk/lfs-warning@v3.2
+        uses: actionsdesk/lfs-warning@e5f9a4c21f4bee104db7c0f23954dde59e5df909
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

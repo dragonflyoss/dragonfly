@@ -26,7 +26,6 @@ import (
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
 	"d7y.io/dragonfly/v2/pkg/objectstorage"
-	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
@@ -56,22 +55,13 @@ type Config struct {
 	// Metrics configuration.
 	Metrics MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
 
-	// Security configuration.
-	Security SecurityConfig `yaml:"security" mapstructure:"security"`
-
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
-
-	// Trainer configuration.
-	Trainer TrainerConfig `yaml:"trainer" mapstructure:"trainer"`
 }
 
 type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
-
-	// Server work directory.
-	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
 
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
@@ -161,14 +151,14 @@ type MysqlConfig struct {
 }
 
 type MysqlTLSClientConfig struct {
-	// Client certificate file path.
+	// CACert is the file path of CA certificate for mysql.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the client certificate file path.
 	Cert string `yaml:"cert" mapstructure:"cert"`
 
-	// Client key file path.
+	// Key is the client key file path.
 	Key string `yaml:"key" mapstructure:"key"`
-
-	// CA file path.
-	CA string `yaml:"ca" mapstructure:"ca"`
 
 	// InsecureSkipVerify controls whether a client verifies the
 	// server's certificate chain and host name.
@@ -240,6 +230,12 @@ type RedisConfig struct {
 	// Password is server password.
 	Password string `yaml:"password" mapstructure:"password"`
 
+	// SentinelUsername is sentinel server username.
+	SentinelUsername string `yaml:"sentinelUsername" mapstructure:"sentinelUsername"`
+
+	// SentinelPassword is sentinel server password.
+	SentinelPassword string `yaml:"sentinelPassword" mapstructure:"sentinelPassword"`
+
 	// DB is server cache DB name.
 	DB int `yaml:"db" mapstructure:"db"`
 
@@ -276,10 +272,10 @@ type RESTConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 
 	// TLS server configuration.
-	TLS *TLSServerConfig `yaml:"tls" mapstructure:"tls"`
+	TLS *RESTTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 }
 
-type TLSServerConfig struct {
+type RESTTLSServerConfig struct {
 	// Certificate file path.
 	Cert string `yaml:"cert" mapstructure:"cert"`
 
@@ -303,15 +299,36 @@ type GRPCConfig struct {
 	ListenIP net.IP `mapstructure:"listenIP" yaml:"listenIP"`
 
 	// Port is listen port.
-	PortRange TCPListenPortRange `yaml:"port" mapstructure:"port"`
+	Port TCPListenPortRange `yaml:"port" mapstructure:"port"`
+
+	// TLS server configuration.
+	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 }
 
 type TCPListenPortRange struct {
+	// Start is the start port.
 	Start int
-	End   int
+
+	// End is the end port.
+	End int
+}
+
+type GRPCTLSServerConfig struct {
+	// CACert is the file path of CA certificate for mTLS.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the file path of server certificate for mTLS.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the file path of server key for mTLS.
+	Key string `yaml:"key" mapstructure:"key"`
 }
 
 type JobConfig struct {
+	// GC configuration, used to clean up expired jobs. If the count of the jobs is huge,
+	// it may cause performance problems.
+	GC GCConfig `yaml:"gc" mapstructure:"gc"`
+
 	// Preheat configuration.
 	Preheat PreheatConfig `yaml:"preheat" mapstructure:"preheat"`
 
@@ -319,12 +336,23 @@ type JobConfig struct {
 	SyncPeers SyncPeersConfig `yaml:"syncPeers" mapstructure:"syncPeers"`
 }
 
+type GCConfig struct {
+	// Interval is the interval for gc.
+	Interval time.Duration `yaml:"interval" mapstructure:"interval"`
+
+	// TTL is the ttl for job.
+	TTL time.Duration `yaml:"ttl" mapstructure:"ttl"`
+
+	// BatchSize is the batch size when operating gorm database.
+	BatchSize int `yaml:"batchSize" mapstructure:"batchSize"`
+}
+
 type PreheatConfig struct {
 	// RegistryTimeout is the timeout for requesting registry to get token and manifest.
 	RegistryTimeout time.Duration `yaml:"registryTimeout" mapstructure:"registryTimeout"`
 
 	// TLS client configuration.
-	TLS *PreheatTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+	TLS PreheatTLSClientConfig `yaml:"tls" mapstructure:"tls"`
 }
 
 type SyncPeersConfig struct {
@@ -334,10 +362,17 @@ type SyncPeersConfig struct {
 
 	// Timeout is the timeout for syncing peers information from the single scheduler.
 	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
+
+	// BatchSize is the batch size when operating gorm database.
+	BatchSize int `yaml:"batchSize" mapstructure:"batchSize"`
 }
 
 type PreheatTLSClientConfig struct {
-	// CACert is the CA certificate for preheat tls handshake, it can be path or PEM format string.
+	// InsecureSkipVerify controls whether a client verifies the
+	// server's certificate chain and host name.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
+
+	// CACert is the file path of CA certificate for preheating.
 	CACert types.PEMContent `yaml:"caCert" mapstructure:"caCert"`
 }
 
@@ -369,48 +404,9 @@ type ObjectStorageConfig struct {
 	S3ForcePathStyle bool `mapstructure:"s3ForcePathStyle" yaml:"s3ForcePathStyle"`
 }
 
-type SecurityConfig struct {
-	// AutoIssueCert indicates to issue client certificates for all grpc call.
-	AutoIssueCert bool `yaml:"autoIssueCert" mapstructure:"autoIssueCert"`
-
-	// CACert is the CA certificate for all grpc tls handshake, it can be path or PEM format string.
-	CACert types.PEMContent `mapstructure:"caCert" yaml:"caCert"`
-
-	// CAKey is the CA private key, it can be path or PEM format string.
-	CAKey types.PEMContent `mapstructure:"caKey" yaml:"caKey"`
-
-	// TLSPolicy controls the grpc shandshake behaviors:
-	// force: both ClientHandshake and ServerHandshake are only support tls
-	// prefer: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support tls
-	// default: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support insecure (non-tls)
-	TLSPolicy string `mapstructure:"tlsPolicy" yaml:"tlsPolicy"`
-
-	// CertSpec is the desired state of certificate.
-	CertSpec CertSpec `mapstructure:"certSpec" yaml:"certSpec"`
-}
-
-type CertSpec struct {
-	// DNSNames is a list of dns names be set on the certificate.
-	DNSNames []string `mapstructure:"dnsNames" yaml:"dnsNames"`
-
-	// IPAddresses is a list of ip addresses be set on the certificate.
-	IPAddresses []net.IP `mapstructure:"ipAddresses" yaml:"ipAddresses"`
-
-	// ValidityPeriod is the validity period  of certificate.
-	ValidityPeriod time.Duration `mapstructure:"validityPeriod" yaml:"validityPeriod"`
-}
-
 type NetworkConfig struct {
 	// EnableIPv6 enables ipv6 for server.
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
-}
-
-type TrainerConfig struct {
-	// Enable trainer service.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
-	// BucketName is the object storage bucket name of model.
-	BucketName string `yaml:"bucketName" mapstructure:"bucketName"`
 }
 
 // New config instance.
@@ -419,7 +415,7 @@ func New() *Config {
 		Server: ServerConfig{
 			Name: DefaultServerName,
 			GRPC: GRPCConfig{
-				PortRange: TCPListenPortRange{
+				Port: TCPListenPortRange{
 					Start: DefaultGRPCPort,
 					End:   DefaultGRPCPort,
 				},
@@ -473,26 +469,24 @@ func New() *Config {
 			},
 		},
 		Job: JobConfig{
+			GC: GCConfig{
+				Interval:  DefaultJobGCInterval,
+				TTL:       DefaultJobGCTTL,
+				BatchSize: DefaultJobGCBatchSize,
+			},
 			Preheat: PreheatConfig{
 				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
+				TLS:             PreheatTLSClientConfig{},
 			},
 			SyncPeers: SyncPeersConfig{
-				Interval: DefaultJobSyncPeersInterval,
-				Timeout:  DefaultJobSyncPeersTimeout,
+				Interval:  DefaultJobSyncPeersInterval,
+				Timeout:   DefaultJobSyncPeersTimeout,
+				BatchSize: DefaultJobSyncPeersBatchSize,
 			},
 		},
 		ObjectStorage: ObjectStorageConfig{
 			Enable:           false,
 			S3ForcePathStyle: true,
-		},
-		Security: SecurityConfig{
-			AutoIssueCert: false,
-			TLSPolicy:     rpc.PreferTLSPolicy,
-			CertSpec: CertSpec{
-				DNSNames:       DefaultCertDNSNames,
-				IPAddresses:    DefaultCertIPAddresses,
-				ValidityPeriod: DefaultCertValidityPeriod,
-			},
 		},
 		Metrics: MetricsConfig{
 			Enable: false,
@@ -500,10 +494,6 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
-		},
-		Trainer: TrainerConfig{
-			Enable:     false,
-			BucketName: DefaultTrainerBucketName,
 		},
 	}
 }
@@ -522,13 +512,27 @@ func (cfg *Config) Validate() error {
 		return errors.New("grpc requires parameter listenIP")
 	}
 
+	if cfg.Server.GRPC.TLS != nil {
+		if cfg.Server.GRPC.TLS.CACert == "" {
+			return errors.New("grpc tls requires parameter caCert")
+		}
+
+		if cfg.Server.GRPC.TLS.Cert == "" {
+			return errors.New("grpc tls requires parameter cert")
+		}
+
+		if cfg.Server.GRPC.TLS.Key == "" {
+			return errors.New("grpc tls requires parameter key")
+		}
+	}
+
 	if cfg.Server.REST.TLS != nil {
 		if cfg.Server.REST.TLS.Cert == "" {
-			return errors.New("tls requires parameter cert")
+			return errors.New("rest tls requires parameter cert")
 		}
 
 		if cfg.Server.REST.TLS.Key == "" {
-			return errors.New("tls requires parameter key")
+			return errors.New("rest tls requires parameter key")
 		}
 	}
 
@@ -574,16 +578,16 @@ func (cfg *Config) Validate() error {
 		}
 
 		if cfg.Database.Mysql.TLS != nil {
+			if cfg.Database.Mysql.TLS.CACert == "" {
+				return errors.New("mysql tls requires parameter caCert")
+			}
+
 			if cfg.Database.Mysql.TLS.Cert == "" {
-				return errors.New("tls requires parameter cert")
+				return errors.New("mysql tls requires parameter cert")
 			}
 
 			if cfg.Database.Mysql.TLS.Key == "" {
-				return errors.New("tls requires parameter key")
-			}
-
-			if cfg.Database.Mysql.TLS.CA == "" {
-				return errors.New("tls requires parameter ca")
+				return errors.New("mysql tls requires parameter key")
 			}
 		}
 	}
@@ -660,10 +664,16 @@ func (cfg *Config) Validate() error {
 		return errors.New("local requires parameter ttl")
 	}
 
-	if cfg.Job.Preheat.TLS != nil {
-		if cfg.Job.Preheat.TLS.CACert == "" {
-			return errors.New("preheat requires parameter caCert")
-		}
+	if cfg.Job.GC.Interval == 0 {
+		return errors.New("gc requires parameter interval")
+	}
+
+	if cfg.Job.GC.TTL == 0 {
+		return errors.New("gc requires parameter ttl")
+	}
+
+	if cfg.Job.GC.BatchSize == 0 {
+		return errors.New("gc requires parameter batchSize")
 	}
 
 	if cfg.Job.Preheat.RegistryTimeout == 0 {
@@ -676,6 +686,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Job.SyncPeers.Timeout == 0 {
 		return errors.New("syncPeers requires parameter timeout")
+	}
+
+	if cfg.Job.SyncPeers.BatchSize == 0 {
+		return errors.New("syncPeers requires parameter batchSize")
 	}
 
 	if cfg.ObjectStorage.Enable {
@@ -702,37 +716,6 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if cfg.Security.AutoIssueCert {
-		if cfg.Security.CACert == "" {
-			return errors.New("security requires parameter caCert")
-		}
-
-		if cfg.Security.CAKey == "" {
-			return errors.New("security requires parameter caKey")
-		}
-
-		if !slices.Contains([]string{rpc.DefaultTLSPolicy, rpc.ForceTLSPolicy, rpc.PreferTLSPolicy}, cfg.Security.TLSPolicy) {
-			return errors.New("security requires parameter tlsPolicy")
-		}
-
-		if len(cfg.Security.CertSpec.IPAddresses) == 0 {
-			return errors.New("certSpec requires parameter ipAddresses")
-		}
-
-		if len(cfg.Security.CertSpec.DNSNames) == 0 {
-			return errors.New("certSpec requires parameter dnsNames")
-		}
-
-		if cfg.Security.CertSpec.ValidityPeriod <= 0 {
-			return errors.New("certSpec requires parameter validityPeriod")
-		}
-	}
-
-	if cfg.Trainer.Enable {
-		if cfg.Trainer.BucketName == "" {
-			return errors.New("trainer requires parameter bucketName")
-		}
-	}
 	return nil
 }
 

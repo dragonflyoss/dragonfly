@@ -36,12 +36,14 @@ import (
 )
 
 type Config struct {
-	Addrs      []string
-	MasterName string
-	Username   string
-	Password   string
-	BrokerDB   int
-	BackendDB  int
+	Addrs            []string
+	MasterName       string
+	Username         string
+	Password         string
+	SentinelUsername string
+	SentinelPassword string
+	BrokerDB         int
+	BackendDB        int
 }
 
 type Job struct {
@@ -55,11 +57,13 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 	machineryv1log.Set(&MachineryLogger{})
 
 	if err := ping(&redis.UniversalOptions{
-		Addrs:      cfg.Addrs,
-		MasterName: cfg.MasterName,
-		Username:   cfg.Username,
-		Password:   cfg.Password,
-		DB:         cfg.BackendDB,
+		Addrs:            cfg.Addrs,
+		MasterName:       cfg.MasterName,
+		Username:         cfg.Username,
+		Password:         cfg.Password,
+		SentinelUsername: cfg.SentinelUsername,
+		SentinelPassword: cfg.SentinelPassword,
+		DB:               cfg.BackendDB,
 	}); err != nil {
 		return nil, err
 	}
@@ -102,13 +106,24 @@ func (t *Job) LaunchWorker(consumerTag string, concurrency int) error {
 }
 
 type GroupJobState struct {
-	GroupUUID string
-	State     string
-	CreatedAt time.Time
-	JobStates []*machineryv1tasks.TaskState
+	GroupUUID string     `json:"group_uuid"`
+	State     string     `json:"state"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	JobStates []jobState `json:"job_states"`
 }
 
-func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
+type jobState struct {
+	TaskUUID  string    `json:"task_uuid"`
+	TaskName  string    `json:"task_name"`
+	State     string    `json:"state"`
+	Results   []any     `json:"results"`
+	Error     string    `json:"error"`
+	CreatedAt time.Time `json:"created_at"`
+	TTL       int64     `json:"ttl"`
+}
+
+func (t *Job) GetGroupJobState(name string, groupID string) (*GroupJobState, error) {
 	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupID, 0)
 	if err != nil {
 		return nil, err
@@ -118,6 +133,45 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 		return nil, errors.New("empty group")
 	}
 
+	jobStates := make([]jobState, 0, len(taskStates))
+	for _, taskState := range taskStates {
+		var results []any
+		for _, result := range taskState.Results {
+			switch name {
+			case PreheatJob:
+				var resp PreheatResponse
+				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+					return nil, err
+				}
+				results = append(results, resp)
+			case GetTaskJob:
+				var resp GetTaskResponse
+				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+					return nil, err
+				}
+				results = append(results, resp)
+			case DeleteTaskJob:
+				var resp DeleteTaskResponse
+				if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+					return nil, err
+				}
+				results = append(results, resp)
+			default:
+				return nil, errors.New("unsupported unmarshal task result")
+			}
+		}
+
+		jobStates = append(jobStates, jobState{
+			TaskUUID:  taskState.TaskUUID,
+			TaskName:  taskState.TaskName,
+			State:     taskState.State,
+			Results:   results,
+			Error:     taskState.Error,
+			CreatedAt: taskState.CreatedAt,
+			TTL:       taskState.TTL,
+		})
+	}
+
 	for _, taskState := range taskStates {
 		if taskState.IsFailure() {
 			logger.WithGroupAndTaskID(groupID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
@@ -125,7 +179,8 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 				GroupUUID: groupID,
 				State:     machineryv1tasks.StateFailure,
 				CreatedAt: taskState.CreatedAt,
-				JobStates: taskStates,
+				UpdatedAt: time.Now(),
+				JobStates: jobStates,
 			}, nil
 		}
 	}
@@ -137,7 +192,8 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 				GroupUUID: groupID,
 				State:     machineryv1tasks.StatePending,
 				CreatedAt: taskState.CreatedAt,
-				JobStates: taskStates,
+				UpdatedAt: time.Now(),
+				JobStates: jobStates,
 			}, nil
 		}
 	}
@@ -146,7 +202,8 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 		GroupUUID: groupID,
 		State:     machineryv1tasks.StateSuccess,
 		CreatedAt: taskStates[0].CreatedAt,
-		JobStates: taskStates,
+		UpdatedAt: time.Now(),
+		JobStates: jobStates,
 	}, nil
 }
 
@@ -169,6 +226,15 @@ func MarshalRequest(v any) ([]machineryv1tasks.Arg, error) {
 		Type:  "string",
 		Value: string(b),
 	}}, nil
+}
+
+func UnmarshalTaskResult(data any, v any) error {
+	s, ok := data.(string)
+	if !ok {
+		return errors.New("invalid task result")
+	}
+
+	return json.Unmarshal([]byte(s), v)
 }
 
 func UnmarshalResponse(data []reflect.Value, v any) error {

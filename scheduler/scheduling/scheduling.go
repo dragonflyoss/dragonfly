@@ -36,7 +36,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling/evaluator"
 )
 
@@ -72,9 +72,9 @@ type scheduling struct {
 	dynconfig config.DynconfigInterface
 }
 
-func New(cfg *config.SchedulerConfig, dynconfig config.DynconfigInterface, pluginDir string, networkTopologyOptions ...evaluator.NetworkTopologyOption) Scheduling {
+func New(cfg *config.SchedulerConfig, dynconfig config.DynconfigInterface, pluginDir string) Scheduling {
 	return &scheduling{
-		evaluator: evaluator.New(cfg.Algorithm, pluginDir, networkTopologyOptions...),
+		evaluator: evaluator.New(cfg.Algorithm, pluginDir),
 		config:    cfg,
 		dynconfig: dynconfig,
 	}
@@ -516,6 +516,12 @@ func (s *scheduling) filterCandidateParents(peer *resource.Peer, blocklist set.S
 			continue
 		}
 
+		// Candidate parent is disable shared.
+		if candidateParent.Host.DisableShared {
+			peer.Log.Debugf("parent %s host %s is not selected because it is disable shared", candidateParent.ID, candidateParent.Host.ID)
+			continue
+		}
+
 		// Candidate parent host is not allowed to be the same as the peer host,
 		// because dfdaemon cannot handle the situation
 		// where two tasks are downloading and downloading each other.
@@ -662,6 +668,10 @@ func ConstructSuccessNormalTaskResponse(candidateParents []*resource.Peer) *sche
 				UploadTcpConnectionCount: candidateParent.Host.Network.UploadTCPConnectionCount,
 				Location:                 &candidateParent.Host.Network.Location,
 				Idc:                      &candidateParent.Host.Network.IDC,
+				DownloadRate:             candidateParent.Host.Network.DownloadRate,
+				DownloadRateLimit:        candidateParent.Host.Network.DownloadRateLimit,
+				UploadRate:               candidateParent.Host.Network.UploadRate,
+				UploadRateLimit:          candidateParent.Host.Network.UploadRateLimit,
 			},
 			Disk: &commonv2.Disk{
 				Total:             candidateParent.Host.Disk.Total,
@@ -672,6 +682,8 @@ func ConstructSuccessNormalTaskResponse(candidateParents []*resource.Peer) *sche
 				InodesUsed:        candidateParent.Host.Disk.InodesUsed,
 				InodesFree:        candidateParent.Host.Disk.InodesFree,
 				InodesUsedPercent: candidateParent.Host.Disk.InodesUsedPercent,
+				WriteBandwidth:    candidateParent.Host.Disk.WriteBandwidth,
+				ReadBandwidth:     candidateParent.Host.Disk.ReadBandwidth,
 			},
 			Build: &commonv2.Build{
 				GitVersion: candidateParent.Host.Build.GitVersion,

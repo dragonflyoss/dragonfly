@@ -229,30 +229,23 @@ func New(options ...Option) http.RoundTripper {
 // RoundTrip only process first redirect at present
 func (rt *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	if rt.shouldUseDragonfly(req) {
-		// delete the Accept-Encoding header to avoid returning the same cached
-		// result for different requests
-		req.Header.Del("Accept-Encoding")
-
-		ctx := req.Context()
-		if req.URL.Scheme == "https" {
-			// for https, the trace info is in request header
-			ctx = traceContext.Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+		resp, err = rt.roundTripWithDragonfly(req)
+		if err != nil {
+			metrics.ProxyErrorRequestViaDragonflyCount.Add(1)
+			logger.With("method", req.Method, "url", req.URL.String()).Errorf("round trip with dragonfly error: %s", err)
+			return resp, err
 		}
-
-		logger.Debugf("round trip with dragonfly: %s", req.URL.String())
-		metrics.ProxyRequestViaDragonflyCount.Add(1)
-		resp, err = rt.download(ctx, req)
 	} else {
 		logger.Debugf("round trip directly, method: %s, url: %s", req.Method, req.URL.String())
 		req.Host = req.URL.Host
 		req.Header.Set("Host", req.Host)
 		metrics.ProxyRequestNotViaDragonflyCount.Add(1)
 		resp, err = rt.baseRoundTripper.RoundTrip(req)
-	}
 
-	if err != nil {
-		logger.With("method", req.Method, "url", req.URL.String()).Errorf("round trip error: %s", err)
-		return resp, err
+		if err != nil {
+			logger.With("method", req.Method, "url", req.URL.String()).Errorf("round trip directly error: %s", err)
+			return resp, err
+		}
 	}
 
 	if resp.ContentLength > 0 {
@@ -261,6 +254,22 @@ func (rt *transport) RoundTrip(req *http.Request) (resp *http.Response, err erro
 
 	rt.processDumpHTTPContent(req, resp)
 	return resp, err
+}
+
+func (rt *transport) roundTripWithDragonfly(req *http.Request) (*http.Response, error) {
+	// delete the Accept-Encoding header to avoid returning the same cached
+	// result for different requests
+	req.Header.Del("Accept-Encoding")
+
+	ctx := req.Context()
+	if req.URL.Scheme == "https" {
+		// for https, the trace info is in request header
+		ctx = traceContext.Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+	}
+
+	logger.Debugf("round trip with dragonfly: %s", req.URL.String())
+	metrics.ProxyRequestViaDragonflyCount.Add(1)
+	return rt.download(ctx, req)
 }
 
 // NeedUseDragonfly is the default value for shouldUseDragonfly, which downloads all
@@ -398,6 +407,8 @@ local:
 
 	var contentLength int64 = -1
 	if l, ok := attr[headers.ContentLength]; ok {
+		// for library like opencv, it depends on AcceptRanges, otherwise it will complain "partial file" error
+		hdr.Set(headers.AcceptRanges, "bytes")
 		if i, e := strconv.ParseInt(l, 10, 64); e == nil {
 			contentLength = i
 		}
@@ -408,8 +419,8 @@ local:
 		httpStatus = http.StatusOK
 	} else {
 		httpStatus = http.StatusPartialContent
-		if hdr.Get(headers.ContentRange) == "" && contentLength > 0 {
-			value := fmt.Sprintf("bytes %d-%d/%d", rg.Start, rg.Start+contentLength-1, rg.Start+contentLength)
+		if len(hdr.Get(headers.ContentRange)) == 0 && contentLength > 0 {
+			value := fmt.Sprintf("bytes %d-%d/*", rg.Start, rg.Start+contentLength-1)
 			hdr.Set(headers.ContentRange, value)
 		}
 	}
@@ -514,7 +525,7 @@ var hopHeaders = []string{
 	"Upgrade",
 
 	// remove by dragonfly
-	// "Accept", Accept header should not be removed, issue: https://github.com/dragonflyoss/Dragonfly2/issues/1290
+	// "Accept", Accept header should not be removed, issue: https://github.com/dragonflyoss/dragonfly/issues/1290
 	"User-Agent",
 	"X-Forwarded-For",
 }

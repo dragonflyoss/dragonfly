@@ -1,17 +1,28 @@
-# server scheduler instance configuration
+# Server scheduler instance configuration.
 server:
-  # # Advertise ip.
+  # # Access ip for other services,
+  # # when local ip is different with access ip, advertiseIP should be set.
   advertiseIP: __IP__
-  # # Listen ip.
-  # listenIP: 0.0.0.0
+# # Access port for other services,
+# # when local ip is different with access port, advertisePort should be set.
+# advertisePort: 8002
+# # Listen ip.
+# listenIP: 0.0.0.0
+#
   # Port is the ip and port scheduler server listens on.
   port: 8002
+# # GRPC server tls configuration.
+# tls:
+#   # CA certificate file path for mTLS.
+#   caCert: /etc/ssl/certs/ca.crt
+#   # Certificate file path for mTLS.
+#   cert: /etc/ssl/certs/server.crt
+#   # Key file path for mTLS.
+#   key: /etc/ssl/private/server.pem
+#
   # # Server host.
   # host: localhost
-  # WorkHome is working directory.
-  # In linux, default value is /usr/local/dragonfly.
-  # In macos(just for testing), default value is /Users/$USER/.dragonfly.
-  workHome: ''
+  #
   # logDir is the log directory.
   # In linux, default value is /var/log/dragonfly.
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/logs.
@@ -29,7 +40,7 @@ server:
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/data.
   dataDir: ''
 
-# scheduler policy configuration
+# Scheduler policy configuration.
 scheduler:
   # Algorithm configuration to use different scheduling algorithms,
   # default configuration supports "default" and "ml"
@@ -39,15 +50,14 @@ scheduler:
   # and the compiled `d7y-scheduler-plugin-evaluator.so` file is added to
   # the dragonfly working directory plugins.
   algorithm: default
-  # backSourceCount is the number of backsource clients
-  # when the seed peer is unavailable.
-  backSourceCount: 3
-  # Retry scheduling back-to-source limit times.
-  retryBackSourceLimit: 5
+  # backToSourceCount is single task allows the peer to back-to-source count.
+  backToSourceCount: 200
+  # retryBackToSourceLimit reaches the limit, then the peer back-to-source.
+  retryBackToSourceLimit: 3
   # Retry scheduling limit times.
-  retryLimit: 10
+  retryLimit: 5
   # Retry scheduling interval.
-  retryInterval: 50ms
+  retryInterval: 400ms
   # GC metadata configuration.
   gc:
     # pieceDownloadTimeout is the timeout of downloading piece.
@@ -61,7 +71,7 @@ scheduler:
     # then the task will also be reclaimed.
     taskGCInterval: 30m
     # hostGCInterval is the interval of host gc.
-    hostGCInterval: 6h
+    hostGCInterval: 5m
     # hostTTL is time to live of host. If host announces message to scheduler,
     # then HostTTl will be reset.
     hostTTL: 1h
@@ -73,13 +83,15 @@ database:
     # Redis addresses.
     addrs:
       - "__IP__:6379"
+    # Redis sentinel master name.
+    masterName: ''
     # Redis username.
     username: ''
     # Redis password.
     password: dragonfly
-    # Redis brokerDB name.
+    # Redis broker DB.
     brokerDB: 1
-    # Redis backendDB name.
+    # Redis backend DB.
     backendDB: 2
 
 # Dynamic data configuration.
@@ -99,11 +111,19 @@ manager:
   # addr is manager access address.
   addr: "__IP__:65003"
   # schedulerClusterID cluster id to which scheduler instance belongs.
-  schedulerClusterID: "1"
+  schedulerClusterID: 1
   # keepAlive keep alive configuration.
   keepAlive:
     # KeepAlive interval.
     interval: 5s
+# # GRPC client tls configuration.
+# tls:
+#   # CA certificate file path for mTLS.
+#   caCert: /etc/ssl/certs/ca.crt
+#   # Certificate file path for mTLS.
+#   cert: /etc/ssl/certs/client.crt
+#   # Key file path for mTLS.
+#   key: /etc/ssl/private/client.pem
 
 # Seed peer configuration.
 seedPeer:
@@ -111,6 +131,14 @@ seedPeer:
   # if the value is false, P2P network will not be back-to-source through
   # seed peer but by peer and preheat feature does not work.
   enable: true
+# # GRPC client tls configuration.
+# tls:
+#   # CA certificate file path for mTLS.
+#   caCert: /etc/ssl/certs/ca.crt
+#   # Certificate file path for mTLS.
+#   cert: /etc/ssl/certs/client.crt
+#   # Key file path for mTLS.
+#   key: /etc/ssl/private/client.pem
 
 # Machinery async job configuration,
 # see https://github.com/RichardKnop/machinery.
@@ -118,11 +146,11 @@ job:
   # Scheduler enable job service.
   enable: true
   # Number of workers in global queue.
-  globalWorkerNum: 1
+  globalWorkerNum: 500
   # Number of workers in scheduler queue.
-  schedulerWorkerNum: 1
+  schedulerWorkerNum: 500
   # Number of workers in local queue.
-  localWorkerNum: 5
+  localWorkerNum: 1000
 
 # Store task download information.
 storage:
@@ -137,45 +165,25 @@ storage:
 # Enable prometheus metrics.
 metrics:
   # Scheduler enable metrics service.
-  enable: false
+  enable: true
   # Metrics service address.
   addr: ':8000'
   # Enable host metrics.
   enableHost: false
 
-security:
-  # autoIssueCert indicates to issue client certificates for all grpc call.
-  # If AutoIssueCert is false, any other option in Security will be ignored.
-  autoIssueCert: false
-  # caCert is the root CA certificate for all grpc tls handshake, it can be path or PEM format string.
-  caCert: ''
-  # tlsVerify indicates to verify certificates.
-  tlsVerify: false
-  # tlsPolicy controls the grpc shandshake behaviors:
-  #   force: both ClientHandshake and ServerHandshake are only support tls
-  #   prefer: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support tls
-  #   default: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support insecure (non-tls)
-  # Notice: If the drgaonfly service has been deployed, a two-step upgrade is required.
-  # The first step is to set tlsPolicy to default, and then upgrade the dragonfly services.
-  # The second step is to set tlsPolicy to prefer, and then completely upgrade the dragonfly services.
-  tlsPolicy: 'prefer'
-  certSpec:
-    # validityPeriod is the validity period  of certificate.
-    validityPeriod: 4320h
-
 network:
   # Enable ipv6.
   enableIPv6: false
 
-# console shows log on console
+# Console shows log on console.
 console: false
 
-# whether to enable debug level logger and enable pprof
+# Whether to enable debug level logger and enable pprof.
 verbose: true
 
-# listen port for pprof, only valid when the verbose option is true
+# Listen port for pprof, only valid when the verbose option is true
 # default is -1. If it is 0, pprof will use a random port.
 pprof-port: -1
 
-# jaeger endpoint url, like: http://jaeger.dragonfly.svc:14268/api/traces
-jaeger: ""
+# Jaeger endpoint url, like: http://jaeger.dragonfly.svc:14268/api/traces.
+jaeger: ''

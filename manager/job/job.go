@@ -30,7 +30,7 @@ import (
 )
 
 // DefaultTaskPollingInterval is the default interval for polling task.
-const DefaultTaskPollingInterval = 5 * time.Second
+const DefaultTaskPollingInterval = 10 * time.Second
 
 // tracer is a global tracer for job.
 var tracer = otel.Tracer("manager")
@@ -40,31 +40,35 @@ type Job struct {
 	*internaljob.Job
 	Preheat
 	SyncPeers
+	Task
+	GC
 }
 
 // New returns a new Job.
 func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 	j, err := internaljob.New(&internaljob.Config{
-		Addrs:      cfg.Database.Redis.Addrs,
-		MasterName: cfg.Database.Redis.MasterName,
-		Username:   cfg.Database.Redis.Username,
-		Password:   cfg.Database.Redis.Password,
-		BrokerDB:   cfg.Database.Redis.BrokerDB,
-		BackendDB:  cfg.Database.Redis.BackendDB,
+		Addrs:            cfg.Database.Redis.Addrs,
+		MasterName:       cfg.Database.Redis.MasterName,
+		Username:         cfg.Database.Redis.Username,
+		Password:         cfg.Database.Redis.Password,
+		SentinelUsername: cfg.Database.Redis.SentinelUsername,
+		SentinelPassword: cfg.Database.Redis.SentinelPassword,
+		BrokerDB:         cfg.Database.Redis.BrokerDB,
+		BackendDB:        cfg.Database.Redis.BackendDB,
 	}, internaljob.GlobalQueue)
 	if err != nil {
 		return nil, err
 	}
 
 	var certPool *x509.CertPool
-	if cfg.Job.Preheat.TLS != nil {
+	if len(cfg.Job.Preheat.TLS.CACert) != 0 {
 		certPool = x509.NewCertPool()
 		if !certPool.AppendCertsFromPEM([]byte(cfg.Job.Preheat.TLS.CACert)) {
 			return nil, errors.New("invalid CA Cert")
 		}
 	}
 
-	preheat, err := newPreheat(j, cfg.Job.Preheat.RegistryTimeout, certPool)
+	preheat, err := newPreheat(j, cfg.Job.Preheat.RegistryTimeout, certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify)
 	if err != nil {
 		return nil, err
 	}
@@ -74,36 +78,45 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 		return nil, err
 	}
 
+	gc, err := newGC(cfg, gdb)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Job{
 		Job:       j,
 		Preheat:   preheat,
 		SyncPeers: syncPeers,
+		Task:      newTask(j),
+		GC:        gc,
 	}, nil
 }
 
 // Serve starts the job server.
 func (j *Job) Serve() {
-	j.SyncPeers.Serve()
+	go j.GC.Serve()
+	go j.SyncPeers.Serve()
 }
 
 // Stop stops the job server.
 func (j *Job) Stop() {
+	j.GC.Stop()
 	j.SyncPeers.Stop()
 }
 
 // getSchedulerQueues gets scheduler queues.
-func getSchedulerQueues(schedulers []models.Scheduler) []internaljob.Queue {
+func getSchedulerQueues(schedulers []models.Scheduler) ([]internaljob.Queue, error) {
 	var queues []internaljob.Queue
 	for _, scheduler := range schedulers {
 		queue, err := internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname)
 		if err != nil {
-			continue
+			return nil, err
 		}
 
 		queues = append(queues, queue)
 	}
 
-	return queues
+	return queues, nil
 }
 
 // getSchedulerQueue gets scheduler queue.

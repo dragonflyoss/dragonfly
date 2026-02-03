@@ -1083,166 +1083,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/models": {
-            "get": {
-                "description": "Get Models",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Get Models",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/models/{id}": {
-            "get": {
-                "description": "Get Model by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Get Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Destroy by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Destroy Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Update Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Model",
-                        "name": "Model",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateModelRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
         "/oauth": {
             "get": {
                 "description": "Get Oauths",
@@ -2439,6 +2279,41 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/scheduler-features": {
+            "get": {
+                "description": "Get Scheduler Features",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scheduler Feature"
+                ],
+                "summary": "Get Scheudler Features",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
                     },
                     "400": {
                         "description": "Bad Request"
@@ -3756,47 +3631,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_models.Model": {
-            "type": "object",
-            "properties": {
-                "bio": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "evaluation": {
-                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_del": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "scheduler": {
-                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Scheduler"
-                },
-                "scheduler_id": {
-                    "type": "integer"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_models.Oauth": {
             "type": "object",
             "properties": {
@@ -3976,12 +3810,6 @@ const docTemplate = `{
                 },
                 "location": {
                     "type": "string"
-                },
-                "models": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                    }
                 },
                 "port": {
                     "type": "integer"
@@ -4374,32 +4202,34 @@ const docTemplate = `{
             ],
             "properties": {
                 "args": {
+                    "description": "Args is the arguments of the job.",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "bio": {
+                    "description": "BIO is the description of the job.",
                     "type": "string"
                 },
-                "result": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
                 "scheduler_cluster_ids": {
+                    "description": "SchedulerClusterIDs is the scheduler cluster ids of the job.",
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
                 "seed_peer_cluster_ids": {
+                    "description": "SeedPeerClusterIDs is the seed peer cluster ids of the job.",
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
                 "type": {
+                    "description": "Type is the type of the job.",
                     "type": "string"
                 },
                 "user_id": {
+                    "description": "UserID is the user id of the job.",
                     "type": "integer"
                 }
             }
@@ -4692,7 +4522,7 @@ const docTemplate = `{
                 "url"
             ],
             "properties": {
-                "filter": {
+                "filteredQueryParams": {
                     "type": "string"
                 },
                 "headers": {
@@ -4858,6 +4688,11 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 1000,
                     "minimum": 10
+                },
+                "job_rate_limit": {
+                    "type": "integer",
+                    "maximum": 1000000,
+                    "minimum": 1
                 }
             }
         },
@@ -4865,6 +4700,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "cidrs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hostnames": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4883,7 +4724,7 @@ const docTemplate = `{
             "properties": {
                 "load_limit": {
                     "type": "integer",
-                    "maximum": 5000,
+                    "maximum": 50000,
                     "minimum": 1
                 }
             }
@@ -5051,25 +4892,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bio": {
+                    "description": "BIO is the description of the job.",
                     "type": "string"
                 },
                 "user_id": {
+                    "description": "UserID is the user id of the job.",
                     "type": "integer"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_manager_types.UpdateModelRequest": {
-            "type": "object",
-            "properties": {
-                "BIO": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string",
-                    "enum": [
-                        "active",
-                        "inactive"
-                    ]
                 }
             }
         },

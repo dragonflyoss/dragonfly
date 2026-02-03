@@ -175,25 +175,8 @@ proxy:
 reload:
   interval: 3m0s
 
-security:
-  autoIssueCert: true
-  caCert: -----BEGIN CERTIFICATE-----
-  tlsVerify: true
-  tlsPolicy: force
-  certSpec:
-    dnsNames:
-      - foo
-    ipAddresses:
-      - 0.0.0.0
-    validityPeriod: 1s
-
 network:
   enableIPv6: true
 
 announcer:
   schedulerInterval: 1s
-
-networkTopology:
-  enable: true
-  probe:
-    interval: 20m

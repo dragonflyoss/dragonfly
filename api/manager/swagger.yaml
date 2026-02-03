@@ -82,33 +82,6 @@ definitions:
       user_id:
         type: integer
     type: object
-  d7y_io_dragonfly_v2_manager_models.Model:
-    properties:
-      bio:
-        type: string
-      created_at:
-        type: string
-      evaluation:
-        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap'
-      id:
-        type: integer
-      is_del:
-        type: integer
-      name:
-        type: string
-      scheduler:
-        $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Scheduler'
-      scheduler_id:
-        type: integer
-      state:
-        type: string
-      type:
-        type: string
-      updated_at:
-        type: string
-      version:
-        type: string
-    type: object
   d7y_io_dragonfly_v2_manager_models.Oauth:
     properties:
       bio:
@@ -228,10 +201,6 @@ definitions:
         type: integer
       location:
         type: string
-      models:
-        items:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Model'
-        type: array
       port:
         type: integer
       scheduler_cluster:
@@ -492,23 +461,26 @@ definitions:
     properties:
       args:
         additionalProperties: {}
+        description: Args is the arguments of the job.
         type: object
       bio:
+        description: BIO is the description of the job.
         type: string
-      result:
-        additionalProperties: {}
-        type: object
       scheduler_cluster_ids:
+        description: SchedulerClusterIDs is the scheduler cluster ids of the job.
         items:
           type: integer
         type: array
       seed_peer_cluster_ids:
+        description: SeedPeerClusterIDs is the seed peer cluster ids of the job.
         items:
           type: integer
         type: array
       type:
+        description: Type is the type of the job.
         type: string
       user_id:
+        description: UserID is the user id of the job.
         type: integer
     required:
     - type
@@ -709,7 +681,7 @@ definitions:
     type: object
   d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest:
     properties:
-      filter:
+      filteredQueryParams:
         type: string
       headers:
         additionalProperties:
@@ -826,10 +798,18 @@ definitions:
         maximum: 1000
         minimum: 10
         type: integer
+      job_rate_limit:
+        maximum: 1000000
+        minimum: 1
+        type: integer
     type: object
   d7y_io_dragonfly_v2_manager_types.SchedulerClusterScopes:
     properties:
       cidrs:
+        items:
+          type: string
+        type: array
+      hostnames:
         items:
           type: string
         type: array
@@ -841,7 +821,7 @@ definitions:
   d7y_io_dragonfly_v2_manager_types.SeedPeerClusterConfig:
     properties:
       load_limit:
-        maximum: 5000
+        maximum: 50000
         minimum: 1
         type: integer
     type: object
@@ -955,19 +935,11 @@ definitions:
   d7y_io_dragonfly_v2_manager_types.UpdateJobRequest:
     properties:
       bio:
+        description: BIO is the description of the job.
         type: string
       user_id:
+        description: UserID is the user id of the job.
         type: integer
-    type: object
-  d7y_io_dragonfly_v2_manager_types.UpdateModelRequest:
-    properties:
-      BIO:
-        type: string
-      state:
-        enum:
-        - active
-        - inactive
-        type: string
     type: object
   d7y_io_dragonfly_v2_manager_types.UpdateOauthRequest:
     properties:
@@ -1813,112 +1785,6 @@ paths:
       summary: Update Job
       tags:
       - Job
-  /models:
-    get:
-      consumes:
-      - application/json
-      description: Get Models
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Model'
-            type: array
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get Models
-      tags:
-      - Model
-  /models/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Destroy by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Destroy Model
-      tags:
-      - Model
-    get:
-      consumes:
-      - application/json
-      description: Get Model by id
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Model'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Get Model
-      tags:
-      - Model
-    patch:
-      consumes:
-      - application/json
-      description: Update by json config
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Model
-        in: body
-        name: Model
-        required: true
-        schema:
-          $ref: '#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateModelRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/d7y_io_dragonfly_v2_manager_models.Model'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: Update Model
-      tags:
-      - Model
   /oauth:
     get:
       consumes:
@@ -2725,6 +2591,29 @@ paths:
       summary: Add Scheduler to schedulerCluster
       tags:
       - SchedulerCluster
+  /scheduler-features:
+    get:
+      consumes:
+      - application/json
+      description: Get Scheduler Features
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      summary: Get Scheudler Features
+      tags:
+      - Scheduler Feature
   /schedulers:
     get:
       consumes:

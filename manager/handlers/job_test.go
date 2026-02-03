@@ -39,6 +39,24 @@ var (
 			"user_id": 4,
 			"bio": "bio"
 		}`
+	mockGetTaskJobReqBody = `
+		{
+			"type": "get_task",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"task_id": "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8"
+			}
+		}`
+	mockDeleteTaskJobReqBody = `
+		{
+			"type": "delete_task",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"task_id": "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49"
+			}
+		}`
 	mockOtherJobReqBody = `
 		{
 			"type": "others",
@@ -50,6 +68,20 @@ var (
 		Type:   "preheat",
 		BIO:    "bio",
 	}
+	mockCreateGetTaskJobRequest = types.CreateGetTaskJobRequest{
+		UserID: 4,
+		Type:   "get_task",
+		BIO:    "bio",
+		Args:   types.GetTaskArgs{TaskID: "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8"},
+	}
+	mockCreateDeleteTaskJobRequest = types.CreateDeleteTaskJobRequest{
+		UserID: 4,
+		Type:   "delete_task",
+		BIO:    "bio",
+		Args: types.DeleteTaskArgs{
+			TaskID: "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49",
+		},
+	}
 	mockUpdateJobRequest = types.UpdateJobRequest{
 		UserID: 4,
 		BIO:    "bio",
@@ -59,7 +91,21 @@ var (
 		UserID:    4,
 		Type:      "preheat",
 		BIO:       "bio",
-		TaskID:    "2",
+		TaskID:    "dec6fe878785cea844dcecdf2ea25e19156822201016455733e47e9f0bfab563",
+	}
+	mockGetTaskJobModel = &models.Job{
+		BaseModel: mockBaseModel,
+		UserID:    4,
+		Type:      "get_task",
+		BIO:       "bio",
+		TaskID:    "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8",
+	}
+	mockDeleteTaskJobModel = &models.Job{
+		BaseModel: mockBaseModel,
+		UserID:    4,
+		Type:      "delete_task",
+		BIO:       "bio",
+		TaskID:    "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49",
 	}
 )
 
@@ -101,7 +147,7 @@ func TestHandlers_CreateJob(t *testing.T) {
 			},
 		},
 		{
-			name: "success",
+			name: "create preheat job success",
 			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockPreheatJobReqBody)),
 			mock: func(ms *mocks.MockServiceMockRecorder) {
 				ms.CreatePreheatJob(gomock.Any(), gomock.Eq(mockPreheatCreateJobRequest)).Return(mockPreheatJobModel, nil).Times(1)
@@ -113,6 +159,36 @@ func TestHandlers_CreateJob(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &job)
 				assert.NoError(err)
 				assert.Equal(mockPreheatJobModel, &job)
+			},
+		},
+		{
+			name: "create get task job success",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetTaskJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGetTaskJob(gomock.Any(), gomock.Eq(mockCreateGetTaskJobRequest)).Return(mockGetTaskJobModel, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				job := models.Job{}
+				err := json.Unmarshal(w.Body.Bytes(), &job)
+				assert.NoError(err)
+				assert.Equal(mockGetTaskJobModel, &job)
+			},
+		},
+		{
+			name: "create delete task job success",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockDeleteTaskJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateDeleteTaskJob(gomock.Any(), gomock.Eq(mockCreateDeleteTaskJobRequest)).Return(mockDeleteTaskJobModel, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				job := models.Job{}
+				err := json.Unmarshal(w.Body.Bytes(), &job)
+				assert.NoError(err)
+				assert.Equal(mockDeleteTaskJobModel, &job)
 			},
 		},
 	}

@@ -51,6 +51,11 @@ type DaemonOption struct {
 	AliveTime  util.Duration `mapstructure:"aliveTime" yaml:"aliveTime"`
 	GCInterval util.Duration `mapstructure:"gcInterval" yaml:"gcInterval"`
 	Metrics    string        `mapstructure:"metrics" yaml:"metrics"`
+	// MaxThreads indicates to invoke debug.SetMaxThreads to set max threads that golang runtime can create,
+	// it's useful for large-scale downloading resource with none native golang source code, like call cgo to invoke c++
+	// one cgo call will create a standalone os tread, the default 10000 limit is to small.
+	// Normally, we can also set seed concurrent to limit for large-scale downloading at same time.
+	MaxThreads int `mapstructure:"maxThreads" yaml:"maxThreads"`
 
 	WorkHome      string `mapstructure:"workHome" yaml:"workHome"`
 	WorkHomeMode  uint32 `mapstructure:"workHomeMode" yaml:"workHomeMode"`
@@ -65,20 +70,18 @@ type DaemonOption struct {
 	DataDirMode   uint32 `mapstructure:"dataDirMode" yaml:"dataDirMode"`
 	KeepStorage   bool   `mapstructure:"keepStorage" yaml:"keepStorage"`
 
-	Security        GlobalSecurityOption  `mapstructure:"security" yaml:"security"`
-	Scheduler       SchedulerOption       `mapstructure:"scheduler" yaml:"scheduler"`
-	Host            HostOption            `mapstructure:"host" yaml:"host"`
-	Download        DownloadOption        `mapstructure:"download" yaml:"download"`
-	Proxy           *ProxyOption          `mapstructure:"proxy" yaml:"proxy"`
-	Upload          UploadOption          `mapstructure:"upload" yaml:"upload"`
-	ObjectStorage   ObjectStorageOption   `mapstructure:"objectStorage" yaml:"objectStorage"`
-	Storage         StorageOption         `mapstructure:"storage" yaml:"storage"`
-	Health          *HealthOption         `mapstructure:"health" yaml:"health"`
-	Reload          ReloadOption          `mapstructure:"reload" yaml:"reload"`
-	Network         *NetworkOption        `mapstructure:"network" yaml:"network"`
-	Announcer       AnnouncerOption       `mapstructure:"announcer" yaml:"announcer"`
-	NetworkTopology NetworkTopologyOption `mapstructure:"networkTopology" yaml:"networkTopology"`
-	PeerExchange    PeerExchangeOption    `mapstructure:"peerExchange" yaml:"peerExchange"`
+	Scheduler     SchedulerOption     `mapstructure:"scheduler" yaml:"scheduler"`
+	Host          HostOption          `mapstructure:"host" yaml:"host"`
+	Download      DownloadOption      `mapstructure:"download" yaml:"download"`
+	Proxy         *ProxyOption        `mapstructure:"proxy" yaml:"proxy"`
+	Upload        UploadOption        `mapstructure:"upload" yaml:"upload"`
+	ObjectStorage ObjectStorageOption `mapstructure:"objectStorage" yaml:"objectStorage"`
+	Storage       StorageOption       `mapstructure:"storage" yaml:"storage"`
+	Health        *HealthOption       `mapstructure:"health" yaml:"health"`
+	Reload        ReloadOption        `mapstructure:"reload" yaml:"reload"`
+	Network       *NetworkOption      `mapstructure:"network" yaml:"network"`
+	Announcer     AnnouncerOption     `mapstructure:"announcer" yaml:"announcer"`
+	PeerExchange  PeerExchangeOption  `mapstructure:"peerExchange" yaml:"peerExchange"`
 }
 
 func NewDaemonConfig() *DaemonOption {
@@ -203,61 +206,11 @@ func (p *DaemonOption) Validate() error {
 		return errors.New("gcInterval must be greater than 0")
 	}
 
-	if p.Security.AutoIssueCert {
-		if p.Security.CACert == "" {
-			return errors.New("security requires parameter caCert")
-		}
-
-		if len(p.Security.CertSpec.IPAddresses) == 0 {
-			return errors.New("certSpec requires parameter ipAddresses")
-		}
-
-		if len(p.Security.CertSpec.DNSNames) == 0 {
-			return errors.New("certSpec requires parameter dnsNames")
-		}
-
-		if p.Security.CertSpec.ValidityPeriod <= 0 {
-			return errors.New("certSpec requires parameter validityPeriod")
-		}
-	}
-
-	if p.NetworkTopology.Enable {
-		if p.NetworkTopology.Probe.Interval <= 0 {
-			return errors.New("probe requires parameter interval")
-		}
-	}
-
 	return nil
 }
 
 func (p *DaemonOption) IsSupportPeerExchange() bool {
 	return p.PeerExchange.Enable && p.Scheduler.Manager.Enable && p.Scheduler.Manager.SeedPeer.Enable
-}
-
-type GlobalSecurityOption struct {
-	// AutoIssueCert indicates to issue client certificates for all grpc call
-	// if AutoIssueCert is false, any other option in Security will be ignored
-	AutoIssueCert bool `mapstructure:"autoIssueCert" yaml:"autoIssueCert"`
-	// CACert is the root CA certificate for all grpc tls handshake, it can be path or PEM format string
-	CACert types.PEMContent `mapstructure:"caCert" yaml:"caCert"`
-	// TLSVerify indicates to verify client certificates.
-	TLSVerify bool `mapstructure:"tlsVerify" yaml:"tlsVerify"`
-	// TLSPolicy controls the grpc shandshake behaviors:
-	// force: both ClientHandshake and ServerHandshake are only support tls
-	// prefer: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support tls
-	// default: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support insecure (non-tls)
-	TLSPolicy string `mapstructure:"tlsPolicy" yaml:"tlsPolicy"`
-	// CertSpec is the desired state of certificate.
-	CertSpec *CertSpec `mapstructure:"certSpec" yaml:"certSpec"`
-}
-
-type CertSpec struct {
-	// DNSNames is a list of dns names be set on the certificate.
-	DNSNames []string `mapstructure:"dnsNames" yaml:"dnsNames"`
-	// IPAddresses is a list of ip addresses be set on the certificate.
-	IPAddresses []net.IP `mapstructure:"ipAddresses" yaml:"ipAddresses"`
-	// ValidityPeriod is the validity period of certificate.
-	ValidityPeriod time.Duration `mapstructure:"validityPeriod" yaml:"validityPeriod"`
 }
 
 type SchedulerOption struct {
@@ -329,6 +282,7 @@ type DownloadOption struct {
 	ResourceClients ResourceClientsOption `mapstructure:"resourceClients" yaml:"resourceClients"`
 
 	RecursiveConcurrent    RecursiveConcurrent `mapstructure:"recursiveConcurrent" yaml:"recursiveConcurrent"`
+	SeedConcurrent         int64               `mapstructure:"seedConcurrent" yaml:"seedConcurrent"`
 	CacheRecursiveMetadata time.Duration       `mapstructure:"cacheRecursiveMetadata" yaml:"cacheRecursiveMetadata"`
 }
 
@@ -920,8 +874,8 @@ func (r *Regexp) MarshalYAML() (any, error) {
 
 // HijackConfig represents how dfdaemon hijacks http requests.
 type HijackConfig struct {
-	Cert  string             `yaml:"cert" mapstructure:"cert"`
-	Key   string             `yaml:"key" mapstructure:"key"`
+	Cert  types.PEMContent   `yaml:"cert" mapstructure:"cert"`
+	Key   types.PEMContent   `yaml:"key" mapstructure:"key"`
 	Hosts []*HijackHost      `yaml:"hosts" mapstructure:"hosts"`
 	SNI   []*TCPListenOption `yaml:"sni" mapstructure:"sni"`
 }
@@ -957,19 +911,6 @@ type NetworkOption struct {
 type AnnouncerOption struct {
 	// SchedulerInterval is the interval of announcing scheduler.
 	SchedulerInterval time.Duration `mapstructure:"schedulerInterval" yaml:"schedulerInterval"`
-}
-
-type NetworkTopologyOption struct {
-	// Enable network topology service.
-	Enable bool `mapstructure:"enable" yaml:"enable"`
-
-	// Probe is the configuration of probe.
-	Probe ProbeOption `mapstructure:"probe" yaml:"probe"`
-}
-
-type ProbeOption struct {
-	// Interval is the interval of probing hosts.
-	Interval time.Duration `mapstructure:"interval" yaml:"interval"`
 }
 
 type PeerExchangeOption struct {

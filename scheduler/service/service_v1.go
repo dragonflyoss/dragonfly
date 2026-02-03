@@ -27,7 +27,6 @@ import (
 
 	"github.com/go-http-utils/headers"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
@@ -45,10 +44,8 @@ import (
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
-	"d7y.io/dragonfly/v2/scheduler/networktopology"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
-	"d7y.io/dragonfly/v2/scheduler/storage"
 )
 
 // V1 is the interface for v1 version of the service.
@@ -59,17 +56,11 @@ type V1 struct {
 	// Scheduling interface.
 	scheduling scheduling.Scheduling
 
-	// Scheduelr service config.
+	// Scheduler service config.
 	config *config.Config
 
 	// Dynamic config.
 	dynconfig config.DynconfigInterface
-
-	// Storage interface.
-	storage storage.Storage
-
-	// Network topology interface.
-	networkTopology networktopology.NetworkTopology
 }
 
 // New v1 version of service instance.
@@ -78,16 +69,12 @@ func NewV1(
 	resource resource.Resource,
 	scheduling scheduling.Scheduling,
 	dynconfig config.DynconfigInterface,
-	storage storage.Storage,
-	networktopology networktopology.NetworkTopology,
 ) *V1 {
 	return &V1{
-		resource:        resource,
-		scheduling:      scheduling,
-		config:          cfg,
-		dynconfig:       dynconfig,
-		storage:         storage,
-		networkTopology: networktopology,
+		resource:   resource,
+		scheduling: scheduling,
+		config:     cfg,
+		dynconfig:  dynconfig,
 	}
 }
 
@@ -97,7 +84,7 @@ func (v *V1) RegisterPeerTask(ctx context.Context, req *schedulerv1.PeerTaskRequ
 	log.Infof("register peer task request: %#v", req)
 
 	// Store resource.
-	task := v.storeTask(ctx, req, commonv2.TaskType_DFDAEMON)
+	task := v.storeTask(ctx, req, commonv2.TaskType_STANDARD)
 	host := v.storeHost(ctx, req.GetPeerHost())
 	peer := v.storePeer(ctx, req.GetPeerId(), req.UrlMeta.GetPriority(), req.UrlMeta.GetRange(), task, host)
 
@@ -252,10 +239,10 @@ func (v *V1) ReportPieceResult(stream schedulerv1.Scheduler_ReportPieceResultSer
 
 			// Collect host traffic metrics.
 			if v.config.Metrics.Enable && v.config.Metrics.EnableHost {
-				metrics.HostTraffic.WithLabelValues(metrics.HostTrafficDownloadType, peer.Task.Type.String(), peer.Task.Tag, peer.Task.Application,
+				metrics.HostTraffic.WithLabelValues(metrics.HostTrafficDownloadType, peer.Task.Type.String(),
 					peer.Host.Type.Name(), peer.Host.ID, peer.Host.IP, peer.Host.Hostname).Add(float64(piece.PieceInfo.RangeSize))
 				if parent, loaded := v.resource.PeerManager().Load(piece.DstPid); loaded {
-					metrics.HostTraffic.WithLabelValues(metrics.HostTrafficUploadType, peer.Task.Type.String(), peer.Task.Tag, peer.Task.Application,
+					metrics.HostTraffic.WithLabelValues(metrics.HostTrafficUploadType, peer.Task.Type.String(),
 						parent.Host.Type.Name(), parent.Host.ID, parent.Host.IP, parent.Host.Hostname).Add(float64(piece.PieceInfo.RangeSize))
 				} else if !resource.IsPieceBackToSource(piece.DstPid) {
 					peer.Log.Warnf("dst peer %s not found", piece.DstPid)
@@ -265,10 +252,10 @@ func (v *V1) ReportPieceResult(stream schedulerv1.Scheduler_ReportPieceResultSer
 			// Collect traffic metrics.
 			if !resource.IsPieceBackToSource(piece.DstPid) {
 				metrics.Traffic.WithLabelValues(commonv2.TrafficType_REMOTE_PEER.String(), peer.Task.Type.String(),
-					peer.Task.Tag, peer.Task.Application, peer.Host.Type.Name()).Add(float64(piece.PieceInfo.RangeSize))
+					peer.Host.Type.Name()).Add(float64(piece.PieceInfo.RangeSize))
 			} else {
 				metrics.Traffic.WithLabelValues(commonv2.TrafficType_BACK_TO_SOURCE.String(), peer.Task.Type.String(),
-					peer.Task.Tag, peer.Task.Application, peer.Host.Type.Name()).Add(float64(piece.PieceInfo.RangeSize))
+					peer.Host.Type.Name()).Add(float64(piece.PieceInfo.RangeSize))
 			}
 			continue
 		}
@@ -305,17 +292,15 @@ func (v *V1) ReportPeerResult(ctx context.Context, req *schedulerv1.PeerResult) 
 	// Collect DownloadPeerCount metrics.
 	priority := peer.CalculatePriority(v.dynconfig)
 	metrics.DownloadPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-		peer.Task.Tag, peer.Task.Application, peer.Host.Type.Name()).Inc()
+		peer.Host.Type.Name()).Inc()
 
-	parents := peer.Parents()
 	if !req.GetSuccess() {
 		peer.Log.Error("report failed peer")
 		if peer.FSM.Is(resource.PeerStateBackToSource) {
 			// Collect DownloadPeerBackToSourceFailureCount metrics.
 			metrics.DownloadPeerBackToSourceFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-				peer.Task.Tag, peer.Task.Application, peer.Host.Type.Name()).Inc()
+				peer.Host.Type.Name()).Inc()
 
-			go v.createDownloadRecord(peer, parents, req)
 			v.handleTaskFailure(ctx, peer.Task, req.GetSourceError(), nil)
 			v.handlePeerFailure(ctx, peer)
 			return nil
@@ -323,23 +308,20 @@ func (v *V1) ReportPeerResult(ctx context.Context, req *schedulerv1.PeerResult) 
 
 		// Collect DownloadPeerFailureCount metrics.
 		metrics.DownloadPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-			peer.Task.Tag, peer.Task.Application, peer.Host.Type.Name()).Inc()
+			peer.Host.Type.Name()).Inc()
 
-		go v.createDownloadRecord(peer, parents, req)
 		v.handlePeerFailure(ctx, peer)
 		return nil
 	}
 
 	peer.Log.Info("report success peer")
 	if peer.FSM.Is(resource.PeerStateBackToSource) {
-		go v.createDownloadRecord(peer, parents, req)
 		v.handleTaskSuccess(ctx, peer.Task, req)
 		v.handlePeerSuccess(ctx, peer)
 		metrics.DownloadPeerDuration.WithLabelValues(metrics.CalculateSizeLevel(peer.Task.ContentLength.Load()).String()).Observe(float64(req.GetCost()))
 		return nil
 	}
 
-	go v.createDownloadRecord(peer, parents, req)
 	v.handlePeerSuccess(ctx, peer)
 	metrics.DownloadPeerDuration.WithLabelValues(metrics.CalculateSizeLevel(peer.Task.ContentLength.Load()).String()).Observe(float64(req.GetCost()))
 	return nil
@@ -490,6 +472,7 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 			resource.WithPlatformFamily(req.GetPlatformFamily()),
 			resource.WithPlatformVersion(req.GetPlatformVersion()),
 			resource.WithKernelVersion(req.GetKernelVersion()),
+			resource.WithSchedulerClusterID(uint64(v.config.Manager.SchedulerClusterID)),
 		}
 
 		if concurrentUploadLimit > 0 {
@@ -557,10 +540,6 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 				GoVersion:  req.Build.GetGoVersion(),
 				Platform:   req.Build.GetPlatform(),
 			}))
-		}
-
-		if req.GetSchedulerClusterId() != 0 {
-			options = append(options, resource.WithSchedulerClusterID(uint64(v.config.Manager.SchedulerClusterID)))
 		}
 
 		if req.GetObjectStoragePort() != 0 {
@@ -673,108 +652,9 @@ func (v *V1) LeaveHost(ctx context.Context, req *schedulerv1.LeaveHostRequest) e
 	// Leave peers in host.
 	host.LeavePeers()
 
-	// Delete host from network topology.
-	if v.networkTopology != nil {
-		if err := v.networkTopology.DeleteHost(host.ID); err != nil {
-			log.Errorf("delete network topology host error: %s", err.Error())
-			return err
-		}
-	}
-
+	// Delete host in scheduler.
+	v.resource.HostManager().Delete(host.ID)
 	return nil
-}
-
-// SyncProbes sync probes of the host.
-func (v *V1) SyncProbes(stream schedulerv1.Scheduler_SyncProbesServer) error {
-	if v.networkTopology == nil {
-		return status.Errorf(codes.Unimplemented, "network topology is not enabled")
-	}
-
-	for {
-		req, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-
-			logger.Errorf("receive error: %s", err.Error())
-			return err
-		}
-
-		log := logger.WithHost(req.Host.GetId(), req.Host.GetHostname(), req.Host.GetIp())
-		switch syncProbesRequest := req.GetRequest().(type) {
-		case *schedulerv1.SyncProbesRequest_ProbeStartedRequest:
-			// Find probed hosts in network topology. Based on the source host information,
-			// the most candidate hosts will be evaluated.
-			log.Info("receive SyncProbesRequest_ProbeStartedRequest")
-			hosts, err := v.networkTopology.FindProbedHosts(req.Host.GetId())
-			if err != nil {
-				log.Error(err)
-				return status.Error(codes.FailedPrecondition, err.Error())
-			}
-
-			var probedHosts []*commonv1.Host
-			for _, host := range hosts {
-				probedHosts = append(probedHosts, &commonv1.Host{
-					Id:           host.ID,
-					Ip:           host.IP,
-					Hostname:     host.Hostname,
-					Port:         host.Port,
-					DownloadPort: host.DownloadPort,
-					Location:     host.Network.Location,
-					Idc:          host.Network.IDC,
-				})
-			}
-
-			log.Infof("probe started: %#v", probedHosts)
-			if err := stream.Send(&schedulerv1.SyncProbesResponse{
-				Hosts: probedHosts,
-			}); err != nil {
-				log.Error(err)
-				return err
-			}
-		case *schedulerv1.SyncProbesRequest_ProbeFinishedRequest:
-			// Store probes in network topology. First create the association between
-			// source host and destination host, and then store the value of probe.
-			log.Info("receive SyncProbesRequest_ProbeFinishedRequest")
-			for _, probe := range syncProbesRequest.ProbeFinishedRequest.Probes {
-				probedHost, loaded := v.resource.HostManager().Load(probe.Host.Id)
-				if !loaded {
-					log.Errorf("host %s not found", probe.Host.Id)
-					continue
-				}
-
-				if err := v.networkTopology.Store(req.Host.GetId(), probedHost.ID); err != nil {
-					log.Errorf("store failed: %s", err.Error())
-					continue
-				}
-
-				if err := v.networkTopology.Probes(req.Host.GetId(), probe.Host.Id).Enqueue(&networktopology.Probe{
-					Host:      probedHost,
-					RTT:       probe.Rtt.AsDuration(),
-					CreatedAt: probe.CreatedAt.AsTime(),
-				}); err != nil {
-					log.Errorf("enqueue failed: %s", err.Error())
-					continue
-				}
-
-				log.Infof("probe finished: %#v", probe)
-			}
-		case *schedulerv1.SyncProbesRequest_ProbeFailedRequest:
-			// Log failed probes.
-			log.Info("receive SyncProbesRequest_ProbeFailedRequest")
-			var failedProbedHostIDs []string
-			for _, failedProbe := range syncProbesRequest.ProbeFailedRequest.Probes {
-				failedProbedHostIDs = append(failedProbedHostIDs, failedProbe.Host.Id)
-			}
-
-			log.Warnf("probe failed: %#v", failedProbedHostIDs)
-		default:
-			msg := fmt.Sprintf("receive unknow request: %#v", syncProbesRequest)
-			log.Error(msg)
-			return status.Error(codes.FailedPrecondition, msg)
-		}
-	}
 }
 
 // prefetchTask prefetches the task with seed peer.
@@ -814,7 +694,7 @@ func (v *V1) prefetchTask(ctx context.Context, rawReq *schedulerv1.PeerTaskReque
 	log.Infof("prefetch task: %s", req.TaskId)
 
 	// Store resource.
-	task := v.storeTask(ctx, req, commonv2.TaskType_DFDAEMON)
+	task := v.storeTask(ctx, req, commonv2.TaskType_STANDARD)
 
 	v.triggerSeedPeerTask(ctx, nil, task)
 	return task, nil
@@ -916,7 +796,7 @@ func (v *V1) triggerSeedPeerTask(ctx context.Context, rg *http.Range, task *reso
 }
 
 // storeTask stores a new task or reuses a previous task.
-func (v *V1) storeTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, typ commonv2.TaskType) *resource.Task {
+func (v *V1) storeTask(_ context.Context, req *schedulerv1.PeerTaskRequest, typ commonv2.TaskType) *resource.Task {
 	filteredQueryParams := strings.Split(req.UrlMeta.GetFilter(), idgen.FilteredQueryParamsSeparator)
 
 	task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
@@ -943,7 +823,7 @@ func (v *V1) storeTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, ty
 }
 
 // storeHost stores a new host or reuses a previous host.
-func (v *V1) storeHost(ctx context.Context, peerHost *schedulerv1.PeerHost) *resource.Host {
+func (v *V1) storeHost(_ context.Context, peerHost *schedulerv1.PeerHost) *resource.Host {
 	host, loaded := v.resource.HostManager().Load(peerHost.Id)
 	if !loaded {
 		options := []resource.HostOption{resource.WithNetwork(resource.Network{
@@ -975,7 +855,7 @@ func (v *V1) storeHost(ctx context.Context, peerHost *schedulerv1.PeerHost) *res
 }
 
 // storePeer stores a new peer or reuses a previous peer.
-func (v *V1) storePeer(ctx context.Context, id string, priority commonv1.Priority, rg string, task *resource.Task, host *resource.Host) *resource.Peer {
+func (v *V1) storePeer(_ context.Context, id string, priority commonv1.Priority, rg string, task *resource.Task, host *resource.Host) *resource.Peer {
 	peer, loaded := v.resource.PeerManager().Load(id)
 	if !loaded {
 		options := []resource.PeerOption{}
@@ -991,7 +871,7 @@ func (v *V1) storePeer(ctx context.Context, id string, priority commonv1.Priorit
 			}
 		}
 
-		peer := resource.NewPeer(id, &v.config.Resource, task, host, options...)
+		peer := resource.NewPeer(id, task, host, options...)
 		v.resource.PeerManager().Store(peer)
 		peer.Log.Info("create new peer")
 		return peer
@@ -1035,11 +915,16 @@ func (v *V1) registerTinyTask(ctx context.Context, peer *resource.Peer) (*schedu
 
 // registerSmallTask registers the small task.
 func (v *V1) registerSmallTask(ctx context.Context, peer *resource.Peer) (*schedulerv1.RegisterResult, error) {
+	// Record the start time.
+	start := time.Now()
 	candidateParents, found := v.scheduling.FindParentAndCandidateParents(ctx, peer, set.NewSafeSet[string]())
 	if !found {
 		return nil, errors.New("candidate parent not found")
 	}
 	candidateParent := candidateParents[0]
+
+	// Collect SchedulingDuration metrics.
+	metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 
 	// When task size scope is small, parent must be downloaded successfully
 	// before returning to the parent directly.
@@ -1147,7 +1032,12 @@ func (v *V1) handleBeginOfPiece(ctx context.Context, peer *resource.Peer) {
 			return
 		}
 
+		// Record the start time.
+		start := time.Now()
 		v.scheduling.ScheduleParentAndCandidateParents(ctx, peer, set.NewSafeSet[string]())
+
+		// Collect SchedulingDuration metrics.
+		metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 	default:
 	}
 }
@@ -1156,7 +1046,7 @@ func (v *V1) handleBeginOfPiece(ctx context.Context, peer *resource.Peer) {
 func (v *V1) handleEndOfPiece(ctx context.Context, peer *resource.Peer) {}
 
 // handlePieceSuccess handles successful piece.
-func (v *V1) handlePieceSuccess(ctx context.Context, peer *resource.Peer, pieceResult *schedulerv1.PieceResult) {
+func (v *V1) handlePieceSuccess(_ context.Context, peer *resource.Peer, pieceResult *schedulerv1.PieceResult) {
 	// Distinguish traffic type.
 	trafficType := commonv2.TrafficType_REMOTE_PEER
 	if resource.IsPieceBackToSource(pieceResult.DstPid) {
@@ -1218,7 +1108,13 @@ func (v *V1) handlePieceFailure(ctx context.Context, peer *resource.Peer, piece 
 	if !loaded {
 		peer.Log.Errorf("parent %s not found", piece.DstPid)
 		peer.BlockParents.Add(piece.DstPid)
+
+		// Record the start time.
+		start := time.Now()
 		v.scheduling.ScheduleParentAndCandidateParents(ctx, peer, peer.BlockParents)
+
+		// Collect SchedulingDuration metrics.
+		metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 		return
 	}
 
@@ -1277,7 +1173,13 @@ func (v *V1) handlePieceFailure(ctx context.Context, peer *resource.Peer, piece 
 
 	peer.Log.Infof("reschedule parent because of failed piece")
 	peer.BlockParents.Add(parent.ID)
+
+	// Record the start time.
+	start := time.Now()
 	v.scheduling.ScheduleParentAndCandidateParents(ctx, peer, peer.BlockParents)
+
+	// Collect SchedulingDuration metrics.
+	metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 }
 
 // handlePeerSuccess handles successful peer.
@@ -1319,7 +1221,13 @@ func (v *V1) handlePeerFailure(ctx context.Context, peer *resource.Peer) {
 	// Reschedule a new parent to children of peer to exclude the current failed peer.
 	for _, child := range peer.Children() {
 		child.Log.Infof("reschedule parent because of parent peer %s is failed", peer.ID)
+
+		// Record the start time.
+		start := time.Now()
 		v.scheduling.ScheduleParentAndCandidateParents(ctx, child, child.BlockParents)
+
+		// Collect SchedulingDuration metrics.
+		metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 	}
 }
 
@@ -1334,7 +1242,13 @@ func (v *V1) handleLegacySeedPeer(ctx context.Context, peer *resource.Peer) {
 	// Reschedule a new parent to children of peer to exclude the current failed peer.
 	for _, child := range peer.Children() {
 		child.Log.Infof("reschedule parent because of parent peer %s is failed", peer.ID)
+
+		// Record the start time.
+		start := time.Now()
 		v.scheduling.ScheduleParentAndCandidateParents(ctx, child, child.BlockParents)
+
+		// Collect SchedulingDuration metrics.
+		metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 	}
 }
 
@@ -1411,222 +1325,5 @@ func (v *V1) handleTaskFailure(ctx context.Context, task *resource.Task, backToS
 	if err := task.FSM.Event(ctx, resource.TaskEventDownloadFailed); err != nil {
 		task.Log.Errorf("task fsm event failed: %s", err.Error())
 		return
-	}
-}
-
-// createDownloadRecord stores peer download records.
-func (v *V1) createDownloadRecord(peer *resource.Peer, parents []*resource.Peer, req *schedulerv1.PeerResult) {
-	var parentRecords []storage.Parent
-	for _, parent := range parents {
-		parentRecord := storage.Parent{
-			ID:                 parent.ID,
-			Tag:                parent.Task.Tag,
-			Application:        parent.Task.Application,
-			State:              parent.FSM.Current(),
-			Cost:               parent.Cost.Load().Nanoseconds(),
-			UploadPieceCount:   0,
-			FinishedPieceCount: int32(parent.FinishedPieces.Count()),
-			CreatedAt:          parent.CreatedAt.Load().UnixNano(),
-			UpdatedAt:          parent.UpdatedAt.Load().UnixNano(),
-			Host: storage.Host{
-				ID:                    parent.Host.ID,
-				Type:                  parent.Host.Type.Name(),
-				Hostname:              parent.Host.Hostname,
-				IP:                    parent.Host.IP,
-				Port:                  parent.Host.Port,
-				DownloadPort:          parent.Host.DownloadPort,
-				OS:                    parent.Host.OS,
-				Platform:              parent.Host.Platform,
-				PlatformFamily:        parent.Host.PlatformFamily,
-				PlatformVersion:       parent.Host.PlatformVersion,
-				KernelVersion:         parent.Host.KernelVersion,
-				ConcurrentUploadLimit: parent.Host.ConcurrentUploadLimit.Load(),
-				ConcurrentUploadCount: parent.Host.ConcurrentUploadCount.Load(),
-				UploadCount:           parent.Host.UploadCount.Load(),
-				UploadFailedCount:     parent.Host.UploadFailedCount.Load(),
-				CreatedAt:             parent.Host.CreatedAt.Load().UnixNano(),
-				UpdatedAt:             parent.Host.UpdatedAt.Load().UnixNano(),
-			},
-		}
-
-		parentRecord.Host.CPU = resource.CPU{
-			LogicalCount:   parent.Host.CPU.LogicalCount,
-			PhysicalCount:  parent.Host.CPU.PhysicalCount,
-			Percent:        parent.Host.CPU.Percent,
-			ProcessPercent: parent.Host.CPU.ProcessPercent,
-			Times: resource.CPUTimes{
-				User:      parent.Host.CPU.Times.User,
-				System:    parent.Host.CPU.Times.System,
-				Idle:      parent.Host.CPU.Times.Idle,
-				Nice:      parent.Host.CPU.Times.Nice,
-				Iowait:    parent.Host.CPU.Times.Iowait,
-				Irq:       parent.Host.CPU.Times.Irq,
-				Softirq:   parent.Host.CPU.Times.Softirq,
-				Steal:     parent.Host.CPU.Times.Steal,
-				Guest:     parent.Host.CPU.Times.Guest,
-				GuestNice: parent.Host.CPU.Times.GuestNice,
-			},
-		}
-
-		parentRecord.Host.Memory = resource.Memory{
-			Total:              parent.Host.Memory.Total,
-			Available:          parent.Host.Memory.Available,
-			Used:               parent.Host.Memory.Used,
-			UsedPercent:        parent.Host.Memory.UsedPercent,
-			ProcessUsedPercent: parent.Host.Memory.ProcessUsedPercent,
-			Free:               parent.Host.Memory.Free,
-		}
-
-		parentRecord.Host.Network = resource.Network{
-			TCPConnectionCount:       parent.Host.Network.TCPConnectionCount,
-			UploadTCPConnectionCount: parent.Host.Network.UploadTCPConnectionCount,
-			Location:                 parent.Host.Network.Location,
-			IDC:                      parent.Host.Network.IDC,
-		}
-
-		parentRecord.Host.Disk = resource.Disk{
-			Total:             parent.Host.Disk.Total,
-			Free:              parent.Host.Disk.Free,
-			Used:              parent.Host.Disk.Used,
-			UsedPercent:       parent.Host.Disk.UsedPercent,
-			InodesTotal:       parent.Host.Disk.InodesTotal,
-			InodesUsed:        parent.Host.Disk.InodesUsed,
-			InodesFree:        parent.Host.Disk.InodesFree,
-			InodesUsedPercent: parent.Host.Disk.InodesUsedPercent,
-		}
-
-		parentRecord.Host.Build = resource.Build{
-			GitVersion: parent.Host.Build.GitVersion,
-			GitCommit:  parent.Host.Build.GitCommit,
-			GoVersion:  parent.Host.Build.GoVersion,
-			Platform:   parent.Host.Build.Platform,
-		}
-
-		peer.Pieces.Range(func(key, value any) bool {
-			piece, ok := value.(*resource.Piece)
-			if !ok {
-				return true
-			}
-
-			if piece.ParentID == parent.ID {
-				parentRecord.UploadPieceCount++
-				parentRecord.Pieces = append(parentRecord.Pieces, storage.Piece{
-					Length:    int64(piece.Length),
-					Cost:      piece.Cost.Nanoseconds(),
-					CreatedAt: piece.CreatedAt.UnixNano(),
-				})
-			}
-
-			return true
-		})
-
-		parentRecords = append(parentRecords, parentRecord)
-	}
-
-	download := storage.Download{
-		ID:                 peer.ID,
-		Tag:                peer.Task.Tag,
-		Application:        peer.Task.Application,
-		State:              peer.FSM.Current(),
-		Cost:               peer.Cost.Load().Nanoseconds(),
-		FinishedPieceCount: int32(peer.FinishedPieces.Count()),
-		Parents:            parentRecords,
-		CreatedAt:          peer.CreatedAt.Load().UnixNano(),
-		UpdatedAt:          peer.UpdatedAt.Load().UnixNano(),
-		Task: storage.Task{
-			ID:                    peer.Task.ID,
-			URL:                   peer.Task.URL,
-			Type:                  peer.Task.Type.String(),
-			ContentLength:         peer.Task.ContentLength.Load(),
-			TotalPieceCount:       peer.Task.TotalPieceCount.Load(),
-			BackToSourceLimit:     peer.Task.BackToSourceLimit.Load(),
-			BackToSourcePeerCount: int32(peer.Task.BackToSourcePeers.Len()),
-			State:                 peer.Task.FSM.Current(),
-			CreatedAt:             peer.Task.CreatedAt.Load().UnixNano(),
-			UpdatedAt:             peer.Task.UpdatedAt.Load().UnixNano(),
-		},
-		Host: storage.Host{
-			ID:                    peer.Host.ID,
-			Type:                  peer.Host.Type.Name(),
-			Hostname:              peer.Host.Hostname,
-			IP:                    peer.Host.IP,
-			Port:                  peer.Host.Port,
-			DownloadPort:          peer.Host.DownloadPort,
-			OS:                    peer.Host.OS,
-			Platform:              peer.Host.Platform,
-			PlatformFamily:        peer.Host.PlatformFamily,
-			PlatformVersion:       peer.Host.PlatformVersion,
-			KernelVersion:         peer.Host.KernelVersion,
-			ConcurrentUploadLimit: peer.Host.ConcurrentUploadLimit.Load(),
-			ConcurrentUploadCount: peer.Host.ConcurrentUploadCount.Load(),
-			UploadCount:           peer.Host.UploadCount.Load(),
-			UploadFailedCount:     peer.Host.UploadFailedCount.Load(),
-			SchedulerClusterID:    int64(peer.Host.SchedulerClusterID),
-			CreatedAt:             peer.Host.CreatedAt.Load().UnixNano(),
-			UpdatedAt:             peer.Host.UpdatedAt.Load().UnixNano(),
-		},
-	}
-
-	download.Host.CPU = resource.CPU{
-		LogicalCount:   peer.Host.CPU.LogicalCount,
-		PhysicalCount:  peer.Host.CPU.PhysicalCount,
-		Percent:        peer.Host.CPU.Percent,
-		ProcessPercent: peer.Host.CPU.ProcessPercent,
-		Times: resource.CPUTimes{
-			User:      peer.Host.CPU.Times.User,
-			System:    peer.Host.CPU.Times.System,
-			Idle:      peer.Host.CPU.Times.Idle,
-			Nice:      peer.Host.CPU.Times.Nice,
-			Iowait:    peer.Host.CPU.Times.Iowait,
-			Irq:       peer.Host.CPU.Times.Irq,
-			Softirq:   peer.Host.CPU.Times.Softirq,
-			Steal:     peer.Host.CPU.Times.Steal,
-			Guest:     peer.Host.CPU.Times.Guest,
-			GuestNice: peer.Host.CPU.Times.GuestNice,
-		},
-	}
-
-	download.Host.Memory = resource.Memory{
-		Total:              peer.Host.Memory.Total,
-		Available:          peer.Host.Memory.Available,
-		Used:               peer.Host.Memory.Used,
-		UsedPercent:        peer.Host.Memory.UsedPercent,
-		ProcessUsedPercent: peer.Host.Memory.ProcessUsedPercent,
-		Free:               peer.Host.Memory.Free,
-	}
-
-	download.Host.Network = resource.Network{
-		TCPConnectionCount:       peer.Host.Network.TCPConnectionCount,
-		UploadTCPConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
-		Location:                 peer.Host.Network.Location,
-		IDC:                      peer.Host.Network.IDC,
-	}
-
-	download.Host.Disk = resource.Disk{
-		Total:             peer.Host.Disk.Total,
-		Free:              peer.Host.Disk.Free,
-		Used:              peer.Host.Disk.Used,
-		UsedPercent:       peer.Host.Disk.UsedPercent,
-		InodesTotal:       peer.Host.Disk.InodesTotal,
-		InodesUsed:        peer.Host.Disk.InodesUsed,
-		InodesFree:        peer.Host.Disk.InodesFree,
-		InodesUsedPercent: peer.Host.Disk.InodesUsedPercent,
-	}
-
-	download.Host.Build = resource.Build{
-		GitVersion: peer.Host.Build.GitVersion,
-		GitCommit:  peer.Host.Build.GitCommit,
-		GoVersion:  peer.Host.Build.GoVersion,
-		Platform:   peer.Host.Build.Platform,
-	}
-
-	if req.GetCode() != commonv1.Code_Success {
-		download.Error = storage.Error{
-			Code: req.GetCode().String(),
-		}
-	}
-
-	if err := v.storage.CreateDownload(download); err != nil {
-		peer.Log.Error(err)
 	}
 }
