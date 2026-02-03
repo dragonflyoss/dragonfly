@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
@@ -126,6 +127,9 @@ type DatabaseConfig struct {
 	// Postgres configuration.
 	Postgres PostgresConfig `yaml:"postgres" mapstructure:"postgres"`
 
+	// Polardbx configuration.
+	Polardb PolardbConfig `yaml:"polardb" mapstructure:"polardb"`
+
 	// Redis configuration.
 	Redis RedisConfig `yaml:"redis" mapstructure:"redis"`
 }
@@ -195,6 +199,23 @@ type PostgresConfig struct {
 
 	// Server timezone.
 	Timezone string `yaml:"timezone" mapstructure:"timezone"`
+
+	// Enable migration.
+	Migrate bool `yaml:"migrate" mapstructure:"migrate"`
+}
+
+type PolardbConfig struct {
+	// Server username.
+	User string `yaml:"user" mapstructure:"user"`
+
+	// Server password.
+	Password string `yaml:"password" mapstructure:"password"`
+
+	// Server host:port list.
+	AddrList string `yaml:"addrList" mapstructure:"addrList"`
+
+	// Server DB name.
+	DBName string `yaml:"dbname" mapstructure:"dbname"`
 
 	// Enable migration.
 	Migrate bool `yaml:"migrate" mapstructure:"migrate"`
@@ -432,6 +453,10 @@ func New() *Config {
 				Timezone:             DefaultPostgresTimezone,
 				Migrate:              true,
 			},
+			Polardb: PolardbConfig{
+				DBName:  DefaultPolardbDBName,
+				Migrate: true,
+			},
 			Redis: RedisConfig{
 				DB:        DefaultRedisDB,
 				BrokerDB:  DefaultRedisBrokerDB,
@@ -590,6 +615,20 @@ func (cfg *Config) Validate() error {
 
 		if cfg.Database.Postgres.Timezone == "" {
 			return errors.New("postgres requires parameter timezone")
+		}
+	}
+
+	if cfg.Database.Type == DatabaseTypePolardb {
+		if cfg.Database.Polardb.User == "" {
+			return errors.New("Polardb requires parameter user")
+		}
+
+		if cfg.Database.Polardb.Password == "" {
+			return errors.New("Polardb requires parameter password")
+		}
+
+		if cfg.Database.Polardb.AddrList == "" || !strings.Contains(cfg.Database.Polardb.AddrList, ":") {
+			return errors.New("Polardb requires parameter AddrList, like 'host1:port1,host2:port2'")
 		}
 	}
 
