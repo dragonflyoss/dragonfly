@@ -32,6 +32,9 @@ const (
 
 	// DatabaseTypePostgres is database type of postgres.
 	DatabaseTypePostgres = "postgres"
+
+	// DatabaseTypePolardb is database type of polardb.
+	DatabaseTypePolardb = "polardb"
 )
 
 const (
@@ -115,6 +118,11 @@ const (
 
 	// DefaultPostgresTimezone is default timezone for postgres.
 	DefaultPostgresTimezone = "UTC"
+)
+
+const (
+	// DefaultPolardbDBName is default db name for polardb.
+	DefaultPolardbDBName = "manager"
 )
 
 const (

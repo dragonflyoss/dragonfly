@@ -50,6 +50,12 @@ database:
     sslMode: disable
     timezone: UTC
     migrate: true
+  polardb:
+    user: foo
+    password: foo
+    addrList: 127.0.0.1:8527
+    dbname: foo
+    migrate: true
   redis:
     addrs: [foo, bar]
     masterName: baz

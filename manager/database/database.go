@@ -59,6 +59,12 @@ func New(cfg *config.Config) (*Database, error) {
 			logger.Errorf("postgres: %s", err.Error())
 			return nil, err
 		}
+	case config.DatabaseTypePolardb:
+		db, err = newPolardb(cfg)
+		if err != nil {
+			logger.Errorf("polardb: %s", err.Error())
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("invalid database type %s", cfg.Database.Type)
 	}
