@@ -29,9 +29,9 @@ func TestGetEnableTaskIDBasedBlobDigest(t *testing.T) {
 		expect bool
 	}{
 		{
-			name:   "nil returns true (default)",
+			name:   "nil returns false (default for backward compatibility)",
 			enable: nil,
-			expect: true,
+			expect: false,
 		},
 		{
 			name:   "true returns true",

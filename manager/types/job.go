@@ -188,7 +188,7 @@ type PreheatArgs struct {
 	// when downloading from OCI registries. When enabled for OCI blob URLs (e.g., /v2/<name>/blobs/sha256:<digest>),
 	// the task ID is derived from the blob digest rather than the full URL. This enables deduplication across
 	// registries - the same blob from different registries shares one task ID, eliminating redundant downloads
-	// and storage. Default is true.
+	// and storage. Default is false for backward compatibility.
 	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 }
 

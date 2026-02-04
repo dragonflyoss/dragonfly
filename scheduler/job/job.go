@@ -1100,10 +1100,10 @@ func (j *job) ListTaskEntries(ctx context.Context, req *internaljob.ListTaskEntr
 }
 
 // getEnableTaskIDBasedBlobDigest returns the value of EnableTaskIDBasedBlobDigest.
-// If nil, returns true as the default value.
+// If nil, returns false as the default value to maintain backward compatibility.
 func getEnableTaskIDBasedBlobDigest(enable *bool) bool {
 	if enable == nil {
-		return true
+		return false
 	}
 	return *enable
 }
