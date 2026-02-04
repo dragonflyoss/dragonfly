@@ -183,6 +183,13 @@ type PreheatArgs struct {
 
 	// Timeout is the timeout for preheating, default is 60 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when downloading from OCI registries. When enabled for OCI blob URLs (e.g., /v2/<name>/blobs/sha256:<digest>),
+	// the task ID is derived from the blob digest rather than the full URL. This enables deduplication across
+	// registries - the same blob from different registries shares one task ID, eliminating redundant downloads
+	// and storage. Default is true.
+	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
