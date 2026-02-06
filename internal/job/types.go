@@ -31,27 +31,28 @@ type PreheatRequest struct {
 	URL string `json:"url" validate:"omitempty,url"`
 
 	// Use for V2 preheating to support multiple URLs.
-	URLs                []string          `json:"urls" validate:"omitempty"`
-	PieceLength         *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
-	Tag                 string            `json:"tag" validate:"omitempty"`
-	FilteredQueryParams string            `json:"filtered_query_params" validate:"omitempty"`
-	Headers             map[string]string `json:"headers" validate:"omitempty"`
-	Application         string            `json:"application" validate:"omitempty"`
-	Priority            int32             `json:"priority" validate:"omitempty"`
-	Scope               string            `json:"scope" validate:"omitempty"`
-	IPs                 []string          `json:"ips" validate:"omitempty"`
-	Percentage          *uint32           `json:"percentage" validate:"omitempty,gte=1,lte=100"`
-	Count               *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
-	ConcurrentTaskCount int64             `json:"concurrent_task_count" validate:"omitempty"`
-	ConcurrentPeerCount int64             `json:"concurrent_peer_count" validate:"omitempty"`
-	CertificateChain    [][]byte          `json:"certificate_chain" validate:"omitempty"`
-	InsecureSkipVerify  bool              `json:"insecure_skip_verify" validate:"omitempty"`
-	Timeout             time.Duration     `json:"timeout" validate:"omitempty"`
-	GroupUUID           string            `json:"group_uuid" validate:"omitempty"`
-	TaskUUID            string            `json:"task_uuid" validate:"omitempty"`
-	ObjectStorage       *v2.ObjectStorage `json:"object_storage" validate:"omitempty"`
-	Hdfs                *v2.HDFS          `json:"hdfs" validate:"omitempty"`
-	OutputPath          *string           `json:"output_path" validate:"omitempty"`
+	URLs                        []string          `json:"urls" validate:"omitempty"`
+	PieceLength                 *uint64           `json:"pieceLength" binding:"omitempty,gte=4194304"`
+	Tag                         string            `json:"tag" validate:"omitempty"`
+	FilteredQueryParams         string            `json:"filtered_query_params" validate:"omitempty"`
+	Headers                     map[string]string `json:"headers" validate:"omitempty"`
+	Application                 string            `json:"application" validate:"omitempty"`
+	Priority                    int32             `json:"priority" validate:"omitempty"`
+	Scope                       string            `json:"scope" validate:"omitempty"`
+	IPs                         []string          `json:"ips" validate:"omitempty"`
+	Percentage                  *uint32           `json:"percentage" validate:"omitempty,gte=1,lte=100"`
+	Count                       *uint32           `json:"count" validate:"omitempty,gte=1,lte=200"`
+	ConcurrentTaskCount         int64             `json:"concurrent_task_count" validate:"omitempty"`
+	ConcurrentPeerCount         int64             `json:"concurrent_peer_count" validate:"omitempty"`
+	CertificateChain            [][]byte          `json:"certificate_chain" validate:"omitempty"`
+	InsecureSkipVerify          bool              `json:"insecure_skip_verify" validate:"omitempty"`
+	Timeout                     time.Duration     `json:"timeout" validate:"omitempty"`
+	GroupUUID                   string            `json:"group_uuid" validate:"omitempty"`
+	TaskUUID                    string            `json:"task_uuid" validate:"omitempty"`
+	ObjectStorage               *v2.ObjectStorage `json:"object_storage" validate:"omitempty"`
+	Hdfs                        *v2.HDFS          `json:"hdfs" validate:"omitempty"`
+	OutputPath                  *string           `json:"output_path" validate:"omitempty"`
+	EnableTaskIDBasedBlobDigest *bool             `json:"enable_task_id_based_blob_digest" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.
