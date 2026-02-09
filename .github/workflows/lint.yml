@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main, release-*]
 
-env:
-  GO_VERSION: '1.21'
+permissions:
+  contents: read
 
 jobs:
   lint:
@@ -16,21 +16,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          go-version-file: go.mod
-          cache: false
+          fetch-depth: '0'
 
       - name: Golangci lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
         with:
-          version: v1.54
-          args: --verbose
+          version: v2.7
 
       - name: Markdown lint
-        uses: docker://avtodev/markdown-lint:v1
+        uses: docker://avtodev/markdown-lint:v1@sha256:6aeedc2f49138ce7a1cd0adffc1b1c0321b841dc2102408967d9301c031949ee
         with:
           config: '.markdownlint.yml'
           args: '**/*.md'

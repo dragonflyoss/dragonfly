@@ -38,7 +38,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /users/{id} [patch]
+// @Router /api/v1/users/{id} [patch]
 func (h *Handlers) UpdateUser(ctx *gin.Context) {
 	var params types.UserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -71,7 +71,7 @@ func (h *Handlers) UpdateUser(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /users/{id} [get]
+// @Router /api/v1/users/{id} [get]
 func (h *Handlers) GetUser(ctx *gin.Context) {
 	var params types.UserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -99,7 +99,7 @@ func (h *Handlers) GetUser(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /users [get]
+// @Router /api/v1/users [get]
 func (h *Handlers) GetUsers(ctx *gin.Context) {
 	var query types.GetUsersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
@@ -127,7 +127,7 @@ func (h *Handlers) GetUsers(ctx *gin.Context) {
 // @Success 200 {object} models.User
 // @Failure 400
 // @Failure 500
-// @Router /user/signup [post]
+// @Router /api/v1/user/signup [post]
 func (h *Handlers) SignUp(ctx *gin.Context) {
 	var json types.SignUpRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -154,7 +154,7 @@ func (h *Handlers) SignUp(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /users/{id}/reset_password [post]
+// @Router /api/v1/users/{id}/reset_password [post]
 func (h *Handlers) ResetPassword(ctx *gin.Context) {
 	var params types.UserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -186,7 +186,7 @@ func (h *Handlers) ResetPassword(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /user/signin/{name} [get]
+// @Router /api/v1/user/signin/{name} [get]
 func (h *Handlers) OauthSignin(ctx *gin.Context) {
 	var params types.OauthSigninParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -212,7 +212,7 @@ func (h *Handlers) OauthSignin(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /user/signin/{name}/callback [get]
+// @Router /api/v1/user/signin/{name}/callback [get]
 func (h *Handlers) OauthSigninCallback(j *jwt.GinJWTMiddleware) func(*gin.Context) {
 	return func(ctx *gin.Context) {
 		var params types.OauthSigninCallbackParams
@@ -246,7 +246,7 @@ func (h *Handlers) OauthSigninCallback(j *jwt.GinJWTMiddleware) func(*gin.Contex
 // @Success 200 {object} []string
 // @Failure 400
 // @Failure 500
-// @Router /users/{id}/roles [get]
+// @Router /api/v1/users/{id}/roles [get]
 func (h *Handlers) GetRolesForUser(ctx *gin.Context) {
 	var params types.UserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -273,7 +273,7 @@ func (h *Handlers) GetRolesForUser(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /users/{id}/roles/{role} [put]
+// @Router /api/v1/users/{id}/roles/{role} [put]
 func (h *Handlers) AddRoleToUser(ctx *gin.Context) {
 	var params types.AddRoleForUserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -302,7 +302,7 @@ func (h *Handlers) AddRoleToUser(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /users/{id}/roles/{role} [delete]
+// @Router /api/v1/users/{id}/roles/{role} [delete]
 func (h *Handlers) DeleteRoleForUser(ctx *gin.Context) {
 	var params types.DeleteRoleForUserParams
 	if err := ctx.ShouldBindUri(&params); err != nil {

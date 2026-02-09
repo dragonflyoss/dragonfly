@@ -47,17 +47,6 @@ func MapToHeader(m map[string]string) http.Header {
 	return h
 }
 
-// PickHeader pick header with key.
-func PickHeader(header http.Header, key, defaultValue string) string {
-	v := header.Get(key)
-	if v != "" {
-		header.Del(key)
-		return v
-	}
-
-	return defaultValue
-}
-
 // NewSafeDialer returns a new net.Dialer with safe socket control.
 func NewSafeDialer() *net.Dialer {
 	return &net.Dialer{

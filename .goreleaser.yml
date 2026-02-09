@@ -1,6 +1,11 @@
+version: 2
+
 release:
   draft: true
   replace_existing_draft: true
+  footer: |
+    ## Contributors
+    Thanks to all the [contributors](https://github.com/dragonflyoss/dragonfly/graphs/contributors)! ❤️
 
 before:
   hooks:
@@ -9,66 +14,6 @@ before:
     - go mod download
 
 builds:
-  - main: ./cmd/dfget
-    id: dfget
-    binary: dfget
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
-      - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
-      - -X d7y.io/dragonfly/v2/version.GitVersion={{ .Tag }}
-      - -X d7y.io/dragonfly/v2/version.GitCommit={{ .ShortCommit }}
-      - -X d7y.io/dragonfly/v2/version.BuildTime={{ .Date }}
-      - -X "d7y.io/dragonfly/v2/version.Gotags=none"
-      - -X "d7y.io/dragonfly/v2/version.Gogcflags=none"
-    env:
-      - CGO_ENABLED=0
-
-  - main: ./cmd/dfcache
-    id: dfcache
-    binary: dfcache
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
-      - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
-      - -X d7y.io/dragonfly/v2/version.GitVersion={{ .Tag }}
-      - -X d7y.io/dragonfly/v2/version.GitCommit={{ .ShortCommit }}
-      - -X d7y.io/dragonfly/v2/version.BuildTime={{ .Date }}
-      - -X "d7y.io/dragonfly/v2/version.Gotags=none"
-      - -X "d7y.io/dragonfly/v2/version.Gogcflags=none"
-    env:
-      - CGO_ENABLED=0
-
-  - main: ./cmd/dfstore
-    id: dfstore
-    binary: dfstore
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
-      - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
-      - -X d7y.io/dragonfly/v2/version.GitVersion={{ .Tag }}
-      - -X d7y.io/dragonfly/v2/version.GitCommit={{ .ShortCommit }}
-      - -X d7y.io/dragonfly/v2/version.BuildTime={{ .Date }}
-      - -X "d7y.io/dragonfly/v2/version.Gotags=none"
-      - -X "d7y.io/dragonfly/v2/version.Gogcflags=none"
-    env:
-    - CGO_ENABLED=0
-
   - main: ./cmd/scheduler
     id: scheduler
     binary: scheduler
@@ -109,29 +54,9 @@ builds:
     env:
     - CGO_ENABLED=0
 
-  - main: ./cmd/trainer
-    id: trainer
-    binary: trainer
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
-      - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
-      - -X d7y.io/dragonfly/v2/version.GitVersion={{ .Tag }}
-      - -X d7y.io/dragonfly/v2/version.GitCommit={{ .ShortCommit }}
-      - -X d7y.io/dragonfly/v2/version.BuildTime={{ .Date }}
-      - -X "d7y.io/dragonfly/v2/version.Gotags=none"
-      - -X "d7y.io/dragonfly/v2/version.Gogcflags=none"
-    env:
-    - CGO_ENABLED=0
-
 archives:
   - name_template: "dragonfly-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    format: tar.gz
+    formats: ["tar.gz"]
     files:
       - LICENSE
       - README.md
@@ -141,7 +66,7 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
@@ -149,126 +74,18 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
-nfpms:
-  - id: dfget
-    file_name_template: "dfget-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    package_name: dfget
-    maintainer: Dragonfly Maintainers <dragonfly-maintainers@googlegroups.com>
-    description: dfget is the client of Dragonfly used to download and upload files
-    license: "Apache 2.0"
-    homepage: https://d7y.io
-    bindir: /usr/bin
-    builds:
-      - dfget
-    formats:
-      - rpm
-      - deb
-    contents:
-      - src: build/package/nfpm/config/dfget.yaml
-        dst: /etc/dragonfly/dfget.yaml
-        type: config
-
-      - src: build/package/docs/dfget.1
-        dst: /usr/share/man/man1/dfget.1
-
-      - src: LICENSE
-        dst: /usr/share/doc/dfget/License
-
-      - src: CHANGELOG.md
-        dst: /usr/share/doc/dfget/ChangeLog
-
-      - src: build/package/nfpm/systemd/dfget-daemon.service
-        dst: /etc/systemd/system/dfget-daemon.service
-
-      - src: build/package/nfpm/systemd/dfget-daemon.service.d/CPUQuota.conf
-        dst: /etc/systemd/system/dfget-daemon.service.d/CPUQuota.conf
-
-      - src: build/package/nfpm/systemd/dfget-daemon.service.d/CPUShares.conf
-        dst: /etc/systemd/system/dfget-daemon.service.d/CPUShares.conf
-
-      - src: build/package/nfpm/systemd/dfget-daemon.service.d/MemoryLimit.conf
-        dst: /etc/systemd/system/dfget-daemon.service.d/MemoryLimit.conf
-
-      - src: build/package/nfpm/systemd/fix.dfget-daemon.cpuset.sh
-        dst: /opt/dragonfly/fix.dfget-daemon.cpuset.sh
-    scripts:
-      postinstall: build/package/nfpm/dfget-postinstall.sh
-      preremove: build/package/nfpm/dfget-preremove.sh
-      postremove: build/package/nfpm/dfget-postremove.sh
-
-  - id: dfcache
-    file_name_template: "dfcache-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    package_name: dfcache
-    maintainer: Dragonfly Maintainers <dragonfly-maintainers@googlegroups.com>
-    description: dfcache is the cache client to of dragonfly that communicates with dfdaemon and operates on files in P2P network
-    license: "Apache 2.0"
-    homepage: https://d7y.io
-    bindir: /usr/bin
-    builds:
-      - dfcache
-    formats:
-      - rpm
-      - deb
-    contents:
-      - src: build/package/docs/dfcache/dfcache.1
-        dst: /usr/share/man/man1/dfcache.1
-
-      - src: build/package/docs/dfcache/dfcache-delete.1
-        dst: /usr/share/man/man1/dfcache-delete.1
-
-      - src: build/package/docs/dfcache/dfcache-doc.1
-        dst: /usr/share/man/man1/dfcache-doc.1
-
-      - src: build/package/docs/dfcache/dfcache-export.1
-        dst: /usr/share/man/man1/dfcache-export.1
-
-      - src: build/package/docs/dfcache/dfcache-import.1
-        dst: /usr/share/man/man1/dfcache-import.1
-
-      - src: build/package/docs/dfcache/dfcache-plugin.1
-        dst: /usr/share/man/man1/dfcache-plugin.1
-
-      - src: build/package/docs/dfcache/dfcache-stat.1
-        dst: /usr/share/man/man1/dfcache-stat.1
-
-      - src: build/package/docs/dfcache/dfcache-version.1
-        dst: /usr/share/man/man1/dfcache-version.1
-
-      - src: LICENSE
-        dst: /usr/share/doc/dfcache/License
-
-      - src: CHANGELOG.md
-        dst: /usr/share/doc/dfcache/ChangeLog
-
-  - id: dfstore
-    file_name_template: "dfstore-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    package_name: dfstore
-    maintainer: Dragonfly Maintainers <dragonfly-maintainers@googlegroups.com>
-    description: dfstore is a storage client for dragonfly. It can rely on different types of object storage, such as S3 or OSS, to provide stable object storage capabilities.
-    license: "Apache 2.0"
-    homepage: https://d7y.io
-    bindir: /usr/bin
-    builds:
-      - dfstore
-    formats:
-      - rpm
-      - deb
-    contents:
-      - src: build/package/docs/dfstore/dfstore.1
-        dst: /usr/share/man/man1/dfstore.1
-
-      - src: build/package/docs/dfstore/dfstore-copy.1
-        dst: /usr/share/man/man1/dfstore-copy.1
-
-      - src: build/package/docs/dfstore/dfstore-remove.1
-        dst: /usr/share/man/man1/dfstore-remove.1
-
-      - src: build/package/docs/dfstore/dfstore-version.1
-        dst: /usr/share/man/man1/dfstore-version.1
-
-      - src: LICENSE
-        dst: /usr/share/doc/dfstore/License
-
-      - src: CHANGELOG.md
-        dst: /usr/share/doc/dfstore/ChangeLog
+  groups:
+    - title: Dependency updates
+      regexp: '^.*?(.+)\(deps\)!?:.+$'
+      order: 300
+    - title: "Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug Fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Chores"
+      order: 9999

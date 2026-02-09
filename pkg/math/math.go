@@ -16,28 +16,21 @@
 
 package math
 
-import "golang.org/x/exp/constraints"
+import "go.uber.org/atomic"
 
-// Max returns the maximum of values.
-func Max[T constraints.Ordered](values ...T) T {
-	max := values[0]
-	for _, value := range values {
-		if value > max {
-			max = value
+func SafeSubAtomicUint64(counter *atomic.Uint64, delta uint64) {
+	for {
+		old := counter.Load()
+		if old < delta {
+			if counter.CompareAndSwap(old, 0) {
+				return
+			}
+
+			continue
+		}
+
+		if counter.CompareAndSwap(old, old-delta) {
+			return
 		}
 	}
-
-	return max
-}
-
-// Min returns the minimum of values.
-func Min[T constraints.Ordered](values ...T) T {
-	min := values[0]
-	for _, value := range values {
-		if value < min {
-			min = value
-		}
-	}
-
-	return min
 }

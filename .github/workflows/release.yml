@@ -5,33 +5,90 @@ on:
     tags:
       - v*
 
+permissions:
+  contents: read
+
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    runs-on: oracle-vm-24cpu-96gb-x86-64
     timeout-minutes: 60
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version-file: go.mod
 
-      - name: Check GoReleaser config
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: check
-
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a
+        id: run-goreleaser
         with:
-          distribution: goreleaser
           version: latest
-          args: release
+          distribution: goreleaser
+          args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate subject
+        id: hash
+        env:
+          ARTIFACTS: "${{ steps.run-goreleaser.outputs.artifacts }}"
+        run: |
+          set -euo pipefail
+          hashes=$(echo $ARTIFACTS | jq --raw-output '.[] | {name, "digest": (.extra.Digest // .extra.Checksum)} | select(.digest) | {digest} + {name} | join("  ") | sub("^sha256:";"")' | base64 -w0)
+          if test "$hashes" = ""; then # goreleaser < v1.13.0
+            checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Checksum") | .path')
+            hashes=$(cat $checksum_file | base64 -w0)
+          fi
+          echo "hashes=$hashes" >> $GITHUB_OUTPUT
+
+      - name: Set tag output
+        id: tag
+        run: echo "tag_name=${GITHUB_REF#refs/*/}" >> "$GITHUB_OUTPUT"
+
+  provenance:
+    needs: [goreleaser]
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
+    with:
+      base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
+
+  upload-provenance:
+    needs: [goreleaser, provenance]
+    permissions:
+      contents: write
+    runs-on: oracle-vm-24cpu-96gb-x86-64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Download SLSA provenance artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: multiple.intoto.jsonl
+          path: artifacts
+
+      - name: Upload SLSA Provenance Attestation to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.goreleaser.outputs.tag_name }}
+        run: |
+          set -euxo pipefail
+          ARTIFACT_PATH="artifacts/multiple.intoto.jsonl"
+          gh release upload "$TAG_NAME" "$ARTIFACT_PATH" --clobber

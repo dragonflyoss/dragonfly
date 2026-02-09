@@ -4,8 +4,7 @@ We encourage users to experience Dragonfly in different ways.
 When doing this, there are three ways users
 could choose to interact with dragonfly mostly:
 
-* For end-users, command line tool `dfget`, `dfdaemon` is mostly used.
-* For developers, Dragonfly manager's raw API is
+- For developers, Dragonfly manager's raw API is
   the original thing they would make use of.
   For more details about API docs, please refer to [api.md](./manager/swagger.json).
   We should also keep it in mind that doc

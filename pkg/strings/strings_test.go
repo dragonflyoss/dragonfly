@@ -22,21 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsBlank(t *testing.T) {
-	assert.True(t, IsBlank(""))
-	assert.True(t, IsBlank("	  "))
-	assert.False(t, IsBlank("x"))
-}
-
 func TestContains(t *testing.T) {
 	assert.True(t, Contains([]string{"a", "B"}, "B"))
 	assert.False(t, Contains([]string{"a", "B"}, "b"))
 }
 
-func TestUnique(t *testing.T) {
-	assert.EqualValues(t, Unique([]string{"a", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{"a", "a", "B", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{"a", "B", "a", "B"}), []string{"a", "B"})
-	assert.EqualValues(t, Unique([]string{}), []string{})
-	assert.EqualValues(t, Unique([]string{}), []string{})
+func TestConcat(t *testing.T) {
+	assert.EqualValues(t, Concat([]string{"a", "B"}, []string{"c", "D"}), []string{"a", "B", "c", "D"})
+	assert.EqualValues(t, Concat([]string{"a", "B"}, []string{}), []string{"a", "B"})
+	assert.EqualValues(t, Concat([]string{}, []string{"c", "D"}), []string{"c", "D"})
+	assert.EqualValues(t, Concat([]string{}, []string{}), []string(nil))
 }

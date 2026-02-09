@@ -35,7 +35,7 @@ import (
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles [post]
+// @Router /api/v1/roles [post]
 func (h *Handlers) CreateRole(ctx *gin.Context) {
 	var json types.CreateRoleRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -60,7 +60,7 @@ func (h *Handlers) CreateRole(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles/{role} [delete]
+// @Router /api/v1/roles/{role} [delete]
 func (h *Handlers) DestroyRole(ctx *gin.Context) {
 	var params types.RoleParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -88,7 +88,7 @@ func (h *Handlers) DestroyRole(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles/{role} [get]
+// @Router /api/v1/roles/{role} [get]
 func (h *Handlers) GetRole(ctx *gin.Context) {
 	var params types.RoleParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -107,7 +107,7 @@ func (h *Handlers) GetRole(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles [get]
+// @Router /api/v1/roles [get]
 func (h *Handlers) GetRoles(ctx *gin.Context) {
 	roles := h.service.GetRoles(ctx.Request.Context())
 	ctx.JSON(http.StatusOK, roles)
@@ -123,7 +123,7 @@ func (h *Handlers) GetRoles(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles/{role}/permissions [post]
+// @Router /api/v1/roles/{role}/permissions [post]
 func (h *Handlers) AddPermissionForRole(ctx *gin.Context) {
 	var params types.RoleParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -158,7 +158,7 @@ func (h *Handlers) AddPermissionForRole(ctx *gin.Context) {
 // @Success 200
 // @Failure 400
 // @Failure 500
-// @Router /roles/{role}/permissions [delete]
+// @Router /api/v1/roles/{role}/permissions [delete]
 func (h *Handlers) DeletePermissionForRole(ctx *gin.Context) {
 	var params types.RoleParams
 	if err := ctx.ShouldBindUri(&params); err != nil {

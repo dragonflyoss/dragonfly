@@ -17,9 +17,13 @@
 package database
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"time"
 
+	caches "github.com/go-gorm/caches/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
@@ -34,6 +38,11 @@ import (
 const (
 	// DefaultClusterName name for the cluster.
 	DefaultClusterName = "cluster-1"
+)
+
+const (
+	// DragonflyPATEnvName is the environment variable name for generating personal access token.
+	DragonflyPATEnvName = "DRAGONFLY_PAT"
 )
 
 type Database struct {
@@ -69,15 +78,33 @@ func New(cfg *config.Config) (*Database, error) {
 		return nil, fmt.Errorf("invalid database type %s", cfg.Database.Type)
 	}
 
+	// Add cache for reducing database load.
+	cacher, err := newCacher()
+	if err != nil {
+		logger.Errorf("new cacher: %s", err.Error())
+		return nil, err
+	}
+
+	if err := db.Use(&caches.Caches{Conf: &caches.Config{
+		Easer:  true,
+		Cacher: cacher,
+	}}); err != nil {
+		logger.Errorf("use cache: %s", err.Error())
+		return nil, err
+	}
+
 	rdb, err := pkgredis.NewRedis(&redis.UniversalOptions{
-		Addrs:      cfg.Database.Redis.Addrs,
-		MasterName: cfg.Database.Redis.MasterName,
-		DB:         cfg.Database.Redis.DB,
-		Username:   cfg.Database.Redis.Username,
-		Password:   cfg.Database.Redis.Password,
+		Addrs:            cfg.Database.Redis.Addrs,
+		MasterName:       cfg.Database.Redis.MasterName,
+		DB:               cfg.Database.Redis.DB,
+		Username:         cfg.Database.Redis.Username,
+		Password:         cfg.Database.Redis.Password,
+		SentinelUsername: cfg.Database.Redis.SentinelUsername,
+		SentinelPassword: cfg.Database.Redis.SentinelPassword,
+		PoolSize:         cfg.Database.Redis.PoolSize,
+		PoolTimeout:      cfg.Database.Redis.PoolTimeout,
 	})
 	if err != nil {
-		logger.Errorf("redis: %s", err.Error())
 		return nil, err
 	}
 
@@ -89,6 +116,7 @@ func New(cfg *config.Config) (*Database, error) {
 
 func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&models.Audit{},
 		&models.Job{},
 		&models.SeedPeerCluster{},
 		&models.SeedPeer{},
@@ -98,7 +126,6 @@ func migrate(db *gorm.DB) error {
 		&models.Oauth{},
 		&models.Config{},
 		&models.Application{},
-		&models.Model{},
 		&models.PersonalAccessToken{},
 		&models.Peer{},
 	)
@@ -120,12 +147,14 @@ func seed(db *gorm.DB) error {
 			Config: map[string]any{
 				"candidate_parent_limit": schedulerconfig.DefaultSchedulerCandidateParentLimit,
 				"filter_parent_limit":    schedulerconfig.DefaultSchedulerFilterParentLimit,
+				"job_rate_limit":         config.DefaultClusterJobRateLimit,
 			},
 			ClientConfig: map[string]any{
 				"load_limit": schedulerconfig.DefaultPeerConcurrentUploadLimit,
 			},
-			Scopes:    map[string]any{},
-			IsDefault: true,
+			SeedClientConfig: map[string]any{},
+			Scopes:           map[string]any{},
+			IsDefault:        true,
 		}).Error; err != nil {
 			return err
 		}
@@ -184,6 +213,48 @@ func seed(db *gorm.DB) error {
 			}
 
 			logger.Infof("update scheduler %d default features", scheduler.ID)
+		}
+	}
+
+	// Create default GC config.
+	var config models.Config
+	if err := db.Model(models.Config{}).First(&config, models.Config{Name: models.ConfigGC}).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		gcConfig := &models.GCConfig{
+			Audit: &models.GCAuditConfig{
+				TTL: models.DefaultGCAuditTTL,
+			},
+			Job: &models.GCJobConfig{
+				TTL: models.DefaultGCJobTTL,
+			},
+		}
+		gcConfigVal, err := json.Marshal(gcConfig)
+		if err != nil {
+			return err
+		}
+
+		if err := db.Model(models.Config{}).Create(&models.Config{
+			Name:  models.ConfigGC,
+			Value: string(gcConfigVal),
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	// If DRAGONFLY_PAT is set, create a default personal access token for user ID 1(root user).
+	if pat := os.Getenv(DragonflyPATEnvName); pat != "" {
+		if err := db.Model(models.PersonalAccessToken{}).Create(&models.PersonalAccessToken{
+			Name:      "default",
+			Token:     pat,
+			Scopes:    types.DefaultPersonalAccessTokenScopes,
+			State:     models.PersonalAccessTokenStateActive,
+			ExpiredAt: time.Now().AddDate(10, 0, 0),
+			UserID:    1,
+		}).Error; err != nil {
+			return err
 		}
 	}
 

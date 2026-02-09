@@ -27,18 +27,14 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
@@ -46,7 +42,6 @@ import (
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
 	schedulerv1mocks "d7y.io/api/v2/pkg/apis/scheduler/v1/mocks"
-	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	"d7y.io/dragonfly/v2/internal/dferrors"
 	"d7y.io/dragonfly/v2/manager/types"
@@ -58,13 +53,9 @@ import (
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	configmocks "d7y.io/dragonfly/v2/scheduler/config/mocks"
-	"d7y.io/dragonfly/v2/scheduler/networktopology"
-	networktopologymocks "d7y.io/dragonfly/v2/scheduler/networktopology/mocks"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
 	"d7y.io/dragonfly/v2/scheduler/scheduling/mocks"
-	"d7y.io/dragonfly/v2/scheduler/storage"
-	storagemocks "d7y.io/dragonfly/v2/scheduler/storage/mocks"
 )
 
 var (
@@ -80,148 +71,33 @@ var (
 		TaskDownloadTimeout: 1 * time.Hour,
 	}
 
-	mockNetworkTopologyConfig = config.NetworkTopologyConfig{
-		CollectInterval: 2 * time.Hour,
-		Probe: config.ProbeConfig{
-			QueueLength: 5,
-			Count:       10,
-		},
-	}
-
-	mockRawHost = resource.Host{
-		ID:              mockHostID,
-		Type:            pkgtypes.HostTypeNormal,
-		Hostname:        "foo",
-		IP:              "127.0.0.1",
-		Port:            8003,
-		DownloadPort:    8001,
-		OS:              "darwin",
-		Platform:        "darwin",
-		PlatformFamily:  "Standalone Workstation",
-		PlatformVersion: "11.1",
-		KernelVersion:   "20.2.0",
-		CPU:             mockCPU,
-		Memory:          mockMemory,
-		Network:         mockNetwork,
-		Disk:            mockDisk,
-		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
-	}
-
-	mockRawSeedHost = resource.Host{
-		ID:              mockSeedHostID,
-		Type:            pkgtypes.HostTypeSuperSeed,
-		Hostname:        "bar",
-		IP:              "127.0.0.1",
-		Port:            8003,
-		DownloadPort:    8001,
-		OS:              "darwin",
-		Platform:        "darwin",
-		PlatformFamily:  "Standalone Workstation",
-		PlatformVersion: "11.1",
-		KernelVersion:   "20.2.0",
-		CPU:             mockCPU,
-		Memory:          mockMemory,
-		Network:         mockNetwork,
-		Disk:            mockDisk,
-		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
-	}
-
-	mockCPU = resource.CPU{
-		LogicalCount:   4,
-		PhysicalCount:  2,
-		Percent:        1,
-		ProcessPercent: 0.5,
-		Times: resource.CPUTimes{
-			User:      240662.2,
-			System:    317950.1,
-			Idle:      3393691.3,
-			Nice:      0,
-			Iowait:    0,
-			Irq:       0,
-			Softirq:   0,
-			Steal:     0,
-			Guest:     0,
-			GuestNice: 0,
-		},
-	}
-
-	mockMemory = resource.Memory{
-		Total:              17179869184,
-		Available:          5962813440,
-		Used:               11217055744,
-		UsedPercent:        65.291858,
-		ProcessUsedPercent: 41.525125,
-		Free:               2749598908,
-	}
-
-	mockNetwork = resource.Network{
-		TCPConnectionCount:       10,
-		UploadTCPConnectionCount: 1,
-		Location:                 mockHostLocation,
-		IDC:                      mockHostIDC,
-	}
-
-	mockDisk = resource.Disk{
-		Total:             499963174912,
-		Free:              37226479616,
-		Used:              423809622016,
-		UsedPercent:       91.92547406065952,
-		InodesTotal:       4882452880,
-		InodesUsed:        7835772,
-		InodesFree:        4874617108,
-		InodesUsedPercent: 0.1604884305611568,
-	}
-
-	mockBuild = resource.Build{
-		GitVersion: "v1.0.0",
-		GitCommit:  "221176b117c6d59366d68f2b34d38be50c935883",
-		GoVersion:  "1.18",
-		Platform:   "darwin",
-	}
-
-	mockInterval = durationpb.New(5 * time.Minute).AsDuration()
-
 	mockPeerHost = &schedulerv1.PeerHost{
-		Id:       mockHostID,
-		Ip:       "127.0.0.1",
-		RpcPort:  8003,
-		DownPort: 8001,
-		Hostname: "baz",
-		Location: mockHostLocation,
-		Idc:      mockHostIDC,
+		Id:        mockHostID,
+		Ip:        "127.0.0.1",
+		RpcPort:   8003,
+		DownPort:  8001,
+		ProxyPort: 8004,
+		Hostname:  "baz",
+		Location:  mockHostLocation,
+		Idc:       mockHostIDC,
 	}
 
-	mockTaskBackToSourceLimit   int32 = 200
-	mockTaskURL                       = "http://example.com/foo"
-	mockTaskID                        = idgen.TaskIDV2(mockTaskURL, mockTaskDigest.String(), mockTaskTag, mockTaskApplication, mockTaskPieceLength, mockTaskFilteredQueryParams)
-	mockTaskDigest                    = digest.New(digest.AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
-	mockTaskTag                       = "d7y"
-	mockTaskApplication               = "foo"
-	mockTaskFilteredQueryParams       = []string{"bar"}
-	mockTaskHeader                    = map[string]string{"Content-Length": "100", "Range": "bytes=0-99"}
-	mockTaskPieceLength         int32 = 2048
-	mockResourceConfig                = &config.ResourceConfig{
-		Task: config.TaskConfig{
-			DownloadTiny: config.DownloadTinyConfig{
-				Scheme:  config.DefaultResourceTaskDownloadTinyScheme,
-				Timeout: config.DefaultResourceTaskDownloadTinyTimeout,
-				TLS: config.DownloadTinyTLSClientConfig{
-					InsecureSkipVerify: true,
-				},
-			},
-		},
-	}
-	mockHostID       = idgen.HostIDV2("127.0.0.1", "foo")
-	mockSeedHostID   = idgen.HostIDV2("127.0.0.1", "bar")
-	mockHostLocation = "bas"
-	mockHostIDC      = "baz"
-	mockPeerID       = idgen.PeerIDV2()
-	mockSeedPeerID   = idgen.PeerIDV2()
-	mockPeerRange    = nethttp.Range{
+	mockTaskBackToSourceLimit   int32  = 200
+	mockTaskURL                        = "http://example.com/foo"
+	mockTaskPieceLength         uint64 = 2048
+	mockTaskID                         = idgen.TaskIDV2ByURLBased(mockTaskURL, &mockTaskPieceLength, mockTaskTag, mockTaskApplication, mockTaskFilteredQueryParams)
+	mockTaskDigest                     = digest.New(digest.AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
+	mockTaskTag                        = "d7y"
+	mockTaskApplication                = "foo"
+	mockTaskFilteredQueryParams        = []string{"bar"}
+	mockTaskHeader                     = map[string]string{"Content-Length": "100", "Range": "bytes=0-99"}
+	mockHostID                         = idgen.HostIDV2("127.0.0.1", "foo", false)
+	mockSeedHostID                     = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostLocation                   = "bas"
+	mockHostIDC                        = "baz"
+	mockPeerID                         = idgen.PeerIDV2()
+	mockSeedPeerID                     = idgen.PeerIDV2()
+	mockPeerRange                      = nethttp.Range{
 		Start:  0,
 		Length: 10,
 	}
@@ -236,86 +112,6 @@ var (
 		TrafficType: commonv2.TrafficType_REMOTE_PEER,
 		Cost:        1 * time.Minute,
 		CreatedAt:   time.Now(),
-	}
-
-	mockV1Probe = &schedulerv1.Probe{
-		Host: &commonv1.Host{
-			Id:           mockRawHost.ID,
-			Ip:           mockRawHost.IP,
-			Hostname:     mockRawHost.Hostname,
-			Port:         mockRawHost.Port,
-			DownloadPort: mockRawHost.DownloadPort,
-			Location:     mockRawHost.Network.Location,
-			Idc:          mockRawHost.Network.IDC,
-		},
-		Rtt:       durationpb.New(30 * time.Millisecond),
-		CreatedAt: timestamppb.Now(),
-	}
-
-	mockV2Probe = &schedulerv2.Probe{
-		Host: &commonv2.Host{
-			Id:              mockHostID,
-			Type:            uint32(pkgtypes.HostTypeNormal),
-			Hostname:        "foo",
-			Ip:              "127.0.0.1",
-			Port:            8003,
-			DownloadPort:    8001,
-			Os:              "darwin",
-			Platform:        "darwin",
-			PlatformFamily:  "Standalone Workstation",
-			PlatformVersion: "11.1",
-			KernelVersion:   "20.2.0",
-			Cpu: &commonv2.CPU{
-				LogicalCount:   mockCPU.LogicalCount,
-				PhysicalCount:  mockCPU.PhysicalCount,
-				Percent:        mockCPU.Percent,
-				ProcessPercent: mockCPU.ProcessPercent,
-				Times: &commonv2.CPUTimes{
-					User:      mockCPU.Times.User,
-					System:    mockCPU.Times.System,
-					Idle:      mockCPU.Times.Idle,
-					Nice:      mockCPU.Times.Nice,
-					Iowait:    mockCPU.Times.Iowait,
-					Irq:       mockCPU.Times.Irq,
-					Softirq:   mockCPU.Times.Softirq,
-					Steal:     mockCPU.Times.Steal,
-					Guest:     mockCPU.Times.Guest,
-					GuestNice: mockCPU.Times.GuestNice,
-				},
-			},
-			Memory: &commonv2.Memory{
-				Total:              mockMemory.Total,
-				Available:          mockMemory.Available,
-				Used:               mockMemory.Used,
-				UsedPercent:        mockMemory.UsedPercent,
-				ProcessUsedPercent: mockMemory.ProcessUsedPercent,
-				Free:               mockMemory.Free,
-			},
-			Network: &commonv2.Network{
-				TcpConnectionCount:       mockNetwork.TCPConnectionCount,
-				UploadTcpConnectionCount: mockNetwork.UploadTCPConnectionCount,
-				Location:                 &mockNetwork.Location,
-				Idc:                      &mockNetwork.IDC,
-			},
-			Disk: &commonv2.Disk{
-				Total:             mockDisk.Total,
-				Free:              mockDisk.Free,
-				Used:              mockDisk.Used,
-				UsedPercent:       mockDisk.UsedPercent,
-				InodesTotal:       mockDisk.InodesTotal,
-				InodesUsed:        mockDisk.InodesUsed,
-				InodesFree:        mockDisk.InodesFree,
-				InodesUsedPercent: mockDisk.InodesUsedPercent,
-			},
-			Build: &commonv2.Build{
-				GitVersion: mockBuild.GitVersion,
-				GitCommit:  &mockBuild.GitCommit,
-				GoVersion:  &mockBuild.GoVersion,
-				Platform:   &mockBuild.Platform,
-			},
-		},
-		Rtt:       durationpb.New(30 * time.Millisecond),
-		CreatedAt: timestamppb.Now(),
 	}
 )
 
@@ -340,10 +136,8 @@ func TestService_NewV1(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			resource := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 
-			tc.expect(t, NewV1(&config.Config{Scheduler: mockSchedulerConfig}, resource, scheduling, dynconfig, storage, networkTopology))
+			tc.expect(t, NewV1(&config.Config{Scheduler: mockSchedulerConfig}, resource, scheduling, dynconfig))
 		})
 	}
 }
@@ -1004,22 +798,20 @@ func TestServiceV1_RegisterPeerTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
 			taskManager := resource.NewMockTaskManager(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
 			mockSeedHost := resource.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
-				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)
-			mockSeedPeer := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, mockSeedHost)
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname, mockRawSeedHost.Hostname,
+				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
+			mockSeedPeer := resource.NewPeer(mockSeedPeerID, mockTask, mockSeedHost)
 			tc.mock(
 				tc.req, mockPeer, mockSeedPeer,
 				scheduling, res, hostManager, taskManager, peerManager,
@@ -1270,17 +1062,15 @@ func TestServiceV1_ReportPieceResult(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			stream := schedulerv1mocks.NewMockScheduler_ReportPieceResultServer(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
 			tc.mock(mockPeer, res, peerManager, res.EXPECT(), peerManager.EXPECT(), stream.EXPECT())
 			tc.expect(t, mockPeer, svc.ReportPieceResult(stream))
 		})
@@ -1292,8 +1082,7 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 		name string
 		req  *schedulerv1.PeerResult
 		run  func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-			mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-			md *configmocks.MockDynconfigInterfaceMockRecorder)
+			mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder)
 	}{
 		{
 			name: "peer not found",
@@ -1301,8 +1090,7 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId: mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(nil, false).Times(1),
@@ -1322,18 +1110,12 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId:  mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-				defer wg.Wait()
-
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockPeer.FSM.SetState(resource.PeerStateFailed)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(mockPeer, true).Times(1),
 					md.GetApplications().Return([]*managerv2.Application{}, nil).Times(1),
-					ms.CreateDownload(gomock.Any()).Do(func(download storage.Download) { wg.Done() }).Return(nil).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -1348,18 +1130,12 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId:  mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-				defer wg.Wait()
-
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockPeer.FSM.SetState(resource.PeerStateBackToSource)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(mockPeer, true).Times(1),
 					md.GetApplications().Return([]*managerv2.Application{}, nil).Times(1),
-					ms.CreateDownload(gomock.Any()).Do(func(download storage.Download) { wg.Done() }).Return(nil).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -1374,18 +1150,12 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId:  mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-				defer wg.Wait()
-
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockPeer.FSM.SetState(resource.PeerStateFailed)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(mockPeer, true).Times(1),
 					md.GetApplications().Return([]*managerv2.Application{}, nil).Times(1),
-					ms.CreateDownload(gomock.Any()).Do(func(download storage.Download) { wg.Done() }).Return(nil).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -1400,18 +1170,12 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId:  mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-				defer wg.Wait()
-
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockPeer.FSM.SetState(resource.PeerStateBackToSource)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(mockPeer, true).Times(1),
 					md.GetApplications().Return([]*managerv2.Application{}, nil).Times(1),
-					ms.CreateDownload(gomock.Any()).Do(func(download storage.Download) { wg.Done() }).Return(nil).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -1426,18 +1190,12 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 				PeerId:  mockPeerID,
 			},
 			run: func(t *testing.T, peer *resource.Peer, req *schedulerv1.PeerResult, svc *V1, mockPeer *resource.Peer, res resource.Resource, peerManager resource.PeerManager,
-				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, ms *storagemocks.MockStorageMockRecorder,
-				md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				var wg sync.WaitGroup
-				wg.Add(1)
-				defer wg.Wait()
-
+				mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockPeer.FSM.SetState(resource.PeerStateBackToSource)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(mockPeer, true).Times(1),
 					md.GetApplications().Return([]*managerv2.Application{}, nil).Times(1),
-					ms.CreateDownload(gomock.Any()).Do(func(download storage.Download) { wg.Done() }).Return(nil).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -1454,17 +1212,15 @@ func TestServiceV1_ReportPeerResult(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
-			tc.run(t, mockPeer, tc.req, svc, mockPeer, res, peerManager, res.EXPECT(), peerManager.EXPECT(), storage.EXPECT(), dynconfig.EXPECT())
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			tc.run(t, mockPeer, tc.req, svc, mockPeer, res, peerManager, res.EXPECT(), peerManager.EXPECT(), dynconfig.EXPECT())
 		})
 	}
 }
@@ -1501,7 +1257,7 @@ func TestServiceV1_StatTask(t *testing.T) {
 				assert.NoError(err)
 				assert.EqualValues(task, &schedulerv1.Task{
 					Id:               mockTaskID,
-					Type:             pkgtypes.TaskTypeV2ToV1(commonv2.TaskType_DFDAEMON),
+					Type:             pkgtypes.TaskTypeV2ToV1(commonv2.TaskType_STANDARD),
 					ContentLength:    -1,
 					TotalPieceCount:  0,
 					State:            resource.TaskStatePending,
@@ -1519,11 +1275,9 @@ func TestServiceV1_StatTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			taskManager := resource.NewMockTaskManager(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 
 			tc.mock(mockTask, taskManager, res.EXPECT(), taskManager.EXPECT())
 			task, err := svc.StatTask(context.Background(), &schedulerv1.StatTaskRequest{TaskId: mockTaskID})
@@ -1814,17 +1568,15 @@ func TestServiceV1_AnnounceTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
 			taskManager := resource.NewMockTaskManager(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
 
 			tc.mock(mockHost, mockTask, mockPeer, hostManager, taskManager, peerManager, res.EXPECT(), hostManager.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT())
 			tc.expect(t, mockTask, mockPeer, svc.AnnounceTask(context.Background(), tc.req))
@@ -1836,7 +1588,7 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 	tests := []struct {
 		name   string
 		mock   func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder)
-		expect func(t *testing.T, peer *resource.Peer, err error)
+		expect func(t *testing.T, err error)
 	}{
 		{
 			name: "peer state is PeerStateLeave",
@@ -1844,15 +1596,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 				peer.FSM.SetState(resource.PeerStateLeave)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				dferr, ok := err.(*dferrors.DfError)
-				assert.True(ok)
-				assert.Equal(dferr.Code, commonv1.Code_SchedTaskStatusError)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
+				assert.NoError(err)
 			},
 		},
 		{
@@ -1860,14 +1609,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(nil, false).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				dferr, ok := err.(*dferrors.DfError)
-				assert.True(ok)
-				assert.Equal(dferr.Code, commonv1.Code_SchedPeerNotFound)
+				assert.NoError(err)
 			},
 		},
 		{
@@ -1876,134 +1623,12 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 				peer.FSM.SetState(resource.PeerStatePending)
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
+					mp.Delete(gomock.Any()).Times(1),
 				)
 			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedEmpty",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedEmpty)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedTiny",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedTiny)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedSmall",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedSmall)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedNormal",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateReceivedNormal)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(len(peer.Children()), 0)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateRunning",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateRunning)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateBackToSource",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateBackToSource)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateFailed",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateFailed)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
-			},
-		},
-		{
-			name: "peer state is PeerStateSucceeded",
-			mock: func(peer *resource.Peer, peerManager resource.PeerManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
-				peer.FSM.SetState(resource.PeerStateSucceeded)
-				gomock.InOrder(
-					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Load(gomock.Any()).Return(peer, true).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.True(peer.FSM.Is(resource.PeerStateLeave))
 			},
 		},
 	}
@@ -2015,18 +1640,16 @@ func TestServiceV1_LeaveTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, mockHost)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockSeedPeerID, mockTask, mockHost)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.mock(peer, peerManager, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT())
-			tc.expect(t, peer, svc.LeaveTask(context.Background(), &schedulerv1.PeerTarget{}))
+			tc.expect(t, svc.LeaveTask(context.Background(), &schedulerv1.PeerTarget{}))
 		})
 	}
 }
@@ -2446,13 +2069,11 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
 			host := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.run(t, svc, tc.req, host, hostManager, res.EXPECT(), hostManager.EXPECT(), dynconfig.EXPECT())
 		})
@@ -2462,12 +2083,12 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 func TestServiceV1_LeaveHost(t *testing.T) {
 	tests := []struct {
 		name   string
-		mock   func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder)
+		mock   func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder)
 		expect func(t *testing.T, peer *resource.Peer, err error)
 	}{
 		{
 			name: "host not found",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
@@ -2480,11 +2101,14 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 		},
 		{
 			name: "host has not peers",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.DeleteAllByHostID(gomock.Any()).Times(1),
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Delete(gomock.Any()).Return().Times(1),
 				)
 			},
 			expect: func(t *testing.T, peer *resource.Peer, err error) {
@@ -2494,171 +2118,21 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 		},
 		{
 			name: "peer state is PeerStateLeave",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
+			mock: func(host *resource.Host, mockPeer *resource.Peer, peerManager resource.PeerManager, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder, mh *resource.MockHostManagerMockRecorder) {
 				host.Peers.Store(mockPeer.ID, mockPeer)
 				mockPeer.FSM.SetState(resource.PeerStateLeave)
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "peer state is PeerStatePending",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStatePending)
-				gomock.InOrder(
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.DeleteAllByHostID(gomock.Any()).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
+					mh.Delete(gomock.Any()).Return().Times(1),
 				)
 			},
 			expect: func(t *testing.T, peer *resource.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedEmpty",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedEmpty)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedTiny",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedTiny)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedSmall",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedSmall)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateReceivedNormal",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateReceivedNormal)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateRunning",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateRunning)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateBackToSource",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateBackToSource)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateSucceeded",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateSucceeded)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
-			},
-		},
-		{
-			name: "peer state is PeerStateFailed",
-			mock: func(host *resource.Host, mockPeer *resource.Peer, hostManager resource.HostManager, ms *mocks.MockSchedulingMockRecorder, mr *resource.MockResourceMockRecorder, mh *resource.MockHostManagerMockRecorder, mnt *networktopologymocks.MockNetworkTopologyMockRecorder) {
-				host.Peers.Store(mockPeer.ID, mockPeer)
-				mockPeer.FSM.SetState(resource.PeerStateFailed)
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Any()).Return(host, true).Times(1),
-					mnt.DeleteHost(host.ID).Return(nil).Times(1),
-				)
-			},
-			expect: func(t *testing.T, peer *resource.Peer, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(peer.FSM.Current(), resource.PeerStateLeave)
 			},
 		},
 	}
@@ -2670,403 +2144,19 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
+			peerManager := resource.NewMockPeerManager(ctl)
 			host := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, host)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockSeedPeerID, mockTask, host)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
-			tc.mock(host, mockPeer, hostManager, scheduling.EXPECT(), res.EXPECT(), hostManager.EXPECT(), networkTopology.EXPECT())
+			tc.mock(host, mockPeer, peerManager, hostManager, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
 			tc.expect(t, mockPeer, svc.LeaveHost(context.Background(), &schedulerv1.LeaveHostRequest{
-				Id: idgen.HostIDV2(host.IP, host.Hostname),
+				Id: idgen.HostIDV2(host.IP, host.Hostname, true),
 			}))
-		})
-	}
-}
-
-func TestServiceV1_SyncProbes(t *testing.T) {
-	tests := []struct {
-		name string
-		mock func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-			mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-			ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder)
-		expect func(t *testing.T, err error)
-	}{
-		{
-			name: "network topology is not enabled",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				svc.networkTopology = nil
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "rpc error: code = Unimplemented desc = network topology is not enabled")
-			},
-		},
-		{
-			name: "synchronize probes when receive ProbeStartedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeStartedRequest{
-							ProbeStartedRequest: &schedulerv1.ProbeStartedRequest{},
-						},
-					}, nil).Times(1),
-					mn.FindProbedHosts(gomock.Eq(mockRawSeedHost.ID)).Return([]*resource.Host{&mockRawHost}, nil).Times(1),
-					ms.Send(gomock.Eq(&schedulerv1.SyncProbesResponse{
-						Hosts: []*commonv1.Host{
-							{
-								Id:           mockRawHost.ID,
-								Ip:           mockRawHost.IP,
-								Hostname:     mockRawHost.Hostname,
-								Port:         mockRawHost.Port,
-								DownloadPort: mockRawHost.DownloadPort,
-								Location:     mockRawHost.Network.Location,
-								Idc:          mockRawHost.Network.IDC,
-							},
-						},
-					})).Return(nil).Times(1),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "synchronize probes when receive ProbeFinishedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeFinishedRequest{
-							ProbeFinishedRequest: &schedulerv1.ProbeFinishedRequest{
-								Probes: []*schedulerv1.Probe{mockV1Probe},
-							},
-						},
-					}, nil).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Eq(mockRawHost.ID)).Return(&mockRawHost, true),
-					mn.Store(gomock.Eq(mockRawSeedHost.ID), gomock.Eq(mockRawHost.ID)).Return(nil).Times(1),
-					mn.Probes(gomock.Eq(mockRawSeedHost.ID), gomock.Eq(mockRawHost.ID)).Return(probes).Times(1),
-					mp.Enqueue(gomock.Eq(&networktopology.Probe{
-						Host:      &mockRawHost,
-						RTT:       mockV1Probe.Rtt.AsDuration(),
-						CreatedAt: mockV1Probe.CreatedAt.AsTime(),
-					})).Return(nil).Times(1),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "synchronize probes when receive ProbeFailedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeFailedRequest{
-							ProbeFailedRequest: &schedulerv1.ProbeFailedRequest{
-								Probes: []*schedulerv1.FailedProbe{
-									{
-										Host: &commonv1.Host{
-											Id:           mockRawHost.ID,
-											Ip:           mockRawHost.IP,
-											Hostname:     mockRawHost.Hostname,
-											Port:         mockRawHost.Port,
-											DownloadPort: mockRawHost.DownloadPort,
-											Location:     mockRawHost.Network.Location,
-											Idc:          mockRawHost.Network.IDC,
-										},
-										Description: "foo",
-									},
-								},
-							},
-						},
-					}, nil).Times(1),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "synchronize probes when receive fail type request",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-					Host: &commonv1.Host{
-						Id:           mockRawSeedHost.ID,
-						Ip:           mockRawSeedHost.IP,
-						Hostname:     mockRawSeedHost.Hostname,
-						Port:         mockRawSeedHost.Port,
-						DownloadPort: mockRawSeedHost.DownloadPort,
-						Location:     mockRawSeedHost.Network.Location,
-						Idc:          mockRawSeedHost.Network.IDC,
-					},
-					Request: nil,
-				}, nil).Times(1)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "rpc error: code = FailedPrecondition desc = receive unknow request: <nil>")
-			},
-		},
-		{
-			name: "receive error",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				ms.Recv().Return(nil, errors.New("receive error")).Times(1)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "receive error")
-			},
-		},
-		{
-			name: "receive end of file",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				ms.Recv().Return(nil, io.EOF).Times(1)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "find probed host ids error",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeStartedRequest{
-							ProbeStartedRequest: &schedulerv1.ProbeStartedRequest{},
-						},
-					}, nil).Times(1),
-					mn.FindProbedHosts(gomock.Eq(mockRawSeedHost.ID)).Return(nil, errors.New("find probed host ids error")).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "rpc error: code = FailedPrecondition desc = find probed host ids error")
-			},
-		},
-		{
-			name: "send synchronize probes response error",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeStartedRequest{
-							ProbeStartedRequest: &schedulerv1.ProbeStartedRequest{},
-						},
-					}, nil).Times(1),
-					mn.FindProbedHosts(gomock.Eq(mockRawSeedHost.ID)).Return([]*resource.Host{&mockRawHost}, nil).Times(1),
-					ms.Send(gomock.Eq(&schedulerv1.SyncProbesResponse{
-						Hosts: []*commonv1.Host{
-							{
-								Id:           mockRawHost.ID,
-								Ip:           mockRawHost.IP,
-								Hostname:     mockRawHost.Hostname,
-								Port:         mockRawHost.Port,
-								DownloadPort: mockRawHost.DownloadPort,
-								Location:     mockRawHost.Network.Location,
-								Idc:          mockRawHost.Network.IDC,
-							},
-						},
-					})).Return(errors.New("send synchronize probes response error")).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "send synchronize probes response error")
-			},
-		},
-		{
-			name: "load host error when receive ProbeFinishedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeFinishedRequest{
-							ProbeFinishedRequest: &schedulerv1.ProbeFinishedRequest{
-								Probes: []*schedulerv1.Probe{mockV1Probe},
-							},
-						},
-					}, nil).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Eq(mockRawHost.ID)).Return(nil, false),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "store error when receive ProbeFinishedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeFinishedRequest{
-							ProbeFinishedRequest: &schedulerv1.ProbeFinishedRequest{
-								Probes: []*schedulerv1.Probe{mockV1Probe},
-							},
-						},
-					}, nil).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Eq(mockRawHost.ID)).Return(&mockRawHost, true),
-					mn.Store(gomock.Eq(mockRawSeedHost.ID), gomock.Eq(mockRawHost.ID)).Return(errors.New("store error")).Times(1),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-		{
-			name: "enqueue probe error when receive ProbeFinishedRequest",
-			mock: func(svc *V1, mr *resource.MockResourceMockRecorder, probes *networktopologymocks.MockProbes, mp *networktopologymocks.MockProbesMockRecorder,
-				mn *networktopologymocks.MockNetworkTopologyMockRecorder, hostManager resource.HostManager, mh *resource.MockHostManagerMockRecorder,
-				ms *schedulerv1mocks.MockScheduler_SyncProbesServerMockRecorder) {
-				gomock.InOrder(
-					ms.Recv().Return(&schedulerv1.SyncProbesRequest{
-						Host: &commonv1.Host{
-							Id:           mockRawSeedHost.ID,
-							Ip:           mockRawSeedHost.IP,
-							Hostname:     mockRawSeedHost.Hostname,
-							Port:         mockRawSeedHost.Port,
-							DownloadPort: mockRawSeedHost.DownloadPort,
-							Location:     mockRawSeedHost.Network.Location,
-							Idc:          mockRawSeedHost.Network.IDC,
-						},
-						Request: &schedulerv1.SyncProbesRequest_ProbeFinishedRequest{
-							ProbeFinishedRequest: &schedulerv1.ProbeFinishedRequest{
-								Probes: []*schedulerv1.Probe{mockV1Probe},
-							},
-						},
-					}, nil).Times(1),
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Load(gomock.Eq(mockRawHost.ID)).Return(&mockRawHost, true),
-					mn.Store(gomock.Eq(mockRawSeedHost.ID), gomock.Eq(mockRawHost.ID)).Return(nil).Times(1),
-					mn.Probes(gomock.Eq(mockRawSeedHost.ID), gomock.Eq(mockRawHost.ID)).Return(probes).Times(1),
-					mp.Enqueue(gomock.Any()).Return(errors.New("enqueue probe error")).Times(1),
-					ms.Recv().Return(nil, io.EOF).Times(1),
-				)
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctl := gomock.NewController(t)
-			defer ctl.Finish()
-
-			scheduling := mocks.NewMockScheduling(ctl)
-			res := resource.NewMockResource(ctl)
-			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			probes := networktopologymocks.NewMockProbes(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			hostManager := resource.NewMockHostManager(ctl)
-			stream := schedulerv1mocks.NewMockScheduler_SyncProbesServer(ctl)
-			svc := NewV1(&config.Config{Scheduler: config.SchedulerConfig{NetworkTopology: mockNetworkTopologyConfig}, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
-
-			tc.mock(svc, res.EXPECT(), probes, probes.EXPECT(), networkTopology.EXPECT(), hostManager, hostManager.EXPECT(), stream.EXPECT())
-			tc.expect(t, svc.SyncProbes(stream))
 		})
 	}
 }
@@ -3092,7 +2182,7 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 					Digest:      mockTaskDigest.String(),
 					Tag:         mockTaskTag,
 					Range:       mockURLMetaRange,
-					Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 					Header:      mockTaskHeader,
 					Application: mockTaskApplication,
 					Priority:    commonv1.Priority_LEVEL0,
@@ -3130,7 +2220,7 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 					Digest:      mockTaskDigest.String(),
 					Tag:         mockTaskTag,
 					Range:       mockURLMetaRange,
-					Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+					Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 					Header:      mockTaskHeader,
 					Application: mockTaskApplication,
 					Priority:    commonv1.Priority_LEVEL0,
@@ -3159,15 +2249,13 @@ func TestServiceV1_prefetchTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			seedPeer := resource.NewMockSeedPeer(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockPeerID, mockResourceConfig, task, mockHost)
-			svc := NewV1(tc.config, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockPeerID, task, mockHost)
+			svc := NewV1(tc.config, res, scheduling, dynconfig)
 			taskManager := resource.NewMockTaskManager(ctl)
 
 			tc.mock(task, peer, taskManager, seedPeer, res.EXPECT(), taskManager.EXPECT(), seedPeer.EXPECT())
@@ -3231,86 +2319,6 @@ func TestServiceV1_triggerTask(t *testing.T) {
 			run: func(t *testing.T, svc *V1, mockTask *resource.Task, mockHost *resource.Host, mockPeer *resource.Peer, mockSeedPeer *resource.Peer, dynconfig config.DynconfigInterface, seedPeer resource.SeedPeer, mr *resource.MockResourceMockRecorder, mc *resource.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				mockTask.FSM.SetState(resource.TaskStateFailed)
 				mockHost.Type = pkgtypes.HostTypeSuperSeed
-
-				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
-					UrlMeta: &commonv1.UrlMeta{
-						Priority: commonv1.Priority_LEVEL0,
-					},
-				}, mockTask, mockHost, mockPeer, dynconfig)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(mockPeer.NeedBackToSource.Load(), true)
-				assert.Equal(mockTask.FSM.Current(), resource.TaskStateRunning)
-			},
-		},
-		{
-			name: "task state is TaskStatePending and host type is HostTypeStrongSeed",
-			config: &config.Config{
-				Scheduler: mockSchedulerConfig,
-			},
-			run: func(t *testing.T, svc *V1, mockTask *resource.Task, mockHost *resource.Host, mockPeer *resource.Peer, mockSeedPeer *resource.Peer, dynconfig config.DynconfigInterface, seedPeer resource.SeedPeer, mr *resource.MockResourceMockRecorder, mc *resource.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				mockTask.FSM.SetState(resource.TaskStatePending)
-				mockHost.Type = pkgtypes.HostTypeStrongSeed
-
-				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
-					UrlMeta: &commonv1.UrlMeta{
-						Priority: commonv1.Priority_LEVEL0,
-					},
-				}, mockTask, mockHost, mockPeer, dynconfig)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(mockPeer.NeedBackToSource.Load(), true)
-				assert.Equal(mockTask.FSM.Current(), resource.TaskStateRunning)
-			},
-		},
-		{
-			name: "task state is TaskStateRunning and host type is HostTypeWeakSeed",
-			config: &config.Config{
-				Scheduler: mockSchedulerConfig,
-			},
-			run: func(t *testing.T, svc *V1, mockTask *resource.Task, mockHost *resource.Host, mockPeer *resource.Peer, mockSeedPeer *resource.Peer, dynconfig config.DynconfigInterface, seedPeer resource.SeedPeer, mr *resource.MockResourceMockRecorder, mc *resource.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				mockTask.FSM.SetState(resource.TaskStateRunning)
-				mockHost.Type = pkgtypes.HostTypeWeakSeed
-
-				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
-					UrlMeta: &commonv1.UrlMeta{
-						Priority: commonv1.Priority_LEVEL0,
-					},
-				}, mockTask, mockHost, mockPeer, dynconfig)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(mockPeer.NeedBackToSource.Load(), true)
-				assert.Equal(mockTask.FSM.Current(), resource.TaskStateRunning)
-			},
-		},
-		{
-			name: "task state is TaskStateSucceeded and host type is HostTypeStrongSeed",
-			config: &config.Config{
-				Scheduler: mockSchedulerConfig,
-			},
-			run: func(t *testing.T, svc *V1, mockTask *resource.Task, mockHost *resource.Host, mockPeer *resource.Peer, mockSeedPeer *resource.Peer, dynconfig config.DynconfigInterface, seedPeer resource.SeedPeer, mr *resource.MockResourceMockRecorder, mc *resource.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				mockTask.FSM.SetState(resource.TaskStateSucceeded)
-				mockHost.Type = pkgtypes.HostTypeStrongSeed
-
-				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
-					UrlMeta: &commonv1.UrlMeta{
-						Priority: commonv1.Priority_LEVEL0,
-					},
-				}, mockTask, mockHost, mockPeer, dynconfig)
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(mockPeer.NeedBackToSource.Load(), true)
-				assert.Equal(mockTask.FSM.Current(), resource.TaskStateRunning)
-			},
-		},
-		{
-			name: "task state is TaskStateLeave and host type is HostTypeStrongSeed",
-			config: &config.Config{
-				Scheduler: mockSchedulerConfig,
-			},
-			run: func(t *testing.T, svc *V1, mockTask *resource.Task, mockHost *resource.Host, mockPeer *resource.Peer, mockSeedPeer *resource.Peer, dynconfig config.DynconfigInterface, seedPeer resource.SeedPeer, mr *resource.MockResourceMockRecorder, mc *resource.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
-				mockTask.FSM.SetState(resource.TaskStateLeave)
-				mockHost.Type = pkgtypes.HostTypeStrongSeed
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -3626,19 +2634,17 @@ func TestServiceV1_triggerTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(tc.config, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(tc.config, res, scheduling, dynconfig)
 
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockSeedHost := resource.NewHost(
-				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname,
-				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
-			mockSeedPeer := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, mockSeedHost)
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Hostname, mockRawSeedHost.Hostname,
+				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			mockSeedPeer := resource.NewPeer(mockSeedPeerID, mockTask, mockSeedHost)
 			seedPeer := resource.NewMockSeedPeer(ctl)
 			tc.run(t, svc, mockTask, mockHost, mockPeer, mockSeedPeer, dynconfig, seedPeer, res.EXPECT(), seedPeer.EXPECT(), dynconfig.EXPECT())
 		})
@@ -3653,7 +2659,7 @@ func TestServiceV1_storeTask(t *testing.T) {
 		{
 			name: "task already exists",
 			run: func(t *testing.T, svc *V1, taskManager resource.TaskManager, mr *resource.MockResourceMockRecorder, mt *resource.MockTaskManagerMockRecorder) {
-				mockTask := resource.NewTask(mockTaskID, "", mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, nil, nil, mockTaskBackToSourceLimit)
+				mockTask := resource.NewTask(mockTaskID, "", mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, nil, nil, mockTaskBackToSourceLimit)
 
 				gomock.InOrder(
 					mr.TaskManager().Return(taskManager).Times(1),
@@ -3665,11 +2671,11 @@ func TestServiceV1_storeTask(t *testing.T) {
 					Url:    mockTaskURL,
 					UrlMeta: &commonv1.UrlMeta{
 						Priority: commonv1.Priority_LEVEL0,
-						Filter:   strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						Filter:   idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 						Header:   mockTaskHeader,
 					},
 					PeerHost: mockPeerHost,
-				}, commonv2.TaskType_DFDAEMON)
+				}, commonv2.TaskType_STANDARD)
 
 				assert := assert.New(t)
 				assert.EqualValues(task, mockTask)
@@ -3693,22 +2699,21 @@ func TestServiceV1_storeTask(t *testing.T) {
 						Digest:      mockTaskDigest.String(),
 						Tag:         mockTaskTag,
 						Application: mockTaskApplication,
-						Filter:      strings.Join(mockTaskFilteredQueryParams, idgen.FilteredQueryParamsSeparator),
+						Filter:      idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
 						Header:      mockTaskHeader,
 					},
 					PeerHost: mockPeerHost,
-				}, commonv2.TaskType_DFCACHE)
+				}, commonv2.TaskType_PERSISTENT_CACHE)
 
 				assert := assert.New(t)
 				assert.Equal(task.ID, mockTaskID)
-				assert.Equal(task.Type, commonv2.TaskType_DFCACHE)
+				assert.Equal(task.Type, commonv2.TaskType_PERSISTENT_CACHE)
 				assert.Equal(task.URL, mockTaskURL)
 				assert.EqualValues(task.Digest, mockTaskDigest)
 				assert.Equal(task.Tag, mockTaskTag)
 				assert.Equal(task.Application, mockTaskApplication)
 				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
 				assert.EqualValues(task.Header, mockTaskHeader)
-				assert.Equal(task.PieceLength, int32(0))
 				assert.Empty(task.DirectPiece)
 				assert.Equal(task.ContentLength.Load(), int64(-1))
 				assert.Equal(task.TotalPieceCount.Load(), int32(0))
@@ -3731,9 +2736,7 @@ func TestServiceV1_storeTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 			taskManager := resource.NewMockTaskManager(ctl)
 			tc.run(t, svc, taskManager, res.EXPECT(), taskManager.EXPECT())
 		})
@@ -3761,6 +2764,7 @@ func TestServiceV1_storeHost(t *testing.T) {
 				assert.Equal(host.ID, mockRawHost.ID)
 				assert.Equal(host.Port, mockRawHost.Port)
 				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
+				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
 				assert.Equal(host.Network.Location, mockRawHost.Network.Location)
 				assert.Equal(host.Network.IDC, mockRawHost.Network.IDC)
 				assert.NotEqual(host.UpdatedAt.Load(), mockRawHost.UpdatedAt.Load())
@@ -3810,13 +2814,11 @@ func TestServiceV1_storeHost(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 			hostManager := resource.NewMockHostManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 
 			tc.mock(mockHost, hostManager, res.EXPECT(), hostManager.EXPECT(), dynconfig.EXPECT())
 			host := svc.storeHost(context.Background(), tc.peerHost)
@@ -3834,10 +2836,10 @@ func TestServiceV1_storePeer(t *testing.T) {
 			name: "peer already exists",
 			run: func(t *testing.T, svc *V1, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				mockHost := resource.NewHost(
-					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-				mockPeer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+				mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
 
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
@@ -3854,9 +2856,9 @@ func TestServiceV1_storePeer(t *testing.T) {
 			name: "peer does not exists",
 			run: func(t *testing.T, svc *V1, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				mockHost := resource.NewHost(
-					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
+				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 				gomock.InOrder(
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(nil, false).Times(1),
@@ -3870,7 +2872,6 @@ func TestServiceV1_storePeer(t *testing.T) {
 				assert.Equal(peer.ID, mockPeerID)
 				assert.EqualValues(peer.Range, &mockPeerRange)
 				assert.Equal(peer.Priority, commonv2.Priority_LEVEL1)
-				assert.Empty(peer.Pieces)
 				assert.Empty(peer.FinishedPieces)
 				assert.Equal(len(peer.PieceCosts()), 0)
 				assert.Empty(peer.ReportPieceResultStream)
@@ -3895,9 +2896,7 @@ func TestServiceV1_storePeer(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 			peerManager := resource.NewMockPeerManager(ctl)
 
 			tc.run(t, svc, peerManager, res.EXPECT(), peerManager.EXPECT())
@@ -3955,15 +2954,13 @@ func TestServiceV1_triggerSeedPeerTask(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			seedPeer := resource.NewMockSeedPeer(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockPeerID, mockResourceConfig, task, mockHost)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, SeedPeer: mockSeedPeerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockPeerID, task, mockHost)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, SeedPeer: mockSeedPeerConfig}, res, scheduling, dynconfig)
 
 			tc.mock(task, peer, seedPeer, res.EXPECT(), seedPeer.EXPECT())
 			svc.triggerSeedPeerTask(context.Background(), &mockPeerRange, task)
@@ -4038,14 +3035,12 @@ func TestServiceV1_handleBeginOfPiece(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig}, res, scheduling, dynconfig)
 
 			tc.mock(peer, scheduling.EXPECT())
 			svc.handleBeginOfPiece(context.Background(), peer)
@@ -4056,9 +3051,9 @@ func TestServiceV1_handleBeginOfPiece(t *testing.T) {
 
 func TestServiceV1_handlePieceSuccess(t *testing.T) {
 	mockHost := resource.NewHost(
-		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-	mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
+		mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+		mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
+	mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 
 	tests := []struct {
 		name   string
@@ -4079,7 +3074,7 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 					DownloadCost: 1,
 				},
 			},
-			peer: resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost),
+			peer: resource.NewPeer(mockPeerID, mockTask, mockHost),
 			mock: func(peer *resource.Peer, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				peer.FSM.SetState(resource.PeerStateRunning)
 				gomock.InOrder(
@@ -4089,16 +3084,6 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Equal(piece.ParentID, mockSeedPeerID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.EqualValues(piece.Digest, mockPieceMD5)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_REMOTE_PEER)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 			},
@@ -4114,7 +3099,7 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 					DownloadCost: 1,
 				},
 			},
-			peer: resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost),
+			peer: resource.NewPeer(mockPeerID, mockTask, mockHost),
 			mock: func(peer *resource.Peer, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				peer.FSM.SetState(resource.PeerStateRunning)
 				gomock.InOrder(
@@ -4124,16 +3109,6 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Equal(piece.ParentID, mockSeedPeerID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.Nil(piece.Digest)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_REMOTE_PEER)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 				assert.NotEqual(peer.UpdatedAt.Load(), 0)
@@ -4149,22 +3124,12 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 					DownloadCost: 1,
 				},
 			},
-			peer: resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost),
+			peer: resource.NewPeer(mockPeerID, mockTask, mockHost),
 			mock: func(peer *resource.Peer, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
 				peer.FSM.SetState(resource.PeerStateBackToSource)
 			},
 			expect: func(t *testing.T, peer *resource.Peer) {
 				assert := assert.New(t)
-				piece, loaded := peer.LoadPiece(1)
-				assert.True(loaded)
-				assert.Equal(piece.Number, int32(1))
-				assert.Empty(piece.ParentID)
-				assert.Equal(piece.Offset, uint64(2))
-				assert.Equal(piece.Length, uint64(10))
-				assert.Nil(piece.Digest)
-				assert.Equal(piece.TrafficType, commonv2.TrafficType_BACK_TO_SOURCE)
-				assert.Equal(piece.Cost, time.Duration(1*time.Millisecond))
-				assert.NotEqual(piece.CreatedAt.Nanosecond(), 0)
 				assert.Equal(peer.FinishedPieces.Count(), uint(1))
 				assert.EqualValues(peer.PieceCosts(), []time.Duration{time.Duration(1 * time.Millisecond)})
 			},
@@ -4178,10 +3143,8 @@ func TestServiceV1_handlePieceSuccess(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.mock(tc.peer, peerManager, res.EXPECT(), peerManager.EXPECT())
 			svc.handlePieceSuccess(context.Background(), tc.peer, tc.piece)
@@ -4368,17 +3331,15 @@ func TestServiceV1_handlePieceFail(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 			peerManager := resource.NewMockPeerManager(ctl)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
-			parent := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, mockHost)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			parent := resource.NewPeer(mockSeedPeerID, mockTask, mockHost)
 			seedPeer := resource.NewMockSeedPeer(ctl)
-			svc := NewV1(tc.config, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(tc.config, res, scheduling, dynconfig)
 
 			tc.run(t, svc, peer, parent, tc.piece, peerManager, seedPeer, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT(), seedPeer.EXPECT())
 		})
@@ -4477,8 +3438,6 @@ func TestServiceV1_handlePeerSuccess(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 
 			url, err := url.Parse(s.URL)
 			if err != nil {
@@ -4498,11 +3457,11 @@ func TestServiceV1_handlePeerSuccess(t *testing.T) {
 			mockRawHost.IP = ip
 			mockRawHost.DownloadPort = int32(port)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.mock(peer)
 			svc.handlePeerSuccess(context.Background(), peer)
@@ -4576,15 +3535,13 @@ func TestServiceV1_handlePeerFail(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 			mockHost := resource.NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.Type)
-			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
-			peer := resource.NewPeer(mockSeedPeerID, mockResourceConfig, mockTask, mockHost)
-			child := resource.NewPeer(mockPeerID, mockResourceConfig, mockTask, mockHost)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
+			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+			peer := resource.NewPeer(mockSeedPeerID, mockTask, mockHost)
+			child := resource.NewPeer(mockPeerID, mockTask, mockHost)
 
 			tc.mock(peer, child, scheduling.EXPECT())
 			svc.handlePeerFailure(context.Background(), peer)
@@ -4663,10 +3620,8 @@ func TestServiceV1_handleTaskSuccess(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
-			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
+			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 
 			tc.mock(task)
 			svc.handleTaskSuccess(context.Background(), task, tc.result)
@@ -4803,10 +3758,8 @@ func TestServiceV1_handleTaskFail(t *testing.T) {
 			scheduling := mocks.NewMockScheduling(ctl)
 			res := resource.NewMockResource(ctl)
 			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
-			storage := storagemocks.NewMockStorage(ctl)
-			networkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
-			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig, storage, networkTopology)
-			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_DFDAEMON, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest), resource.WithPieceLength(mockTaskPieceLength))
+			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
+			task := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
 
 			tc.mock(task)
 			svc.handleTaskFailure(context.Background(), task, tc.backToSourceErr, tc.seedPeerErr)

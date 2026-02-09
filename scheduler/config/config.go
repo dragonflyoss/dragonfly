@@ -18,15 +18,13 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/fqdn"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
-	"d7y.io/dragonfly/v2/pkg/rpc"
-	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -43,9 +41,6 @@ type Config struct {
 	// Database configuration.
 	Database DatabaseConfig `yaml:"database" mapstructure:"database"`
 
-	// Resource configuration.
-	Resource ResourceConfig `yaml:"resource" mapstructure:"resource"`
-
 	// Dynconfig configuration.
 	DynConfig DynConfig `yaml:"dynConfig" mapstructure:"dynConfig"`
 
@@ -55,26 +50,20 @@ type Config struct {
 	// SeedPeer configuration.
 	SeedPeer SeedPeerConfig `yaml:"seedPeer" mapstructure:"seedPeer"`
 
+	// Peer configuration.
+	Peer PeerConfig `yaml:"peer" mapstructure:"peer"`
+
 	// Host configuration.
 	Host HostConfig `yaml:"host" mapstructure:"host"`
 
 	// Job configuration.
 	Job JobConfig `yaml:"job" mapstructure:"job"`
 
-	// Storage configuration.
-	Storage StorageConfig `yaml:"storage" mapstructure:"storage"`
-
 	// Metrics configuration.
 	Metrics MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
 
-	// Security configuration.
-	Security SecurityConfig `yaml:"security" mapstructure:"security"`
-
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
-
-	// Trainer configuration.
-	Trainer TrainerConfig `yaml:"trainer" mapstructure:"trainer"`
 }
 
 type ServerConfig struct {
@@ -93,14 +82,21 @@ type ServerConfig struct {
 	// Server hostname.
 	Host string `yaml:"host" mapstructure:"host"`
 
-	// Server work directory.
-	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
+	// TLS server configuration.
+	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
+
+	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
 
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`
+
+	// LogLevel is log level of server, supported values are "debug", "info", "warn", "error", "panic", "fatal".
+	LogLevel string `yaml:"logLevel" mapstructure:"logLevel"`
 
 	// Maximum size in megabytes of log files before rotation (default: 1024)
 	LogMaxSize int `yaml:"logMaxSize" mapstructure:"logMaxSize"`
@@ -113,9 +109,17 @@ type ServerConfig struct {
 
 	// Server plugin directory.
 	PluginDir string `yaml:"pluginDir" mapstructure:"pluginDir"`
+}
 
-	// Server storage data directory.
-	DataDir string `yaml:"dataDir" mapstructure:"dataDir"`
+type GRPCTLSServerConfig struct {
+	// CACert is the file path of CA certificate for mTLS.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the file path of server certificate for mTLS.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the file path of server key for mTLS.
+	Key string `yaml:"key" mapstructure:"key"`
 }
 
 type SchedulerConfig struct {
@@ -136,24 +140,11 @@ type SchedulerConfig struct {
 
 	// GC configuration.
 	GC GCConfig `yaml:"gc" mapstructure:"gc"`
-
-	// NetworkTopology configuration.
-	NetworkTopology NetworkTopologyConfig `yaml:"networkTopology" mapstructure:"networkTopology"`
 }
 
 type DatabaseConfig struct {
 	// Redis configuration.
 	Redis RedisConfig `yaml:"redis" mapstructure:"redis"`
-}
-
-type ResourceConfig struct {
-	// Task resource configuration.
-	Task TaskConfig `yaml:"task" mapstructure:"task"`
-}
-
-type TaskConfig struct {
-	// Download tiny task configuration.
-	DownloadTiny DownloadTinyConfig `yaml:"downloadTiny" mapstructure:"downloadTiny"`
 }
 
 type DownloadTinyConfig struct {
@@ -213,6 +204,9 @@ type ManagerConfig struct {
 	// Addr is manager address.
 	Addr string `yaml:"addr" mapstructure:"addr"`
 
+	// TLS client configuration.
+	TLS *GRPCTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+
 	// SchedulerClusterID is scheduler cluster id.
 	SchedulerClusterID uint `yaml:"schedulerClusterID" mapstructure:"schedulerClusterID"`
 
@@ -220,12 +214,31 @@ type ManagerConfig struct {
 	KeepAlive KeepAliveConfig `yaml:"keepAlive" mapstructure:"keepAlive"`
 }
 
+type GRPCTLSClientConfig struct {
+	// CACert is the file path of CA certificate for mTLS.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the file path of client certificate for mTLS.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the file path of client key for mTLS.
+	Key string `yaml:"key" mapstructure:"key"`
+}
+
 type SeedPeerConfig struct {
 	// Enable is to enable seed peer as P2P peer.
 	Enable bool `yaml:"enable" mapstructure:"enable"`
 
+	// TLS client configuration.
+	TLS *GRPCTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+
 	// TaskDownloadTimeout is timeout of downloading task by seed peer.
 	TaskDownloadTimeout time.Duration `yaml:"taskDownloadTimeout" mapstructure:"taskDownloadTimeout"`
+}
+
+type PeerConfig struct {
+	// TLS client configuration.
+	TLS *GRPCTLSClientConfig `yaml:"tls" mapstructure:"tls"`
 }
 
 type KeepAliveConfig struct {
@@ -250,18 +263,6 @@ type JobConfig struct {
 	Redis RedisConfig `yaml:"redis" mapstructure:"redis"`
 }
 
-type StorageConfig struct {
-	// MaxSize sets the maximum size in megabytes of storage file.
-	MaxSize int `yaml:"maxSize" mapstructure:"maxSize"`
-
-	// MaxBackups sets the maximum number of storage files to retain.
-	MaxBackups int `yaml:"maxBackups" mapstructure:"maxBackups"`
-
-	// BufferSize sets the size of buffer container,
-	// if the buffer is full, write all the records in the buffer to the file.
-	BufferSize int `yaml:"bufferSize" mapstructure:"bufferSize"`
-}
-
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
@@ -281,14 +282,23 @@ type RedisConfig struct {
 	// Password is server password.
 	Password string `yaml:"password" mapstructure:"password"`
 
+	// SentinelUsername is sentinel server username.
+	SentinelUsername string `yaml:"sentinelUsername" mapstructure:"sentinelUsername"`
+
+	// SentinelPassword is sentinel server password.
+	SentinelPassword string `yaml:"sentinelPassword" mapstructure:"sentinelPassword"`
+
+	// PoolSize is the maximum number of idle connections in the pool.
+	PoolSize int `yaml:"poolSize" mapstructure:"poolSize"`
+
+	// PoolTimeout is the maximum amount of time a connection may be idle before being closed.
+	PoolTimeout time.Duration `yaml:"poolTimeout" mapstructure:"poolTimeout"`
+
 	// BrokerDB is broker database name.
 	BrokerDB int `yaml:"brokerDB" mapstructure:"brokerDB"`
 
 	// BackendDB is backend database name.
 	BackendDB int `yaml:"backendDB" mapstructure:"backendDB"`
-
-	// NetworkTopologyDB is network topology database name.
-	NetworkTopologyDB int `yaml:"networkTopologyDB" mapstructure:"networkTopologyDB"`
 }
 
 type MetricsConfig struct {
@@ -302,94 +312,31 @@ type MetricsConfig struct {
 	EnableHost bool `yaml:"enableHost" mapstructure:"enableHost"`
 }
 
-type SecurityConfig struct {
-	// AutoIssueCert indicates to issue client certificates for all grpc call
-	// if AutoIssueCert is false, any other option in Security will be ignored.
-	AutoIssueCert bool `mapstructure:"autoIssueCert" yaml:"autoIssueCert"`
-
-	// CACert is the root CA certificate for all grpc tls handshake, it can be path or PEM format string.
-	CACert types.PEMContent `mapstructure:"caCert" yaml:"caCert"`
-
-	// TLSVerify indicates to verify client certificates.
-	TLSVerify bool `mapstructure:"tlsVerify" yaml:"tlsVerify"`
-
-	// TLSPolicy controls the grpc shandshake behaviors:
-	// force: both ClientHandshake and ServerHandshake are only support tls.
-	// prefer: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support tls.
-	// default: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support insecure (non-tls).
-	TLSPolicy string `mapstructure:"tlsPolicy" yaml:"tlsPolicy"`
-
-	// CertSpec is the desired state of certificate.
-	CertSpec CertSpec `mapstructure:"certSpec" yaml:"certSpec"`
-}
-
-type CertSpec struct {
-	// DNSNames is a list of dns names be set on the certificate.
-	DNSNames []string `mapstructure:"dnsNames" yaml:"dnsNames"`
-
-	// IPAddresses is a list of ip addresses be set on the certificate.
-	IPAddresses []net.IP `mapstructure:"ipAddresses" yaml:"ipAddresses"`
-
-	// ValidityPeriod is the validity period of certificate.
-	ValidityPeriod time.Duration `mapstructure:"validityPeriod" yaml:"validityPeriod"`
-}
-
 type NetworkConfig struct {
 	// EnableIPv6 enables ipv6 for server.
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
-type NetworkTopologyConfig struct {
-	// CollectInterval is the interval of collecting network topology.
-	CollectInterval time.Duration `mapstructure:"collectInterval" yaml:"collectInterval"`
-
-	// Probe is the configuration of probe.
-	Probe ProbeConfig `yaml:"probe" mapstructure:"probe"`
-
-	// Cache is the configuration of cache.
-	Cache CacheConfig `yaml:"cache" mapstructure:"cache"`
-}
-
-type ProbeConfig struct {
-	// QueueLength is the length of probe queue.
-	QueueLength int `mapstructure:"queueLength" yaml:"queueLength"`
-
-	// Count is the number of probing hosts.
-	Count int `mapstructure:"count" yaml:"count"`
-}
-
-type CacheConfig struct {
-	// Interval is cache cleanup interval.
-	Interval time.Duration `yaml:"interval" mapstructure:"interval"`
-
-	// TTL is networkTopology cache items TTL.
-	TTL time.Duration `yaml:"ttl" mapstructure:"ttl"`
-}
-
-type TrainerConfig struct {
-	// Enable trainer service.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
-	// Addr is trainer service address.
-	Addr string `yaml:"addr" mapstructure:"addr"`
-
-	// Interval is the interval of training.
-	Interval time.Duration `yaml:"interval" mapstructure:"interval"`
-
-	// UploadTimeout is the timeout of uploading dataset to trainer.
-	UploadTimeout time.Duration `yaml:"uploadTimeout" mapstructure:"uploadTimeout"`
-}
-
 // New default configuration.
 func New() *Config {
 	return &Config{
+		Options: base.Options{
+			Console:   false,
+			PProfPort: -1,
+			Tracing: base.TracingConfig{
+				Path:        "/v1/traces",
+				ServiceName: types.SchedulerName,
+			},
+		},
 		Server: ServerConfig{
-			Port:          DefaultServerPort,
-			AdvertisePort: DefaultServerAdvertisePort,
-			Host:          fqdn.FQDNHostname,
-			LogMaxSize:    DefaultLogRotateMaxSize,
-			LogMaxAge:     DefaultLogRotateMaxAge,
-			LogMaxBackups: DefaultLogRotateMaxBackups,
+			Port:             DefaultServerPort,
+			AdvertisePort:    DefaultServerAdvertisePort,
+			Host:             fqdn.FQDNHostname,
+			RequestRateLimit: DefaultServerRequestRateLimit,
+			LogLevel:         "info",
+			LogMaxSize:       DefaultLogRotateMaxSize,
+			LogMaxAge:        DefaultLogRotateMaxAge,
+			LogMaxBackups:    DefaultLogRotateMaxBackups,
 		},
 		Scheduler: SchedulerConfig{
 			Algorithm:              DefaultSchedulerAlgorithm,
@@ -405,34 +352,13 @@ func New() *Config {
 				HostGCInterval:       DefaultSchedulerHostGCInterval,
 				HostTTL:              DefaultSchedulerHostTTL,
 			},
-			NetworkTopology: NetworkTopologyConfig{
-				CollectInterval: DefaultSchedulerNetworkTopologyCollectInterval,
-				Probe: ProbeConfig{
-					QueueLength: DefaultSchedulerNetworkTopologyProbeQueueLength,
-					Count:       DefaultSchedulerNetworkTopologyProbeCount,
-				},
-				Cache: CacheConfig{
-					Interval: DefaultSchedulerNetworkTopologyCacheInterval,
-					TTL:      DefaultSchedulerNetworkTopologyCacheTLL,
-				},
-			},
 		},
 		Database: DatabaseConfig{
 			Redis: RedisConfig{
-				BrokerDB:          DefaultRedisBrokerDB,
-				BackendDB:         DefaultRedisBackendDB,
-				NetworkTopologyDB: DefaultNetworkTopologyDB,
-			},
-		},
-		Resource: ResourceConfig{
-			Task: TaskConfig{
-				DownloadTiny: DownloadTinyConfig{
-					Scheme:  DefaultResourceTaskDownloadTinyScheme,
-					Timeout: DefaultResourceTaskDownloadTinyTimeout,
-					TLS: DownloadTinyTLSClientConfig{
-						InsecureSkipVerify: true,
-					},
-				},
+				BrokerDB:    DefaultRedisBrokerDB,
+				BackendDB:   DefaultRedisBackendDB,
+				PoolSize:    DefaultRedisPoolSize,
+				PoolTimeout: DefaultRedisPoolTimeout,
 			},
 		},
 		DynConfig: DynConfig{
@@ -455,34 +381,13 @@ func New() *Config {
 			SchedulerWorkerNum: DefaultJobSchedulerWorkerNum,
 			LocalWorkerNum:     DefaultJobLocalWorkerNum,
 		},
-		Storage: StorageConfig{
-			MaxSize:    DefaultStorageMaxSize,
-			MaxBackups: DefaultStorageMaxBackups,
-			BufferSize: DefaultStorageBufferSize,
-		},
 		Metrics: MetricsConfig{
 			Enable:     false,
 			Addr:       DefaultMetricsAddr,
 			EnableHost: false,
 		},
-		Security: SecurityConfig{
-			AutoIssueCert: false,
-			TLSVerify:     true,
-			TLSPolicy:     rpc.PreferTLSPolicy,
-			CertSpec: CertSpec{
-				DNSNames:       DefaultCertDNSNames,
-				IPAddresses:    DefaultCertIPAddresses,
-				ValidityPeriod: DefaultCertValidityPeriod,
-			},
-		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
-		},
-		Trainer: TrainerConfig{
-			Enable:        false,
-			Addr:          DefaultTrainerAddr,
-			Interval:      DefaultTrainerInterval,
-			UploadTimeout: DefaultTrainerUploadTimeout,
 		},
 	}
 }
@@ -507,6 +412,24 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Server.Host == "" {
 		return errors.New("server requires parameter host")
+	}
+
+	if cfg.Server.TLS != nil {
+		if cfg.Server.TLS.CACert == "" {
+			return errors.New("server tls requires parameter caCert")
+		}
+
+		if cfg.Server.TLS.Cert == "" {
+			return errors.New("server tls requires parameter cert")
+		}
+
+		if cfg.Server.TLS.Key == "" {
+			return errors.New("server tls requires parameter key")
+		}
+	}
+
+	if cfg.Server.RequestRateLimit <= 0 {
+		return errors.New("server requires parameter requestRateLimit")
 	}
 
 	if cfg.Scheduler.Algorithm == "" {
@@ -561,24 +484,26 @@ func (cfg *Config) Validate() error {
 		return errors.New("redis requires parameter backendDB")
 	}
 
-	if cfg.Database.Redis.NetworkTopologyDB < 0 {
-		return errors.New("redis requires parameter networkTopologyDB")
-	}
-
-	if !slices.Contains([]string{"http", "https"}, cfg.Resource.Task.DownloadTiny.Scheme) {
-		return errors.New("downloadTiny requires parameter scheme")
-	}
-
-	if cfg.Resource.Task.DownloadTiny.Timeout == 0 {
-		return errors.New("downloadTiny requires parameter timeout")
-	}
-
 	if cfg.DynConfig.RefreshInterval <= 0 {
 		return errors.New("dynconfig requires parameter refreshInterval")
 	}
 
 	if cfg.Manager.Addr == "" {
 		return errors.New("manager requires parameter addr")
+	}
+
+	if cfg.Manager.TLS != nil {
+		if cfg.Manager.TLS.CACert == "" {
+			return errors.New("manager tls requires parameter caCert")
+		}
+
+		if cfg.Manager.TLS.Cert == "" {
+			return errors.New("manager tls requires parameter cert")
+		}
+
+		if cfg.Manager.TLS.Key == "" {
+			return errors.New("manager tls requires parameter key")
+		}
 	}
 
 	if cfg.Manager.SchedulerClusterID == 0 {
@@ -591,6 +516,20 @@ func (cfg *Config) Validate() error {
 
 	if cfg.SeedPeer.TaskDownloadTimeout <= 0 {
 		return errors.New("seedPeer requires parameter taskDownloadTimeout")
+	}
+
+	if cfg.SeedPeer.TLS != nil {
+		if cfg.SeedPeer.TLS.CACert == "" {
+			return errors.New("seedPeer tls requires parameter caCert")
+		}
+
+		if cfg.SeedPeer.TLS.Cert == "" {
+			return errors.New("seedPeer tls requires parameter cert")
+		}
+
+		if cfg.SeedPeer.TLS.Key == "" {
+			return errors.New("seedPeer tls requires parameter key")
+		}
 	}
 
 	if cfg.Job.Enable {
@@ -607,79 +546,9 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if cfg.Storage.MaxSize <= 0 {
-		return errors.New("storage requires parameter maxSize")
-	}
-
-	if cfg.Storage.MaxBackups <= 0 {
-		return errors.New("storage requires parameter maxBackups")
-	}
-
-	if cfg.Storage.BufferSize < 0 {
-		return errors.New("storage requires parameter bufferSize")
-	}
-
 	if cfg.Metrics.Enable {
 		if cfg.Metrics.Addr == "" {
 			return errors.New("metrics requires parameter addr")
-		}
-	}
-
-	if cfg.Security.AutoIssueCert {
-		if cfg.Security.CACert == "" {
-			return errors.New("security requires parameter caCert")
-		}
-
-		if !slices.Contains([]string{rpc.DefaultTLSPolicy, rpc.ForceTLSPolicy, rpc.PreferTLSPolicy}, cfg.Security.TLSPolicy) {
-			return errors.New("security requires parameter tlsPolicy")
-		}
-
-		if len(cfg.Security.CertSpec.IPAddresses) == 0 {
-			return errors.New("certSpec requires parameter ipAddresses")
-		}
-
-		if len(cfg.Security.CertSpec.DNSNames) == 0 {
-			return errors.New("certSpec requires parameter dnsNames")
-		}
-
-		if cfg.Security.CertSpec.ValidityPeriod <= 0 {
-			return errors.New("certSpec requires parameter validityPeriod")
-		}
-	}
-
-	if cfg.Scheduler.Algorithm == NetworkTopologyAlgorithm {
-		if cfg.Scheduler.NetworkTopology.CollectInterval <= 0 {
-			return errors.New("networkTopology requires parameter collectInterval")
-		}
-
-		if cfg.Scheduler.NetworkTopology.Probe.QueueLength <= 0 {
-			return errors.New("probe requires parameter queueLength")
-		}
-
-		if cfg.Scheduler.NetworkTopology.Probe.Count <= 0 {
-			return errors.New("probe requires parameter count")
-		}
-
-		if cfg.Scheduler.NetworkTopology.Cache.Interval <= 0 {
-			return errors.New("networkTopology requires parameter interval")
-		}
-
-		if cfg.Scheduler.NetworkTopology.Cache.TTL <= 0 {
-			return errors.New("networkTopology requires parameter ttl")
-		}
-	}
-
-	if cfg.Trainer.Enable {
-		if cfg.Trainer.Addr == "" {
-			return errors.New("trainer requires parameter addr")
-		}
-
-		if cfg.Trainer.Interval <= 0 {
-			return errors.New("trainer requires parameter interval")
-		}
-
-		if cfg.Trainer.UploadTimeout <= 0 {
-			return errors.New("trainer requires parameter uploadTimeout")
 		}
 	}
 
@@ -694,7 +563,7 @@ func (cfg *Config) Convert() error {
 
 	// TODO Compatible with deprecated fields host and port of redis of job.
 	if len(cfg.Database.Redis.Addrs) == 0 && len(cfg.Job.Redis.Addrs) == 0 && cfg.Job.Redis.Host != "" && cfg.Job.Redis.Port > 0 {
-		cfg.Database.Redis.Addrs = []string{fmt.Sprintf("%s:%d", cfg.Job.Redis.Host, cfg.Job.Redis.Port)}
+		cfg.Database.Redis.Addrs = []string{net.JoinHostPort(cfg.Job.Redis.Host, strconv.Itoa(cfg.Job.Redis.Port))}
 	}
 
 	// TODO Compatible with deprecated fields master name of redis of job.

@@ -27,6 +27,7 @@ import (
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -35,19 +36,12 @@ import (
 
 	managerv1 "d7y.io/api/v2/pkg/apis/manager/v1"
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
-	securityv1 "d7y.io/api/v2/pkg/apis/security/v1"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 )
 
 const (
-	// DefaultQPS is default qps of grpc server.
-	DefaultQPS = 20 * 1000
-
-	// DefaultBurst is default burst of grpc server.
-	DefaultBurst = 30 * 1000
-
 	// DefaultMaxConnectionIdle is default max connection idle of grpc keepalive.
 	DefaultMaxConnectionIdle = 10 * time.Minute
 
@@ -59,13 +53,16 @@ const (
 )
 
 // New returns grpc server instance and register service on grpc server.
-func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, securityServer securityv1.CertificateServer, opts ...grpc.ServerOption) *grpc.Server {
-	limiter := rpc.NewRateLimiterInterceptor(DefaultQPS, DefaultBurst)
+func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, opts ...grpc.ServerOption) *grpc.Server {
+	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler(
+			otelgrpc.WithTracerProvider(otel.GetTracerProvider()),
+			otelgrpc.WithPropagators(otel.GetTextMapPropagator()),
+		)),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionIdle:     DefaultMaxConnectionIdle,
 			MaxConnectionAge:      DefaultMaxConnectionAge,
@@ -92,9 +89,6 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 
 	// Register servers on v2 version of the grpc server.
 	managerv2.RegisterManagerServer(grpcServer, managerServerV2)
-
-	// Register security on grpc server.
-	securityv1.RegisterCertificateServer(grpcServer, securityServer)
 
 	// Register health on grpc server.
 	healthpb.RegisterHealthServer(grpcServer, health.NewServer())

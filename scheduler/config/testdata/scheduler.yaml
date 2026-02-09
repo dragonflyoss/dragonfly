@@ -4,11 +4,15 @@ server:
   listenIP: 0.0.0.0
   port: 8002
   host: foo
-  workHome: foo
+  tls:
+    caCert: foo
+    cert: foo
+    key: foo
+  requestRateLimit: 100
   cacheDir: foo
   logDir: foo
   pluginDir: foo
-  dataDir: foo
+  logLevel: debug
   logMaxSize: 512
   logMaxAge: 5
   logMaxBackups: 3
@@ -26,14 +30,6 @@ scheduler:
     taskGCInterval: 30s
     hostGCInterval: 1m
     hostTTL: 1m
-  networkTopology:
-    collectInterval: 60s
-    probe:
-      queueLength: 5
-      count: 10
-    cache:
-      interval: 5m  
-      ttl: 5m  
 
 database:
   redis:
@@ -44,15 +40,8 @@ database:
     password: foo
     brokerDB: 1
     backendDB: 2
-    networkTopologyDB: 3
-
-resource:
-  task:
-    downloadTiny:
-      scheme: http
-      timeout: 1m
-      tls:
-        insecureSkipVerify: true
+    poolSize: 10
+    poolTimeout: 1s
 
 dynConfig:
   refreshInterval: 10s
@@ -63,12 +52,20 @@ host:
 
 manager:
   addr: 127.0.0.1:65003
+  tls:
+    caCert: foo
+    cert: foo
+    key: foo
   schedulerClusterID: 1
   keepAlive:
     interval: 5s
 
 seedPeer:
   enable: true
+  tls:
+    caCert: foo
+    cert: foo
+    key: foo
   taskDownloadTimeout: 12h
 
 job:
@@ -77,33 +74,10 @@ job:
   schedulerWorkerNum: 1
   localWorkerNum: 5
 
-storage:
-  maxSize: 1
-  maxBackups: 1
-  bufferSize: 1
-
 metrics:
   enable: false
   addr: ":8000"
   enableHost: true
 
-security:
-  autoIssueCert: true
-  caCert: testdata/ca.crt
-  tlsVerify: true
-  tlsPolicy: force
-  certSpec:
-    dnsNames:
-      - foo
-    ipAddresses:
-      - 0.0.0.0
-    validityPeriod: 10m
-
 network:
   enableIPv6: true
-
-trainer:
-  enable: false
-  addr: "127.0.0.1:9090"
-  interval: 10m
-  uploadTimeout: 2h

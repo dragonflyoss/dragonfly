@@ -41,12 +41,15 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "scheduler",
 	Short: "the scheduler of dragonfly",
-	Long: `Scheduler is a long-running process which receives and manages download tasks from the dfdaemon, notify the seed peer to return to the source, 
+	Long: `Scheduler is a long-running process which receives and manages download tasks from the dfdaemon, notify the seed peer to return to the source,
 generate and maintain a P2P network during the download process, and push suitable download nodes to the dfdaemon`,
 	Args:              cobra.NoArgs,
 	DisableAutoGenTag: true,
 	SilenceUsage:      true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		// Convert config.
 		if err := cfg.Convert(); err != nil {
 			return err
@@ -56,9 +59,6 @@ generate and maintain a P2P network during the download process, and push suitab
 		if err := cfg.Validate(); err != nil {
 			return err
 		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 
 		// Initialize dfpath.
 		d, err := initDfpath(&cfg.Server)
@@ -72,7 +72,7 @@ generate and maintain a P2P network during the download process, and push suitab
 			MaxBackups: cfg.Server.LogMaxBackups}
 
 		// Initialize logger.
-		if err := logger.InitScheduler(cfg.Verbose, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitScheduler(cfg.Server.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init scheduler logger: %w", err)
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.SchedulerName))
@@ -100,10 +100,6 @@ func init() {
 
 func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	var options []dfpath.Option
-	if cfg.WorkHome != "" {
-		options = append(options, dfpath.WithWorkHome(cfg.WorkHome))
-	}
-
 	if cfg.LogDir != "" {
 		options = append(options, dfpath.WithLogDir(cfg.LogDir))
 	}
@@ -116,18 +112,13 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 		options = append(options, dfpath.WithPluginDir(cfg.PluginDir))
 	}
 
-	if cfg.DataDir != "" {
-		options = append(options, dfpath.WithDataDir(cfg.DataDir))
-	}
-
 	return dfpath.New(options...)
 }
 
 func runScheduler(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-
-	ff := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
-	defer ff()
+	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
+	defer shutdown()
 
 	svr, err := scheduler.New(ctx, cfg, d)
 	if err != nil {

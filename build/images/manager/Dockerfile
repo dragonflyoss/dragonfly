@@ -1,6 +1,6 @@
-ARG BASE_IMAGE=alpine:3.17
+ARG BASE_IMAGE=alpine:3.21@sha256:5405e8f36ce1878720f71217d664aa3dea32e5e5df11acbf07fc78ef5661465b
 
-FROM node:20-alpine as console-builder
+FROM node:20-alpine@sha256:658d0f63e501824d6c23e06d4bb95c71e7d704537c9d9272f488ac03a370d448 AS console-builder
 
 WORKDIR /build
 
@@ -12,7 +12,7 @@ COPY ./manager/console /build
 
 RUN yarn build
 
-FROM golang:1.21.1-alpine3.17 as server-builder
+FROM golang:1.25.5-alpine3.21@sha256:b4dbd292a0852331c89dfd64e84d16811f3e3aae4c73c13d026c4d200715aff6 AS server-builder
 
 ARG GOPROXY
 ARG GOTAGS
@@ -28,9 +28,9 @@ COPY --from=console-builder /build/dist /go/src/d7y.io/dragonfly/v2/manager/dist
 
 RUN make build-manager-server && make install-manager
 
-FROM ${BASE_IMAGE} as health
+FROM ${BASE_IMAGE} AS health
 
-ENV GRPC_HEALTH_PROBE_VERSION v0.4.24
+ENV GRPC_HEALTH_PROBE_VERSION=v0.4.24
 
 RUN if [ "$(uname -m)" = "ppc64le" ]; then \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-ppc64le; \

@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /schedulers [post]
+// @Router /api/v1/schedulers [post]
 func (h *Handlers) CreateScheduler(ctx *gin.Context) {
 	var json types.CreateSchedulerRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateScheduler(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /schedulers/{id} [delete]
+// @Router /api/v1/schedulers/{id} [delete]
 func (h *Handlers) DestroyScheduler(ctx *gin.Context) {
 	var params types.SchedulerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroyScheduler(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /schedulers/{id} [patch]
+// @Router /api/v1/schedulers/{id} [patch]
 func (h *Handlers) UpdateScheduler(ctx *gin.Context) {
 	var params types.SchedulerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateScheduler(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /schedulers/{id} [get]
+// @Router /api/v1/schedulers/{id} [get]
 func (h *Handlers) GetScheduler(ctx *gin.Context) {
 	var params types.SchedulerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetScheduler(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /schedulers [get]
+// @Router /api/v1/schedulers [get]
 func (h *Handlers) GetSchedulers(ctx *gin.Context) {
 	var query types.GetSchedulersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

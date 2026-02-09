@@ -20,7 +20,7 @@ import (
 	"context"
 	"strconv"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -51,7 +51,6 @@ func (s *service) CreateV1Preheat(ctx context.Context, json types.CreateV1Prehea
 			Type:                json.Type,
 			URL:                 json.URL,
 			FilteredQueryParams: json.FilteredQueryParams,
-			PieceLength:         types.DefaultPreheatJobPieceLength,
 			Headers:             json.Headers,
 		},
 	})

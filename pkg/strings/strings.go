@@ -17,35 +17,19 @@
 package strings
 
 import (
-	"strings"
+	"slices"
 )
-
-// IsBlank determines whether the string is empty.
-func IsBlank(s string) bool {
-	return strings.TrimSpace(s) == ""
-}
 
 // Contains reports whether the string contains the element.
 func Contains(slice []string, ele string) bool {
-	for _, one := range slice {
-		if one == ele {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(slice, ele)
 }
 
-// Remove the duplicate elements in the string slice.
-func Unique(slice []string) []string {
-	keys := make(map[string]bool)
-	result := []string{}
-	for _, entry := range slice {
-		if _, ok := keys[entry]; !ok {
-			keys[entry] = true
-			result = append(result, entry)
-		}
+// Concat concatenates multiple string slices.
+func Concat(slices ...[]string) []string {
+	var result []string
+	for _, slice := range slices {
+		result = append(result, slice...)
 	}
-
 	return result
 }

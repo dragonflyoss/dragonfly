@@ -16,15 +16,41 @@
 
 package main
 
-import "d7y.io/dragonfly/v2/scheduler/resource"
+import (
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
+)
 
 type evaluator struct{}
 
-func (e *evaluator) EvaluateParents(parents []*resource.Peer, child *resource.Peer, taskPieceCount int32) []*resource.Peer {
-	return []*resource.Peer{&resource.Peer{}}
+// EvaluateParents sort parents by evaluating multiple feature scores.
+func (e *evaluator) EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer {
+	return []*standard.Peer{&standard.Peer{}}
 }
 
-func (e *evaluator) IsBadNode(peer *resource.Peer) bool {
+// IsBadParent determine if peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
+	return true
+}
+
+// EvaluatePersistentParents sort persistent parents by evaluating multiple feature scores.
+func (e *evaluator) EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer {
+	return []*persistent.Peer{&persistent.Peer{}}
+}
+
+// IsBadPersistentParent determine if persistent peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadPersistentParent(peer *persistent.Peer) bool {
+	return true
+}
+
+// EvaluatePersistentCacheParents sort persistent cache parents by evaluating multiple feature scores.
+func (e *evaluator) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer {
+	return []*persistentcache.Peer{&persistentcache.Peer{}}
+}
+
+// IsBadPersistentCacheParent determine if persistent cache peer is a bad parent, it can not be selected as a parent.
+func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
 	return true
 }
 

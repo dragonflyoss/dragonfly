@@ -20,7 +20,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/applications": {
+        "/api/v1/applications": {
             "get": {
                 "description": "Get Applications",
                 "consumes": [
@@ -116,7 +116,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/applications/{id}": {
+        "/api/v1/applications/{id}": {
             "get": {
                 "description": "Get Application by id",
                 "consumes": [
@@ -241,9 +241,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/buckets": {
+        "/api/v1/audits": {
             "get": {
-                "description": "Get Buckets",
+                "description": "Get Audits",
                 "consumes": [
                     "application/json"
                 ],
@@ -251,16 +251,36 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Bucket"
+                    "Audit"
                 ],
-                "summary": "Get Buckets",
+                "summary": "Get Audits",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata"
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Audit"
                             }
                         }
                     },
@@ -274,124 +294,9 @@ const docTemplate = `{
                         "description": "Internal Server Error"
                     }
                 }
-            },
-            "post": {
-                "description": "Create by json bucket",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Create Bucket",
-                "parameters": [
-                    {
-                        "description": "Bucket",
-                        "name": "Bucket",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateBucketRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
             }
         },
-        "/buckets/{id}": {
-            "get": {
-                "description": "Get Bucket by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Get Bucket",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Destroy by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bucket"
-                ],
-                "summary": "Destroy Bucket",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/clusters": {
+        "/api/v1/clusters": {
             "get": {
                 "description": "Get Clusters",
                 "consumes": [
@@ -487,7 +392,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/clusters/{id}": {
+        "/api/v1/clusters/{id}": {
             "get": {
                 "description": "Get Cluster by id",
                 "consumes": [
@@ -612,7 +517,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/configs": {
+        "/api/v1/configs": {
             "get": {
                 "description": "Get Configs",
                 "consumes": [
@@ -708,7 +613,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/configs/{id}": {
+        "/api/v1/configs/{id}": {
             "get": {
                 "description": "Get Config by id",
                 "consumes": [
@@ -833,36 +738,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/healthy": {
-            "get": {
-                "description": "Get app health",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Health"
-                ],
-                "summary": "Get Health",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/jobs": {
+        "/api/v1/jobs": {
             "get": {
                 "description": "Get Jobs",
                 "consumes": [
@@ -958,7 +834,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/jobs/{id}": {
+        "/api/v1/jobs/{id}": {
             "get": {
                 "description": "Get Job by id",
                 "consumes": [
@@ -1083,167 +959,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/models": {
-            "get": {
-                "description": "Get Models",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Get Models",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/models/{id}": {
-            "get": {
-                "description": "Get Model by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Get Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Destroy by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Destroy Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Model"
-                ],
-                "summary": "Update Model",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Model",
-                        "name": "Model",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateModelRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/oauth": {
+        "/api/v1/oauth": {
             "get": {
                 "description": "Get Oauths",
                 "consumes": [
@@ -1339,7 +1055,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/oauth/{id}": {
+        "/api/v1/oauth/{id}": {
             "get": {
                 "description": "Get Oauth by id",
                 "consumes": [
@@ -1464,7 +1180,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers": {
+        "/api/v1/peers": {
             "get": {
                 "description": "Get Peers",
                 "consumes": [
@@ -1560,7 +1276,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers/{id}": {
+        "/api/v1/peers/{id}": {
             "get": {
                 "description": "Get Peer by id",
                 "consumes": [
@@ -1637,7 +1353,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/permissions": {
+        "/api/v1/permissions": {
             "get": {
                 "description": "Get Permissions",
                 "produces": [
@@ -1666,7 +1382,160 @@ const docTemplate = `{
                 }
             }
         },
-        "/personal-access-tokens": {
+        "/api/v1/persistent-cache-tasks": {
+            "get": {
+                "description": "Get PersistentCacheTasks",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PersistentCacheTask"
+                ],
+                "summary": "Get PersistentCacheTasks",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "scheduler cluster id",
+                        "name": "scheduler_cluster_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/persistent-cache-tasks/{id}": {
+            "get": {
+                "description": "Get PersistentCacheTask by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PersistentCacheTask"
+                ],
+                "summary": "Get PersistentCacheTask",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "scheduler cluster id",
+                        "name": "scheduler_cluster_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "task id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheTask"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Destroy PersistentCacheTask by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PersistentCacheTask"
+                ],
+                "summary": "Destroy PersistentCacheTask",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "scheduler cluster id",
+                        "name": "scheduler_cluster_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "task id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/personal-access-tokens": {
             "get": {
                 "description": "Get PersonalAccessTokens",
                 "consumes": [
@@ -1762,7 +1631,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/personal-access-tokens/{id}": {
+        "/api/v1/personal-access-tokens/{id}": {
             "get": {
                 "description": "Get PersonalAccessToken by id",
                 "consumes": [
@@ -1887,91 +1756,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/preheats": {
-            "post": {
-                "description": "Create by json config",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Create V1 Preheat",
-                "parameters": [
-                    {
-                        "description": "Preheat",
-                        "name": "Preheat",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/preheats/{id}": {
-            "get": {
-                "description": "Get Preheat by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Preheat"
-                ],
-                "summary": "Get V1 Preheat",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/roles": {
+        "/api/v1/roles": {
             "get": {
                 "description": "Get roles",
                 "consumes": [
@@ -2032,7 +1817,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/roles/{role}": {
+        "/api/v1/roles/{role}": {
             "get": {
                 "description": "Get Role",
                 "consumes": [
@@ -2100,7 +1885,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/roles/{role}/permissions": {
+        "/api/v1/roles/{role}/permissions": {
             "post": {
                 "description": "Add Permission by json config",
                 "consumes": [
@@ -2186,7 +1971,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters": {
+        "/api/v1/scheduler-clusters": {
             "get": {
                 "description": "Get SchedulerClusters",
                 "consumes": [
@@ -2282,7 +2067,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters/{id}": {
+        "/api/v1/scheduler-clusters/{id}": {
             "get": {
                 "description": "Get SchedulerCluster by id",
                 "consumes": [
@@ -2407,7 +2192,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler-clusters/{id}/schedulers/{scheduler_id}": {
+        "/api/v1/scheduler-clusters/{id}/schedulers/{scheduler_id}": {
             "put": {
                 "description": "Add Scheduler to schedulerCluster",
                 "consumes": [
@@ -2452,7 +2237,42 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedulers": {
+        "/api/v1/scheduler-features": {
+            "get": {
+                "description": "Get Scheduler Features",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scheduler Feature"
+                ],
+                "summary": "Get Scheudler Features",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/schedulers": {
             "get": {
                 "description": "Get Schedulers",
                 "consumes": [
@@ -2548,7 +2368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedulers/{id}": {
+        "/api/v1/schedulers/{id}": {
             "get": {
                 "description": "Get Scheduler by id",
                 "consumes": [
@@ -2673,7 +2493,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters": {
+        "/api/v1/seed-peer-clusters": {
             "get": {
                 "description": "Get SeedPeerClusters",
                 "consumes": [
@@ -2769,7 +2589,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}": {
+        "/api/v1/seed-peer-clusters/{id}": {
             "get": {
                 "description": "Get SeedPeerCluster by id",
                 "consumes": [
@@ -2894,7 +2714,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}": {
+        "/api/v1/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id}": {
             "put": {
                 "description": "Add SchedulerCluster to SeedPeerCluster",
                 "consumes": [
@@ -2939,7 +2759,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peer-clusters/{id}/seed-peers/{seed_peer_id}": {
+        "/api/v1/seed-peer-clusters/{id}/seed-peers/{seed_peer_id}": {
             "put": {
                 "description": "Add SeedPeer to SeedPeerCluster",
                 "consumes": [
@@ -2984,7 +2804,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peers": {
+        "/api/v1/seed-peers": {
             "get": {
                 "description": "Get SeedPeers",
                 "consumes": [
@@ -3080,7 +2900,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/seed-peers/{id}": {
+        "/api/v1/seed-peers/{id}": {
             "get": {
                 "description": "Get SeedPeer by id",
                 "consumes": [
@@ -3205,7 +3025,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signin/{name}": {
+        "/api/v1/user/signin/{name}": {
             "get": {
                 "description": "oauth signin by json config",
                 "consumes": [
@@ -3243,7 +3063,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signin/{name}/callback": {
+        "/api/v1/user/signin/{name}/callback": {
             "get": {
                 "description": "oauth signin callback by json config",
                 "tags": [
@@ -3282,7 +3102,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/signup": {
+        "/api/v1/user/signup": {
             "post": {
                 "description": "signup by json config",
                 "consumes": [
@@ -3322,7 +3142,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
+        "/api/v1/users": {
             "get": {
                 "description": "Get Users",
                 "consumes": [
@@ -3377,7 +3197,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}": {
+        "/api/v1/users/{id}": {
             "get": {
                 "description": "Get User by id",
                 "consumes": [
@@ -3466,7 +3286,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/reset_password": {
+        "/api/v1/users/{id}/reset_password": {
             "post": {
                 "description": "reset password by json config",
                 "consumes": [
@@ -3510,7 +3330,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/roles": {
+        "/api/v1/users/{id}/roles": {
             "get": {
                 "description": "get roles by json config",
                 "produces": [
@@ -3548,7 +3368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{id}/roles/{role}": {
+        "/api/v1/users/{id}/roles/{role}": {
             "put": {
                 "description": "add role to user by uri config",
                 "consumes": [
@@ -3629,9 +3449,567 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/healthy": {
+            "get": {
+                "description": "Get app health",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Get Health",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/clusters": {
+            "get": {
+                "description": "Get Clusters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get Clusters",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Create Cluster",
+                "parameters": [
+                    {
+                        "description": "Cluster",
+                        "name": "Cluster",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/clusters/{id}": {
+            "get": {
+                "description": "Get Cluster by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Get Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Destroy by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Destroy Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cluster"
+                ],
+                "summary": "Update Cluster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Cluster",
+                        "name": "Cluster",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateClusterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/jobs": {
+            "get": {
+                "description": "Get Jobs",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Get Jobs",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "current page",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 2,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "return max item count, default 10, max 50",
+                        "name": "per_page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Create Job",
+                "parameters": [
+                    {
+                        "description": "Job",
+                        "name": "Job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/oapi/v1/jobs/{id}": {
+            "get": {
+                "description": "Get Job by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Get Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Destroy by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Destroy Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Update Job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Job",
+                        "name": "Job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.UpdateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Job"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/preheats": {
+            "post": {
+                "description": "Create by json config",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preheat"
+                ],
+                "summary": "Create V1 Preheat",
+                "parameters": [
+                    {
+                        "description": "Preheat",
+                        "name": "Preheat",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.CreateV1PreheatResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/preheats/{id}": {
+            "get": {
+                "description": "Get Preheat by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preheat"
+                ],
+                "summary": "Get V1 Preheat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.GetV1PreheatResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "bitset.BitSet": {
+            "type": "object"
+        },
         "d7y_io_dragonfly_v2_manager_models.Application": {
             "type": "object",
             "properties": {
@@ -3664,6 +4042,63 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_models.Audit": {
+            "type": "object",
+            "properties": {
+                "actor_name": {
+                    "description": "ActorName represents the actor name, it can be the username or token name.",
+                    "type": "string"
+                },
+                "actor_type": {
+                    "description": "ActorType represents the actor type, which can be one of the following:\n- UNKNOWN: Represents an unknown actor such as not authenticated.\n- USER: Represents a user.\n- PAT: Represents a personal access token.",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "detail": {
+                    "description": "Detail represents the detail, leave for extension for future use.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                        }
+                    ]
+                },
+                "event_type": {
+                    "description": "EventType represents the event type, indicates the type of event, API for http request,\ncan expand to other types such as SYSTEM for internal system events in future.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_del": {
+                    "type": "integer"
+                },
+                "operated_at": {
+                    "description": "OperatedAt represents the operation time.",
+                    "type": "string"
+                },
+                "operation": {
+                    "description": "Operation represents the operation, it will be the HTTP method for API events.",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "Path represents the request path, it will be the URL path for API events.",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "State represents the state, it indicates the state of the operation, e.g SUCCESS for API status code \u003e= 200 \u0026 \u003c 300.",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "StatusCode represents the status code, can be ignored for non-API events.",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -3756,47 +4191,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_models.Model": {
-            "type": "object",
-            "properties": {
-                "bio": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "evaluation": {
-                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_del": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "scheduler": {
-                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Scheduler"
-                },
-                "scheduler_id": {
-                    "type": "integer"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_models.Oauth": {
             "type": "object",
             "properties": {
@@ -3886,6 +4280,9 @@ const docTemplate = `{
                 "port": {
                     "type": "integer"
                 },
+                "proxy_port": {
+                    "type": "integer"
+                },
                 "scheduler_cluster": {
                     "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.SchedulerCluster"
                 },
@@ -3950,6 +4347,9 @@ const docTemplate = `{
         "d7y_io_dragonfly_v2_manager_models.Scheduler": {
             "type": "object",
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.JSONMap"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -3974,14 +4374,11 @@ const docTemplate = `{
                 "is_del": {
                     "type": "integer"
                 },
-                "location": {
+                "last_keep_alive_at": {
                     "type": "string"
                 },
-                "models": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_models.Model"
-                    }
+                "location": {
+                    "type": "string"
                 },
                 "port": {
                     "type": "integer"
@@ -4261,17 +4658,6 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_manager_types.CreateBucketRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "d7y_io_dragonfly_v2_manager_types.CreateClusterRequest": {
             "type": "object",
             "required": [
@@ -4374,32 +4760,34 @@ const docTemplate = `{
             ],
             "properties": {
                 "args": {
+                    "description": "Args is the arguments of the job.",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "bio": {
+                    "description": "BIO is the description of the job.",
                     "type": "string"
                 },
-                "result": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
                 "scheduler_cluster_ids": {
+                    "description": "SchedulerClusterIDs is the scheduler cluster ids of the job.",
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
                 "seed_peer_cluster_ids": {
+                    "description": "SeedPeerClusterIDs is the seed peer cluster ids of the job.",
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
                 "type": {
+                    "description": "Type is the type of the job.",
                     "type": "string"
                 },
                 "user_id": {
+                    "description": "UserID is the user id of the job.",
                     "type": "integer"
                 }
             }
@@ -4440,6 +4828,7 @@ const docTemplate = `{
                 "host_name",
                 "ip",
                 "port",
+                "proxy_port",
                 "scheduler_cluster_id",
                 "type"
             ],
@@ -4489,6 +4878,9 @@ const docTemplate = `{
                 "port": {
                     "type": "integer"
                 },
+                "proxy_port": {
+                    "type": "integer"
+                },
                 "scheduler_cluster_id": {
                     "type": "integer"
                 },
@@ -4503,8 +4895,6 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "super",
-                        "strong",
-                        "weak",
                         "normal"
                     ]
                 }
@@ -4596,6 +4986,9 @@ const docTemplate = `{
                 "scheduler_cluster_id"
             ],
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig"
+                },
                 "features": {
                     "type": "array",
                     "items": {
@@ -4678,9 +5071,7 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }
@@ -4692,7 +5083,7 @@ const docTemplate = `{
                 "url"
             ],
             "properties": {
-                "filter": {
+                "filteredQueryParams": {
                     "type": "string"
                 },
                 "headers": {
@@ -4798,6 +5189,399 @@ const docTemplate = `{
                 }
             }
         },
+        "d7y_io_dragonfly_v2_manager_types.PersistentCacheHost": {
+            "type": "object",
+            "properties": {
+                "announce_interval": {
+                    "description": "AnnounceInterval is the interval between host announces to scheduler.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "build": {
+                    "description": "Build contains build information.",
+                    "type": "object",
+                    "properties": {
+                        "git_commit": {
+                            "description": "GitCommit is git commit.",
+                            "type": "string"
+                        },
+                        "git_version": {
+                            "description": "GitVersion is git version.",
+                            "type": "string"
+                        },
+                        "go_version": {
+                            "description": "GoVersion is go version.",
+                            "type": "string"
+                        },
+                        "platform": {
+                            "description": "Platform is build platform.",
+                            "type": "string"
+                        }
+                    }
+                },
+                "cpu": {
+                    "description": "CPU contains cpu information.",
+                    "type": "object",
+                    "properties": {
+                        "logical_count": {
+                            "description": "LogicalCount is cpu logical count.",
+                            "type": "integer"
+                        },
+                        "percent": {
+                            "description": "Percent is cpu usage percent.",
+                            "type": "number"
+                        },
+                        "physical_count": {
+                            "description": "PhysicalCount is cpu physical count.",
+                            "type": "integer"
+                        },
+                        "process_percent": {
+                            "description": "ProcessPercent is process cpu usage percent.",
+                            "type": "number"
+                        },
+                        "times": {
+                            "description": "Times contains cpu times information.",
+                            "type": "object",
+                            "properties": {
+                                "guest": {
+                                    "description": "Guest is guest cpu time.",
+                                    "type": "number"
+                                },
+                                "guest_nice": {
+                                    "description": "GuestNice is guest nice cpu time.",
+                                    "type": "number"
+                                },
+                                "idle": {
+                                    "description": "Idle is idle cpu time.",
+                                    "type": "number"
+                                },
+                                "iowait": {
+                                    "description": "Iowait is iowait cpu time.",
+                                    "type": "number"
+                                },
+                                "irq": {
+                                    "description": "Irq is irq cpu time.",
+                                    "type": "number"
+                                },
+                                "nice": {
+                                    "description": "Nice is nice cpu time.",
+                                    "type": "number"
+                                },
+                                "softirq": {
+                                    "description": "Softirq is softirq cpu time.",
+                                    "type": "number"
+                                },
+                                "steal": {
+                                    "description": "Steal is steal cpu time.",
+                                    "type": "number"
+                                },
+                                "system": {
+                                    "description": "System is system cpu time.",
+                                    "type": "number"
+                                },
+                                "user": {
+                                    "description": "User is user cpu time.",
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    }
+                },
+                "created_at": {
+                    "description": "CreatedAt is host create time.",
+                    "type": "string"
+                },
+                "disable_shared": {
+                    "description": "DisableShared is whether the host is disabled for shared with other peers.",
+                    "type": "boolean"
+                },
+                "disk": {
+                    "description": "Disk contains disk information.",
+                    "type": "object",
+                    "properties": {
+                        "free": {
+                            "description": "Free is free disk space.",
+                            "type": "integer"
+                        },
+                        "inodes_free": {
+                            "description": "InodesFree is free inodes.",
+                            "type": "integer"
+                        },
+                        "inodes_total": {
+                            "description": "InodesTotal is total inodes.",
+                            "type": "integer"
+                        },
+                        "inodes_used": {
+                            "description": "InodesUsed is used inodes.",
+                            "type": "integer"
+                        },
+                        "inodes_used_percent": {
+                            "description": "InodesUsedPercent is inodes usage percent.",
+                            "type": "number"
+                        },
+                        "read_bandwidth": {
+                            "description": "ReadBandwidth is read bandwidth.",
+                            "type": "integer"
+                        },
+                        "total": {
+                            "description": "Total is total disk space.",
+                            "type": "integer"
+                        },
+                        "used": {
+                            "description": "Used is used disk space.",
+                            "type": "integer"
+                        },
+                        "used_percent": {
+                            "description": "UsedPercent is disk usage percent.",
+                            "type": "number"
+                        },
+                        "write_bandwidth": {
+                            "description": "WriteBandwidth is write bandwidth.",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "download_port": {
+                    "description": "DownloadPort is piece downloading port.",
+                    "type": "integer"
+                },
+                "hostname": {
+                    "description": "Hostname is host name.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is host id.",
+                    "type": "string"
+                },
+                "ip": {
+                    "description": "IP is host ip.",
+                    "type": "string"
+                },
+                "kernel_version": {
+                    "description": "KernelVersion is host kernel version.",
+                    "type": "string"
+                },
+                "memory": {
+                    "description": "Memory contains memory information.",
+                    "type": "object",
+                    "properties": {
+                        "available": {
+                            "description": "Available is available memory.",
+                            "type": "integer"
+                        },
+                        "free": {
+                            "description": "Free is free memory.",
+                            "type": "integer"
+                        },
+                        "process_used_percent": {
+                            "description": "ProcessUsedPercent is process memory usage percent.",
+                            "type": "number"
+                        },
+                        "total": {
+                            "description": "Total is total memory.",
+                            "type": "integer"
+                        },
+                        "used": {
+                            "description": "Used is used memory.",
+                            "type": "integer"
+                        },
+                        "used_percent": {
+                            "description": "UsedPercent is memory usage percent.",
+                            "type": "number"
+                        }
+                    }
+                },
+                "network": {
+                    "description": "Network contains network information.",
+                    "type": "object",
+                    "properties": {
+                        "idc": {
+                            "description": "IDC is network idc.",
+                            "type": "string"
+                        },
+                        "location": {
+                            "description": "Location is network location.",
+                            "type": "string"
+                        },
+                        "max_rx_bandwidth": {
+                            "description": "MaxRxBandwidth is download rate limit.",
+                            "type": "integer"
+                        },
+                        "max_tx_bandwidth": {
+                            "description": "MaxTxBandwidth is upload rate limit.",
+                            "type": "integer"
+                        },
+                        "rx_bandwidth": {
+                            "description": "RxBandwidth is download rate.",
+                            "type": "integer"
+                        },
+                        "tcp_connection_count": {
+                            "description": "TCPConnectionCount is tcp connection count.",
+                            "type": "integer"
+                        },
+                        "tx_bandwidth": {
+                            "description": "TxBandwidth is upload rate.",
+                            "type": "integer"
+                        },
+                        "upload_tcp_connection_count": {
+                            "description": "UploadTCPConnectionCount is upload tcp connection count.",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "os": {
+                    "description": "OS is host OS.",
+                    "type": "string"
+                },
+                "platform": {
+                    "description": "Platform is host platform.",
+                    "type": "string"
+                },
+                "platform_family": {
+                    "description": "PlatformFamily is host platform family.",
+                    "type": "string"
+                },
+                "platform_version": {
+                    "description": "PlatformVersion is host platform version.",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Port is grpc service port.",
+                    "type": "integer"
+                },
+                "scheduler_cluster_id": {
+                    "description": "SchedulerClusterID is the scheduler cluster id matched by scopes.",
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "Type is host type.",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "UpdatedAt is host update time.",
+                    "type": "string"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_types.PersistentCachePeer": {
+            "type": "object",
+            "properties": {
+                "block_parents": {
+                    "description": "BlockParents is bad parents ids.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cost": {
+                    "description": "Cost is the cost of downloading.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "created_at": {
+                    "description": "CreatedAt is persistent cache peer create time.",
+                    "type": "string"
+                },
+                "finished_pieces": {
+                    "description": "FinishedPieces is finished pieces bitset.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/bitset.BitSet"
+                        }
+                    ]
+                },
+                "host": {
+                    "description": "Host is the peer host.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCacheHost"
+                        }
+                    ]
+                },
+                "id": {
+                    "description": "ID is persistent cache peer id.",
+                    "type": "string"
+                },
+                "persistent": {
+                    "description": "Persistent is whether the peer is persistent.",
+                    "type": "boolean"
+                },
+                "state": {
+                    "description": "State is persistent cache peer state.",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "UpdatedAt is persistent cache peer update time.",
+                    "type": "string"
+                }
+            }
+        },
+        "d7y_io_dragonfly_v2_manager_types.PersistentCacheTask": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "description": "Application of persistent cache task.",
+                    "type": "string"
+                },
+                "content_length": {
+                    "description": "ContentLength is persistent cache task total content length.",
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "CreatedAt is persistent cache task create time.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is task id.",
+                    "type": "string"
+                },
+                "peers": {
+                    "description": "PersistentCachePeers is the list of persistent cache peers.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.PersistentCachePeer"
+                    }
+                },
+                "persistent_replica_count": {
+                    "description": "PersistentReplicaCount is replica count of the persistent cache task.",
+                    "type": "integer"
+                },
+                "piece_length": {
+                    "description": "PieceLength is persistent cache task piece length.",
+                    "type": "integer"
+                },
+                "state": {
+                    "description": "State is persistent cache task state.",
+                    "type": "string"
+                },
+                "tag": {
+                    "description": "Tag is used to distinguish different persistent cache tasks.",
+                    "type": "string"
+                },
+                "total_piece_count": {
+                    "description": "TotalPieceCount is total piece count.",
+                    "type": "integer"
+                },
+                "ttl": {
+                    "description": "TTL is persistent cache task time to live.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/time.Duration"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "description": "UpdatedAt is persistent cache task update time.",
+                    "type": "string"
+                }
+            }
+        },
         "d7y_io_dragonfly_v2_manager_types.PriorityConfig": {
             "type": "object",
             "required": [
@@ -4858,6 +5642,11 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 1000,
                     "minimum": 10
+                },
+                "job_rate_limit": {
+                    "type": "integer",
+                    "maximum": 1000000,
+                    "minimum": 1
                 }
             }
         },
@@ -4865,6 +5654,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "cidrs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hostnames": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4878,12 +5673,23 @@ const docTemplate = `{
                 }
             }
         },
+        "d7y_io_dragonfly_v2_manager_types.SchedulerConfig": {
+            "type": "object",
+            "required": [
+                "manager_keep_alive_interval"
+            ],
+            "properties": {
+                "manager_keep_alive_interval": {
+                    "$ref": "#/definitions/time.Duration"
+                }
+            }
+        },
         "d7y_io_dragonfly_v2_manager_types.SeedPeerClusterConfig": {
             "type": "object",
             "properties": {
                 "load_limit": {
                     "type": "integer",
-                    "maximum": 5000,
+                    "maximum": 50000,
                     "minimum": 1
                 }
             }
@@ -5051,25 +5857,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bio": {
+                    "description": "BIO is the description of the job.",
                     "type": "string"
                 },
                 "user_id": {
+                    "description": "UserID is the user id of the job.",
                     "type": "integer"
-                }
-            }
-        },
-        "d7y_io_dragonfly_v2_manager_types.UpdateModelRequest": {
-            "type": "object",
-            "properties": {
-                "BIO": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string",
-                    "enum": [
-                        "active",
-                        "inactive"
-                    ]
                 }
             }
         },
@@ -5153,6 +5946,9 @@ const docTemplate = `{
         "d7y_io_dragonfly_v2_manager_types.UpdateSchedulerRequest": {
             "type": "object",
             "properties": {
+                "config": {
+                    "$ref": "#/definitions/d7y_io_dragonfly_v2_manager_types.SchedulerConfig"
+                },
                 "features": {
                     "type": "array",
                     "items": {
@@ -5220,9 +6016,7 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "enum": [
-                        "super",
-                        "strong",
-                        "weak"
+                        "super"
                     ]
                 }
             }
@@ -5247,27 +6041,47 @@ const docTemplate = `{
                 }
             }
         },
-        "d7y_io_dragonfly_v2_pkg_objectstorage.BucketMetadata": {
-            "type": "object",
-            "properties": {
-                "createAt": {
-                    "description": "CreateAt is bucket create time.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name is bucket name.",
-                    "type": "string"
-                }
-            }
+        "time.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "API router (/api/v1)",
+            "name": "api"
+        },
+        {
+            "description": "open API router (/oapi/v1)",
+            "name": "oapi"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Dragonfly Manager",
 	Description:      "Dragonfly Manager Server",

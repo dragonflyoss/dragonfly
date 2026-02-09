@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/casbin/casbin/v2"
+	casbin "github.com/casbin/casbin/v2"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/static"
 	ginzap "github.com/gin-contrib/zap"
@@ -31,21 +31,20 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/internal/ratelimiter"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/handlers"
 	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/service"
+	"d7y.io/dragonfly/v2/pkg/types"
 )
 
-const (
-	PrometheusSubsystemName = "dragonfly_manager"
-	OtelServiceName         = "dragonfly-manager"
-)
-
-func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer, assets static.ServeFileSystem) (*gin.Engine, error) {
+// Init initializes the gin engine with all the routes and middleware.
+func Init(cfg *config.Config, logDir string, service service.Service, database *database.Database, enforcer *casbin.Enforcer,
+	limiter ratelimiter.JobRateLimiter, assets static.ServeFileSystem) (*gin.Engine, error) {
 	// Set mode.
-	if !cfg.Verbose {
+	if cfg.Server.LogLevel == "info" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -53,7 +52,7 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	h := handlers.New(service)
 
 	// Prometheus metrics.
-	p := ginprometheus.NewPrometheus(PrometheusSubsystemName)
+	p := ginprometheus.NewPrometheus(types.ManagerName)
 	// URL removes query string.
 	// Prometheus metrics need to reduce label,
 	// refer to https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels.
@@ -63,8 +62,8 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	p.Use(r)
 
 	// Opentelemetry.
-	if cfg.Options.Telemetry.Jaeger != "" {
-		r.Use(otelgin.Middleware(OtelServiceName))
+	if cfg.Tracing.Protocol != "" && cfg.Tracing.Endpoint != "" {
+		r.Use(otelgin.Middleware(types.ManagerName))
 	}
 
 	// Gin middleware.
@@ -74,6 +73,9 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// CORS middleware.
 	r.Use(middlewares.CORS())
+
+	// Server middleware.
+	r.Use(middlewares.Server())
 
 	// gzip middleware.
 	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedExtensions([]string{".js", ".css"})))
@@ -87,6 +89,9 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 
 	// Personal access token middleware.
 	personalAccessToken := middlewares.PersonalAccessToken(database.DB)
+
+	// Audit middleware.
+	r.Use(middlewares.Audit(service))
 
 	// Error middleware.
 	r.Use(middlewares.Error())
@@ -159,6 +164,10 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	s.GET(":id", h.GetScheduler)
 	s.GET("", h.GetSchedulers)
 
+	// Scheduler Feature.
+	sf := apiv1.Group("/scheduler-features", jwt.MiddlewareFunc(), rbac)
+	sf.GET("", h.GetSchedulerFeatures)
+
 	// Seed Peer Cluster.
 	spc := apiv1.Group("/seed-peer-clusters", jwt.MiddlewareFunc(), rbac)
 	spc.POST("", h.CreateSeedPeerCluster)
@@ -184,25 +193,17 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	peer.GET(":id", h.GetPeer)
 	peer.GET("", h.GetPeers)
 
-	// Bucket.
-	bucket := apiv1.Group("/buckets", jwt.MiddlewareFunc(), rbac)
-	bucket.POST("", h.CreateBucket)
-	bucket.DELETE(":id", h.DestroyBucket)
-	bucket.GET(":id", h.GetBucket)
-	bucket.GET("", h.GetBuckets)
-
 	// Config.
-	config := apiv1.Group("/configs")
-	config.POST("", jwt.MiddlewareFunc(), rbac, h.CreateConfig)
-	config.DELETE(":id", jwt.MiddlewareFunc(), rbac, h.DestroyConfig)
-	config.PATCH(":id", jwt.MiddlewareFunc(), rbac, h.UpdateConfig)
-	config.GET(":id", jwt.MiddlewareFunc(), rbac, h.GetConfig)
+	config := apiv1.Group("/configs", jwt.MiddlewareFunc(), rbac)
+	config.POST("", h.CreateConfig)
+	config.DELETE(":id", h.DestroyConfig)
+	config.PATCH(":id", h.UpdateConfig)
+	config.GET(":id", h.GetConfig)
 	config.GET("", h.GetConfigs)
 
-	// TODO Add auth to the following routes and fix the tests.
 	// Job.
-	job := apiv1.Group("/jobs")
-	job.POST("", h.CreateJob)
+	job := apiv1.Group("/jobs", jwt.MiddlewareFunc(), rbac)
+	job.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	job.DELETE(":id", h.DestroyJob)
 	job.PATCH(":id", h.UpdateJob)
 	job.GET(":id", h.GetJob)
@@ -216,13 +217,6 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	cs.GET(":id", h.GetApplication)
 	cs.GET("", h.GetApplications)
 
-	// Model.
-	model := apiv1.Group("/models", jwt.MiddlewareFunc(), rbac)
-	model.DELETE(":id", h.DestroyModel)
-	model.PATCH(":id", h.UpdateModel)
-	model.GET(":id", h.GetModel)
-	model.GET("", h.GetModels)
-
 	// Personal Access Token.
 	pat := apiv1.Group("/personal-access-tokens", jwt.MiddlewareFunc(), rbac)
 	pat.POST("", h.CreatePersonalAccessToken)
@@ -231,12 +225,22 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	pat.GET(":id", h.GetPersonalAccessToken)
 	pat.GET("", h.GetPersonalAccessTokens)
 
+	// Persistent Cache Task.
+	pc := apiv1.Group("/persistent-cache-tasks", jwt.MiddlewareFunc(), rbac)
+	pc.DELETE(":id", h.DestroyPersistentCacheTask)
+	pc.GET(":id", h.GetPersistentCacheTask)
+	pc.GET("", h.GetPersistentCacheTasks)
+
+	// Audit.
+	at := apiv1.Group("/audits", jwt.MiddlewareFunc(), rbac)
+	at.GET("", h.GetAudits)
+
 	// Open API router.
 	oapiv1 := r.Group("/oapi/v1")
 
 	// Job.
 	ojob := oapiv1.Group("/jobs", personalAccessToken)
-	ojob.POST("", h.CreateJob)
+	ojob.POST("", middlewares.CreateJobRateLimiter(limiter), h.CreateJob)
 	ojob.DELETE(":id", h.DestroyJob)
 	ojob.PATCH(":id", h.UpdateJob)
 	ojob.GET(":id", h.GetJob)
@@ -249,13 +253,6 @@ func Init(cfg *config.Config, logDir string, service service.Service, database *
 	oc.PATCH(":id", h.UpdateCluster)
 	oc.GET(":id", h.GetCluster)
 	oc.GET("", h.GetClusters)
-
-	// TODO Remove this api.
-	// Compatible with the V1 preheat.
-	pv1 := r.Group("/preheats")
-	r.GET("_ping", h.GetHealth)
-	pv1.POST("", h.CreateV1Preheat)
-	pv1.GET(":id", h.GetV1Preheat)
 
 	// Health Check.
 	r.GET("/healthy", h.GetHealth)

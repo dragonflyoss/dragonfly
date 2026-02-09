@@ -17,14 +17,83 @@
 package idgen
 
 import (
-	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
 	pkgdigest "d7y.io/dragonfly/v2/pkg/digest"
 	neturl "d7y.io/dragonfly/v2/pkg/net/url"
-	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
+)
+
+// DefaultFilteredQueryParams is the default filtered query params to generate the task id.
+var DefaultFilteredQueryParams []string = slices.Concat(
+	S3FilteredQueryParams,
+	GcsFilteredQueryParams,
+	OssFilteredQueryParams,
+	ObsFilteredQueryParams,
+	CosFilteredQueryParams,
+	ContainerdFilteredQueryParams,
+)
+
+var (
+	// S3FilteredQueryParams is the default filtered query params with s3 protocol to generate the task id.
+	S3FilteredQueryParams = []string{
+		"X-Amz-Algorithm",
+		"X-Amz-Credential",
+		"X-Amz-Date",
+		"X-Amz-Expires",
+		"X-Amz-SignedHeaders",
+		"X-Amz-Signature",
+		"X-Amz-Security-Token",
+		"X-Amz-User-Agent",
+	}
+
+	// GcsFilteredQueryParams is the filtered query params with gcs protocol to generate the task id.
+	GcsFilteredQueryParams = []string{
+		"X-Goog-Algorithm",
+		"X-Goog-Credential",
+		"X-Goog-Date",
+		"X-Goog-Expires",
+		"X-Goog-SignedHeaders",
+		"X-Goog-Signature",
+	}
+
+	// OssFilteredQueryParams is the default filtered query params with oss protocol to generate the task id.
+	OssFilteredQueryParams = []string{
+		"OSSAccessKeyId",
+		"Expires",
+		"Signature",
+		"SecurityToken",
+	}
+
+	// ObsFilteredQueryParams is the default filtered query params with obs protocol to generate the task id.
+	ObsFilteredQueryParams = []string{
+		"AccessKeyId",
+		"Signature",
+		"Expires",
+		"X-Obs-Date",
+		"X-Obs-Security-Token",
+	}
+
+	// CosFilteredQueryParams is the default filtered query params with cos protocol to generate the task id.
+	CosFilteredQueryParams = []string{
+		"q-sign-algorithm",
+		"q-ak",
+		"q-sign-time",
+		"q-key-time",
+		"q-header-list",
+		"q-url-param-list",
+		"q-signature",
+		"x-cos-security-token",
+	}
+
+	// ContainerdFilteredQueryParams is the default filtered query params with containerd to generate the task id.
+	ContainerdFilteredQueryParams = []string{
+		"ns",
+	}
 )
 
 const (
@@ -51,7 +120,7 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 		return pkgdigest.SHA256FromStrings(url)
 	}
 
-	filteredQueryParams := parseFilteredQueryParams(meta.Filter)
+	filteredQueryParams := ParseFilteredQueryParams(meta.Filter)
 
 	var (
 		u   string
@@ -82,21 +151,38 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 	return pkgdigest.SHA256FromStrings(data...)
 }
 
-// parseFilteredQueryParams parses filtered query params.
-func parseFilteredQueryParams(rawFilteredQueryParams string) []string {
-	if pkgstrings.IsBlank(rawFilteredQueryParams) {
-		return nil
-	}
-
+// ParseFilteredQueryParams parses filtered query params.
+func ParseFilteredQueryParams(rawFilteredQueryParams string) []string {
 	return strings.Split(rawFilteredQueryParams, FilteredQueryParamsSeparator)
 }
 
-// TaskIDV2 generates v2 version of task id.
-func TaskIDV2(url, digest, tag, application string, pieceLength int32, filteredQueryParams []string) string {
+// FormatFilteredQueryParams formats a slice of strings into a filtered query params string.
+func FormatFilteredQueryParams(params []string) string {
+	return strings.Join(params, FilteredQueryParamsSeparator)
+}
+
+// TaskIDV2ByURLBased generates v2 version of task id by url based.
+func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
 	url, err := neturl.FilterQueryParams(url, filteredQueryParams)
 	if err != nil {
 		url = ""
 	}
 
-	return pkgdigest.SHA256FromStrings(url, digest, tag, application, fmt.Sprint(pieceLength))
+	params := []string{url, tag, application}
+	if pieceLength != nil {
+		params = append(params, strconv.FormatUint(*pieceLength, 10))
+	}
+
+	params = append(params, commonv2.TaskType_STANDARD.String())
+	return pkgdigest.SHA256FromStrings(params...)
+}
+
+// TaskIDV2ByContent generates v2 version of task id by content.
+func TaskIDV2ByContent(content string) string {
+	return pkgdigest.SHA256FromStrings(content)
+}
+
+// PersistentCacheTaskIDByContent generates persistent cache task id by content.
+func PersistentCacheTaskIDByContent(content string) string {
+	return pkgdigest.SHA256FromStrings(content)
 }

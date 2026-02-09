@@ -44,6 +44,10 @@ const (
 	// DefaultGRPCPort is default port for grpc server.
 	DefaultGRPCPort = 65003
 
+	// DefaultServerGRPCRequestRateLimit is the default number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	DefaultServerGRPCRequestRateLimit = 4000
+
 	// DefaultRESTAddr is default address for rest server.
 	DefaultRESTAddr = ":8080"
 )
@@ -53,13 +57,19 @@ const (
 	DefaultJWTRealm = "Dragonfly"
 
 	// DefaultJWTTimeout is default of timeout in jwt.
-	DefaultJWTTimeout = 2 * 24 * time.Hour
+	DefaultJWTTimeout = 14 * 24 * time.Hour
 
 	// DefaultJWTMaxRefresh is default of max refresh in jwt.
-	DefaultJWTMaxRefresh = 2 * 24 * time.Hour
+	DefaultJWTMaxRefresh = 7 * 24 * time.Hour
 )
 
 const (
+	// DefaultRedisPoolSize is default pool size for redis.
+	DefaultRedisPoolSize = 40
+
+	// DefaultRedisPoolTimeout is default pool timeout for redis.
+	DefaultRedisPoolTimeout = 10 * time.Second
+
 	// DefaultRedisDB is default db for redis.
 	DefaultRedisDB = 0
 
@@ -68,6 +78,9 @@ const (
 
 	// DefaultRedisBackendDB is default db for redis backend.
 	DefaultRedisBackendDB = 2
+
+	// DefaultRedisProxyAddr is default address for redis proxy.
+	DefaultRedisProxyAddr = ":65100"
 )
 
 const (
@@ -78,7 +91,7 @@ const (
 	DefaultLFUCacheTTL = 3 * time.Minute
 
 	// DefaultLFUCacheSize is default size for lfu cache.
-	DefaultLFUCacheSize = 100 * 1000
+	DefaultLFUCacheSize = 8 * 1000
 )
 
 const (
@@ -90,9 +103,6 @@ const (
 )
 
 const (
-	// DefaultJobPreheatRegistryTimeout is the default timeout for requesting registry to get token and manifest.
-	DefaultJobPreheatRegistryTimeout = 1 * time.Minute
-
 	// DefaultJobSyncPeersInterval is the default interval for syncing all peers information from the scheduler.
 	DefaultJobSyncPeersInterval = 24 * time.Hour
 
@@ -101,6 +111,13 @@ const (
 
 	// DefaultJobSyncPeersTimeout is the default timeout for syncing all peers information from the scheduler.
 	DefaultJobSyncPeersTimeout = 10 * time.Minute
+
+	// DefaultClusterJobRateLimit is default rate limit(requests per second) for job Open API by cluster.
+	DefaultClusterJobRateLimit uint32 = 10
+
+	// DefaultJobSyncPeersBatchSize is the default batch size for syncing all peers information from the scheduler and
+	// operating on the database.
+	DefaultJobSyncPeersBatchSize = 500
 )
 
 const (
@@ -155,9 +172,4 @@ var (
 var (
 	// DefaultNetworkEnableIPv6 is default value of enableIPv6.
 	DefaultNetworkEnableIPv6 = false
-)
-
-var (
-	// DefaultTrainerBucketName is default object storage bucket name of model.
-	DefaultTrainerBucketName = "models"
 )

@@ -1,8 +1,8 @@
 server:
   name: foo
-  workHome: foo
   cacheDir: foo
   logDir: foo
+  logLevel: debug
   logMaxSize: 512
   logMaxAge: 5
   logMaxBackups: 3
@@ -13,6 +13,11 @@ server:
     port:
       start: 65003
       end: 65003
+    tls:
+      caCert: foo
+      cert: foo
+      key: foo
+    requestRateLimit: 100
   rest:
     addr: :8080
     tls:
@@ -36,9 +41,9 @@ database:
     dbname: foo
     tlsConfig: preferred
     tls:
+      caCert: foo
       cert: foo
       key: foo
-      ca: foo
       insecureSkipVerify: true
     migrate: true
   postgres:
@@ -60,9 +65,14 @@ database:
     addrs: [foo, bar]
     masterName: baz
     password: bar
+    poolSize: 10
+    poolTimeout: 1s
     db: 0
     brokerDB: 1
     backendDB: 2
+    proxy:
+      enable: true
+      addr: ":65101"
 
 cache:
   redis:
@@ -72,34 +82,17 @@ cache:
     ttl: 1s
 
 job:
+  gc:
+    interval: 1s
+    ttl: 1s
+    batchSize: 100
   preheat:
-    registryTimeout: 1m
     tls:
       caCert: testdata/ca.crt
   syncPeers:
     interval: 13h
     timeout: 2m
-
-objectStorage:
-  enable: true
-  name: s3
-  endpoint: 127.0.0.1
-  accessKey: foo
-  secretKey: bar
-  region: baz
-  s3ForcePathStyle: false
-
-security:
-  autoIssueCert: true
-  caCert: testdata/ca.crt
-  caKey: testdata/ca.key
-  tlsPolicy: force
-  certSpec:
-    dnsNames:
-      - foo
-    ipAddresses:
-      - 0.0.0.0
-    validityPeriod: 1s
+    batchSize: 50
 
 metrics:
   enable: true
@@ -107,7 +100,3 @@ metrics:
 
 network:
   enableIPv6: true
-
-trainer:
-  enable: true
-  bucketName: models

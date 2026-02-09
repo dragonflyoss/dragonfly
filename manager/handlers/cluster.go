@@ -36,7 +36,8 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /clusters [post]
+// @Router /api/v1/clusters [post]
+// @Router /oapi/v1/clusters [post]
 func (h *Handlers) CreateCluster(ctx *gin.Context) {
 	var json types.CreateClusterRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +64,8 @@ func (h *Handlers) CreateCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /clusters/{id} [delete]
+// @Router /api/v1/clusters/{id} [delete]
+// @Router /oapi/v1/clusters/{id} [delete]
 func (h *Handlers) DestroyCluster(ctx *gin.Context) {
 	var params types.ClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +92,8 @@ func (h *Handlers) DestroyCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /clusters/{id} [patch]
+// @Router /api/v1/clusters/{id} [patch]
+// @Router /oapi/v1/clusters/{id} [patch]
 func (h *Handlers) UpdateCluster(ctx *gin.Context) {
 	var params types.ClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +126,8 @@ func (h *Handlers) UpdateCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /clusters/{id} [get]
+// @Router /api/v1/clusters/{id} [get]
+// @Router /oapi/v1/clusters/{id} [get]
 func (h *Handlers) GetCluster(ctx *gin.Context) {
 	var params types.ClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +155,8 @@ func (h *Handlers) GetCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /clusters [get]
+// @Router /api/v1/clusters [get]
+// @Router /oapi/v1/clusters [get]
 func (h *Handlers) GetClusters(ctx *gin.Context) {
 	var query types.GetClustersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

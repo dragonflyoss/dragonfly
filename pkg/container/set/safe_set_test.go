@@ -70,7 +70,7 @@ func TestSafeSetAdd_Concurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(len(nums))
-	for i := 0; i < len(nums); i++ {
+	for i := range len(nums) {
 		go func(i int) {
 			s.Add(i)
 			wg.Done()
@@ -238,7 +238,7 @@ func TestSafeSetLen_Concurrent(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		elems := s.Len()
-		for i := 0; i < N; i++ {
+		for range N {
 			newElems := s.Len()
 			if newElems < elems {
 				t.Errorf("Len shrunk from %v to %v", elems, newElems)
@@ -247,7 +247,7 @@ func TestSafeSetLen_Concurrent(t *testing.T) {
 		wg.Done()
 	}()
 
-	for i := 0; i < N; i++ {
+	for range N {
 		s.Add(rand.Int())
 	}
 	wg.Wait()
@@ -302,7 +302,7 @@ func TestSafeSetValues_Concurrent(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		elems := s.Values()
-		for i := 0; i < N; i++ {
+		for range N {
 			newElems := s.Values()
 			if len(newElems) < len(elems) {
 				t.Errorf("Values shrunk from %v to %v", elems, newElems)
@@ -311,7 +311,7 @@ func TestSafeSetValues_Concurrent(t *testing.T) {
 		wg.Done()
 	}()
 
-	for i := 0; i < N; i++ {
+	for i := range N {
 		s.Add(i)
 	}
 	wg.Wait()
@@ -359,7 +359,7 @@ func TestSafeSetClear_Concurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(len(nums))
-	for i := 0; i < len(nums); i++ {
+	for i := range len(nums) {
 		go func(i int) {
 			s.Add(i)
 			s.Clear()

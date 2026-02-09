@@ -1,0 +1,64 @@
+# Security Insights for DragonflyOSS/Dragonfly
+# This file adheres to the OSSF Security Insights Specification v2.0.0
+
+header:
+  schema-version: 2.0.0
+  last-updated: "2025-07-15"
+  last-reviewed: "2025-07-15"
+  url: https://github.com/dragonflyoss/dragonfly
+  comment: |
+    Security insights for the Dragonfly P2P-based file distribution and image acceleration system.
+
+project:
+  name: Dragonfly
+  homepage: https://d7y.io/
+  administrators:
+    - name: Dragonfly Maintainers
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  repositories:
+    - name: dragonfly
+      url: https://github.com/dragonflyoss/dragonfly
+      comment: |
+        Main repository for Dragonfly P2P-based file distribution and image acceleration system.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    security-policy: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
+    contact:
+      name: Dragonfly Security Team
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  documentation:
+    code-of-conduct: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
+
+repository:
+  url: https://github.com/dragonflyoss/dragonfly
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: Dragonfly Maintainers
+      affiliation: Cloud Native Computing Foundation (CNCF)
+      email: dragonfly-maintainers@googlegroups.com
+      primary: true
+  license:
+    url: https://github.com/dragonflyoss/dragonfly/blob/main/LICENSE
+    expression: Apache-2.0
+  security:
+    assessments:
+      self:
+        comment: |
+          Dragonfly undergoes regular security assessments as part of CNCF graduated project requirements.
+          The project follows CNCF security best practices and guidelines.
+        date: "2025-07-15"
+  documentation:
+    contributing-guide: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+    security-policy: https://github.com/dragonflyoss/dragonfly/blob/main/SECURITY.md
+  release:
+    automated-pipeline: true
+    distribution-points:
+      - uri: https://github.com/dragonflyoss/dragonfly/releases
+        comment: GitHub releases page with binaries and release notes

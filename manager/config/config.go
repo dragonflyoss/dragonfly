@@ -18,15 +18,13 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"strings"
+	"strconv"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
-	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
@@ -50,34 +48,25 @@ type Config struct {
 	// Job configuration.
 	Job JobConfig `yaml:"job" mapstructure:"job"`
 
-	// ObjectStorage configuration.
-	ObjectStorage ObjectStorageConfig `yaml:"objectStorage" mapstructure:"objectStorage"`
-
 	// Metrics configuration.
 	Metrics MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
 
-	// Security configuration.
-	Security SecurityConfig `yaml:"security" mapstructure:"security"`
-
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
-
-	// Trainer configuration.
-	Trainer TrainerConfig `yaml:"trainer" mapstructure:"trainer"`
 }
 
 type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
 
-	// Server work directory.
-	WorkHome string `yaml:"workHome" mapstructure:"workHome"`
-
 	// Server dynamic config cache directory.
 	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`
+
+	// LogLevel is log level of server, supported values are "debug", "info", "warn", "error", "panic", "fatal".
+	LogLevel string `yaml:"logLevel" mapstructure:"logLevel"`
 
 	// Maximum size in megabytes of log files before rotation (default: 1024)
 	LogMaxSize int `yaml:"logMaxSize" mapstructure:"logMaxSize"`
@@ -161,14 +150,14 @@ type MysqlConfig struct {
 }
 
 type MysqlTLSClientConfig struct {
-	// Client certificate file path.
+	// CACert is the file path of CA certificate for mysql.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the client certificate file path.
 	Cert string `yaml:"cert" mapstructure:"cert"`
 
-	// Client key file path.
+	// Key is the client key file path.
 	Key string `yaml:"key" mapstructure:"key"`
-
-	// CA file path.
-	CA string `yaml:"ca" mapstructure:"ca"`
 
 	// InsecureSkipVerify controls whether a client verifies the
 	// server's certificate chain and host name.
@@ -221,6 +210,16 @@ type PolardbConfig struct {
 	Migrate bool `yaml:"migrate" mapstructure:"migrate"`
 }
 
+type RedisProxyConfig struct {
+	// Enable redis proxy.
+	Enable bool `yaml:"enable" mapstructure:"enable"`
+
+	// Proxy address to listen on, default is ":65100".
+	Addr string `yaml:"addr" mapstructure:"addr"`
+}
+
+// RedisConfig is redis configuration.
+// see: https://redis.uptrace.dev/guide/universal.html
 type RedisConfig struct {
 	// DEPRECATED: Please use the `addrs` field instead.
 	Host string `yaml:"host" mapstructure:"host"`
@@ -240,6 +239,12 @@ type RedisConfig struct {
 	// Password is server password.
 	Password string `yaml:"password" mapstructure:"password"`
 
+	// SentinelUsername is sentinel server username.
+	SentinelUsername string `yaml:"sentinelUsername" mapstructure:"sentinelUsername"`
+
+	// SentinelPassword is sentinel server password.
+	SentinelPassword string `yaml:"sentinelPassword" mapstructure:"sentinelPassword"`
+
 	// DB is server cache DB name.
 	DB int `yaml:"db" mapstructure:"db"`
 
@@ -248,6 +253,20 @@ type RedisConfig struct {
 
 	// BackendDB is server backend DB name.
 	BackendDB int `yaml:"backendDB" mapstructure:"backendDB"`
+
+	// PoolSize is the maximum number of connections in the idle connection pool.
+	PoolSize int `yaml:"poolSize" mapstructure:"poolSize"`
+
+	// PoolTimeout is the maximum amount of time a connection may be idle before being closed.
+	PoolTimeout time.Duration `yaml:"poolTimeout" mapstructure:"poolTimeout"`
+
+	// Proxy is redis proxy configuration.
+	// If enabled, the manager starts a TCP proxy (defaulting to port 65100) that
+	// forwards requests to the Redis service. This allows Schedulers to connect to Redis
+	// via the manager's local port, which is useful for network isolation as only the
+	// manager's IP and port need to be exposed.
+	// Note: Only a single Redis address is supported by the proxy.
+	Proxy RedisProxyConfig `yaml:"proxy" mapstructure:"proxy"`
 }
 
 type CacheConfig struct {
@@ -276,10 +295,10 @@ type RESTConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 
 	// TLS server configuration.
-	TLS *TLSServerConfig `yaml:"tls" mapstructure:"tls"`
+	TLS *RESTTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 }
 
-type TLSServerConfig struct {
+type RESTTLSServerConfig struct {
 	// Certificate file path.
 	Cert string `yaml:"cert" mapstructure:"cert"`
 
@@ -295,6 +314,7 @@ type MetricsConfig struct {
 	Addr string `yaml:"addr" mapstructure:"addr"`
 }
 
+// GRPCConfig is gRPC server configuration.
 type GRPCConfig struct {
 	// AdvertiseIP is advertise ip.
 	AdvertiseIP net.IP `yaml:"advertiseIP" mapstructure:"advertiseIP"`
@@ -303,12 +323,33 @@ type GRPCConfig struct {
 	ListenIP net.IP `mapstructure:"listenIP" yaml:"listenIP"`
 
 	// Port is listen port.
-	PortRange TCPListenPortRange `yaml:"port" mapstructure:"port"`
+	Port TCPListenPortRange `yaml:"port" mapstructure:"port"`
+
+	// TLS server configuration.
+	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
+
+	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
 }
 
 type TCPListenPortRange struct {
+	// Start is the start port.
 	Start int
-	End   int
+
+	// End is the end port.
+	End int
+}
+
+type GRPCTLSServerConfig struct {
+	// CACert is the file path of CA certificate for mTLS.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the file path of server certificate for mTLS.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the file path of server key for mTLS.
+	Key string `yaml:"key" mapstructure:"key"`
 }
 
 type JobConfig struct {
@@ -320,11 +361,8 @@ type JobConfig struct {
 }
 
 type PreheatConfig struct {
-	// RegistryTimeout is the timeout for requesting registry to get token and manifest.
-	RegistryTimeout time.Duration `yaml:"registryTimeout" mapstructure:"registryTimeout"`
-
 	// TLS client configuration.
-	TLS *PreheatTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+	TLS PreheatTLSClientConfig `yaml:"tls" mapstructure:"tls"`
 }
 
 type SyncPeersConfig struct {
@@ -334,70 +372,18 @@ type SyncPeersConfig struct {
 
 	// Timeout is the timeout for syncing peers information from the single scheduler.
 	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
+
+	// BatchSize is the batch size when operating gorm database.
+	BatchSize int `yaml:"batchSize" mapstructure:"batchSize"`
 }
 
 type PreheatTLSClientConfig struct {
-	// CACert is the CA certificate for preheat tls handshake, it can be path or PEM format string.
+	// InsecureSkipVerify controls whether a client verifies the
+	// server's certificate chain and host name.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
+
+	// CACert is the file path of CA certificate for preheating.
 	CACert types.PEMContent `yaml:"caCert" mapstructure:"caCert"`
-}
-
-type ObjectStorageConfig struct {
-	// Enable object storage.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
-	// Name is object storage name of type, it can be s3, oss or obs.
-	Name string `mapstructure:"name" yaml:"name"`
-
-	// Region is storage region.
-	Region string `mapstructure:"region" yaml:"region"`
-
-	// Endpoint is datacenter endpoint.
-	Endpoint string `mapstructure:"endpoint" yaml:"endpoint"`
-
-	// AccessKey is access key ID.
-	AccessKey string `mapstructure:"accessKey" yaml:"accessKey"`
-
-	// SecretKey is access key secret.
-	SecretKey string `mapstructure:"secretKey" yaml:"secretKey"`
-
-	// S3ForcePathStyle sets force path style for s3, true by default.
-	// Set this to `true` to force the request to use path-style addressing,
-	// i.e., `http://s3.amazonaws.com/BUCKET/KEY`. By default, the S3 client
-	// will use virtual hosted bucket addressing when possible
-	// (`http://BUCKET.s3.amazonaws.com/KEY`).
-	// Refer to https://github.com/aws/aws-sdk-go/blob/main/aws/config.go#L118.
-	S3ForcePathStyle bool `mapstructure:"s3ForcePathStyle" yaml:"s3ForcePathStyle"`
-}
-
-type SecurityConfig struct {
-	// AutoIssueCert indicates to issue client certificates for all grpc call.
-	AutoIssueCert bool `yaml:"autoIssueCert" mapstructure:"autoIssueCert"`
-
-	// CACert is the CA certificate for all grpc tls handshake, it can be path or PEM format string.
-	CACert types.PEMContent `mapstructure:"caCert" yaml:"caCert"`
-
-	// CAKey is the CA private key, it can be path or PEM format string.
-	CAKey types.PEMContent `mapstructure:"caKey" yaml:"caKey"`
-
-	// TLSPolicy controls the grpc shandshake behaviors:
-	// force: both ClientHandshake and ServerHandshake are only support tls
-	// prefer: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support tls
-	// default: ServerHandshake supports tls and insecure (non-tls), ClientHandshake will only support insecure (non-tls)
-	TLSPolicy string `mapstructure:"tlsPolicy" yaml:"tlsPolicy"`
-
-	// CertSpec is the desired state of certificate.
-	CertSpec CertSpec `mapstructure:"certSpec" yaml:"certSpec"`
-}
-
-type CertSpec struct {
-	// DNSNames is a list of dns names be set on the certificate.
-	DNSNames []string `mapstructure:"dnsNames" yaml:"dnsNames"`
-
-	// IPAddresses is a list of ip addresses be set on the certificate.
-	IPAddresses []net.IP `mapstructure:"ipAddresses" yaml:"ipAddresses"`
-
-	// ValidityPeriod is the validity period  of certificate.
-	ValidityPeriod time.Duration `mapstructure:"validityPeriod" yaml:"validityPeriod"`
 }
 
 type NetworkConfig struct {
@@ -405,28 +391,30 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
-type TrainerConfig struct {
-	// Enable trainer service.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
-	// BucketName is the object storage bucket name of model.
-	BucketName string `yaml:"bucketName" mapstructure:"bucketName"`
-}
-
 // New config instance.
 func New() *Config {
 	return &Config{
+		Options: base.Options{
+			Console:   false,
+			PProfPort: -1,
+			Tracing: base.TracingConfig{
+				Path:        "/v1/traces",
+				ServiceName: types.ManagerName,
+			},
+		},
 		Server: ServerConfig{
 			Name: DefaultServerName,
 			GRPC: GRPCConfig{
-				PortRange: TCPListenPortRange{
+				Port: TCPListenPortRange{
 					Start: DefaultGRPCPort,
 					End:   DefaultGRPCPort,
 				},
+				RequestRateLimit: DefaultServerGRPCRequestRateLimit,
 			},
 			REST: RESTConfig{
 				Addr: DefaultRESTAddr,
 			},
+			LogLevel:      "info",
 			LogMaxSize:    DefaultLogRotateMaxSize,
 			LogMaxAge:     DefaultLogRotateMaxAge,
 			LogMaxBackups: DefaultLogRotateMaxBackups,
@@ -458,9 +446,15 @@ func New() *Config {
 				Migrate: true,
 			},
 			Redis: RedisConfig{
-				DB:        DefaultRedisDB,
-				BrokerDB:  DefaultRedisBrokerDB,
-				BackendDB: DefaultRedisBackendDB,
+				DB:          DefaultRedisDB,
+				BrokerDB:    DefaultRedisBrokerDB,
+				BackendDB:   DefaultRedisBackendDB,
+				PoolSize:    DefaultRedisPoolSize,
+				PoolTimeout: DefaultRedisPoolTimeout,
+				Proxy: RedisProxyConfig{
+					Enable: false,
+					Addr:   DefaultRedisProxyAddr,
+				},
 			},
 		},
 		Cache: CacheConfig{
@@ -474,24 +468,12 @@ func New() *Config {
 		},
 		Job: JobConfig{
 			Preheat: PreheatConfig{
-				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
+				TLS: PreheatTLSClientConfig{},
 			},
 			SyncPeers: SyncPeersConfig{
-				Interval: DefaultJobSyncPeersInterval,
-				Timeout:  DefaultJobSyncPeersTimeout,
-			},
-		},
-		ObjectStorage: ObjectStorageConfig{
-			Enable:           false,
-			S3ForcePathStyle: true,
-		},
-		Security: SecurityConfig{
-			AutoIssueCert: false,
-			TLSPolicy:     rpc.PreferTLSPolicy,
-			CertSpec: CertSpec{
-				DNSNames:       DefaultCertDNSNames,
-				IPAddresses:    DefaultCertIPAddresses,
-				ValidityPeriod: DefaultCertValidityPeriod,
+				Interval:  DefaultJobSyncPeersInterval,
+				Timeout:   DefaultJobSyncPeersTimeout,
+				BatchSize: DefaultJobSyncPeersBatchSize,
 			},
 		},
 		Metrics: MetricsConfig{
@@ -500,10 +482,6 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
-		},
-		Trainer: TrainerConfig{
-			Enable:     false,
-			BucketName: DefaultTrainerBucketName,
 		},
 	}
 }
@@ -522,13 +500,31 @@ func (cfg *Config) Validate() error {
 		return errors.New("grpc requires parameter listenIP")
 	}
 
+	if cfg.Server.GRPC.TLS != nil {
+		if cfg.Server.GRPC.TLS.CACert == "" {
+			return errors.New("grpc tls requires parameter caCert")
+		}
+
+		if cfg.Server.GRPC.TLS.Cert == "" {
+			return errors.New("grpc tls requires parameter cert")
+		}
+
+		if cfg.Server.GRPC.TLS.Key == "" {
+			return errors.New("grpc tls requires parameter key")
+		}
+	}
+
+	if cfg.Server.GRPC.RequestRateLimit <= 0 {
+		return errors.New("grpc requires parameter requestRateLimit")
+	}
+
 	if cfg.Server.REST.TLS != nil {
 		if cfg.Server.REST.TLS.Cert == "" {
-			return errors.New("tls requires parameter cert")
+			return errors.New("rest tls requires parameter cert")
 		}
 
 		if cfg.Server.REST.TLS.Key == "" {
-			return errors.New("tls requires parameter key")
+			return errors.New("rest tls requires parameter key")
 		}
 	}
 
@@ -574,16 +570,16 @@ func (cfg *Config) Validate() error {
 		}
 
 		if cfg.Database.Mysql.TLS != nil {
+			if cfg.Database.Mysql.TLS.CACert == "" {
+				return errors.New("mysql tls requires parameter caCert")
+			}
+
 			if cfg.Database.Mysql.TLS.Cert == "" {
-				return errors.New("tls requires parameter cert")
+				return errors.New("mysql tls requires parameter cert")
 			}
 
 			if cfg.Database.Mysql.TLS.Key == "" {
-				return errors.New("tls requires parameter key")
-			}
-
-			if cfg.Database.Mysql.TLS.CA == "" {
-				return errors.New("tls requires parameter ca")
+				return errors.New("mysql tls requires parameter key")
 			}
 		}
 	}
@@ -648,6 +644,12 @@ func (cfg *Config) Validate() error {
 		return errors.New("redis requires parameter backendDB")
 	}
 
+	if cfg.Database.Redis.Proxy.Enable {
+		if cfg.Database.Redis.Proxy.Addr == "" {
+			return errors.New("redis proxy requires parameter addr")
+		}
+	}
+
 	if cfg.Cache.Redis.TTL == 0 {
 		return errors.New("redis requires parameter ttl")
 	}
@@ -660,16 +662,6 @@ func (cfg *Config) Validate() error {
 		return errors.New("local requires parameter ttl")
 	}
 
-	if cfg.Job.Preheat.TLS != nil {
-		if cfg.Job.Preheat.TLS.CACert == "" {
-			return errors.New("preheat requires parameter caCert")
-		}
-	}
-
-	if cfg.Job.Preheat.RegistryTimeout == 0 {
-		return errors.New("preheat requires parameter registryTimeout")
-	}
-
 	if cfg.Job.SyncPeers.Interval <= MinJobSyncPeersInterval {
 		return errors.New("syncPeers requires parameter interval and it must be greater than 12 hours")
 	}
@@ -678,22 +670,8 @@ func (cfg *Config) Validate() error {
 		return errors.New("syncPeers requires parameter timeout")
 	}
 
-	if cfg.ObjectStorage.Enable {
-		if cfg.ObjectStorage.Name == "" {
-			return errors.New("objectStorage requires parameter name")
-		}
-
-		if !slices.Contains([]string{objectstorage.ServiceNameS3, objectstorage.ServiceNameOSS, objectstorage.ServiceNameOBS}, cfg.ObjectStorage.Name) {
-			return errors.New("objectStorage requires parameter name")
-		}
-
-		if cfg.ObjectStorage.AccessKey == "" {
-			return errors.New("objectStorage requires parameter accessKey")
-		}
-
-		if cfg.ObjectStorage.SecretKey == "" {
-			return errors.New("objectStorage requires parameter secretKey")
-		}
+	if cfg.Job.SyncPeers.BatchSize == 0 {
+		return errors.New("syncPeers requires parameter batchSize")
 	}
 
 	if cfg.Metrics.Enable {
@@ -702,44 +680,13 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if cfg.Security.AutoIssueCert {
-		if cfg.Security.CACert == "" {
-			return errors.New("security requires parameter caCert")
-		}
-
-		if cfg.Security.CAKey == "" {
-			return errors.New("security requires parameter caKey")
-		}
-
-		if !slices.Contains([]string{rpc.DefaultTLSPolicy, rpc.ForceTLSPolicy, rpc.PreferTLSPolicy}, cfg.Security.TLSPolicy) {
-			return errors.New("security requires parameter tlsPolicy")
-		}
-
-		if len(cfg.Security.CertSpec.IPAddresses) == 0 {
-			return errors.New("certSpec requires parameter ipAddresses")
-		}
-
-		if len(cfg.Security.CertSpec.DNSNames) == 0 {
-			return errors.New("certSpec requires parameter dnsNames")
-		}
-
-		if cfg.Security.CertSpec.ValidityPeriod <= 0 {
-			return errors.New("certSpec requires parameter validityPeriod")
-		}
-	}
-
-	if cfg.Trainer.Enable {
-		if cfg.Trainer.BucketName == "" {
-			return errors.New("trainer requires parameter bucketName")
-		}
-	}
 	return nil
 }
 
 func (cfg *Config) Convert() error {
 	// TODO Compatible with deprecated fields host and port.
 	if len(cfg.Database.Redis.Addrs) == 0 && cfg.Database.Redis.Host != "" && cfg.Database.Redis.Port > 0 {
-		cfg.Database.Redis.Addrs = []string{fmt.Sprintf("%s:%d", cfg.Database.Redis.Host, cfg.Database.Redis.Port)}
+		cfg.Database.Redis.Addrs = []string{net.JoinHostPort(cfg.Database.Redis.Host, strconv.Itoa(cfg.Database.Redis.Port))}
 	}
 
 	if cfg.Server.GRPC.AdvertiseIP == nil {

@@ -17,14 +17,27 @@
 package base
 
 type Options struct {
-	Console   bool            `yaml:"console" mapstructure:"console"`
-	Verbose   bool            `yaml:"verbose" mapstructure:"verbose"`
-	PProfPort int             `yaml:"pprof-port" mapstructure:"pprof-port"`
-	Telemetry TelemetryOption `yaml:",inline" mapstructure:",squash"`
+	Console   bool          `yaml:"console" mapstructure:"console"`
+	PProfPort int           `yaml:"pprofPort" mapstructure:"pprofPort"`
+	Tracing   TracingConfig `yaml:"tracing" mapstructure:"tracing"`
 }
 
-// TelemetryOption is the option for telemetry
-type TelemetryOption struct {
-	Jaeger      string `yaml:"jaeger" mapstructure:"jaeger"`
+// TracingConfig defines the configuration for OpenTelemetry tracing.
+type TracingConfig struct {
+	// Protocol specifies the communication protocol for the tracing server.
+	// Supported values: "http", "https" and "grpc".
+	// This determines how tracing logs are transmitted to the server.
+	Protocol string `yaml:"protocol" mapstructure:"protocol"`
+
+	// Endpoint is the endpoint to report tracing log, example: "localhost:4317".
+	Endpoint string `yaml:"endpoint" mapstructure:"endpoint"`
+
+	// Path is the path to the tracing server, example: "/v1/traces" if the protocol is "http" or "https".
+	Path string `yaml:"path" mapstructure:"path"`
+
+	// ServiceName is the name of the service for tracing.
 	ServiceName string `yaml:"service-name" mapstructure:"service-name"`
+
+	// Headers are additional headers to be sent with tracing requests.
+	Headers map[string]string `yaml:"headers" mapstructure:"headers"`
 }

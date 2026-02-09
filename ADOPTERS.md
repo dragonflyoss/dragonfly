@@ -23,7 +23,7 @@ visit [VKE](https://www.volcengine.com/product/vke) & [CR](https://www.volcengin
 [Container Registry](https://www.alibabacloud.com/product/container-registry), refer to
 [Use P2P Acceleration in ACK](https://www.alibabacloud.com/help/en/container-registry/latest/use-the-p2p-acceleration-feature-in-ask-and-ack-clusters).
 **Recommend to deploy the more efficient and stable
-[Dragonfly 2.0](https://github.com/dragonflyoss/Dragonfly2)**,
+[Dragonfly 2.0](https://github.com/dragonflyoss/dragonfly)**,
 refer to [Setup Dragonfly in Kubernetes](https://d7y.io/docs/getting-started/quick-start/kubernetes/).
 
 ### Organizations
@@ -95,3 +95,5 @@ refer to [Setup Dragonfly in Kubernetes](https://d7y.io/docs/getting-started/qui
 **_[Amap](https://mobile.amap.com/)_** - Large-scale image and file distribution.
 
 **_[iQIYI](https://www.iqiyi.com/)_** - Large-scale image distribution.
+
+**_[Datadog](https://www.datadoghq.com/)_** - Image distribution with lazy loading.

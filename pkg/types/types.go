@@ -77,6 +77,10 @@ func (p *PEMContent) loadPEM(content string) error {
 	return nil
 }
 
+func (p PEMContent) ToBytes() []byte {
+	return []byte(strings.TrimSpace(string(p)))
+}
+
 // HostType is the type of host.
 type HostType int
 
@@ -86,12 +90,6 @@ const (
 
 	// HostTypeSuperSeed is the super seed type of host.
 	HostTypeSuperSeed
-
-	// HostTypeStrongSeed is the strong seed type of host.
-	HostTypeStrongSeed
-
-	// HostTypeWeakSeed is the weak seed type of host.
-	HostTypeWeakSeed
 )
 
 const (
@@ -100,12 +98,6 @@ const (
 
 	// HostTypeSuperSeedName is the name of super host type.
 	HostTypeSuperSeedName = "super"
-
-	// HostTypeStrongSeedName is the name of strong host type.
-	HostTypeStrongSeedName = "strong"
-
-	// HostTypeWeakSeedName is the name of weak host type.
-	HostTypeWeakSeedName = "weak"
 )
 
 // Name returns the name of host type.
@@ -113,10 +105,8 @@ func (h HostType) Name() string {
 	switch h {
 	case HostTypeSuperSeed:
 		return HostTypeSuperSeedName
-	case HostTypeStrongSeed:
-		return HostTypeStrongSeedName
-	case HostTypeWeakSeed:
-		return HostTypeWeakSeedName
+	case HostTypeNormal:
+		return HostTypeNormalName
 	}
 
 	return HostTypeNormalName
@@ -127,10 +117,8 @@ func ParseHostType(name string) HostType {
 	switch name {
 	case HostTypeSuperSeedName:
 		return HostTypeSuperSeed
-	case HostTypeStrongSeedName:
-		return HostTypeStrongSeed
-	case HostTypeWeakSeedName:
-		return HostTypeWeakSeed
+	case HostTypeNormalName:
+		return HostTypeNormal
 	}
 
 	return HostTypeNormal
@@ -140,25 +128,25 @@ func ParseHostType(name string) HostType {
 func TaskTypeV1ToV2(typ commonv1.TaskType) commonv2.TaskType {
 	switch typ {
 	case commonv1.TaskType_Normal:
-		return commonv2.TaskType_DFDAEMON
-	case commonv1.TaskType_DfCache:
-		return commonv2.TaskType_DFCACHE
+		return commonv2.TaskType_STANDARD
 	case commonv1.TaskType_DfStore:
-		return commonv2.TaskType_DFSTORE
+		return commonv2.TaskType_PERSISTENT
+	case commonv1.TaskType_DfCache:
+		return commonv2.TaskType_PERSISTENT_CACHE
 	}
 
-	return commonv2.TaskType_DFDAEMON
+	return commonv2.TaskType_STANDARD
 }
 
 // TaskTypeV2ToV1 converts task type from v2 to v1.
 func TaskTypeV2ToV1(typ commonv2.TaskType) commonv1.TaskType {
 	switch typ {
-	case commonv2.TaskType_DFDAEMON:
+	case commonv2.TaskType_STANDARD:
 		return commonv1.TaskType_Normal
-	case commonv2.TaskType_DFCACHE:
-		return commonv1.TaskType_DfCache
-	case commonv2.TaskType_DFSTORE:
+	case commonv2.TaskType_PERSISTENT:
 		return commonv1.TaskType_DfStore
+	case commonv2.TaskType_PERSISTENT_CACHE:
+		return commonv1.TaskType_DfCache
 	}
 
 	return commonv1.TaskType_Normal

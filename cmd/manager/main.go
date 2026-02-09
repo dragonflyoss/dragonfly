@@ -27,7 +27,11 @@ import (
 // @contact.url https://d7y.io
 // @license.name Apache 2.0
 // @host localhost:8080
-// @BasePath /api/v1
+// @BasePath /
+// @tag.name api
+// @tag.description API router (/api/v1)
+// @tag.name oapi
+// @tag.description open API router (/oapi/v1)
 func main() {
 	cmd.Execute()
 }

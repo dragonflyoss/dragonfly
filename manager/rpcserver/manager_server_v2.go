@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"time"
 
 	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
@@ -161,7 +162,7 @@ func (s *managerServerV2) GetSeedPeer(ctx context.Context, req *managerv2.GetSee
 	return &pbSeedPeer, nil
 }
 
-// List acitve seed peers configuration.
+// List active seed peers configuration.
 func (s *managerServerV2) ListSeedPeers(ctx context.Context, req *managerv2.ListSeedPeersRequest) (*managerv2.ListSeedPeersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	log.Debugf("list seed peers, version %s, commit %s", req.Version, req.Commit)
@@ -463,12 +464,28 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Use default scheduler features if not set, compatible with the old version.
+	schedulerFeatures := types.DefaultSchedulerFeatures
+	if req.GetFeatures() != nil {
+		schedulerFeatures = req.GetFeatures()
+	}
+
+	var schedulerConfig models.JSONMap
+	if len(req.Config) > 0 {
+		if err := json.Unmarshal(req.Config, &schedulerConfig); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	if err := s.db.WithContext(ctx).Model(&scheduler).Updates(models.Scheduler{
 		IDC:                req.GetIdc(),
 		Location:           req.GetLocation(),
 		IP:                 req.GetIp(),
 		Port:               req.GetPort(),
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
+		Features:           schedulerFeatures,
+		LastKeepAliveAt:    time.Now(),
+		Config:             schedulerConfig,
 	}).Error; err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -501,14 +518,29 @@ func (s *managerServerV2) UpdateScheduler(ctx context.Context, req *managerv2.Up
 
 // Create scheduler and associate cluster.
 func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.UpdateSchedulerRequest) (*managerv2.Scheduler, error) {
+	// Use default scheduler features if not set, compatible with the old version.
+	schedulerFeatures := types.DefaultSchedulerFeatures
+	if req.GetFeatures() != nil {
+		schedulerFeatures = req.GetFeatures()
+	}
+
+	var schedulerConfig models.JSONMap
+	if len(req.Config) > 0 {
+		if err := json.Unmarshal(req.Config, &schedulerConfig); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	scheduler := models.Scheduler{
 		Hostname:           req.GetHostname(),
 		IDC:                req.GetIdc(),
 		Location:           req.GetLocation(),
 		IP:                 req.GetIp(),
 		Port:               req.GetPort(),
-		Features:           types.DefaultSchedulerFeatures,
+		Features:           schedulerFeatures,
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
+		LastKeepAliveAt:    time.Now(),
+		Config:             schedulerConfig,
 	}
 
 	if err := s.db.WithContext(ctx).Create(&scheduler).Error; err != nil {
@@ -534,15 +566,26 @@ func (s *managerServerV2) createScheduler(ctx context.Context, req *managerv2.Up
 	}, nil
 }
 
-// List acitve schedulers configuration.
+// List active schedulers configuration.
 func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
+	if req.SchedulerClusterId != 0 {
+		return s.listSchedulersByClusterID(ctx, req)
+	}
+
+	// Fallback to the legacy way to list schedulers by searcher.
+	return s.listSchedulersBySearcher(ctx, req)
+}
+
+// listSchedulersBySearcher is the legacy way to list schedulers by searcher, which will use the searcher plugin to query the schedulers
+// filter by hostname/ip/idc/location.
+func (s *managerServerV2) listSchedulersBySearcher(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
-	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
+	log.Debugf("[legacy] list schedulers, version %s, commit %s", req.Version, req.Commit)
 	metrics.SearchSchedulerClusterCount.WithLabelValues(req.Version, req.Commit).Inc()
 
 	// Cache hit.
 	var pbListSchedulersResponse managerv2.ListSchedulersResponse
-	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip)
+	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip, req.Version)
 
 	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
 		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
@@ -557,7 +600,7 @@ func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.Lis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Remove schedulers which not have scehdule featrue. As OceanBase does not support JSON type,
+	// Remove schedulers which not have schedule feature. As OceanBase does not support JSON type,
 	// it is not possible to use datatypes.JSONQuery for filtering.
 	var tmpSchedulerClusters []models.SchedulerCluster
 	for _, schedulerCluster := range schedulerClusters {
@@ -648,6 +691,108 @@ func (s *managerServerV2) ListSchedulers(ctx context.Context, req *managerv2.Lis
 			Features:           features,
 			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
 			SeedPeers:          seedPeers,
+		})
+	}
+
+	// If scheduler is not found, even no default scheduler is returned.
+	// It means that the scheduler has not been started,
+	// and the results are not cached, waiting for the scheduler to be ready.
+	if len(pbListSchedulersResponse.Schedulers) == 0 {
+		return &pbListSchedulersResponse, nil
+	}
+
+	// Cache data.
+	if err := s.cache.Once(&cachev9.Item{
+		Ctx:   ctx,
+		Key:   cacheKey,
+		Value: &pbListSchedulersResponse,
+		TTL:   s.cache.TTL,
+	}); err != nil {
+		log.Error(err)
+	}
+
+	return &pbListSchedulersResponse, nil
+}
+
+// listSchedulersByClusterID is the direct way to list the schedulers by the scheduler cluster id.
+func (s *managerServerV2) listSchedulersByClusterID(ctx context.Context, req *managerv2.ListSchedulersRequest) (*managerv2.ListSchedulersResponse, error) {
+	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
+	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
+	metrics.SearchSchedulerClusterCount.WithLabelValues(req.Version, req.Commit).Inc()
+
+	// Cache hit.
+	var pbListSchedulersResponse managerv2.ListSchedulersResponse
+	cacheKey := pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(req.SchedulerClusterId))
+
+	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
+		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
+	} else {
+		log.Debugf("%s cache hit", cacheKey)
+		return &pbListSchedulersResponse, nil
+	}
+
+	var schedulers []models.Scheduler
+	if err := s.db.Find(&schedulers, "scheduler_cluster_id = ?", req.SchedulerClusterId).Error; err != nil {
+		log.Errorf("failed to get schedulers by cluster id %d: %s", req.SchedulerClusterId, err.Error())
+		return nil, err
+	}
+
+	var schedulerCluster models.SchedulerCluster
+	if err := s.db.First(&schedulerCluster, "id = ?", req.SchedulerClusterId).Error; err != nil {
+		log.Errorf("failed to get scheduler cluster by id %d: %s", req.SchedulerClusterId, err.Error())
+		return nil, err
+	}
+
+	config, err := schedulerCluster.Config.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster config: %s", err.Error())
+		return nil, err
+	}
+
+	clientConfig, err := schedulerCluster.ClientConfig.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster client config: %s", err.Error())
+		return nil, err
+	}
+
+	scopes, err := schedulerCluster.Scopes.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster scopes: %s", err.Error())
+		return nil, err
+	}
+
+	seedClientConfig, err := schedulerCluster.SeedClientConfig.MarshalJSON()
+	if err != nil {
+		log.Errorf("failed to marshal scheduler cluster seed client config: %s", err.Error())
+		return nil, err
+	}
+
+	for _, scheduler := range schedulers {
+		// Marshal features of scheduler.
+		features, err := scheduler.Features.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
+		pbListSchedulersResponse.Schedulers = append(pbListSchedulersResponse.Schedulers, &managerv2.Scheduler{
+			Id:                 uint64(scheduler.ID),
+			Hostname:           scheduler.Hostname,
+			Idc:                &scheduler.IDC,
+			Location:           &scheduler.Location,
+			Ip:                 scheduler.IP,
+			Port:               scheduler.Port,
+			State:              scheduler.State,
+			Features:           features,
+			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
+			SchedulerCluster: &managerv2.SchedulerCluster{
+				Id:               uint64(schedulerCluster.ID),
+				Name:             schedulerCluster.Name,
+				Bio:              schedulerCluster.BIO,
+				Config:           config,
+				ClientConfig:     clientConfig,
+				Scopes:           scopes,
+				SeedClientConfig: seedClientConfig,
+			},
 		})
 	}
 
@@ -773,9 +918,18 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 			return status.Error(codes.Internal, err.Error())
 		}
 
+		// Clean legacy scheduler cache.
 		if err := s.cache.Delete(
 			context.TODO(),
 			pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
+		); err != nil {
+			log.Warnf("refresh keepalive status failed: %s", err.Error())
+		}
+
+		// Clean scheduler cache.
+		if err := s.cache.Delete(
+			context.TODO(),
+			pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
 		}
@@ -803,8 +957,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 	}
 
 	for {
-		_, err := stream.Recv()
-		if err != nil {
+		if _, err := stream.Recv(); err != nil {
 			// Inactive scheduler.
 			if sourceType == managerv2.SourceType_SCHEDULER_SOURCE {
 				scheduler := models.Scheduler{}
@@ -818,9 +971,18 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 					return status.Error(codes.Internal, err.Error())
 				}
 
+				// Clean legacy scheduler cache.
 				if err := s.cache.Delete(
 					context.TODO(),
 					pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
+				); err != nil {
+					log.Warnf("refresh keepalive status failed: %s", err.Error())
+				}
+
+				// Clean scheduler cache.
+				if err := s.cache.Delete(
+					context.TODO(),
+					pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())
 				}
@@ -854,6 +1016,20 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 			log.Errorf("keepalive failed: %s", err.Error())
 			return status.Error(codes.Unknown, err.Error())
+		}
+
+		// Keepalive successful, update last heartbeat time.
+		if sourceType == managerv2.SourceType_SCHEDULER_SOURCE {
+			scheduler := models.Scheduler{}
+			if err := s.db.First(&scheduler, models.Scheduler{
+				Hostname:           hostname,
+				IP:                 ip,
+				SchedulerClusterID: clusterID,
+			}).Updates(models.Scheduler{
+				LastKeepAliveAt: time.Now(),
+			}).Error; err != nil {
+				log.Errorf("update scheduler last heartbeat failed: %s", err.Error())
+			}
 		}
 	}
 }

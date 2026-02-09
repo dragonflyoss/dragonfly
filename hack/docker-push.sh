@@ -15,17 +15,11 @@ docker-push() {
 
 main() {
     case "${1-}" in
-    dfdaemon)
-        docker-push dfdaemon
-        ;;
     scheduler)
         docker-push scheduler
         ;;
     manager)
         docker-push manager
-        ;;
-    trainer)
-        docker-push trainer
     esac
 }
 

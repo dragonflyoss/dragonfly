@@ -30,8 +30,8 @@ import (
 
 type BaseModel struct {
 	ID        uint                  `gorm:"primarykey;comment:id" json:"id"`
-	CreatedAt time.Time             `gorm:"column:created_at;type:timestamp;default:current_timestamp" json:"created_at"`
-	UpdatedAt time.Time             `gorm:"column:updated_at;type:timestamp;default:current_timestamp" json:"updated_at"`
+	CreatedAt time.Time             `json:"created_at"`
+	UpdatedAt time.Time             `json:"updated_at"`
 	IsDel     soft_delete.DeletedAt `gorm:"softDelete:flag;comment:soft delete flag" json:"is_del"`
 }
 
@@ -46,13 +46,18 @@ type JSONMap map[string]any
 
 func (m JSONMap) Value() (driver.Value, error) {
 	if m == nil {
-		return nil, nil
+		return "{}", nil
 	}
 	ba, err := m.MarshalJSON()
 	return string(ba), err
 }
 
 func (m *JSONMap) Scan(val any) error {
+	if val == nil {
+		*m = JSONMap(map[string]any{})
+		return nil
+	}
+
 	var ba []byte
 	switch v := val.(type) {
 	case []byte:
@@ -62,6 +67,12 @@ func (m *JSONMap) Scan(val any) error {
 	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", val))
 	}
+
+	if len(ba) == 0 || string(ba) == "null" {
+		*m = JSONMap(map[string]any{})
+		return nil
+	}
+
 	t := map[string]any{}
 	err := json.Unmarshal(ba, &t)
 	*m = JSONMap(t)
@@ -88,7 +99,16 @@ func (m JSONMap) GormDataType() string {
 }
 
 func (JSONMap) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "text"
+	switch db.Name() {
+	case "postgres":
+		return "text"
+	case "sqlite":
+		return "TEXT"
+	case "sqlserver":
+		return "NVARCHAR(MAX)"
+	default:
+		return "longtext"
+	}
 }
 
 type Array []string
@@ -102,6 +122,11 @@ func (a Array) Value() (driver.Value, error) {
 }
 
 func (a *Array) Scan(val any) error {
+	if val == nil {
+		*a = Array([]string{})
+		return nil
+	}
+
 	var ba []byte
 	switch v := val.(type) {
 	case []byte:
@@ -111,6 +136,12 @@ func (a *Array) Scan(val any) error {
 	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", val))
 	}
+
+	if len(ba) == 0 || string(ba) == "null" {
+		*a = Array([]string{})
+		return nil
+	}
+
 	t := []string{}
 	err := json.Unmarshal(ba, &t)
 	*a = Array(t)
@@ -137,5 +168,14 @@ func (Array) GormDataType() string {
 }
 
 func (Array) GormDBDataType(db *gorm.DB, field *schema.Field) string {
-	return "text"
+	switch db.Name() {
+	case "postgres":
+		return "text"
+	case "sqlite":
+		return "TEXT"
+	case "sqlserver":
+		return "NVARCHAR(MAX)"
+	default:
+		return "longtext"
+	}
 }

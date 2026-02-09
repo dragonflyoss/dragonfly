@@ -29,14 +29,32 @@ const (
 
 	// SyncPeersJob is the name of syncing peers job.
 	SyncPeersJob = "sync_peers"
+
+	// GetTaskJob is the name of getting task job.
+	GetTaskJob = "get_task"
+
+	// GetImageDistributionJob is the job name of getting image distribution.
+	GetImageDistributionJob = "get_image_distribution"
+
+	// DeleteTaskJob is the name of deleting task job.
+	DeleteTaskJob = "delete_task"
+
+	// GCJob is the name of gc job.
+	GCJob = "gc"
+
+	// GroupJobStateConcurrencyLimit is the concurrency limit of group job state.
+	GroupJobStateConcurrencyLimit = 10
 )
 
 // Machinery server configuration.
 const (
-	DefaultResultsExpireIn     = 86400
-	DefaultRedisMaxIdle        = 10
-	DefaultRedisIdleTimeout    = 300
-	DefaultRedisReadTimeout    = 60
-	DefaultRedisWriteTimeout   = 60
-	DefaultRedisConnectTimeout = 60
+	DefaultResultsExpireIn             = 86400
+	DefaultRedisMaxIdle                = 70
+	DefaultRedisMaxActive              = 100
+	DefaultRedisIdleTimeout            = 30
+	DefaultRedisReadTimeout            = 60
+	DefaultRedisWriteTimeout           = 60
+	DefaultRedisConnectTimeout         = 60
+	DefaultRedisNormalTasksPollPeriod  = 2500
+	DefaultRedisDelayedTasksPollPeriod = 500
 )

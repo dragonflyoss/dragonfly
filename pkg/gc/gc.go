@@ -19,9 +19,24 @@
 package gc
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
+)
+
+type ContextKey string
+
+func (ck ContextKey) String() string {
+	return string(ck)
+}
+
+var (
+	// ContextKeyUserID is the key for user ID in context.
+	ContextKeyUserID ContextKey = "user_id"
+
+	// ContextKeyTaskID is the key for task ID in context.
+	ContextKeyTaskID ContextKey = "task_id"
 )
 
 // GC is the interface used for release resource.
@@ -30,13 +45,13 @@ type GC interface {
 	Add(Task) error
 
 	// Run GC task.
-	Run(string) error
+	Run(context.Context, string) error
 
 	// Run all registered GC tasks.
-	RunAll()
+	RunAll(context.Context)
 
 	// Start running the GC task.
-	Start()
+	Start(context.Context)
 
 	// Stop running the GC task.
 	Stop()
@@ -59,7 +74,7 @@ func WithLogger(logger Logger) Option {
 	}
 }
 
-// New returns a new GC instence.
+// New returns a new GC instance.
 func New(options ...Option) GC {
 	g := &gc{
 		tasks:  &sync.Map{},
@@ -83,29 +98,30 @@ func (g gc) Add(t Task) error {
 	return nil
 }
 
-func (g gc) Run(id string) error {
+func (g gc) Run(ctx context.Context, id string) error {
 	v, ok := g.tasks.Load(id)
 	if !ok {
 		return fmt.Errorf("can not find task %s", id)
 	}
 
-	go g.run(v.(Task))
+	go g.run(ctx, v.(Task))
 	return nil
 }
 
-func (g gc) RunAll() {
-	g.runAll()
+func (g gc) RunAll(ctx context.Context) {
+	g.runAll(ctx)
 }
 
-func (g gc) Start() {
+func (g gc) Start(ctx context.Context) {
 	g.tasks.Range(func(k, v any) bool {
 		go func() {
 			task := v.(Task)
 			tick := time.NewTicker(task.Interval)
+			defer tick.Stop()
 			for {
 				select {
 				case <-tick.C:
-					g.run(task)
+					g.run(ctx, task)
 				case <-g.done:
 					g.logger.Infof("%s GC stop", k)
 					return
@@ -120,21 +136,21 @@ func (g gc) Stop() {
 	close(g.done)
 }
 
-func (g gc) runAll() {
+func (g gc) runAll(ctx context.Context) {
 	g.tasks.Range(func(k, v any) bool {
-		go g.run(v.(Task))
+		go g.run(ctx, v.(Task))
 		return true
 	})
 }
 
-func (g gc) run(t Task) {
+func (g gc) run(ctx context.Context, t Task) {
 	done := make(chan struct{})
 
 	go func() {
 		g.logger.Infof("%s GC start", t.ID)
 		defer close(done)
 
-		if err := t.Runner.RunGC(); err != nil {
+		if err := t.Runner.RunGC(ctx); err != nil {
 			g.logger.Errorf("%s GC error: %v", t.ID, err)
 			return
 		}

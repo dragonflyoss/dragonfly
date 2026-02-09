@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -40,12 +41,15 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "manager",
 	Short: "The central manager of dragonfly.",
-	Long: `manager is a long-running process and is mainly responsible 
+	Long: `manager is a long-running process and is mainly responsible
 for managing schedulers and seed peers, offering http apis and portal, etc.`,
 	Args:              cobra.NoArgs,
 	DisableAutoGenTag: true,
 	SilenceUsage:      true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		// Convert config.
 		if err := cfg.Convert(); err != nil {
 			return err
@@ -68,12 +72,12 @@ for managing schedulers and seed peers, offering http apis and portal, etc.`,
 			MaxBackups: cfg.Server.LogMaxBackups}
 
 		// Initialize logger.
-		if err := logger.InitManager(cfg.Verbose, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+		if err := logger.InitManager(cfg.Server.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
 			return fmt.Errorf("init manager logger: %w", err)
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.ManagerName))
 
-		return runManager(d)
+		return runManager(ctx, d)
 	},
 }
 
@@ -94,12 +98,9 @@ func init() {
 	dependency.InitCommandAndConfig(rootCmd, true, cfg)
 }
 
+// initDfpath initializes dfpath.
 func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	var options []dfpath.Option
-	if cfg.WorkHome != "" {
-		options = append(options, dfpath.WithWorkHome(cfg.WorkHome))
-	}
-
 	if cfg.LogDir != "" {
 		options = append(options, dfpath.WithLogDir(cfg.LogDir))
 	}
@@ -115,11 +116,10 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	return dfpath.New(options...)
 }
 
-func runManager(d dfpath.Dfpath) error {
+func runManager(ctx context.Context, d dfpath.Dfpath) error {
 	logger.Infof("version:\n%s", version.Version())
-
-	ff := dependency.InitMonitor(cfg.PProfPort, cfg.Telemetry)
-	defer ff()
+	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
+	defer shutdown()
 
 	svr, err := manager.New(cfg, d)
 	if err != nil {

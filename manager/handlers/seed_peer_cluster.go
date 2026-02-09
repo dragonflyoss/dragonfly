@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters [post]
+// @Router /api/v1/seed-peer-clusters [post]
 func (h *Handlers) CreateSeedPeerCluster(ctx *gin.Context) {
 	var json types.CreateSeedPeerClusterRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateSeedPeerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters/{id} [delete]
+// @Router /api/v1/seed-peer-clusters/{id} [delete]
 func (h *Handlers) DestroySeedPeerCluster(ctx *gin.Context) {
 	var params types.SeedPeerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroySeedPeerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters/{id} [patch]
+// @Router /api/v1/seed-peer-clusters/{id} [patch]
 func (h *Handlers) UpdateSeedPeerCluster(ctx *gin.Context) {
 	var params types.SeedPeerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateSeedPeerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters/{id} [get]
+// @Router /api/v1/seed-peer-clusters/{id} [get]
 func (h *Handlers) GetSeedPeerCluster(ctx *gin.Context) {
 	var params types.SeedPeerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetSeedPeerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters [get]
+// @Router /api/v1/seed-peer-clusters [get]
 func (h *Handlers) GetSeedPeerClusters(ctx *gin.Context) {
 	var query types.GetSeedPeerClustersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
@@ -181,7 +181,7 @@ func (h *Handlers) GetSeedPeerClusters(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters/{id}/seed-peers/{seed_peer_id} [put]
+// @Router /api/v1/seed-peer-clusters/{id}/seed-peers/{seed_peer_id} [put]
 func (h *Handlers) AddSeedPeerToSeedPeerCluster(ctx *gin.Context) {
 	var params types.AddSeedPeerToSeedPeerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -208,7 +208,7 @@ func (h *Handlers) AddSeedPeerToSeedPeerCluster(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id} [put]
+// @Router /api/v1/seed-peer-clusters/{id}/scheduler-clusters/{scheduler_cluster_id} [put]
 func (h *Handlers) AddSchedulerClusterToSeedPeerCluster(ctx *gin.Context) {
 	var params types.AddSchedulerClusterToSeedPeerClusterParams
 	if err := ctx.ShouldBindUri(&params); err != nil {

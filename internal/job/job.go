@@ -24,24 +24,32 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1"
-	machineryv1config "github.com/RichardKnop/machinery/v1/config"
-	machineryv1log "github.com/RichardKnop/machinery/v1/log"
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/dragonflyoss/machinery/v1"
+	machineryv1config "github.com/dragonflyoss/machinery/v1/config"
+	machineryv1log "github.com/dragonflyoss/machinery/v1/log"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
+// tracer is a global tracer for job.
+var tracer = otel.Tracer("job")
+
 type Config struct {
-	Addrs      []string
-	MasterName string
-	Username   string
-	Password   string
-	BrokerDB   int
-	BackendDB  int
+	Addrs            []string
+	MasterName       string
+	Username         string
+	Password         string
+	SentinelUsername string
+	SentinelPassword string
+	BrokerDB         int
+	BackendDB        int
 }
 
 type Job struct {
@@ -55,27 +63,46 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 	machineryv1log.Set(&MachineryLogger{})
 
 	if err := ping(&redis.UniversalOptions{
-		Addrs:      cfg.Addrs,
-		MasterName: cfg.MasterName,
-		Username:   cfg.Username,
-		Password:   cfg.Password,
-		DB:         cfg.BackendDB,
+		Addrs:            cfg.Addrs,
+		MasterName:       cfg.MasterName,
+		Username:         cfg.Username,
+		Password:         cfg.Password,
+		SentinelUsername: cfg.SentinelUsername,
+		SentinelPassword: cfg.SentinelPassword,
+		DB:               cfg.BackendDB,
 	}); err != nil {
 		return nil, err
 	}
 
+	var broker string
+	if cfg.Username != "" {
+		broker = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
+	} else {
+		broker = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
+	}
+
+	var backend string
+	if cfg.Username != "" {
+		backend = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
+	} else {
+		backend = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
+	}
+
 	server, err := machinery.NewServer(&machineryv1config.Config{
-		Broker:          fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB),
+		Broker:          broker,
 		DefaultQueue:    queue.String(),
-		ResultBackend:   fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB),
+		ResultBackend:   backend,
 		ResultsExpireIn: DefaultResultsExpireIn,
 		Redis: &machineryv1config.RedisConfig{
-			MasterName:     cfg.MasterName,
-			MaxIdle:        DefaultRedisMaxIdle,
-			IdleTimeout:    DefaultRedisIdleTimeout,
-			ReadTimeout:    DefaultRedisReadTimeout,
-			WriteTimeout:   DefaultRedisWriteTimeout,
-			ConnectTimeout: DefaultRedisConnectTimeout,
+			MasterName:             cfg.MasterName,
+			MaxIdle:                DefaultRedisMaxIdle,
+			MaxActive:              DefaultRedisMaxActive,
+			IdleTimeout:            DefaultRedisIdleTimeout,
+			ReadTimeout:            DefaultRedisReadTimeout,
+			WriteTimeout:           DefaultRedisWriteTimeout,
+			ConnectTimeout:         DefaultRedisConnectTimeout,
+			NormalTasksPollPeriod:  DefaultRedisNormalTasksPollPeriod,
+			DelayedTasksPollPeriod: DefaultRedisDelayedTasksPollPeriod,
 		},
 	})
 	if err != nil {
@@ -102,14 +129,25 @@ func (t *Job) LaunchWorker(consumerTag string, concurrency int) error {
 }
 
 type GroupJobState struct {
-	GroupUUID string
-	State     string
-	CreatedAt time.Time
-	JobStates []*machineryv1tasks.TaskState
+	GroupUUID string     `json:"group_uuid"`
+	State     string     `json:"state"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	JobStates []jobState `json:"job_states"`
 }
 
-func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
-	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupID, 0)
+type jobState struct {
+	TaskUUID  string    `json:"task_uuid"`
+	TaskName  string    `json:"task_name"`
+	State     string    `json:"state"`
+	Results   []any     `json:"results"`
+	Error     string    `json:"error"`
+	CreatedAt time.Time `json:"created_at"`
+	TTL       int64     `json:"ttl"`
+}
+
+func (t *Job) GetGroupJobState(name string, groupUUID string) (*GroupJobState, error) {
+	taskStates, err := t.Server.GetBackend().GroupTaskStates(groupUUID, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -118,36 +156,86 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 		return nil, errors.New("empty group")
 	}
 
+	var mu sync.Mutex
+	jobStates := make([]jobState, 0, len(taskStates))
+	eg, _ := errgroup.WithContext(context.Background())
+	eg.SetLimit(GroupJobStateConcurrencyLimit)
+	for _, taskState := range taskStates {
+		eg.Go(func() error {
+			var results []any
+			for _, result := range taskState.Results {
+				switch name {
+				case PreheatJob:
+					var resp PreheatResponse
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
+
+					results = append(results, resp)
+				case GetTaskJob:
+					var resp GetTaskResponse
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
+
+					results = append(results, resp)
+				case DeleteTaskJob:
+					var resp DeleteTaskResponse
+					if err := UnmarshalTaskResult(result.Value, &resp); err != nil {
+						return err
+					}
+
+					results = append(results, resp)
+				default:
+					return errors.New("unsupported unmarshal task result")
+				}
+			}
+
+			mu.Lock()
+			jobStates = append(jobStates, jobState{
+				TaskUUID:  taskState.TaskUUID,
+				TaskName:  taskState.TaskName,
+				State:     taskState.State,
+				Results:   results,
+				Error:     taskState.Error,
+				CreatedAt: taskState.CreatedAt,
+				TTL:       taskState.TTL,
+			})
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		logger.WithGroupUUID(groupUUID).Errorf("failed to get group job state: %v", err)
+		return nil, err
+	}
+
 	for _, taskState := range taskStates {
 		if taskState.IsFailure() {
-			logger.WithGroupAndTaskID(groupID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
-			return &GroupJobState{
-				GroupUUID: groupID,
-				State:     machineryv1tasks.StateFailure,
-				CreatedAt: taskState.CreatedAt,
-				JobStates: taskStates,
-			}, nil
+			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Errorf("task is failed: %#v", taskState)
+			return constructGroupJobState(groupUUID, machineryv1tasks.StateFailure, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
 	for _, taskState := range taskStates {
 		if !taskState.IsSuccess() {
-			logger.WithGroupAndTaskID(groupID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
-			return &GroupJobState{
-				GroupUUID: groupID,
-				State:     machineryv1tasks.StatePending,
-				CreatedAt: taskState.CreatedAt,
-				JobStates: taskStates,
-			}, nil
+			logger.WithGroupAndTaskUUID(groupUUID, taskState.TaskUUID).Infof("task is not succeeded: %#v", taskState)
+			return constructGroupJobState(groupUUID, machineryv1tasks.StatePending, taskState.CreatedAt, jobStates), nil
 		}
 	}
 
+	return constructGroupJobState(groupUUID, machineryv1tasks.StateSuccess, taskStates[0].CreatedAt, jobStates), nil
+}
+
+func constructGroupJobState(groupUUID, state string, createdAt time.Time, jobStates []jobState) *GroupJobState {
 	return &GroupJobState{
-		GroupUUID: groupID,
-		State:     machineryv1tasks.StateSuccess,
-		CreatedAt: taskStates[0].CreatedAt,
-		JobStates: taskStates,
-	}, nil
+		GroupUUID: groupUUID,
+		State:     state,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now(),
+		JobStates: jobStates,
+	}
 }
 
 func MarshalResponse(v any) (string, error) {
@@ -169,6 +257,15 @@ func MarshalRequest(v any) ([]machineryv1tasks.Arg, error) {
 		Type:  "string",
 		Value: string(b),
 	}}, nil
+}
+
+func UnmarshalTaskResult(data any, v any) error {
+	s, ok := data.(string)
+	if !ok {
+		return errors.New("invalid task result")
+	}
+
+	return json.Unmarshal([]byte(s), v)
 }
 
 func UnmarshalResponse(data []reflect.Value, v any) error {

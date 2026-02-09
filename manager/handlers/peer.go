@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /peers [post]
+// @Router /api/v1/peers [post]
 func (h *Handlers) CreatePeer(ctx *gin.Context) {
 	var json types.CreatePeerRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreatePeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /peers/{id} [delete]
+// @Router /api/v1/peers/{id} [delete]
 func (h *Handlers) DestroyPeer(ctx *gin.Context) {
 	var params types.PeerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -89,7 +89,7 @@ func (h *Handlers) DestroyPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /peers/{id} [get]
+// @Router /api/v1/peers/{id} [get]
 func (h *Handlers) GetPeer(ctx *gin.Context) {
 	var params types.PeerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -117,7 +117,7 @@ func (h *Handlers) GetPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /peers [get]
+// @Router /api/v1/peers [get]
 func (h *Handlers) GetPeers(ctx *gin.Context) {
 	var query types.GetPeersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

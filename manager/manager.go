@@ -18,22 +18,23 @@ package manager
 
 import (
 	"context"
-	"crypto/tls"
 	"embed"
 	"io/fs"
+	"net"
 	"net/http"
-	"path"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/static"
-	"github.com/johanbrandhorst/certify"
 	"google.golang.org/grpc"
-	zapadapter "logur.dev/adapter/zap"
+	"gorm.io/gorm"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/internal/ratelimiter"
 	"d7y.io/dragonfly/v2/manager/cache"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/database"
+	managergc "d7y.io/dragonfly/v2/manager/gc"
 	"d7y.io/dragonfly/v2/manager/job"
 	"d7y.io/dragonfly/v2/manager/metrics"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
@@ -41,12 +42,10 @@ import (
 	"d7y.io/dragonfly/v2/manager/rpcserver"
 	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/service"
-	pkgcache "d7y.io/dragonfly/v2/pkg/cache"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
-	"d7y.io/dragonfly/v2/pkg/issuer"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
+	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
-	"d7y.io/dragonfly/v2/pkg/types"
 )
 
 const (
@@ -92,6 +91,12 @@ type Server struct {
 	// Job server.
 	job *job.Job
 
+	// Job rate limiter.
+	jobRateLimiter ratelimiter.JobRateLimiter
+
+	// GC server.
+	gc pkggc.GC
+
 	// GRPC server.
 	grpcServer *grpc.Server
 
@@ -100,6 +105,9 @@ type Server struct {
 
 	// Metrics server.
 	metricsServer *http.Server
+
+	// Redis proxy.
+	redisProxy redis.Proxy
 }
 
 // New creates a new manager server.
@@ -134,25 +142,22 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 	s.job = job
 
-	// Initialize object storage.
-	var objectStorage objectstorage.ObjectStorage
-	if cfg.ObjectStorage.Enable {
-		objectStorage, err = objectstorage.New(
-			cfg.ObjectStorage.Name,
-			cfg.ObjectStorage.Region,
-			cfg.ObjectStorage.Endpoint,
-			cfg.ObjectStorage.AccessKey,
-			cfg.ObjectStorage.SecretKey,
-			objectstorage.WithS3ForcePathStyle(cfg.ObjectStorage.S3ForcePathStyle),
-		)
-		if err != nil {
-			return nil, err
-		}
+	// Initialize job rate limiter.
+	s.jobRateLimiter, err = ratelimiter.NewJobRateLimiter(db)
+	if err != nil {
+		return nil, err
 	}
 
+	// Initialize garbage collector.
+	gc := pkggc.New()
+	if err := registerGCTasks(gc, db.DB); err != nil {
+		return nil, err
+	}
+	s.gc = gc
+
 	// Initialize REST server.
-	restService := service.New(cfg, db, cache, job, enforcer, objectStorage)
-	router, err := router.Init(cfg, d.LogDir(), restService, db, enforcer, EmbedFolder(assets, assetsTargetPath))
+	restService := service.New(cfg, db, cache, job, gc, enforcer)
+	router, err := router.Init(cfg, d.LogDir(), restService, db, enforcer, s.jobRateLimiter, EmbedFolder(assets, assetsTargetPath))
 	if err != nil {
 		return nil, err
 	}
@@ -168,57 +173,23 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 
 	// Initialize signing certificate and tls credentials of grpc server.
-	var options []rpcserver.Option
-	if cfg.Security.AutoIssueCert {
-		cert, err := tls.X509KeyPair([]byte(cfg.Security.CACert), []byte(cfg.Security.CAKey))
+	var options []grpc.ServerOption
+	if cfg.Server.GRPC.TLS != nil {
+		// Initialize grpc server with tls.
+		transportCredentials, err := rpc.NewServerCredentials(cfg.Server.GRPC.TLS.CACert, cfg.Server.GRPC.TLS.Cert, cfg.Server.GRPC.TLS.Key)
 		if err != nil {
+			logger.Errorf("failed to create server credentials: %v", err)
 			return nil, err
 		}
 
-		certifyClient := &certify.Certify{
-			CommonName: types.ManagerName,
-			Issuer: issuer.NewDragonflyManagerIssuer(
-				&cert,
-				issuer.WithManagerValidityPeriod(cfg.Security.CertSpec.ValidityPeriod),
-			),
-			RenewBefore: time.Hour,
-			CertConfig: &certify.CertConfig{
-				SubjectAlternativeNames:   cfg.Security.CertSpec.DNSNames,
-				IPSubjectAlternativeNames: append(cfg.Security.CertSpec.IPAddresses, cfg.Server.GRPC.AdvertiseIP),
-			},
-			IssueTimeout: 0,
-			Logger:       zapadapter.New(logger.CoreLogger.Desugar()),
-			Cache: pkgcache.NewCertifyMutliCache(
-				certify.NewMemCache(),
-				certify.DirCache(path.Join(d.CacheDir(), pkgcache.CertifyCacheDirName, types.ManagerName))),
-		}
-
-		// Issue a certificate to reduce first time delay.
-		if _, err := certifyClient.GetCertificate(&tls.ClientHelloInfo{
-			ServerName: cfg.Server.GRPC.AdvertiseIP.String(),
-		}); err != nil {
-			logger.Errorf("issue certificate error: %s", err.Error())
-			return nil, err
-		}
-
-		// Manager GRPC server's tls varify must be false. If ClientCAs are required for client verification,
-		// the client cannot call the IssueCertificate api.
-		transportCredentials, err := rpc.NewServerCredentialsByCertify(cfg.Security.TLSPolicy, false, []byte(cfg.Security.CACert), certifyClient)
-		if err != nil {
-			return nil, err
-		}
-
-		options = append(
-			options,
-			// Set ca certificate for issuing certificate.
-			rpcserver.WithSelfSignedCert(&cert),
-			// Set tls credentials for grpc server.
-			rpcserver.WithGRPCServerOptions([]grpc.ServerOption{grpc.Creds(transportCredentials)}),
-		)
+		options = append(options, grpc.Creds(transportCredentials))
+	} else {
+		// Initialize grpc server without tls.
+		options = append(options, grpc.Creds(rpc.NewInsecureCredentials()))
 	}
 
 	// Initialize GRPC server.
-	_, grpcServer, err := rpcserver.New(cfg, db, cache, searcher, objectStorage, options...)
+	_, grpcServer, err := rpcserver.New(cfg, db, cache, searcher, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +201,35 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 		s.metricsServer = metrics.New(&cfg.Metrics, grpcServer)
 	}
 
+	if cfg.Database.Redis.Proxy.Enable {
+		s.redisProxy = redis.NewProxy(cfg.Database.Redis.Proxy.Addr, cfg.Database.Redis.Addrs[0])
+	}
+
 	return s, nil
+}
+
+func registerGCTasks(gc pkggc.GC, db *gorm.DB) error {
+	// Register job gc task.
+	if err := gc.Add(managergc.NewJobGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register audit gc task.
+	if err := gc.Add(managergc.NewAuditGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register scheduler gc task.
+	if err := gc.Add(managergc.NewSchedulerGCTask(db)); err != nil {
+		return err
+	}
+
+	// Register seed peer gc task.
+	if err := gc.Add(managergc.NewSeedPeerGCTask(db)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Serve starts the manager server.
@@ -243,6 +242,7 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("rest server closed unexpect: %v", err)
 			}
 		} else {
@@ -250,6 +250,7 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("rest server closed unexpect: %v", err)
 			}
 		}
@@ -263,7 +264,18 @@ func (s *Server) Serve() error {
 				if err == http.ErrServerClosed {
 					return
 				}
+
 				logger.Fatalf("metrics server closed unexpect: %v", err)
+			}
+		}()
+	}
+
+	// Started redis proxy server.
+	if s.redisProxy != nil {
+		go func() {
+			logger.Infof("started redis proxy server at %s", s.config.Database.Redis.Proxy.Addr)
+			if err := s.redisProxy.Serve(); err != nil {
+				logger.Fatalf("redis proxy server closed unexpect: %v", err)
 			}
 		}()
 	}
@@ -274,16 +286,25 @@ func (s *Server) Serve() error {
 		s.job.Serve()
 	}()
 
-	// Generate GRPC listener.
-	lis, _, err := rpc.ListenWithPortRange(s.config.Server.GRPC.ListenIP.String(), s.config.Server.GRPC.PortRange.Start, s.config.Server.GRPC.PortRange.End)
+	// Started job rate limiter server.
+	go func() {
+		logger.Infof("started job rate limiter server")
+		s.jobRateLimiter.Serve()
+	}()
+
+	// Started gc server.
+	s.gc.Start(context.Background())
+	logger.Info("started gc server")
+
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.config.Server.GRPC.ListenIP.String(), strconv.Itoa(s.config.Server.GRPC.Port.Start)))
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %v", err)
 	}
-	defer lis.Close()
+	defer listener.Close()
 
 	// Started GRPC server.
-	logger.Infof("started grpc server at %s://%s", lis.Addr().Network(), lis.Addr().String())
-	if err := s.grpcServer.Serve(lis); err != nil {
+	logger.Infof("started grpc server at %s://%s", listener.Addr().Network(), listener.Addr().String())
+	if err := s.grpcServer.Serve(listener); err != nil {
 		logger.Errorf("stoped grpc server: %+v", err)
 		return err
 	}
@@ -309,8 +330,20 @@ func (s *Server) Stop() {
 		}
 	}
 
+	// Stop redis proxy server.
+	if s.redisProxy != nil {
+		s.redisProxy.Stop()
+		logger.Info("redis proxy server closed under request")
+	}
+
 	// Stop job server.
 	s.job.Stop()
+
+	// Stop job rate limiter.
+	s.jobRateLimiter.Stop()
+
+	// Stop gc server.
+	s.gc.Stop()
 
 	// Stop GRPC server.
 	stopped := make(chan struct{})

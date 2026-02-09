@@ -22,18 +22,14 @@ import (
 	"github.com/montanaflynn/stats"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
 const (
 	// DefaultAlgorithm is a rule-based scheduling algorithm.
 	DefaultAlgorithm = "default"
-
-	// NetworkTopologyAlgorithm is a scheduling algorithm based on rules and network topology.
-	NetworkTopologyAlgorithm = "nt"
-
-	// MLAlgorithm is a machine learning scheduling algorithm.
-	MLAlgorithm = "ml"
 
 	// PluginAlgorithm is a scheduling algorithm based on plugin extension.
 	PluginAlgorithm = "plugin"
@@ -51,9 +47,9 @@ const (
 	// Maximum number of elements.
 	maxElementLen = 5
 
-	// If the number of samples is greater than or equal to 30,
+	// If the number of samples is greater than or equal to 2000,
 	// it is close to the normal distribution.
-	normalDistributionLen = 30
+	normalDistributionLen = 2000
 
 	// When costs len is greater than or equal to 2,
 	// the last cost can be compared and calculated.
@@ -62,38 +58,65 @@ const (
 
 // Evaluator is an interface that evaluates the parents.
 type Evaluator interface {
-	// EvaluateParents sort parents by evaluating multiple feature scores.
-	EvaluateParents(parents []*resource.Peer, child *resource.Peer, taskPieceCount int32) []*resource.Peer
+	// EvaluateParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer
 
-	// IsBadNode determine if peer is a failed node.
-	IsBadNode(peer *resource.Peer) bool
+	// IsBadParent determines whether a peer is unsuitable to be selected as a parent
+	// for downloading pieces.
+	IsBadParent(peer *standard.Peer) bool
+
+	// EvaluatePersistentParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer
+
+	// IsBadPersistentParent determines whether a peer is unsuitable to be selected as a persistent parent
+	// for downloading pieces.
+	IsBadPersistentParent(peer *persistent.Peer) bool
+
+	// EvaluatePersistentCacheParents sorts and returns a list of parent peers ordered by their suitability as download sources.
+	// Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
+	EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer
+
+	// IsBadPersistentCacheParent determines whether a peer is unsuitable to be selected as a persistent cache parent
+	// for downloading pieces.
+	IsBadPersistentCacheParent(peer *persistentcache.Peer) bool
 }
 
 // evaluator is an implementation of Evaluator.
 type evaluator struct{}
 
 // New returns a new Evaluator.
-func New(algorithm string, pluginDir string, networkTopologyOptions ...NetworkTopologyOption) Evaluator {
+func New(algorithm string, pluginDir string) Evaluator {
 	switch algorithm {
 	case PluginAlgorithm:
 		if plugin, err := LoadPlugin(pluginDir); err == nil {
 			return plugin
 		}
-	case NetworkTopologyAlgorithm:
-		return newEvaluatorNetworkTopology(networkTopologyOptions...)
-	// TODO Implement MLAlgorithm.
-	case MLAlgorithm, DefaultAlgorithm:
-		return newEvaluatorBase()
+	case DefaultAlgorithm:
+		return newEvaluatorDefault()
 	}
 
-	return newEvaluatorBase()
+	return newEvaluatorDefault()
 }
 
-// IsBadNode determine if peer is a failed node.
-func (e *evaluator) IsBadNode(peer *resource.Peer) bool {
-	if peer.FSM.Is(resource.PeerStateFailed) || peer.FSM.Is(resource.PeerStateLeave) || peer.FSM.Is(resource.PeerStatePending) ||
-		peer.FSM.Is(resource.PeerStateReceivedTiny) || peer.FSM.Is(resource.PeerStateReceivedSmall) ||
-		peer.FSM.Is(resource.PeerStateReceivedNormal) || peer.FSM.Is(resource.PeerStateReceivedEmpty) {
+// IsBadParent determines whether a peer is unsuitable to be selected as a parent
+// for downloading pieces. It evaluates peers based on their current state and historical
+// download performance metrics.
+//
+// A peer is considered a bad parent if:
+//  1. It is in an unsuitable state (Failed, Leave, Pending, or any Received* state).
+//  2. Its recent download costs indicate poor performance based on statistical analysis.
+//
+// For performance evaluation, the function uses two strategies:
+//   - If sample size is small (< normalDistributionLen): Uses a simple threshold check
+//     where the last cost must not exceed 20 times the mean of previous costs.
+//   - If sample size is sufficient (>= normalDistributionLen): Applies the three-sigma rule
+//     where costs beyond mean + 3*standard_deviation are considered bad.
+func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
+	if peer.FSM.Is(standard.PeerStateFailed) || peer.FSM.Is(standard.PeerStateLeave) || peer.FSM.Is(standard.PeerStatePending) ||
+		peer.FSM.Is(standard.PeerStateReceivedTiny) || peer.FSM.Is(standard.PeerStateReceivedSmall) ||
+		peer.FSM.Is(standard.PeerStateReceivedNormal) || peer.FSM.Is(standard.PeerStateReceivedEmpty) {
 		peer.Log.Debugf("peer is bad node because peer status is %s", peer.FSM.Current())
 		return true
 	}
@@ -113,17 +136,55 @@ func (e *evaluator) IsBadNode(peer *resource.Peer) bool {
 	// Download costs does not meet the normal distribution,
 	// if the last cost is twenty times more than mean, it is bad node.
 	if len < normalDistributionLen {
-		isBadNode := big.NewFloat(lastCost).Cmp(big.NewFloat(mean*20)) > 0
-		logger.Debugf("peer %s mean is %.2f and it is bad node: %t", peer.ID, mean, isBadNode)
-		return isBadNode
+		isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean*20)) > 0
+		logger.Debugf("peer %s mean is %.2f and it is bad node: %t", peer.ID, mean, isBadParent)
+		return isBadParent
 	}
 
 	// Download costs satisfies the normal distribution,
 	// last cost falling outside of three-sigma effect need to be adjusted parent,
 	// refer to https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule.
 	stdev, _ := stats.StandardDeviation(costs[:len-1]) // nolint: errcheck
-	isBadNode := big.NewFloat(lastCost).Cmp(big.NewFloat(mean+3*stdev)) > 0
+	isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean+3*stdev)) > 0
 	logger.Debugf("peer %s meet the normal distribution, costs mean is %.2f and standard deviation is %.2f, peer is bad node: %t",
-		peer.ID, mean, stdev, isBadNode)
-	return isBadNode
+		peer.ID, mean, stdev, isBadParent)
+	return isBadParent
+}
+
+// IsBadPersistentParent determines whether a persistent peer is unsuitable to be selected as a parent
+// for replication. It evaluates the peer based on its current state.
+//
+// A persistent peer is considered a bad parent if it is in an unsuitable state:
+// - Pending: waiting to start.
+// - Uploading: currently uploading data.
+// - ReceivedEmpty: received an empty response.
+// - ReceivedNormal: received normal data but not yet completed.
+// - Failed: has failed.
+func (e *evaluator) IsBadPersistentParent(peer *persistent.Peer) bool {
+	if peer.FSM.Is(persistent.PeerStatePending) || peer.FSM.Is(persistent.PeerStateUploading) || peer.FSM.Is(persistent.PeerStateReceivedEmpty) ||
+		peer.FSM.Is(persistent.PeerStateReceivedNormal) || peer.FSM.Is(persistent.PeerStateFailed) {
+		peer.Log.Debugf("persistent peer is bad node because peer status is %s", peer.FSM.Current())
+		return true
+	}
+
+	return false
+}
+
+// IsBadPersistentCacheParent determines whether a persistent cache peer is unsuitable to be selected as a parent
+// for replication. It evaluates the peer based on its current state.
+//
+// A persistent cache peer is considered a bad parent if it is in an unsuitable state:
+// - Pending: waiting to start.
+// - Uploading: currently uploading data.
+// - ReceivedEmpty: received an empty response.
+// - ReceivedNormal: received normal data but not yet completed.
+// - Failed: has failed.
+func (e *evaluator) IsBadPersistentCacheParent(peer *persistentcache.Peer) bool {
+	if peer.FSM.Is(persistentcache.PeerStatePending) || peer.FSM.Is(persistentcache.PeerStateUploading) || peer.FSM.Is(persistentcache.PeerStateReceivedEmpty) ||
+		peer.FSM.Is(persistentcache.PeerStateReceivedNormal) || peer.FSM.Is(persistentcache.PeerStateFailed) {
+		peer.Log.Debugf("persistent cache peer is bad node because peer status is %s", peer.FSM.Current())
+		return true
+	}
+
+	return false
 }

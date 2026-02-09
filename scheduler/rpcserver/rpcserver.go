@@ -21,24 +21,27 @@ import (
 
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
-	"d7y.io/dragonfly/v2/scheduler/networktopology"
-	"d7y.io/dragonfly/v2/scheduler/resource"
+	"d7y.io/dragonfly/v2/scheduler/job"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
+	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
-	"d7y.io/dragonfly/v2/scheduler/storage"
 )
 
 // New returns a new scheduler server from the given options.
 func New(
 	cfg *config.Config,
-	resource resource.Resource,
+	resource standard.Resource,
+	persistentResource persistent.Resource,
+	persistentCacheResource persistentcache.Resource,
 	scheduling scheduling.Scheduling,
+	job job.Job,
 	dynconfig config.DynconfigInterface,
-	storage storage.Storage,
-	networkTopology networktopology.NetworkTopology,
 	opts ...grpc.ServerOption,
 ) *grpc.Server {
 	return server.New(
-		newSchedulerServerV1(cfg, resource, scheduling, dynconfig, storage, networkTopology),
-		newSchedulerServerV2(cfg, resource, scheduling, dynconfig, storage, networkTopology),
+		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
+		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
+		cfg.Server.RequestRateLimit,
 		opts...)
 }

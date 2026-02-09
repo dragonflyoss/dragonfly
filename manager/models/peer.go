@@ -33,6 +33,7 @@ type Peer struct {
 	IP                 string           `gorm:"column:ip;type:varchar(256);index:uk_peer,unique;not null;comment:ip address" json:"ip"`
 	Port               int32            `gorm:"column:port;not null;comment:grpc service listening port" json:"port"`
 	DownloadPort       int32            `gorm:"column:download_port;not null;comment:download service listening port" json:"download_port"`
+	ProxyPort          int32            `gorm:"column:proxy_port;not null;comment:proxy service listening port" json:"proxy_port"`
 	ObjectStoragePort  int32            `gorm:"column:object_storage_port;comment:object storage service listening port" json:"object_storage_port"`
 	State              string           `gorm:"column:state;type:varchar(256);default:'inactive';comment:service state" json:"state"`
 	OS                 string           `gorm:"column:os;type:varchar(256);comment:os" json:"os"`

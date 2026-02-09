@@ -33,7 +33,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 	"d7y.io/dragonfly/v2/manager/types"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 )
 
 type Service interface {
@@ -101,11 +101,7 @@ type Service interface {
 	UpdateScheduler(context.Context, uint, types.UpdateSchedulerRequest) (*models.Scheduler, error)
 	GetScheduler(context.Context, uint) (*models.Scheduler, error)
 	GetSchedulers(context.Context, types.GetSchedulersQuery) ([]models.Scheduler, int64, error)
-
-	CreateBucket(context.Context, types.CreateBucketRequest) error
-	DestroyBucket(context.Context, string) error
-	GetBucket(context.Context, string) (*objectstorage.BucketMetadata, error)
-	GetBuckets(context.Context) ([]*objectstorage.BucketMetadata, error)
+	GetSchedulerFeatures(context.Context) []string
 
 	CreateConfig(context.Context, types.CreateConfigRequest) (*models.Config, error)
 	DestroyConfig(context.Context, uint) error
@@ -114,6 +110,11 @@ type Service interface {
 	GetConfigs(context.Context, types.GetConfigsQuery) ([]models.Config, int64, error)
 
 	CreatePreheatJob(context.Context, types.CreatePreheatJobRequest) (*models.Job, error)
+	CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error
+	CreateDeleteTaskJob(context.Context, types.CreateDeleteTaskJobRequest) (*models.Job, error)
+	CreateGetTaskJob(context.Context, types.CreateGetTaskJobRequest) (*models.Job, error)
+	CreateGetImageDistributionJob(context.Context, types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error)
+	CreateGCJob(context.Context, types.CreateGCJobRequest) (*models.Job, error)
 	DestroyJob(context.Context, uint) error
 	UpdateJob(context.Context, uint, types.UpdateJobRequest) (*models.Job, error)
 	GetJob(context.Context, uint) (*models.Job, error)
@@ -128,37 +129,39 @@ type Service interface {
 	GetApplication(context.Context, uint) (*models.Application, error)
 	GetApplications(context.Context, types.GetApplicationsQuery) ([]models.Application, int64, error)
 
-	DestroyModel(context.Context, uint) error
-	UpdateModel(context.Context, uint, types.UpdateModelRequest) (*models.Model, error)
-	GetModel(context.Context, uint) (*models.Model, error)
-	GetModels(context.Context, types.GetModelsQuery) ([]models.Model, int64, error)
-
 	CreatePersonalAccessToken(context.Context, types.CreatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error)
 	DestroyPersonalAccessToken(context.Context, uint) error
 	UpdatePersonalAccessToken(context.Context, uint, types.UpdatePersonalAccessTokenRequest) (*models.PersonalAccessToken, error)
 	GetPersonalAccessToken(context.Context, uint) (*models.PersonalAccessToken, error)
 	GetPersonalAccessTokens(context.Context, types.GetPersonalAccessTokensQuery) ([]models.PersonalAccessToken, int64, error)
+
+	DestroyPersistentCacheTask(context.Context, uint, string) error
+	GetPersistentCacheTask(context.Context, uint, string) (types.PersistentCacheTask, error)
+	GetPersistentCacheTasks(context.Context, types.GetPersistentCacheTasksQuery) ([]types.PersistentCacheTask, int64, error)
+
+	AsyncCreateAudit(ctx context.Context, json *types.CreateAuditRequest) error
+	GetAudits(ctx context.Context, q types.GetAuditsQuery) ([]models.Audit, int64, error)
 }
 
 type service struct {
-	config        *config.Config
-	db            *gorm.DB
-	rdb           redis.UniversalClient
-	cache         *cache.Cache
-	job           *job.Job
-	enforcer      *casbin.Enforcer
-	objectStorage objectstorage.ObjectStorage
+	config   *config.Config
+	db       *gorm.DB
+	rdb      redis.UniversalClient
+	cache    *cache.Cache
+	job      *job.Job
+	gc       pkggc.GC
+	enforcer *casbin.Enforcer
 }
 
-// NewREST returns a new REST instence
-func New(cfg *config.Config, database *database.Database, cache *cache.Cache, job *job.Job, enforcer *casbin.Enforcer, objectStorage objectstorage.ObjectStorage) Service {
+// NewREST returns a new REST instance
+func New(cfg *config.Config, database *database.Database, cache *cache.Cache, job *job.Job, gc pkggc.GC, enforcer *casbin.Enforcer) Service {
 	return &service{
-		config:        cfg,
-		db:            database.DB,
-		rdb:           database.RDB,
-		cache:         cache,
-		job:           job,
-		enforcer:      enforcer,
-		objectStorage: objectStorage,
+		config:   cfg,
+		db:       database.DB,
+		rdb:      database.RDB,
+		cache:    cache,
+		job:      job,
+		gc:       gc,
+		enforcer: enforcer,
 	}
 }

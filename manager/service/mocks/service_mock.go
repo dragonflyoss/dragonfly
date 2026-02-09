@@ -16,7 +16,6 @@ import (
 	models "d7y.io/dragonfly/v2/manager/models"
 	rbac "d7y.io/dragonfly/v2/manager/permission/rbac"
 	types "d7y.io/dragonfly/v2/manager/types"
-	objectstorage "d7y.io/dragonfly/v2/pkg/objectstorage"
 	gin "github.com/gin-gonic/gin"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -25,6 +24,7 @@ import (
 type MockService struct {
 	ctrl     *gomock.Controller
 	recorder *MockServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockServiceMockRecorder is the mock recorder for MockService.
@@ -116,6 +116,20 @@ func (mr *MockServiceMockRecorder) AddSeedPeerToSeedPeerCluster(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddSeedPeerToSeedPeerCluster", reflect.TypeOf((*MockService)(nil).AddSeedPeerToSeedPeerCluster), arg0, arg1, arg2)
 }
 
+// AsyncCreateAudit mocks base method.
+func (m *MockService) AsyncCreateAudit(ctx context.Context, json *types.CreateAuditRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AsyncCreateAudit", ctx, json)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AsyncCreateAudit indicates an expected call of AsyncCreateAudit.
+func (mr *MockServiceMockRecorder) AsyncCreateAudit(ctx, json any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AsyncCreateAudit", reflect.TypeOf((*MockService)(nil).AsyncCreateAudit), ctx, json)
+}
+
 // CreateApplication mocks base method.
 func (m *MockService) CreateApplication(arg0 context.Context, arg1 types.CreateApplicationRequest) (*models.Application, error) {
 	m.ctrl.T.Helper()
@@ -129,20 +143,6 @@ func (m *MockService) CreateApplication(arg0 context.Context, arg1 types.CreateA
 func (mr *MockServiceMockRecorder) CreateApplication(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApplication", reflect.TypeOf((*MockService)(nil).CreateApplication), arg0, arg1)
-}
-
-// CreateBucket mocks base method.
-func (m *MockService) CreateBucket(arg0 context.Context, arg1 types.CreateBucketRequest) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBucket", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateBucket indicates an expected call of CreateBucket.
-func (mr *MockServiceMockRecorder) CreateBucket(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBucket", reflect.TypeOf((*MockService)(nil).CreateBucket), arg0, arg1)
 }
 
 // CreateCluster mocks base method.
@@ -173,6 +173,66 @@ func (m *MockService) CreateConfig(arg0 context.Context, arg1 types.CreateConfig
 func (mr *MockServiceMockRecorder) CreateConfig(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfig", reflect.TypeOf((*MockService)(nil).CreateConfig), arg0, arg1)
+}
+
+// CreateDeleteTaskJob mocks base method.
+func (m *MockService) CreateDeleteTaskJob(arg0 context.Context, arg1 types.CreateDeleteTaskJobRequest) (*models.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateDeleteTaskJob", arg0, arg1)
+	ret0, _ := ret[0].(*models.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateDeleteTaskJob indicates an expected call of CreateDeleteTaskJob.
+func (mr *MockServiceMockRecorder) CreateDeleteTaskJob(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDeleteTaskJob", reflect.TypeOf((*MockService)(nil).CreateDeleteTaskJob), arg0, arg1)
+}
+
+// CreateGCJob mocks base method.
+func (m *MockService) CreateGCJob(arg0 context.Context, arg1 types.CreateGCJobRequest) (*models.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateGCJob", arg0, arg1)
+	ret0, _ := ret[0].(*models.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateGCJob indicates an expected call of CreateGCJob.
+func (mr *MockServiceMockRecorder) CreateGCJob(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGCJob", reflect.TypeOf((*MockService)(nil).CreateGCJob), arg0, arg1)
+}
+
+// CreateGetImageDistributionJob mocks base method.
+func (m *MockService) CreateGetImageDistributionJob(arg0 context.Context, arg1 types.CreateGetImageDistributionJobRequest) (*types.CreateGetImageDistributionJobResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateGetImageDistributionJob", arg0, arg1)
+	ret0, _ := ret[0].(*types.CreateGetImageDistributionJobResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateGetImageDistributionJob indicates an expected call of CreateGetImageDistributionJob.
+func (mr *MockServiceMockRecorder) CreateGetImageDistributionJob(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGetImageDistributionJob", reflect.TypeOf((*MockService)(nil).CreateGetImageDistributionJob), arg0, arg1)
+}
+
+// CreateGetTaskJob mocks base method.
+func (m *MockService) CreateGetTaskJob(arg0 context.Context, arg1 types.CreateGetTaskJobRequest) (*models.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateGetTaskJob", arg0, arg1)
+	ret0, _ := ret[0].(*models.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateGetTaskJob indicates an expected call of CreateGetTaskJob.
+func (mr *MockServiceMockRecorder) CreateGetTaskJob(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGetTaskJob", reflect.TypeOf((*MockService)(nil).CreateGetTaskJob), arg0, arg1)
 }
 
 // CreateOauth mocks base method.
@@ -309,6 +369,20 @@ func (mr *MockServiceMockRecorder) CreateSeedPeerCluster(arg0, arg1 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeedPeerCluster", reflect.TypeOf((*MockService)(nil).CreateSeedPeerCluster), arg0, arg1)
 }
 
+// CreateSyncPeersJob mocks base method.
+func (m *MockService) CreateSyncPeersJob(ctx context.Context, json types.CreateSyncPeersJobRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSyncPeersJob", ctx, json)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSyncPeersJob indicates an expected call of CreateSyncPeersJob.
+func (mr *MockServiceMockRecorder) CreateSyncPeersJob(ctx, json any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSyncPeersJob", reflect.TypeOf((*MockService)(nil).CreateSyncPeersJob), ctx, json)
+}
+
 // CreateV1Preheat mocks base method.
 func (m *MockService) CreateV1Preheat(arg0 context.Context, arg1 types.CreateV1PreheatRequest) (*types.CreateV1PreheatResponse, error) {
 	m.ctrl.T.Helper()
@@ -368,20 +442,6 @@ func (mr *MockServiceMockRecorder) DestroyApplication(arg0, arg1 any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyApplication", reflect.TypeOf((*MockService)(nil).DestroyApplication), arg0, arg1)
 }
 
-// DestroyBucket mocks base method.
-func (m *MockService) DestroyBucket(arg0 context.Context, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DestroyBucket", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DestroyBucket indicates an expected call of DestroyBucket.
-func (mr *MockServiceMockRecorder) DestroyBucket(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyBucket", reflect.TypeOf((*MockService)(nil).DestroyBucket), arg0, arg1)
-}
-
 // DestroyCluster mocks base method.
 func (m *MockService) DestroyCluster(arg0 context.Context, arg1 uint) error {
 	m.ctrl.T.Helper()
@@ -424,20 +484,6 @@ func (mr *MockServiceMockRecorder) DestroyJob(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyJob", reflect.TypeOf((*MockService)(nil).DestroyJob), arg0, arg1)
 }
 
-// DestroyModel mocks base method.
-func (m *MockService) DestroyModel(arg0 context.Context, arg1 uint) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DestroyModel", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DestroyModel indicates an expected call of DestroyModel.
-func (mr *MockServiceMockRecorder) DestroyModel(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyModel", reflect.TypeOf((*MockService)(nil).DestroyModel), arg0, arg1)
-}
-
 // DestroyOauth mocks base method.
 func (m *MockService) DestroyOauth(arg0 context.Context, arg1 uint) error {
 	m.ctrl.T.Helper()
@@ -464,6 +510,20 @@ func (m *MockService) DestroyPeer(arg0 context.Context, arg1 uint) error {
 func (mr *MockServiceMockRecorder) DestroyPeer(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPeer", reflect.TypeOf((*MockService)(nil).DestroyPeer), arg0, arg1)
+}
+
+// DestroyPersistentCacheTask mocks base method.
+func (m *MockService) DestroyPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DestroyPersistentCacheTask", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DestroyPersistentCacheTask indicates an expected call of DestroyPersistentCacheTask.
+func (mr *MockServiceMockRecorder) DestroyPersistentCacheTask(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DestroyPersistentCacheTask", reflect.TypeOf((*MockService)(nil).DestroyPersistentCacheTask), arg0, arg1, arg2)
 }
 
 // DestroyPersonalAccessToken mocks base method.
@@ -582,34 +642,20 @@ func (mr *MockServiceMockRecorder) GetApplications(arg0, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplications", reflect.TypeOf((*MockService)(nil).GetApplications), arg0, arg1)
 }
 
-// GetBucket mocks base method.
-func (m *MockService) GetBucket(arg0 context.Context, arg1 string) (*objectstorage.BucketMetadata, error) {
+// GetAudits mocks base method.
+func (m *MockService) GetAudits(ctx context.Context, q types.GetAuditsQuery) ([]models.Audit, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBucket", arg0, arg1)
-	ret0, _ := ret[0].(*objectstorage.BucketMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "GetAudits", ctx, q)
+	ret0, _ := ret[0].([]models.Audit)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// GetBucket indicates an expected call of GetBucket.
-func (mr *MockServiceMockRecorder) GetBucket(arg0, arg1 any) *gomock.Call {
+// GetAudits indicates an expected call of GetAudits.
+func (mr *MockServiceMockRecorder) GetAudits(ctx, q any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBucket", reflect.TypeOf((*MockService)(nil).GetBucket), arg0, arg1)
-}
-
-// GetBuckets mocks base method.
-func (m *MockService) GetBuckets(arg0 context.Context) ([]*objectstorage.BucketMetadata, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBuckets", arg0)
-	ret0, _ := ret[0].([]*objectstorage.BucketMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetBuckets indicates an expected call of GetBuckets.
-func (mr *MockServiceMockRecorder) GetBuckets(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBuckets", reflect.TypeOf((*MockService)(nil).GetBuckets), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAudits", reflect.TypeOf((*MockService)(nil).GetAudits), ctx, q)
 }
 
 // GetCluster mocks base method.
@@ -705,37 +751,6 @@ func (mr *MockServiceMockRecorder) GetJobs(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockService)(nil).GetJobs), arg0, arg1)
 }
 
-// GetModel mocks base method.
-func (m *MockService) GetModel(arg0 context.Context, arg1 uint) (*models.Model, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetModel", arg0, arg1)
-	ret0, _ := ret[0].(*models.Model)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetModel indicates an expected call of GetModel.
-func (mr *MockServiceMockRecorder) GetModel(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetModel", reflect.TypeOf((*MockService)(nil).GetModel), arg0, arg1)
-}
-
-// GetModels mocks base method.
-func (m *MockService) GetModels(arg0 context.Context, arg1 types.GetModelsQuery) ([]models.Model, int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetModels", arg0, arg1)
-	ret0, _ := ret[0].([]models.Model)
-	ret1, _ := ret[1].(int64)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetModels indicates an expected call of GetModels.
-func (mr *MockServiceMockRecorder) GetModels(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetModels", reflect.TypeOf((*MockService)(nil).GetModels), arg0, arg1)
-}
-
 // GetOauth mocks base method.
 func (m *MockService) GetOauth(arg0 context.Context, arg1 uint) (*models.Oauth, error) {
 	m.ctrl.T.Helper()
@@ -810,6 +825,37 @@ func (m *MockService) GetPermissions(arg0 context.Context, arg1 *gin.Engine) []r
 func (mr *MockServiceMockRecorder) GetPermissions(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPermissions", reflect.TypeOf((*MockService)(nil).GetPermissions), arg0, arg1)
+}
+
+// GetPersistentCacheTask mocks base method.
+func (m *MockService) GetPersistentCacheTask(arg0 context.Context, arg1 uint, arg2 string) (types.PersistentCacheTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPersistentCacheTask", arg0, arg1, arg2)
+	ret0, _ := ret[0].(types.PersistentCacheTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPersistentCacheTask indicates an expected call of GetPersistentCacheTask.
+func (mr *MockServiceMockRecorder) GetPersistentCacheTask(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPersistentCacheTask", reflect.TypeOf((*MockService)(nil).GetPersistentCacheTask), arg0, arg1, arg2)
+}
+
+// GetPersistentCacheTasks mocks base method.
+func (m *MockService) GetPersistentCacheTasks(arg0 context.Context, arg1 types.GetPersistentCacheTasksQuery) ([]types.PersistentCacheTask, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPersistentCacheTasks", arg0, arg1)
+	ret0, _ := ret[0].([]types.PersistentCacheTask)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetPersistentCacheTasks indicates an expected call of GetPersistentCacheTasks.
+func (mr *MockServiceMockRecorder) GetPersistentCacheTasks(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPersistentCacheTasks", reflect.TypeOf((*MockService)(nil).GetPersistentCacheTasks), arg0, arg1)
 }
 
 // GetPersonalAccessToken mocks base method.
@@ -930,6 +976,20 @@ func (m *MockService) GetSchedulerClusters(arg0 context.Context, arg1 types.GetS
 func (mr *MockServiceMockRecorder) GetSchedulerClusters(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerClusters", reflect.TypeOf((*MockService)(nil).GetSchedulerClusters), arg0, arg1)
+}
+
+// GetSchedulerFeatures mocks base method.
+func (m *MockService) GetSchedulerFeatures(arg0 context.Context) []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSchedulerFeatures", arg0)
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// GetSchedulerFeatures indicates an expected call of GetSchedulerFeatures.
+func (mr *MockServiceMockRecorder) GetSchedulerFeatures(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerFeatures", reflect.TypeOf((*MockService)(nil).GetSchedulerFeatures), arg0)
 }
 
 // GetSchedulers mocks base method.
@@ -1188,21 +1248,6 @@ func (m *MockService) UpdateJob(arg0 context.Context, arg1 uint, arg2 types.Upda
 func (mr *MockServiceMockRecorder) UpdateJob(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateJob", reflect.TypeOf((*MockService)(nil).UpdateJob), arg0, arg1, arg2)
-}
-
-// UpdateModel mocks base method.
-func (m *MockService) UpdateModel(arg0 context.Context, arg1 uint, arg2 types.UpdateModelRequest) (*models.Model, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateModel", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*models.Model)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateModel indicates an expected call of UpdateModel.
-func (mr *MockServiceMockRecorder) UpdateModel(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateModel", reflect.TypeOf((*MockService)(nil).UpdateModel), arg0, arg1, arg2)
 }
 
 // UpdateOauth mocks base method.

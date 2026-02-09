@@ -28,7 +28,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer"
 
 	cdnsystemv1 "d7y.io/api/v2/pkg/apis/cdnsystem/v1"
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
@@ -36,9 +35,7 @@ import (
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
 	"d7y.io/dragonfly/v2/pkg/dfnet"
-	"d7y.io/dragonfly/v2/pkg/resolver"
 	"d7y.io/dragonfly/v2/pkg/rpc"
-	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
 const (
@@ -86,51 +83,6 @@ func GetClientByAddr(ctx context.Context, netAddr dfnet.NetAddr, opts ...grpc.Di
 	return &client{
 		SeederClient: cdnsystemv1.NewSeederClient(conn),
 		ClientConn:   conn,
-	}, nil
-}
-
-func GetClient(ctx context.Context, dynconfig config.DynconfigInterface, opts ...grpc.DialOption) (Client, error) {
-	// Register resolver and balancer.
-	resolver.RegisterSeedPeer(dynconfig)
-	builder, pickerBuilder := pkgbalancer.NewConsistentHashingBuilder()
-	balancer.Register(builder)
-
-	conn, err := grpc.DialContext(
-		ctx,
-		resolver.SeedPeerVirtualTarget,
-		append([]grpc.DialOption{
-			grpc.WithIdleTimeout(0),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(math.MaxInt32),
-				grpc.MaxCallSendMsgSize(math.MaxInt32),
-			),
-			grpc.WithDefaultServiceConfig(pkgbalancer.BalancerServiceConfig),
-			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-				rpc.ConvertErrorUnaryClientInterceptor,
-				grpc_prometheus.UnaryClientInterceptor,
-				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
-				grpc_retry.UnaryClientInterceptor(
-					grpc_retry.WithMax(maxRetries),
-					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
-				),
-				rpc.RefresherUnaryClientInterceptor(dynconfig),
-			)),
-			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-				rpc.ConvertErrorStreamClientInterceptor,
-				grpc_prometheus.StreamClientInterceptor,
-				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
-				rpc.RefresherStreamClientInterceptor(dynconfig),
-			)),
-		}, opts...)...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &client{
-		SeederClient:                   cdnsystemv1.NewSeederClient(conn),
-		ClientConn:                     conn,
-		ConsistentHashingPickerBuilder: pickerBuilder,
 	}, nil
 }
 

@@ -16,6 +16,8 @@
 
 package models
 
+import "time"
+
 const (
 	// SchedulerStateActive represents the scheduler whose state is active.
 	SchedulerStateActive = "active"
@@ -26,6 +28,7 @@ const (
 
 type Scheduler struct {
 	BaseModel
+	Config             JSONMap          `gorm:"column:config;comment:configuration" json:"config"`
 	Hostname           string           `gorm:"column:host_name;type:varchar(256);index:uk_scheduler,unique;not null;comment:hostname" json:"host_name"`
 	IDC                string           `gorm:"column:idc;type:varchar(1024);comment:internet data center" json:"idc"`
 	Location           string           `gorm:"column:location;type:varchar(1024);comment:location" json:"location"`
@@ -33,7 +36,7 @@ type Scheduler struct {
 	Port               int32            `gorm:"column:port;not null;comment:grpc service listening port" json:"port"`
 	State              string           `gorm:"column:state;type:varchar(256);default:'inactive';comment:service state" json:"state"`
 	Features           Array            `gorm:"column:features;comment:feature flags" json:"features"`
+	LastKeepAliveAt    time.Time        `gorm:"column:last_keep_alive_at;comment:last keep alive time" json:"last_keep_alive_at"`
 	SchedulerClusterID uint             `gorm:"index:uk_scheduler,unique;not null;comment:scheduler cluster id"  json:"scheduler_cluster_id"`
 	SchedulerCluster   SchedulerCluster `json:"scheduler_cluster"`
-	Models             []Model          `json:"models"`
 }

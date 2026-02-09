@@ -10,8 +10,11 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
+	job "d7y.io/dragonfly/v2/internal/job"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -19,6 +22,7 @@ import (
 type MockJob struct {
 	ctrl     *gomock.Controller
 	recorder *MockJobMockRecorder
+	isgomock struct{}
 }
 
 // MockJobMockRecorder is the mock recorder for MockJob.
@@ -36,6 +40,81 @@ func NewMockJob(ctrl *gomock.Controller) *MockJob {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockJob) EXPECT() *MockJobMockRecorder {
 	return m.recorder
+}
+
+// GetTask mocks base method.
+func (m *MockJob) GetTask(arg0 context.Context, arg1 *job.GetTaskRequest, arg2 *logger.SugaredLoggerOnWith) (*job.GetTaskResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTask", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.GetTaskResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTask indicates an expected call of GetTask.
+func (mr *MockJobMockRecorder) GetTask(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTask", reflect.TypeOf((*MockJob)(nil).GetTask), arg0, arg1, arg2)
+}
+
+// ListTaskEntries mocks base method.
+func (m *MockJob) ListTaskEntries(arg0 context.Context, arg1 *job.ListTaskEntriesRequest, arg2 *logger.SugaredLoggerOnWith) (*job.ListTaskEntriesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTaskEntries", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.ListTaskEntriesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTaskEntries indicates an expected call of ListTaskEntries.
+func (mr *MockJobMockRecorder) ListTaskEntries(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskEntries", reflect.TypeOf((*MockJob)(nil).ListTaskEntries), arg0, arg1, arg2)
+}
+
+// PreheatAllPeers mocks base method.
+func (m *MockJob) PreheatAllPeers(arg0 context.Context, arg1 *job.PreheatRequest, arg2 *logger.SugaredLoggerOnWith) (*job.PreheatResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreheatAllPeers", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.PreheatResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PreheatAllPeers indicates an expected call of PreheatAllPeers.
+func (mr *MockJobMockRecorder) PreheatAllPeers(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreheatAllPeers", reflect.TypeOf((*MockJob)(nil).PreheatAllPeers), arg0, arg1, arg2)
+}
+
+// PreheatAllSeedPeers mocks base method.
+func (m *MockJob) PreheatAllSeedPeers(arg0 context.Context, arg1 *job.PreheatRequest, arg2 *logger.SugaredLoggerOnWith) (*job.PreheatResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreheatAllSeedPeers", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.PreheatResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PreheatAllSeedPeers indicates an expected call of PreheatAllSeedPeers.
+func (mr *MockJobMockRecorder) PreheatAllSeedPeers(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreheatAllSeedPeers", reflect.TypeOf((*MockJob)(nil).PreheatAllSeedPeers), arg0, arg1, arg2)
+}
+
+// PreheatSingleSeedPeer mocks base method.
+func (m *MockJob) PreheatSingleSeedPeer(arg0 context.Context, arg1 *job.PreheatRequest, arg2 *logger.SugaredLoggerOnWith) (*job.PreheatResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreheatSingleSeedPeer", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*job.PreheatResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PreheatSingleSeedPeer indicates an expected call of PreheatSingleSeedPeer.
+func (mr *MockJobMockRecorder) PreheatSingleSeedPeer(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreheatSingleSeedPeer", reflect.TypeOf((*MockJob)(nil).PreheatSingleSeedPeer), arg0, arg1, arg2)
 }
 
 // Serve mocks base method.

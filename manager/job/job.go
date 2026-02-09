@@ -17,8 +17,6 @@
 package job
 
 import (
-	"crypto/x509"
-	"errors"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -27,10 +25,11 @@ import (
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/models"
+	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
 )
 
 // DefaultTaskPollingInterval is the default interval for polling task.
-const DefaultTaskPollingInterval = 5 * time.Second
+const DefaultTaskPollingInterval = 10 * time.Second
 
 // tracer is a global tracer for job.
 var tracer = otel.Tracer("manager")
@@ -40,34 +39,30 @@ type Job struct {
 	*internaljob.Job
 	Preheat
 	SyncPeers
+	Task
 }
 
 // New returns a new Job.
 func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 	j, err := internaljob.New(&internaljob.Config{
-		Addrs:      cfg.Database.Redis.Addrs,
-		MasterName: cfg.Database.Redis.MasterName,
-		Username:   cfg.Database.Redis.Username,
-		Password:   cfg.Database.Redis.Password,
-		BrokerDB:   cfg.Database.Redis.BrokerDB,
-		BackendDB:  cfg.Database.Redis.BackendDB,
+		Addrs:            cfg.Database.Redis.Addrs,
+		MasterName:       cfg.Database.Redis.MasterName,
+		Username:         cfg.Database.Redis.Username,
+		Password:         cfg.Database.Redis.Password,
+		SentinelUsername: cfg.Database.Redis.SentinelUsername,
+		SentinelPassword: cfg.Database.Redis.SentinelPassword,
+		BrokerDB:         cfg.Database.Redis.BrokerDB,
+		BackendDB:        cfg.Database.Redis.BackendDB,
 	}, internaljob.GlobalQueue)
 	if err != nil {
 		return nil, err
 	}
 
-	var certPool *x509.CertPool
-	if cfg.Job.Preheat.TLS != nil {
-		certPool = x509.NewCertPool()
-		if !certPool.AppendCertsFromPEM([]byte(cfg.Job.Preheat.TLS.CACert)) {
-			return nil, errors.New("invalid CA Cert")
-		}
-	}
-
-	preheat, err := newPreheat(j, cfg.Job.Preheat.RegistryTimeout, certPool)
+	certPool, err := nettls.PEMToCertPool(cfg.Job.Preheat.TLS.CACert.ToBytes())
 	if err != nil {
 		return nil, err
 	}
+	preheat := newPreheat(j, internaljob.NewImage(), certPool, cfg.Job.Preheat.TLS.InsecureSkipVerify)
 
 	syncPeers, err := newSyncPeers(cfg, j, gdb)
 	if err != nil {
@@ -78,12 +73,13 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 		Job:       j,
 		Preheat:   preheat,
 		SyncPeers: syncPeers,
+		Task:      newTask(j),
 	}, nil
 }
 
 // Serve starts the job server.
 func (j *Job) Serve() {
-	j.SyncPeers.Serve()
+	go j.SyncPeers.Serve()
 }
 
 // Stop stops the job server.
@@ -92,21 +88,21 @@ func (j *Job) Stop() {
 }
 
 // getSchedulerQueues gets scheduler queues.
-func getSchedulerQueues(schedulers []models.Scheduler) []internaljob.Queue {
+func getSchedulerQueues(schedulers []models.Scheduler) ([]internaljob.Queue, error) {
 	var queues []internaljob.Queue
 	for _, scheduler := range schedulers {
-		queue, err := internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname)
+		queue, err := internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname, scheduler.IP)
 		if err != nil {
-			continue
+			return nil, err
 		}
 
 		queues = append(queues, queue)
 	}
 
-	return queues
+	return queues, nil
 }
 
 // getSchedulerQueue gets scheduler queue.
 func getSchedulerQueue(scheduler models.Scheduler) (internaljob.Queue, error) {
-	return internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname)
+	return internaljob.GetSchedulerQueue(scheduler.SchedulerClusterID, scheduler.Hostname, scheduler.IP)
 }

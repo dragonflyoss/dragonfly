@@ -1,0 +1,14 @@
+name: "Auto Assign"
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  add-assignee:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kentaro-m/auto-assign-action@c8db276c3a2c3609c66ffe9f371cf1ebe80bc1b1

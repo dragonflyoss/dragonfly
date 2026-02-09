@@ -10,7 +10,7 @@ cd "${curDir}/../" || return
 D7Y_VERSION=${D7Y_VERSION:-"latest"}
 D7Y_REGISTRY=${D7Y_REGISTRY:-dragonflyoss}
 IMAGES_DIR="build/images"
-BASE_IMAGE=${BASE_IMAGE:-alpine:3.17}
+BASE_IMAGE=${BASE_IMAGE:-alpine:3.20}
 
 CGO_ENABLED=${CGO_ENABLED:-0}
 GOPROXY=${GOPROXY:-`go env GOPROXY`}
@@ -36,6 +36,7 @@ docker-build() {
       --build-arg GOTAGS="${GOTAGS}" \
       --build-arg GOGCFLAGS="${GOGCFLAGS}" \
       --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+      --load \
       -t "${D7Y_REGISTRY}/${name}:${D7Y_VERSION}" \
       -f "${IMAGES_DIR}/${name}/Dockerfile" .
 }
@@ -46,18 +47,12 @@ git-submodule() {
 
 main() {
     case "${1-}" in
-    dfdaemon)
-        docker-build dfdaemon
-        ;;
     scheduler)
         docker-build scheduler
         ;;
     manager)
         git-submodule
         docker-build manager
-        ;;
-    trainer)
-        docker-build trainer
     esac
 }
 

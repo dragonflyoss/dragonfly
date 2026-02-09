@@ -106,37 +106,38 @@ func TestTaskIDV1(t *testing.T) {
 	}
 }
 
-func TestTaskIDV2(t *testing.T) {
+func TestTaskIDV2ByURLBased(t *testing.T) {
+	pieceLength := uint64(1024)
+
 	tests := []struct {
 		name        string
 		url         string
-		digest      string
+		pieceLength *uint64
 		tag         string
 		application string
-		pieceLength int32
 		filters     []string
 		expect      func(t *testing.T, d any)
 	}{
 		{
 			name:        "generate taskID",
 			url:         "https://example.com",
-			digest:      "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			pieceLength: &pieceLength,
 			tag:         "foo",
 			application: "bar",
-			pieceLength: 1,
 			filters:     []string{},
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "6acf73532a2e7b8c30dfc7abce2fd7d2a2cd3746f16b0d54d3e2f136ffa61c90")
+				assert.Equal(d, "27554d06dfc788c2c2c60e01960152ffbd4b145fc103fcb80b432b4dc238a6fe")
 			},
 		},
 		{
-			name:   "generate taskID with digest",
-			url:    "https://example.com",
-			digest: "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			name:        "generate taskID with tag and application",
+			url:         "https://example.com",
+			tag:         "foo",
+			application: "bar",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "b08a435da662ad5ae8ab8359a9c4ebd5027cf14d04b71ccc85f1e197e898adbd")
+				assert.Equal(d, "06408fbf247ddaca478f8cb9565fe5591c28efd0994b8fea80a6a87d3203c5ca")
 			},
 		},
 		{
@@ -145,7 +146,7 @@ func TestTaskIDV2(t *testing.T) {
 			tag:  "foo",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "274c3716c538b5a49e7296ee36dd412bae29948dfb6153e5ac9694e382144f83")
+				assert.Equal(d, "3c3f230ef9f191dd2821510346a7bc138e4894bee9aee184ba250a3040701d2a")
 			},
 		},
 		{
@@ -154,16 +155,16 @@ func TestTaskIDV2(t *testing.T) {
 			application: "bar",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "ca12c6591c38f726c238f35d9c7945559b52a0dcc10ae191920be6f5f8a0326a")
+				assert.Equal(d, "c9f9261b7305c24371244f9f149f5d4589ed601348fdf22d7f6f4b10658fdba2")
 			},
 		},
 		{
 			name:        "generate taskID with pieceLength",
 			url:         "https://example.com",
-			pieceLength: 1,
+			pieceLength: &pieceLength,
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "614fb0088e7d82b2538f1ccb5861db5940aaa665b587792898e4be1f591bafec")
+				assert.Equal(d, "9f7c9aafbc6f30f8f41a96ca77eeae80c5b60964b3034b0ee43ccf7b2f9e52b8")
 			},
 		},
 		{
@@ -172,14 +173,60 @@ func TestTaskIDV2(t *testing.T) {
 			filters: []string{"foo", "bar"},
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "4a89bbe790108d4987e7dc5127df2b99aea1c17828f1ff3e55176f49ac974b28")
+				assert.Equal(d, "457b4328cde278e422c9e243f7bfd1e97f511fec43a80f535cf6b0ef6b086776")
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, TaskIDV2(tc.url, tc.digest, tc.tag, tc.application, tc.pieceLength, tc.filters))
+			tc.expect(t, TaskIDV2ByURLBased(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters))
+		})
+	}
+}
+
+func TestTaskIDV2ByContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		expect  func(t *testing.T, d any)
+	}{
+		{
+			name:    "generate taskID",
+			content: "This is a test file",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "e2d0fe1585a63ec6009c8016ff8dda8b17719a637405a4e23c0ff81339148249")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, TaskIDV2ByContent(tc.content))
+		})
+	}
+}
+
+func TestPersistentCacheTaskIDbyContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		expect  func(t *testing.T, d any)
+	}{
+		{
+			name:    "generate persistentCacheTaskID",
+			content: "This is a test file",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "e2d0fe1585a63ec6009c8016ff8dda8b17719a637405a4e23c0ff81339148249")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, PersistentCacheTaskIDByContent(tc.content))
 		})
 	}
 }

@@ -10,6 +10,7 @@
 package gc
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -19,6 +20,7 @@ import (
 type MockRunner struct {
 	ctrl     *gomock.Controller
 	recorder *MockRunnerMockRecorder
+	isgomock struct{}
 }
 
 // MockRunnerMockRecorder is the mock recorder for MockRunner.
@@ -39,15 +41,15 @@ func (m *MockRunner) EXPECT() *MockRunnerMockRecorder {
 }
 
 // RunGC mocks base method.
-func (m *MockRunner) RunGC() error {
+func (m *MockRunner) RunGC(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunGC")
+	ret := m.ctrl.Call(m, "RunGC", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RunGC indicates an expected call of RunGC.
-func (mr *MockRunnerMockRecorder) RunGC() *gomock.Call {
+func (mr *MockRunnerMockRecorder) RunGC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockRunner)(nil).RunGC))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockRunner)(nil).RunGC), arg0)
 }

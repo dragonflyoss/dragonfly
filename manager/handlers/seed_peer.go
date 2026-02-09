@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peers [post]
+// @Router /api/v1/seed-peers [post]
 func (h *Handlers) CreateSeedPeer(ctx *gin.Context) {
 	var json types.CreateSeedPeerRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateSeedPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peers/{id} [delete]
+// @Router /api/v1/seed-peers/{id} [delete]
 func (h *Handlers) DestroySeedPeer(ctx *gin.Context) {
 	var params types.SeedPeerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroySeedPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peers/{id} [patch]
+// @Router /api/v1/seed-peers/{id} [patch]
 func (h *Handlers) UpdateSeedPeer(ctx *gin.Context) {
 	var params types.SeedPeerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateSeedPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peers/{id} [get]
+// @Router /api/v1/seed-peers/{id} [get]
 func (h *Handlers) GetSeedPeer(ctx *gin.Context) {
 	var params types.SeedPeerParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetSeedPeer(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /seed-peers [get]
+// @Router /api/v1/seed-peers [get]
 func (h *Handlers) GetSeedPeers(ctx *gin.Context) {
 	var query types.GetSeedPeersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

@@ -114,49 +114,6 @@ func TestMapToHeader(t *testing.T) {
 	}
 }
 
-func TestPickHeader(t *testing.T) {
-	tests := []struct {
-		name         string
-		header       http.Header
-		key          string
-		defaultValue string
-		expect       func(t *testing.T, data string, header http.Header)
-	}{
-		{
-			name: "Pick the existing key",
-			header: http.Header{
-				"Foo": {"foo"},
-				"Bar": {"bar"},
-			},
-			key:          "Foo",
-			defaultValue: "",
-			expect: func(t *testing.T, data string, header http.Header) {
-				assert := testifyassert.New(t)
-				assert.Equal("foo", data)
-				assert.Equal("", header.Get("Foo"))
-			},
-		},
-		{
-			name:         "Pick the non-existent key",
-			header:       http.Header{},
-			key:          "Foo",
-			defaultValue: "bar",
-			expect: func(t *testing.T, data string, header http.Header) {
-				assert := testifyassert.New(t)
-				assert.Equal(data, "bar")
-				assert.Equal(header.Get("Foo"), "")
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			data := PickHeader(tc.header, tc.key, tc.defaultValue)
-			tc.expect(t, data, tc.header)
-		})
-	}
-}
-
 func Test_safeSocketControl(t *testing.T) {
 	tests := []struct {
 		name    string

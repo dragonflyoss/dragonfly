@@ -16,6 +16,8 @@
 
 package models
 
+import "gorm.io/gorm"
+
 type Job struct {
 	BaseModel
 	TaskID            string             `gorm:"column:task_id;type:varchar(256);not null;comment:task id" json:"task_id"`
@@ -23,9 +25,23 @@ type Job struct {
 	Type              string             `gorm:"column:type;type:varchar(256);comment:type" json:"type"`
 	State             string             `gorm:"column:state;type:varchar(256);not null;default:'PENDING';comment:service state" json:"state"`
 	Args              JSONMap            `gorm:"column:args;not null;comment:task request args" json:"args"`
-	Result            JSONMap            `gorm:"column:result;comment:task result" json:"result"`
+	Result            JSONMap            `gorm:"column:task_result;type:longtext;comment:task result" json:"result"`
 	UserID            uint               `gorm:"column:user_id;comment:user id" json:"user_id"`
-	User              User               `json:"user"`
+	User              User               `gorm:"-" json:"user"`
 	SeedPeerClusters  []SeedPeerCluster  `gorm:"many2many:job_seed_peer_cluster;" json:"seed_peer_clusters"`
 	SchedulerClusters []SchedulerCluster `gorm:"many2many:job_scheduler_cluster;" json:"scheduler_clusters"`
+}
+
+func (j *Job) AfterFind(tx *gorm.DB) (err error) {
+	if j.UserID == 0 || j.UserID == j.User.ID {
+		return nil
+	}
+
+	var user User
+	if err := tx.First(&user, j.UserID).Error; err != nil {
+		return err
+	}
+
+	j.User = user
+	return nil
 }

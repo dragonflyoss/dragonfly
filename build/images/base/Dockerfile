@@ -1,4 +1,4 @@
-FROM quay.io/iovisor/bpftrace:v0.13.0
+FROM quay.io/iovisor/bpftrace:v0.13.0@sha256:9e4fc2ae9ddcf48d2d92aa429391bad67bef01fad83a3703aae3ee1c246954cc
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -11,14 +11,14 @@ RUN apt-get update \
 ENV PATH=/go/bin:/usr/local/go/bin:$PATH
 
 ENV GOPATH=/go
-ENV GOLANG_VERSION 1.21.1
-ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go1.21.1.linux-amd64.tar.gz
-ENV GOLANG_DOWNLOAD_SHA256 000a5b1fca4f75895f78befeb2eecf10bfff3c428597f3f1e69133b63b911b02
+ENV GOLANG_VERSION 1.25.5
+ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go1.25.5.linux-amd64.tar.gz
+ENV GOLANG_DOWNLOAD_SHA256 9e9b755d63b36acf30c12a9a3fc379243714c1c6d3dd72861da637f336ebb35b
 
 ARG GOPROXY
 
 RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz \
-	&& echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
-	&& tar -C /usr/local -xzf golang.tar.gz \
-	&& rm golang.tar.gz \
-	&& go install github.com/go-delve/delve/cmd/dlv@v1.7.0
+    && echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
+    && tar -C /usr/local -xzf golang.tar.gz \
+    && rm golang.tar.gz \
+    && go install github.com/go-delve/delve/cmd/dlv@v1.7.0

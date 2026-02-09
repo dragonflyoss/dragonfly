@@ -31,7 +31,7 @@ const (
 	DefaultPeerConcurrentUploadLimit = 200
 
 	// DefaultSchedulerCandidateParentLimit is default limit the number of candidate parent.
-	DefaultSchedulerCandidateParentLimit = 4
+	DefaultSchedulerCandidateParentLimit = 3
 
 	// DefaultSchedulerFilterParentLimit is default limit the number for filter parent.
 	DefaultSchedulerFilterParentLimit = 15
@@ -43,6 +43,10 @@ const (
 
 	// DefaultServerAdvertisePort is default advertise port for server.
 	DefaultServerAdvertisePort = 8002
+
+	// DefaultServerRequestRateLimit is the default number of requests per second for the gRPC server.
+	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
+	DefaultServerRequestRateLimit = 4000
 )
 
 const (
@@ -52,8 +56,11 @@ const (
 	// DefaultRedisBackendDB is default db for redis backend.
 	DefaultRedisBackendDB = 2
 
-	// DefaultNetworkTopologyDB is default db for network topology.
-	DefaultNetworkTopologyDB = 3
+	// DefaultRedisPoolSize is default pool size for redis.
+	DefaultRedisPoolSize = 20
+
+	// DefaultRedisPoolTimeout is default pool timeout for redis.
+	DefaultRedisPoolTimeout = 10 * time.Second
 )
 
 const (
@@ -95,32 +102,6 @@ const (
 
 	// DefaultCPU is default cpu usage.
 	DefaultCPU = 1
-
-	// NetworkTopologyAlgorithm is a scheduling algorithm based on rules and network topology.
-	NetworkTopologyAlgorithm = "nt"
-
-	// DefaultNetworkTopologyCollectInterval is the default interval of collecting network topology.
-	DefaultSchedulerNetworkTopologyCollectInterval = 2 * time.Hour
-
-	// DefaultNetworkTopologyCacheInterval is the default cache cleanup interval.
-	DefaultSchedulerNetworkTopologyCacheInterval = 5 * time.Minute
-
-	// DefaultNetworkTopologyCacheTLL is the default ttl of networkTopology cache.
-	DefaultSchedulerNetworkTopologyCacheTLL = 5 * time.Minute
-
-	// DefaultProbeQueueLength is the default length of probe queue.
-	DefaultSchedulerNetworkTopologyProbeQueueLength = 5
-
-	// DefaultProbeCount is the default number of probing hosts.
-	DefaultSchedulerNetworkTopologyProbeCount = 5
-)
-
-const (
-	// DefaultResourceTaskDownloadTinyScheme is default scheme of downloading tiny task.
-	DefaultResourceTaskDownloadTinyScheme = "http"
-
-	// DefaultResourceTaskDownloadTinyTimeout is default timeout of downloading tiny task.
-	DefaultResourceTaskDownloadTinyTimeout = 1 * time.Minute
 )
 
 const (
@@ -177,28 +158,6 @@ var (
 var (
 	// DefaultNetworkEnableIPv6 is default value of enableIPv6.
 	DefaultNetworkEnableIPv6 = false
-)
-
-const (
-	// DefaultStorageMaxSize is the default maximum size of record file.
-	DefaultStorageMaxSize = 100
-
-	// DefaultStorageMaxBackups is the default maximum count of backup.
-	DefaultStorageMaxBackups = 10
-
-	// DefaultStorageBufferSize is the default size of buffer container.
-	DefaultStorageBufferSize = 100
-)
-
-const (
-	// DefaultTrainerAddr is the default address of trainer.
-	DefaultTrainerAddr = "127.0.0.1:9090"
-
-	// DefaultTrainerInterval is the default interval of training.
-	DefaultTrainerInterval = 7 * 24 * time.Hour
-
-	// DefaultTrainerUploadTimeout is the default timeout of uploading dataset to trainer.
-	DefaultTrainerUploadTimeout = 1 * time.Hour
 )
 
 const (

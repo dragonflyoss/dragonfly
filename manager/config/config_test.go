@@ -24,10 +24,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
-	"d7y.io/dragonfly/v2/pkg/rpc"
-	"d7y.io/dragonfly/v2/pkg/types"
 )
 
 var (
@@ -51,7 +47,7 @@ var (
 	mockMysqlTLSConfig = &MysqlTLSClientConfig{
 		Cert:               "ca.crt",
 		Key:                "ca.key",
-		CA:                 "ca",
+		CACert:             "ca",
 		InsecureSkipVerify: false,
 	}
 
@@ -77,36 +73,9 @@ var (
 		BackendDB:  DefaultRedisBackendDB,
 	}
 
-	mockObjectStorageConfig = ObjectStorageConfig{
-		Enable:           true,
-		Name:             objectstorage.ServiceNameS3,
-		Region:           "bas",
-		Endpoint:         "127.0.0.1",
-		AccessKey:        "ak",
-		SecretKey:        "sk",
-		S3ForcePathStyle: true,
-	}
-
 	mockMetricsConfig = MetricsConfig{
 		Enable: true,
 		Addr:   DefaultMetricsAddr,
-	}
-
-	mockSecurityConfig = SecurityConfig{
-		AutoIssueCert: true,
-		CACert:        types.PEMContent("foo"),
-		CAKey:         types.PEMContent("bar"),
-		TLSPolicy:     rpc.PreferTLSPolicy,
-		CertSpec: CertSpec{
-			DNSNames:       DefaultCertDNSNames,
-			IPAddresses:    DefaultCertIPAddresses,
-			ValidityPeriod: DefaultCertValidityPeriod,
-		},
-	}
-
-	mockTrainerConfig = TrainerConfig{
-		Enable:     true,
-		BucketName: DefaultTrainerBucketName,
 	}
 )
 
@@ -114,9 +83,9 @@ func TestConfig_Load(t *testing.T) {
 	config := &Config{
 		Server: ServerConfig{
 			Name:          "foo",
-			WorkHome:      "foo",
 			CacheDir:      "foo",
 			LogDir:        "foo",
+			LogLevel:      "debug",
 			LogMaxSize:    512,
 			LogMaxAge:     5,
 			LogMaxBackups: 3,
@@ -124,14 +93,20 @@ func TestConfig_Load(t *testing.T) {
 			GRPC: GRPCConfig{
 				AdvertiseIP: net.IPv4zero,
 				ListenIP:    net.IPv4zero,
-				PortRange: TCPListenPortRange{
+				Port: TCPListenPortRange{
 					Start: 65003,
 					End:   65003,
 				},
+				TLS: &GRPCTLSServerConfig{
+					CACert: "foo",
+					Cert:   "foo",
+					Key:    "foo",
+				},
+				RequestRateLimit: 100,
 			},
 			REST: RESTConfig{
 				Addr: ":8080",
-				TLS: &TLSServerConfig{
+				TLS: &RESTTLSServerConfig{
 					Cert: "foo",
 					Key:  "foo",
 				},
@@ -155,9 +130,9 @@ func TestConfig_Load(t *testing.T) {
 				DBName:    "foo",
 				TLSConfig: "preferred",
 				TLS: &MysqlTLSClientConfig{
+					CACert:             "foo",
 					Cert:               "foo",
 					Key:                "foo",
-					CA:                 "foo",
 					InsecureSkipVerify: true,
 				},
 				Migrate: true,
@@ -174,12 +149,18 @@ func TestConfig_Load(t *testing.T) {
 				Migrate:              true,
 			},
 			Redis: RedisConfig{
-				Password:   "bar",
-				Addrs:      []string{"foo", "bar"},
-				MasterName: "baz",
-				DB:         0,
-				BrokerDB:   1,
-				BackendDB:  2,
+				Password:    "bar",
+				Addrs:       []string{"foo", "bar"},
+				MasterName:  "baz",
+				PoolSize:    10,
+				PoolTimeout: 1 * time.Second,
+				DB:          0,
+				BrokerDB:    1,
+				BackendDB:   2,
+				Proxy: RedisProxyConfig{
+					Enable: true,
+					Addr:   ":65101",
+				},
 			},
 		},
 		Cache: CacheConfig{
@@ -193,34 +174,14 @@ func TestConfig_Load(t *testing.T) {
 		},
 		Job: JobConfig{
 			Preheat: PreheatConfig{
-				RegistryTimeout: DefaultJobPreheatRegistryTimeout,
-				TLS: &PreheatTLSClientConfig{
+				TLS: PreheatTLSClientConfig{
 					CACert: "foo",
 				},
 			},
 			SyncPeers: SyncPeersConfig{
-				Interval: 13 * time.Hour,
-				Timeout:  2 * time.Minute,
-			},
-		},
-		ObjectStorage: ObjectStorageConfig{
-			Enable:           true,
-			Name:             objectstorage.ServiceNameS3,
-			Endpoint:         "127.0.0.1",
-			AccessKey:        "foo",
-			SecretKey:        "bar",
-			Region:           "baz",
-			S3ForcePathStyle: false,
-		},
-		Security: SecurityConfig{
-			AutoIssueCert: true,
-			CACert:        "foo",
-			CAKey:         "bar",
-			TLSPolicy:     "force",
-			CertSpec: CertSpec{
-				DNSNames:       []string{"foo"},
-				IPAddresses:    []net.IP{net.IPv4zero},
-				ValidityPeriod: 1 * time.Second,
+				Interval:  13 * time.Hour,
+				Timeout:   2 * time.Minute,
+				BatchSize: 50,
 			},
 		},
 		Metrics: MetricsConfig{
@@ -229,10 +190,6 @@ func TestConfig_Load(t *testing.T) {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: true,
-		},
-		Trainer: TrainerConfig{
-			Enable:     true,
-			BucketName: "models",
 		},
 	}
 
@@ -300,31 +257,87 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
+			name:   "grpc tls requires parameter caCert",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Server.GRPC.TLS = &GRPCTLSServerConfig{
+					CACert: "",
+					Cert:   "foo",
+					Key:    "foo",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "grpc tls requires parameter caCert")
+			},
+		},
+		{
+			name:   "grpc tls requires parameter cert",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Server.GRPC.TLS = &GRPCTLSServerConfig{
+					CACert: "foo",
+					Cert:   "",
+					Key:    "foo",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "grpc tls requires parameter cert")
+			},
+		},
+		{
+			name:   "grpc tls requires parameter key",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Server.GRPC.TLS = &GRPCTLSServerConfig{
+					CACert: "foo",
+					Cert:   "foo",
+					Key:    "",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "grpc tls requires parameter key")
+			},
+		},
+		{
+			name:   "grpc requires parameter requestRateLimit",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Server.GRPC.RequestRateLimit = 0
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "grpc requires parameter requestRateLimit")
+			},
+		},
+		{
 			name:   "rest tls requires parameter cert",
 			config: New(),
 			mock: func(cfg *Config) {
-				cfg.Server.REST.TLS = &TLSServerConfig{
+				cfg.Server.REST.TLS = &RESTTLSServerConfig{
 					Cert: "",
 					Key:  "foo",
 				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "tls requires parameter cert")
+				assert.EqualError(err, "rest tls requires parameter cert")
 			},
 		},
 		{
 			name:   "rest tls requires parameter key",
 			config: New(),
 			mock: func(cfg *Config) {
-				cfg.Server.REST.TLS = &TLSServerConfig{
+				cfg.Server.REST.TLS = &RESTTLSServerConfig{
 					Cert: "foo",
 					Key:  "",
 				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "tls requires parameter key")
+				assert.EqualError(err, "rest tls requires parameter key")
 			},
 		},
 		{
@@ -456,51 +469,60 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
-			name:   "tls requires parameter cert",
+			name:   "mysql tls requires parameter caCert",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
 				cfg.Database.Type = DatabaseTypeMysql
 				cfg.Database.Mysql = mockMysqlConfig
 				cfg.Database.Mysql.TLS = mockMysqlTLSConfig
-				cfg.Database.Mysql.TLS.Cert = ""
+				cfg.Database.Mysql.TLS = &MysqlTLSClientConfig{
+					CACert: "",
+					Cert:   "foo",
+					Key:    "foo",
+				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "tls requires parameter cert")
+				assert.EqualError(err, "mysql tls requires parameter caCert")
 			},
 		},
 		{
-			name:   "tls requires parameter key",
+			name:   "mysql tls requires parameter cert",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
 				cfg.Database.Type = DatabaseTypeMysql
 				cfg.Database.Mysql = mockMysqlConfig
 				cfg.Database.Mysql.TLS = mockMysqlTLSConfig
-				cfg.Database.Mysql.TLS.Cert = "ca.crt"
-				cfg.Database.Mysql.TLS.Key = ""
+				cfg.Database.Mysql.TLS = &MysqlTLSClientConfig{
+					CACert: "foo",
+					Cert:   "",
+					Key:    "foo",
+				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "tls requires parameter key")
+				assert.EqualError(err, "mysql tls requires parameter cert")
 			},
 		},
 		{
-			name:   "tls requires parameter ca",
+			name:   "mysql tls requires parameter key",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
 				cfg.Database.Type = DatabaseTypeMysql
 				cfg.Database.Mysql = mockMysqlConfig
 				cfg.Database.Mysql.TLS = mockMysqlTLSConfig
-				cfg.Database.Mysql.TLS.Cert = "ca.crt"
-				cfg.Database.Mysql.TLS.Key = "ca.key"
-				cfg.Database.Mysql.TLS.CA = ""
+				cfg.Database.Mysql.TLS = &MysqlTLSClientConfig{
+					CACert: "foo",
+					Cert:   "foo",
+					Key:    "",
+				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "tls requires parameter ca")
+				assert.EqualError(err, "mysql tls requires parameter key")
 			},
 		},
 		{
@@ -677,6 +699,22 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
+			name:   "redis proxy requires parameter addr",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.Proxy.Enable = true
+				cfg.Database.Redis.Proxy.Addr = ""
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis proxy requires parameter addr")
+			},
+		},
+		{
 			name:   "local requires parameter size",
 			config: New(),
 			mock: func(cfg *Config) {
@@ -704,38 +742,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "local requires parameter ttl")
-			},
-		},
-		{
-			name:   "preheat requires parameter caCert",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.Preheat.TLS = &PreheatTLSClientConfig{
-					CACert: "",
-				}
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "preheat requires parameter caCert")
-			},
-		},
-		{
-			name:   "preheat requires parameter registryTimeout",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job.Preheat.RegistryTimeout = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "preheat requires parameter registryTimeout")
 			},
 		},
 		{
@@ -769,67 +775,18 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
-			name:   "objectStorage requires parameter name",
+			name:   "syncPeers requires parameter batchSize",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
 				cfg.Database.Type = DatabaseTypeMysql
 				cfg.Database.Mysql = mockMysqlConfig
 				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.Name = ""
+				cfg.Job.SyncPeers.BatchSize = 0
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter name")
-			},
-		},
-		{
-			name:   "invalid objectStorage name",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.Name = "foo"
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter name")
-			},
-		},
-		{
-			name:   "objectStorage requires parameter accessKey",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.AccessKey = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter accessKey")
-			},
-		},
-		{
-			name:   "objectStorage requires parameter secretKey",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.ObjectStorage = mockObjectStorageConfig
-				cfg.ObjectStorage.SecretKey = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "objectStorage requires parameter secretKey")
+				assert.EqualError(err, "syncPeers requires parameter batchSize")
 			},
 		},
 		{
@@ -846,119 +803,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "metrics requires parameter addr")
-			},
-		},
-		{
-			name:   "security requires parameter caCert",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.CACert = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "security requires parameter caCert")
-			},
-		},
-		{
-			name:   "security requires parameter caKey",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.CAKey = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "security requires parameter caKey")
-			},
-		},
-		{
-			name:   "security requires parameter tlsPolicy",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.TLSPolicy = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "security requires parameter tlsPolicy")
-			},
-		},
-		{
-			name:   "certSpec requires parameter ipAddresses",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.CertSpec.IPAddresses = []net.IP{}
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "certSpec requires parameter ipAddresses")
-			},
-		},
-		{
-			name:   "certSpec requires parameter dnsNames",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.CertSpec.DNSNames = []string{}
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "certSpec requires parameter dnsNames")
-			},
-		},
-		{
-			name:   "certSpec requires parameter validityPeriod",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Security.CertSpec.ValidityPeriod = 0
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "certSpec requires parameter validityPeriod")
-			},
-		},
-		{
-			name:   "trainer requires parameter bucketName",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Auth.JWT = mockJWTConfig
-				cfg.Database.Type = DatabaseTypeMysql
-				cfg.Database.Mysql = mockMysqlConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Security = mockSecurityConfig
-				cfg.Trainer = mockTrainerConfig
-				cfg.Trainer.BucketName = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "trainer requires parameter bucketName")
 			},
 		},
 	}

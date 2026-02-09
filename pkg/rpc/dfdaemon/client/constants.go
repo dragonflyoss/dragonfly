@@ -30,4 +30,10 @@ const (
 	// backoffWaitBetween is waiting for a fixed period of
 	// time between calls in backoff linear.
 	backoffWaitBetween = 500 * time.Millisecond
+
+	// idleTimeout is timeout of idle connection.
+	idleTimeout = 5 * time.Minute
+
+	// gcInterval is the interval of client cleanup.
+	gcInterval = 5 * time.Minute
 )

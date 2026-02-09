@@ -53,10 +53,6 @@ func init() {
 		SetGrpcLogger(sugar)
 		SetGinLogger(sugar)
 		SetGCLogger(sugar)
-		SetStorageGCLogger(sugar)
-		SetKeepAliveLogger(sugar)
-		SetStatSeedLogger(log)
-		SetDownloadLogger(log)
 		SetJobLogger(sugar)
 	}
 	levels = append(levels, config.Level)
@@ -79,22 +75,6 @@ func SetGCLogger(log *zap.SugaredLogger) {
 	GCLogger = log
 }
 
-func SetStorageGCLogger(log *zap.SugaredLogger) {
-	StorageGCLogger = log
-}
-
-func SetKeepAliveLogger(log *zap.SugaredLogger) {
-	KeepAliveLogger = log
-}
-
-func SetStatSeedLogger(log *zap.Logger) {
-	StatSeedLogger = log
-}
-
-func SetDownloadLogger(log *zap.Logger) {
-	DownloaderLogger = log
-}
-
 func SetGrpcLogger(log *zap.SugaredLogger) {
 	GrpcLogger = log
 	var v int
@@ -102,6 +82,7 @@ func SetGrpcLogger(log *zap.SugaredLogger) {
 	if vl, err := strconv.Atoi(vLevel); err == nil {
 		v = vl
 	}
+
 	grpclog.SetLoggerV2(&zapGrpc{GrpcLogger, v})
 }
 
@@ -147,6 +128,12 @@ func WithHost(hostID, hostname, ip string) *SugaredLoggerOnWith {
 	}
 }
 
+func WithPeerID(peerID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"peerID", peerID},
+	}
+}
+
 func WithTaskID(taskID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
 		withArgs: []any{"taskID", taskID},
@@ -183,15 +170,87 @@ func WithHostnameAndIP(hostname, ip string) *SugaredLoggerOnWith {
 	}
 }
 
-func WithGroupAndJobID(taskID, jobID string) *SugaredLoggerOnWith {
+func WithGroupUUID(groupUUID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
-		withArgs: []any{"groupID", taskID, "jobID", jobID},
+		withArgs: []any{"groupUUID", groupUUID},
 	}
 }
 
-func WithGroupAndTaskID(groupID, taskID string) *SugaredLoggerOnWith {
+func WithGroupAndJobID(groupUUID, jobID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
-		withArgs: []any{"groupID", groupID, "taskID", taskID},
+		withArgs: []any{"groupUUID", groupUUID, "jobID", jobID},
+	}
+}
+
+func WithGroupAndTaskUUID(groupUUID, taskUUID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID},
+	}
+}
+
+func WithPreheatJob(groupUUID, taskUUID string, urls []string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "urls", urls},
+	}
+}
+
+func WithPreheatJobAndHost(groupUUID, taskUUID, taskID, url string, hostID, hostname, ip string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID, "url", url, "hostID", hostID, "hostname", hostname, "ip", ip},
+	}
+}
+
+func WithGetTaskJob(groupUUID, taskUUID, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID},
+	}
+}
+
+func WithDeleteTaskJob(groupUUID, taskUUID, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", taskUUID, "taskID", taskID},
+	}
+}
+
+func WithDeleteTaskJobAndPeer(groupUUID, taskUUID, hostID, taskID, peerID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"groupUUID", groupUUID, "taskUUID", "hostID", hostID, "taskID", taskID, "peerID", peerID},
+	}
+}
+
+func WithPreheatImage(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatImage(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatImageAndTaskID(url, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url, "taskID", taskID},
+	}
+}
+
+func WithPreheatFile(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatFile(url string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url},
+	}
+}
+
+func WithStatFileAndTaskID(url, taskID string) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"url", url, "taskID", taskID},
 	}
 }
 

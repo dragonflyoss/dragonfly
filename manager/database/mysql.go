@@ -17,7 +17,8 @@
 package database
 
 import (
-	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/docker/go-connections/tlsconfig"
@@ -54,7 +55,7 @@ func newMysql(cfg *config.Config) (*gorm.DB, error) {
 
 	// Initialize gorm logger.
 	logLevel := gormlogger.Info
-	if !cfg.Verbose {
+	if cfg.Server.LogLevel != "info" {
 		logLevel = gormlogger.Warn
 	}
 	gormLogger := zapgorm2.New(logger.CoreLogger.Desugar()).LogMode(logLevel)
@@ -90,7 +91,7 @@ func formatMysqlDSN(cfg *config.MysqlConfig) (string, error) {
 	mysqlCfg := mysql.Config{
 		User:                 cfg.User,
 		Passwd:               cfg.Password,
-		Addr:                 fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		Addr:                 net.JoinHostPort(cfg.Host, strconv.Itoa(int(cfg.Port))),
 		Net:                  "tcp",
 		DBName:               cfg.DBName,
 		Loc:                  time.Local,
@@ -106,7 +107,7 @@ func formatMysqlDSN(cfg *config.MysqlConfig) (string, error) {
 	if cfg.TLS != nil {
 		mysqlCfg.TLSConfig = "custom"
 		tls, err := tlsconfig.Client(tlsconfig.Options{
-			CAFile:             cfg.TLS.CA,
+			CAFile:             cfg.TLS.CACert,
 			CertFile:           cfg.TLS.Cert,
 			KeyFile:            cfg.TLS.Key,
 			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,

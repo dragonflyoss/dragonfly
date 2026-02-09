@@ -17,24 +17,18 @@
 package rpcserver
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"strings"
-	"time"
 
 	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"gorm.io/gorm"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
-	inference "d7y.io/api/v2/pkg/apis/inference"
 	managerv1 "d7y.io/api/v2/pkg/apis/manager/v1"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -45,12 +39,8 @@ import (
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/types"
-	"d7y.io/dragonfly/v2/pkg/digest"
-	"d7y.io/dragonfly/v2/pkg/idgen"
-	"d7y.io/dragonfly/v2/pkg/objectstorage"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/slices"
-	"d7y.io/dragonfly/v2/pkg/structure"
 )
 
 // managerServerV1 is v1 version of the manager grpc server.
@@ -69,22 +59,17 @@ type managerServerV1 struct {
 
 	// Searcher interface.
 	searcher searcher.Searcher
-
-	// Object storage interface.
-	objectStorage objectstorage.ObjectStorage
 }
 
 // newManagerServerV1 returns v1 version of the manager server.
 func newManagerServerV1(
-	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher,
-	objectStorage objectstorage.ObjectStorage) managerv1.ManagerServer {
+	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher) managerv1.ManagerServer {
 	return &managerServerV1{
-		config:        cfg,
-		db:            database.DB,
-		rdb:           database.RDB,
-		cache:         cache,
-		searcher:      searcher,
-		objectStorage: objectStorage,
+		config:   cfg,
+		db:       database.DB,
+		rdb:      database.RDB,
+		cache:    cache,
+		searcher: searcher,
 	}
 }
 
@@ -152,7 +137,6 @@ func (s *managerServerV1) GetSeedPeer(ctx context.Context, req *managerv1.GetSee
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		State:             seedPeer.State,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 		SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -177,7 +161,7 @@ func (s *managerServerV1) GetSeedPeer(ctx context.Context, req *managerv1.GetSee
 	return &pbSeedPeer, nil
 }
 
-// List acitve seed peers configuration.
+// List active seed peers configuration.
 func (s *managerServerV1) ListSeedPeers(ctx context.Context, req *managerv1.ListSeedPeersRequest) (*managerv1.ListSeedPeersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	log.Debugf("list seed peers, version %s, commit %s", req.Version, req.Commit)
@@ -225,7 +209,6 @@ func (s *managerServerV1) ListSeedPeers(ctx context.Context, req *managerv1.List
 			Ip:                seedPeer.IP,
 			Port:              seedPeer.Port,
 			DownloadPort:      seedPeer.DownloadPort,
-			ObjectStoragePort: seedPeer.ObjectStoragePort,
 			State:             seedPeer.State,
 			SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 			SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -272,7 +255,6 @@ func (s *managerServerV1) UpdateSeedPeer(ctx context.Context, req *managerv1.Upd
 		IP:                req.GetIp(),
 		Port:              req.GetPort(),
 		DownloadPort:      req.GetDownloadPort(),
-		ObjectStoragePort: req.GetObjectStoragePort(),
 		State:             models.SeedPeerStateActive,
 		SeedPeerClusterID: uint(req.GetSeedPeerClusterId()),
 	}).Error; err != nil {
@@ -295,7 +277,6 @@ func (s *managerServerV1) UpdateSeedPeer(ctx context.Context, req *managerv1.Upd
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		State:             seedPeer.State,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 	}, nil
@@ -311,7 +292,6 @@ func (s *managerServerV1) createSeedPeer(ctx context.Context, req *managerv1.Upd
 		IP:                req.GetIp(),
 		Port:              req.GetPort(),
 		DownloadPort:      req.GetDownloadPort(),
-		ObjectStoragePort: req.GetObjectStoragePort(),
 		SeedPeerClusterID: uint(req.GetSeedPeerClusterId()),
 	}
 
@@ -328,7 +308,6 @@ func (s *managerServerV1) createSeedPeer(ctx context.Context, req *managerv1.Upd
 		Ip:                seedPeer.IP,
 		Port:              seedPeer.Port,
 		DownloadPort:      seedPeer.DownloadPort,
-		ObjectStoragePort: seedPeer.ObjectStoragePort,
 		SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 		State:             seedPeer.State,
 	}, nil
@@ -395,7 +374,6 @@ func (s *managerServerV1) GetScheduler(ctx context.Context, req *managerv1.GetSc
 				Ip:                seedPeer.IP,
 				Port:              seedPeer.Port,
 				DownloadPort:      seedPeer.DownloadPort,
-				ObjectStoragePort: seedPeer.ObjectStoragePort,
 				State:             seedPeer.State,
 				SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 				SeedPeerCluster: &managerv1.SeedPeerCluster{
@@ -536,7 +514,7 @@ func (s *managerServerV1) createScheduler(ctx context.Context, req *managerv1.Up
 	}, nil
 }
 
-// List acitve schedulers configuration.
+// List active schedulers configuration.
 func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.ListSchedulersRequest) (*managerv1.ListSchedulersResponse, error) {
 	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
 	log.Debugf("list schedulers, version %s, commit %s", req.Version, req.Commit)
@@ -544,7 +522,7 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 
 	// Cache hit.
 	var pbListSchedulersResponse managerv1.ListSchedulersResponse
-	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip)
+	cacheKey := pkgredis.MakeSchedulersKeyForPeerInManager(req.Hostname, req.Ip, req.Version)
 
 	if err := s.cache.Get(ctx, cacheKey, &pbListSchedulersResponse); err != nil {
 		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
@@ -560,7 +538,7 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Remove schedulers which not have scehdule featrue. As OceanBase does not support JSON type,
+	// Remove schedulers which not have schedule feature. As OceanBase does not support JSON type,
 	// it is not possible to use datatypes.JSONQuery for filtering.
 	var tmpSchedulerClusters []models.SchedulerCluster
 	for _, schedulerCluster := range schedulerClusters {
@@ -615,7 +593,6 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 					Ip:                seedPeer.IP,
 					Port:              seedPeer.Port,
 					DownloadPort:      seedPeer.DownloadPort,
-					ObjectStoragePort: seedPeer.ObjectStoragePort,
 					State:             seedPeer.State,
 					SeedPeerClusterId: uint64(seedPeer.SeedPeerClusterID),
 				})
@@ -660,68 +637,6 @@ func (s *managerServerV1) ListSchedulers(ctx context.Context, req *managerv1.Lis
 	}
 
 	return &pbListSchedulersResponse, nil
-}
-
-// Get object storage configuration.
-func (s *managerServerV1) GetObjectStorage(ctx context.Context, req *managerv1.GetObjectStorageRequest) (*managerv1.ObjectStorage, error) {
-	if !s.config.ObjectStorage.Enable {
-		return nil, status.Error(codes.Internal, "object storage is disabled")
-	}
-
-	return &managerv1.ObjectStorage{
-		Name:             s.config.ObjectStorage.Name,
-		Region:           s.config.ObjectStorage.Region,
-		Endpoint:         s.config.ObjectStorage.Endpoint,
-		AccessKey:        s.config.ObjectStorage.AccessKey,
-		SecretKey:        s.config.ObjectStorage.SecretKey,
-		S3ForcePathStyle: s.config.ObjectStorage.S3ForcePathStyle,
-	}, nil
-}
-
-// List buckets configuration.
-func (s *managerServerV1) ListBuckets(ctx context.Context, req *managerv1.ListBucketsRequest) (*managerv1.ListBucketsResponse, error) {
-	log := logger.WithHostnameAndIP(req.Hostname, req.Ip)
-
-	if !s.config.ObjectStorage.Enable {
-		log.Warn("object storage is disabled")
-		return nil, status.Error(codes.Internal, "object storage is disabled")
-	}
-
-	var pbListBucketsResponse managerv1.ListBucketsResponse
-	cacheKey := pkgredis.MakeBucketKeyInManager(s.config.ObjectStorage.Name)
-
-	// Cache hit.
-	if err := s.cache.Get(ctx, cacheKey, &pbListBucketsResponse); err != nil {
-		log.Warnf("%s cache miss because of %s", cacheKey, err.Error())
-	} else {
-		log.Debugf("%s cache hit", cacheKey)
-		return &pbListBucketsResponse, nil
-	}
-
-	// Cache miss and search buckets.
-	buckets, err := s.objectStorage.ListBucketMetadatas(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Construct schedulers.
-	for _, bucket := range buckets {
-		pbListBucketsResponse.Buckets = append(pbListBucketsResponse.Buckets, &managerv1.Bucket{
-			Name: bucket.Name,
-		})
-	}
-
-	// Cache data.
-	if err := s.cache.Once(&cachev9.Item{
-		Ctx:   ctx,
-		Key:   cacheKey,
-		Value: &pbListBucketsResponse,
-		TTL:   s.cache.TTL,
-	}); err != nil {
-		log.Error(err)
-	}
-
-	return &pbListBucketsResponse, nil
 }
 
 // List applications configuration.
@@ -796,159 +711,6 @@ func (s *managerServerV1) ListApplications(ctx context.Context, req *managerv1.L
 	}
 
 	return &pbListApplicationsResponse, nil
-}
-
-// CreateModel creates model and update data of model to object storage.
-func (s *managerServerV1) CreateModel(ctx context.Context, req *managerv1.CreateModelRequest) (*emptypb.Empty, error) {
-	log := logger.WithHostnameAndIP(req.GetHostname(), req.GetIp())
-
-	if !s.config.ObjectStorage.Enable {
-		log.Warn("object storage is disabled")
-		return nil, status.Error(codes.Internal, "object storage is disabled")
-	}
-
-	// Create model bucket, if not exist.
-	if err := s.createModelBucket(ctx); err != nil {
-		log.Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	var (
-		name       string
-		typ        string
-		evaluation types.ModelEvaluation
-		version    = time.Now().Nanosecond()
-	)
-	switch createModelRequest := req.GetRequest().(type) {
-	case *managerv1.CreateModelRequest_CreateGnnRequest:
-		name = idgen.GNNModelIDV1(req.GetIp(), req.GetHostname())
-		typ = models.ModelTypeGNN
-		evaluation = types.ModelEvaluation{
-			Precision: createModelRequest.CreateGnnRequest.GetPrecision(),
-			Recall:    createModelRequest.CreateGnnRequest.GetRecall(),
-			F1Score:   createModelRequest.CreateGnnRequest.GetF1Score(),
-		}
-
-		// Update GNN model config to object storage.
-		if err := s.createModelConfig(ctx, name); err != nil {
-			log.Error(err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		// Upload GNN model file to object storage.
-		data := createModelRequest.CreateGnnRequest.GetData()
-		dgst := digest.New(digest.AlgorithmSHA256, digest.SHA256FromBytes(data))
-		if err := s.objectStorage.PutObject(ctx, s.config.Trainer.BucketName,
-			types.MakeObjectKeyOfModelFile(name, version), dgst.String(), bytes.NewReader(data)); err != nil {
-			log.Error(err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	case *managerv1.CreateModelRequest_CreateMlpRequest:
-		name = idgen.MLPModelIDV1(req.GetHostname(), req.GetIp())
-		typ = models.ModelTypeMLP
-		evaluation = types.ModelEvaluation{
-			MSE: createModelRequest.CreateMlpRequest.GetMse(),
-			MAE: createModelRequest.CreateMlpRequest.GetMae(),
-		}
-
-		// Update MLP model config to object storage.
-		if err := s.createModelConfig(ctx, name); err != nil {
-			log.Error(err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		// Upload MLP model file to object storage.
-		data := createModelRequest.CreateMlpRequest.GetData()
-		dgst := digest.New(digest.AlgorithmSHA256, digest.SHA256FromBytes(data))
-		if err := s.objectStorage.PutObject(ctx, s.config.Trainer.BucketName,
-			types.MakeObjectKeyOfModelFile(name, version), dgst.String(), bytes.NewReader(data)); err != nil {
-			log.Error(err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	default:
-		msg := fmt.Sprintf("receive unknow request: %#v", createModelRequest)
-		log.Error(msg)
-		return nil, status.Error(codes.FailedPrecondition, msg)
-	}
-
-	scheduler := models.Scheduler{}
-	if err := s.db.WithContext(ctx).First(&scheduler, &models.Scheduler{
-		Hostname: req.Hostname,
-		IP:       req.Ip,
-	}).Error; err != nil {
-		log.Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	rawEvaluation, err := structure.StructToMap(evaluation)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Create model in database.
-	if err := s.db.WithContext(ctx).Model(&scheduler).Association("Models").Append(&models.Model{
-		Name:       name,
-		Type:       typ,
-		Version:    fmt.Sprint(version),
-		State:      models.ModelVersionStateInactive,
-		Evaluation: rawEvaluation,
-	}); err != nil {
-		log.Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return new(emptypb.Empty), nil
-}
-
-// createModelBucket creates model bucket if not exist.
-func (s *managerServerV1) createModelBucket(ctx context.Context) error {
-	// Check bucket exist.
-	isExist, err := s.objectStorage.IsBucketExist(ctx, s.config.Trainer.BucketName)
-	if err != nil {
-		return err
-	}
-
-	// Create bucket if not exist.
-	if !isExist {
-		if err := s.objectStorage.CreateBucket(ctx, s.config.Trainer.BucketName); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// createModelConfig creates model config to object storage.
-func (s *managerServerV1) createModelConfig(ctx context.Context, name string) error {
-	objectKey := types.MakeObjectKeyOfModelConfigFile(name)
-	isExist, err := s.objectStorage.IsObjectExist(ctx, s.config.Trainer.BucketName, objectKey)
-	if err != nil {
-		return err
-	}
-
-	// If the model config already exists, skip it.
-	if isExist {
-		return nil
-	}
-
-	// If the model config does not exist, create a new model config.
-	pbModelConfig := inference.ModelConfig{
-		Name:     name,
-		Platform: types.DefaultTritonPlatform,
-		VersionPolicy: &inference.ModelVersionPolicy{
-			PolicyChoice: &inference.ModelVersionPolicy_Specific_{
-				Specific: &inference.ModelVersionPolicy_Specific{},
-			},
-		},
-	}
-
-	dgst := digest.New(digest.AlgorithmSHA256, digest.SHA256FromStrings(pbModelConfig.String()))
-	if err := s.objectStorage.PutObject(ctx, s.config.Trainer.BucketName,
-		types.MakeObjectKeyOfModelConfigFile(name), dgst.String(), strings.NewReader(pbModelConfig.String())); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // KeepAlive with manager.

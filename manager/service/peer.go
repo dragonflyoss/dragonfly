@@ -32,6 +32,7 @@ func (s *service) CreatePeer(ctx context.Context, json types.CreatePeerRequest) 
 		IP:                 json.IP,
 		Port:               json.Port,
 		DownloadPort:       json.DownloadPort,
+		ProxyPort:          json.ProxyPort,
 		ObjectStoragePort:  json.ObjectStoragePort,
 		State:              json.State,
 		OS:                 json.OS,
@@ -58,7 +59,7 @@ func (s *service) DestroyPeer(ctx context.Context, id uint) error {
 		return err
 	}
 
-	if err := s.db.WithContext(ctx).Unscoped().Unscoped().Delete(&models.Peer{}, id).Error; err != nil {
+	if err := s.db.WithContext(ctx).Unscoped().Delete(&models.Peer{}, id).Error; err != nil {
 		return err
 	}
 
@@ -85,6 +86,7 @@ func (s *service) GetPeers(ctx context.Context, q types.GetPeersQuery) ([]models
 		IP:                 q.IP,
 		Port:               q.Port,
 		DownloadPort:       q.DownloadPort,
+		ProxyPort:          q.ProxyPort,
 		ObjectStoragePort:  q.ObjectStoragePort,
 		State:              q.State,
 		OS:                 q.OS,

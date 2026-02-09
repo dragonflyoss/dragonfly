@@ -36,7 +36,7 @@ import (
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /oauth [post]
+// @Router /api/v1/oauth [post]
 func (h *Handlers) CreateOauth(ctx *gin.Context) {
 	var json types.CreateOauthRequest
 	if err := ctx.ShouldBindJSON(&json); err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) CreateOauth(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /oauth/{id} [delete]
+// @Router /api/v1/oauth/{id} [delete]
 func (h *Handlers) DestroyOauth(ctx *gin.Context) {
 	var params types.OauthParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DestroyOauth(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /oauth/{id} [patch]
+// @Router /api/v1/oauth/{id} [patch]
 func (h *Handlers) UpdateOauth(ctx *gin.Context) {
 	var params types.OauthParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -123,7 +123,7 @@ func (h *Handlers) UpdateOauth(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /oauth/{id} [get]
+// @Router /api/v1/oauth/{id} [get]
 func (h *Handlers) GetOauth(ctx *gin.Context) {
 	var params types.OauthParams
 	if err := ctx.ShouldBindUri(&params); err != nil {
@@ -151,7 +151,7 @@ func (h *Handlers) GetOauth(ctx *gin.Context) {
 // @Failure 400
 // @Failure 404
 // @Failure 500
-// @Router /oauth [get]
+// @Router /api/v1/oauth [get]
 func (h *Handlers) GetOauths(ctx *gin.Context) {
 	var query types.GetOauthsQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {

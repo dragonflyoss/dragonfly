@@ -27,70 +27,20 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
 
-	"d7y.io/dragonfly/v2/client/config"
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
-	"d7y.io/dragonfly/v2/pkg/resolver"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/pkg/rpc/common"
 )
 
-// GetV1 returns v1 version of the scheduler client.
-func GetV1(ctx context.Context, dynconfig config.Dynconfig, opts ...grpc.DialOption) (V1, error) {
-	// Register resolver and balancer.
-	resolver.RegisterScheduler(dynconfig)
-	builder, pickerBuilder := pkgbalancer.NewConsistentHashingBuilder()
-	balancer.Register(builder)
-
-	conn, err := grpc.DialContext(
-		ctx,
-		resolver.SchedulerVirtualTarget,
-		append([]grpc.DialOption{
-			grpc.WithIdleTimeout(0),
-			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(math.MaxInt32),
-				grpc.MaxCallSendMsgSize(math.MaxInt32),
-			),
-			grpc.WithDefaultServiceConfig(pkgbalancer.BalancerServiceConfig),
-			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
-				rpc.ConvertErrorUnaryClientInterceptor,
-				grpc_prometheus.UnaryClientInterceptor,
-				grpc_zap.UnaryClientInterceptor(logger.GrpcLogger.Desugar()),
-				grpc_retry.UnaryClientInterceptor(
-					grpc_retry.WithMax(maxRetries),
-					grpc_retry.WithBackoff(grpc_retry.BackoffLinear(backoffWaitBetween)),
-				),
-				rpc.RefresherUnaryClientInterceptor(dynconfig),
-			)),
-			grpc.WithStreamInterceptor(grpc_middleware.ChainStreamClient(
-				rpc.ConvertErrorStreamClientInterceptor,
-				grpc_prometheus.StreamClientInterceptor,
-				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
-				rpc.RefresherStreamClientInterceptor(dynconfig),
-			)),
-		}, opts...)...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &v1{
-		SchedulerClient:                schedulerv1.NewSchedulerClient(conn),
-		ClientConn:                     conn,
-		Dynconfig:                      dynconfig,
-		dialOptions:                    opts,
-		ConsistentHashingPickerBuilder: pickerBuilder,
-	}, nil
-}
-
-// GetV1ByAddr returns v2 version of the scheduler client by address.
+// GetV1ByAddr returns v1 version of the scheduler client by address.
 func GetV1ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V1, error) {
 	conn, err := grpc.DialContext(
 		ctx,
@@ -101,7 +51,6 @@ func GetV1ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V
 				grpc.MaxCallRecvMsgSize(math.MaxInt32),
 				grpc.MaxCallSendMsgSize(math.MaxInt32),
 			),
-			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 			grpc.WithDefaultServiceConfig(pkgbalancer.BalancerServiceConfig),
 			grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(
 				rpc.ConvertErrorUnaryClientInterceptor,
@@ -117,6 +66,10 @@ func GetV1ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V
 				grpc_prometheus.StreamClientInterceptor,
 				grpc_zap.StreamClientInterceptor(logger.GrpcLogger.Desugar()),
 			)),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler(
+				otelgrpc.WithTracerProvider(otel.GetTracerProvider()),
+				otelgrpc.WithPropagators(otel.GetTextMapPropagator())),
+			),
 		}, opts...)...,
 	)
 	if err != nil {
@@ -156,9 +109,6 @@ type V1 interface {
 	// LeaveHost releases host in scheduler.
 	LeaveHost(context.Context, *schedulerv1.LeaveHostRequest, ...grpc.CallOption) error
 
-	// SyncProbes sync probes of the host.
-	SyncProbes(context.Context, *schedulerv1.SyncProbesRequest, ...grpc.CallOption) (schedulerv1.Scheduler_SyncProbesClient, error)
-
 	// Close tears down the ClientConn and all underlying connections.
 	Close() error
 }
@@ -167,7 +117,6 @@ type V1 interface {
 type v1 struct {
 	schedulerv1.SchedulerClient
 	*grpc.ClientConn
-	config.Dynconfig
 	dialOptions []grpc.DialOption
 	*pkgbalancer.ConsistentHashingPickerBuilder
 }
@@ -312,18 +261,4 @@ func (v *v1) LeaveHost(ctx context.Context, req *schedulerv1.LeaveHostRequest, o
 	}
 
 	return eg.Wait()
-}
-
-// SyncProbes sync probes of the host.
-func (v *v1) SyncProbes(ctx context.Context, req *schedulerv1.SyncProbesRequest, opts ...grpc.CallOption) (schedulerv1.Scheduler_SyncProbesClient, error) {
-	stream, err := v.SchedulerClient.SyncProbes(
-		context.WithValue(ctx, pkgbalancer.ContextKey, req.Host.Id),
-		opts...,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Send begin of piece.
-	return stream, stream.Send(req)
 }

@@ -22,71 +22,46 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-
-	networktopologymocks "d7y.io/dragonfly/v2/scheduler/networktopology/mocks"
 )
 
 func TestEvaluator_New(t *testing.T) {
 	pluginDir := "."
 	ctl := gomock.NewController(t)
 	defer ctl.Finish()
-	mockNetworkTopology := networktopologymocks.NewMockNetworkTopology(ctl)
 	tests := []struct {
 		name      string
 		algorithm string
-		options   []NetworkTopologyOption
 		expect    func(t *testing.T, e any)
 	}{
 		{
 			name:      "new evaluator with default algorithm",
 			algorithm: "default",
-			options:   []NetworkTopologyOption{},
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
-			},
-		},
-		{
-			name:      "new evaluator with machine learning algorithm",
-			algorithm: "ml",
-			options:   []NetworkTopologyOption{},
-			expect: func(t *testing.T, e any) {
-				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 		{
 			name:      "new evaluator with plugin",
 			algorithm: "plugin",
-			options:   []NetworkTopologyOption{},
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 		{
 			name:      "new evaluator with empty string",
 			algorithm: "",
-			options:   []NetworkTopologyOption{},
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorBase")
-			},
-		},
-		{
-			name:      "new evaluator with default algorithm and networkTopology",
-			algorithm: "nt",
-			options:   []NetworkTopologyOption{WithNetworkTopology(mockNetworkTopology)},
-			expect: func(t *testing.T, e any) {
-				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorNetworkTopology")
+				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, New(tc.algorithm, pluginDir, tc.options...))
+			tc.expect(t, New(tc.algorithm, pluginDir))
 		})
 	}
 }

@@ -27,6 +27,7 @@ import (
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -41,12 +42,6 @@ import (
 )
 
 const (
-	// DefaultQPS is default qps of grpc server.
-	DefaultQPS = 20 * 1000
-
-	// DefaultBurst is default burst of grpc server.
-	DefaultBurst = 30 * 1000
-
 	// DefaultMaxConnectionIdle is default max connection idle of grpc keepalive.
 	DefaultMaxConnectionIdle = 10 * time.Minute
 
@@ -58,13 +53,16 @@ const (
 )
 
 // New returns a grpc server instance and register service on grpc server.
-func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedulerv2.SchedulerServer, opts ...grpc.ServerOption) *grpc.Server {
-	limiter := rpc.NewRateLimiterInterceptor(DefaultQPS, DefaultBurst)
+func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedulerv2.SchedulerServer, requestRateLimit float64, opts ...grpc.ServerOption) *grpc.Server {
+	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler(
+			otelgrpc.WithTracerProvider(otel.GetTracerProvider()),
+			otelgrpc.WithPropagators(otel.GetTextMapPropagator()),
+		)),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionIdle:     DefaultMaxConnectionIdle,
 			MaxConnectionAge:      DefaultMaxConnectionAge,

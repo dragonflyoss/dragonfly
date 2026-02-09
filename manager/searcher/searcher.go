@@ -33,7 +33,6 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/models"
-	"d7y.io/dragonfly/v2/pkg/math"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -94,7 +93,7 @@ type searcher struct{}
 func New(pluginDir string) Searcher {
 	s, err := LoadPlugin(pluginDir)
 	if err != nil {
-		logger.Info("use default searcher")
+		logger.Warnf("use default searcher because of loading searcher plugin failed: %v", err)
 		return &searcher{}
 	}
 
@@ -254,14 +253,11 @@ func calculateMultiElementAffinityScore(dst, src string) float64 {
 	var score, elementLen int
 	dstElements := strings.Split(dst, types.AffinitySeparator)
 	srcElements := strings.Split(src, types.AffinitySeparator)
-	elementLen = math.Min(len(dstElements), len(srcElements))
+	elementLen = min(len(dstElements), len(srcElements))
 
 	// Maximum element length is 5.
-	if elementLen > maxElementLen {
-		elementLen = maxElementLen
-	}
-
-	for i := 0; i < elementLen; i++ {
+	elementLen = min(elementLen, maxElementLen)
+	for i := range elementLen {
 		if !strings.EqualFold(dstElements[i], srcElements[i]) {
 			break
 		}

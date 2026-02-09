@@ -20,30 +20,13 @@ package job
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"regexp"
 	"time"
 
-	machineryv1tasks "github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/containerd/containerd/platforms"
-	"github.com/docker/distribution"
-	"github.com/docker/distribution/manifest/manifestlist"
-	"github.com/docker/distribution/manifest/ocischema"
-	"github.com/docker/distribution/manifest/schema1"
-	"github.com/docker/distribution/manifest/schema2"
-	registryclient "github.com/docker/distribution/registry/client"
-	"github.com/docker/distribution/registry/client/auth"
-	"github.com/docker/distribution/registry/client/transport"
-	typesregistry "github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/registry"
+	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.opentelemetry.io/otel/trace"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -51,11 +34,15 @@ import (
 	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/types"
-	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 )
 
 // preheatImage is an image for preheat.
 type PreheatType string
+
+// String returns the string representation of PreheatType.
+func (p PreheatType) String() string {
+	return string(p)
+}
 
 const (
 	// PreheatImageType is image type of preheat job.
@@ -65,9 +52,6 @@ const (
 	PreheatFileType PreheatType = "file"
 )
 
-// accessURLPattern is the pattern of access url.
-var accessURLPattern, _ = regexp.Compile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
-
 // Preheat is an interface for preheat job.
 type Preheat interface {
 	// CreatePreheat creates a preheat job.
@@ -76,14 +60,20 @@ type Preheat interface {
 
 // preheat is an implementation of Preheat.
 type preheat struct {
-	job             *internaljob.Job
-	registryTimeout time.Duration
-	rootCAs         *x509.CertPool
+	job                *internaljob.Job
+	internalJobImage   internaljob.Image
+	rootCAs            *x509.CertPool
+	insecureSkipVerify bool
 }
 
 // newPreheat creates a new Preheat.
-func newPreheat(job *internaljob.Job, registryTimeout time.Duration, rootCAs *x509.CertPool) (Preheat, error) {
-	return &preheat{job, registryTimeout, rootCAs}, nil
+func newPreheat(job *internaljob.Job, internalJobImage internaljob.Image, rootCAs *x509.CertPool, insecureSkipVerify bool) Preheat {
+	return &preheat{
+		job:                job,
+		internalJobImage:   internalJobImage,
+		rootCAs:            rootCAs,
+		insecureSkipVerify: insecureSkipVerify,
+	}
 }
 
 // CreatePreheat creates a preheat job.
@@ -95,46 +85,102 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 	defer span.End()
 
 	// Generate download files.
-	var files []internaljob.PreheatRequest
+	var files []*internaljob.PreheatRequest
 	var err error
 	switch PreheatType(json.Type) {
 	case PreheatImageType:
-		files, err = p.getImageLayers(ctx, json)
+		// Image preheat only supports to preheat single image.
+		if json.URL == "" {
+			return nil, errors.New("invalid params: url is required")
+		}
+
+		files, err = p.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+			URL:                 json.URL,
+			PieceLength:         json.PieceLength,
+			Tag:                 json.Tag,
+			Application:         json.Application,
+			FilteredQueryParams: json.FilteredQueryParams,
+			Headers:             json.Headers,
+			Username:            json.Username,
+			Password:            json.Password,
+			Platform:            json.Platform,
+			Scope:               json.Scope,
+			IPs:                 json.IPs,
+			Percentage:          json.Percentage,
+			Count:               json.Count,
+			ConcurrentTaskCount: json.ConcurrentTaskCount,
+			ConcurrentPeerCount: json.ConcurrentPeerCount,
+			Timeout:             json.Timeout,
+			RootCAs:             p.rootCAs,
+			InsecureSkipVerify:  p.insecureSkipVerify,
+		})
 		if err != nil {
 			return nil, err
 		}
 	case PreheatFileType:
-		files = []internaljob.PreheatRequest{
-			{
-				URL:                 json.URL,
-				Tag:                 json.Tag,
-				FilteredQueryParams: json.FilteredQueryParams,
-				PieceLength:         json.PieceLength,
-				Headers:             json.Headers,
-			},
+		urls := json.URLs
+		if json.URL != "" {
+			urls = append(urls, json.URL)
 		}
+
+		if len(urls) == 0 {
+			return nil, errors.New("invalid params: url or urls is required")
+		}
+
+		var certificateChain [][]byte
+		if p.rootCAs != nil {
+			certificateChain = p.rootCAs.Subjects()
+		}
+
+		files = append(files, &internaljob.PreheatRequest{
+			URLs:                urls,
+			PieceLength:         json.PieceLength,
+			Tag:                 json.Tag,
+			Application:         json.Application,
+			FilteredQueryParams: json.FilteredQueryParams,
+			Headers:             json.Headers,
+			Scope:               json.Scope,
+			IPs:                 json.IPs,
+			Percentage:          json.Percentage,
+			Count:               json.Count,
+			ConcurrentTaskCount: json.ConcurrentTaskCount,
+			ConcurrentPeerCount: json.ConcurrentPeerCount,
+			CertificateChain:    certificateChain,
+			InsecureSkipVerify:  p.insecureSkipVerify,
+			Timeout:             json.Timeout,
+		})
+
 	default:
 		return nil, errors.New("unknown preheat type")
 	}
 
 	// Initialize queues.
-	queues := getSchedulerQueues(schedulers)
+	queues, err := getSchedulerQueues(schedulers)
+	if err != nil {
+		return nil, err
+	}
+
 	return p.createGroupJob(ctx, files, queues)
 }
 
 // createGroupJob creates a group job.
-func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.PreheatRequest, queues []internaljob.Queue) (*internaljob.GroupJobState, error) {
+func (p *preheat) createGroupJob(ctx context.Context, files []*internaljob.PreheatRequest, queues []internaljob.Queue) (*internaljob.GroupJobState, error) {
+	groupUUID := fmt.Sprintf("group_%s", uuid.New().String())
 	var signatures []*machineryv1tasks.Signature
 	for _, queue := range queues {
 		for _, file := range files {
+			file.GroupUUID = groupUUID
+			taskUUID := fmt.Sprintf("task_%s", uuid.New().String())
+			file.TaskUUID = taskUUID
+
 			args, err := internaljob.MarshalRequest(file)
 			if err != nil {
-				logger.Errorf("preheat marshal request: %v, error: %v", file, err)
+				logger.Errorf("[preheat]: preheat marshal request: %v, error: %v", file, err)
 				continue
 			}
 
 			signatures = append(signatures, &machineryv1tasks.Signature{
-				UUID:       fmt.Sprintf("task_%s", uuid.New().String()),
+				UUID:       taskUUID,
 				Name:       internaljob.PreheatJob,
 				RoutingKey: queue.String(),
 				Args:       args,
@@ -146,15 +192,16 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 	if err != nil {
 		return nil, err
 	}
+	group.GroupUUID = groupUUID
 
 	var tasks []machineryv1tasks.Signature
 	for _, signature := range signatures {
 		tasks = append(tasks, *signature)
 	}
 
-	logger.Infof("create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
-	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 0); err != nil {
-		logger.Errorf("create preheat group %s failed", group.GroupUUID, err)
+	logger.Infof("[preheat]: create preheat group %s in queues %v, tasks: %#v", group.GroupUUID, queues, tasks)
+	if _, err := p.job.Server.SendGroupWithContext(ctx, group, 50); err != nil {
+		logger.Errorf("[preheat]: create preheat group %s failed", group.GroupUUID, err)
 		return nil, err
 	}
 
@@ -163,302 +210,4 @@ func (p *preheat) createGroupJob(ctx context.Context, files []internaljob.Prehea
 		State:     machineryv1tasks.StatePending,
 		CreatedAt: time.Now(),
 	}, nil
-}
-
-// getImageLayers gets layers of image.
-func (p *preheat) getImageLayers(ctx context.Context, args types.PreheatArgs) ([]internaljob.PreheatRequest, error) {
-	ctx, span := tracer.Start(ctx, config.SpanGetLayers, trace.WithSpanKind(trace.SpanKindProducer))
-	defer span.End()
-
-	// Parse image manifest url.
-	image, err := parseManifestURL(args.URL)
-	if err != nil {
-		return nil, err
-	}
-
-	opts := []imageAuthClientOption{
-		withHTTPClient(&http.Client{
-			Timeout: p.registryTimeout,
-			Transport: &http.Transport{
-				DialContext:     nethttp.NewSafeDialer().DialContext,
-				TLSClientConfig: &tls.Config{RootCAs: p.rootCAs},
-			},
-		}),
-		withBasicAuth(args.Username, args.Password),
-	}
-	// Background:
-	//   Harbor uses the V1 preheat request and will carry the auth info in the headers.
-	header := nethttp.MapToHeader(args.Headers)
-	if token := header.Get("Authorization"); len(token) > 0 {
-		opts = append(opts, withIssuedToken(token))
-		header.Set("Authorization", token)
-	}
-
-	// Init docker auth client.
-	client, err := newImageAuthClient(image, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get platform.
-	platform := platforms.DefaultSpec()
-	if args.Platform != "" {
-		platform, err = platforms.Parse(args.Platform)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Get manifests.
-	manifests, err := p.getManifests(ctx, client, image, header.Clone(), platform)
-	if err != nil {
-		return nil, err
-	}
-
-	// no matching manifest for platform in the manifest list entries
-	if len(manifests) == 0 {
-		return nil, fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
-	}
-
-	// set authorization header
-	header.Set("Authorization", client.GetAuthToken())
-
-	// prase image layers to preheat
-	layers, err := p.parseLayers(manifests, args, header.Clone(), image)
-	if err != nil {
-		return nil, err
-	}
-
-	return layers, nil
-}
-
-// getManifests gets manifests of image.
-func (p *preheat) getManifests(ctx context.Context, client *imageAuthClient, image *preheatImage, header http.Header, platform specs.Platform) ([]distribution.Manifest, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, image.manifestURL(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set header from the user request.
-	for key, values := range header {
-		for _, value := range values {
-			req.Header.Add(key, value)
-		}
-	}
-
-	// Set accept header with media types.
-	for _, mediaType := range distribution.ManifestMediaTypes() {
-		req.Header.Add("Accept", mediaType)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// Handle response.
-	if resp.StatusCode == http.StatusNotModified {
-		return nil, distribution.ErrManifestNotModified
-	} else if !registryclient.SuccessStatus(resp.StatusCode) {
-		return nil, registryclient.HandleErrorResponse(resp)
-	}
-
-	ctHeader := resp.Header.Get("Content-Type")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarshal manifest.
-	manifest, _, err := distribution.UnmarshalManifest(ctHeader, body)
-	if err != nil {
-		return nil, err
-	}
-
-	switch v := manifest.(type) {
-	case *schema1.SignedManifest, *schema2.DeserializedManifest, *ocischema.DeserializedManifest:
-		return []distribution.Manifest{v}, nil
-	case *manifestlist.DeserializedManifestList:
-		var result []distribution.Manifest
-		for _, v := range p.filterManifests(v.Manifests, platform) {
-			image.tag = v.Digest.String()
-			manifests, err := p.getManifests(ctx, client, image, header.Clone(), platform)
-			if err != nil {
-				return nil, err
-			}
-
-			result = append(result, manifests...)
-		}
-
-		return result, nil
-	}
-
-	return nil, errors.New("unknown manifest type")
-}
-
-// filterManifests filters manifests with platform.
-func (p *preheat) filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs.Platform) []manifestlist.ManifestDescriptor {
-	var matches []manifestlist.ManifestDescriptor
-	for _, desc := range manifests {
-		if desc.Platform.Architecture == platform.Architecture && desc.Platform.OS == platform.OS {
-			matches = append(matches, desc)
-		}
-	}
-
-	return matches
-}
-
-// parseLayers parses layers of image.
-func (p *preheat) parseLayers(manifests []distribution.Manifest, args types.PreheatArgs, header http.Header, image *preheatImage) ([]internaljob.PreheatRequest, error) {
-	var layers []internaljob.PreheatRequest
-	for _, m := range manifests {
-		for _, v := range m.References() {
-			header.Set("Accept", v.MediaType)
-			layer := internaljob.PreheatRequest{
-				URL:                 image.blobsURL(v.Digest.String()),
-				Tag:                 args.Tag,
-				FilteredQueryParams: args.FilteredQueryParams,
-				PieceLength:         args.PieceLength,
-				Headers:             nethttp.HeaderToMap(header),
-			}
-
-			layers = append(layers, layer)
-		}
-	}
-
-	return layers, nil
-}
-
-// imageAuthClientOption is an option for imageAuthClient.
-type imageAuthClientOption func(*imageAuthClient)
-
-// withBasicAuth sets basic auth for imageAuthClient.
-func withBasicAuth(username, password string) imageAuthClientOption {
-	return func(c *imageAuthClient) {
-		c.authConfig = &typesregistry.AuthConfig{
-			Username: username,
-			Password: password,
-		}
-	}
-}
-
-// withHTTPClient sets http client for imageAuthClient.
-func withHTTPClient(client *http.Client) imageAuthClientOption {
-	return func(c *imageAuthClient) {
-		c.httpClient = client
-	}
-}
-
-// withIssuedToken sets the issuedToken for imageAuthClient.
-func withIssuedToken(token string) imageAuthClientOption {
-	return func(c *imageAuthClient) {
-		c.issuedToken = token
-	}
-}
-
-// imageAuthClient is a client for image authentication.
-type imageAuthClient struct {
-	// issuedToken is the issued token specified in header from user request,
-	// there is no need to go through v2 authentication to get a new token
-	// if the token is not empty, just use this token to access v2 API directly.
-	issuedToken string
-
-	// httpClient is the http client.
-	httpClient *http.Client
-
-	// authConfig is the auth config.
-	authConfig *typesregistry.AuthConfig
-
-	// interceptorTokenHandler is the token interceptor.
-	interceptorTokenHandler *interceptorTokenHandler
-}
-
-// newImageAuthClient creates a new imageAuthClient.
-func newImageAuthClient(image *preheatImage, opts ...imageAuthClientOption) (*imageAuthClient, error) {
-	d := &imageAuthClient{
-		httpClient:              http.DefaultClient,
-		interceptorTokenHandler: newInterceptorTokenHandler(),
-	}
-
-	for _, opt := range opts {
-		opt(d)
-	}
-
-	// return earlier if issued token is not empty
-	if len(d.issuedToken) > 0 {
-		return d, nil
-	}
-
-	// New a challenge manager for the supported authentication types.
-	challengeManager, err := registry.PingV2Registry(&url.URL{Scheme: image.protocol, Host: image.domain}, d.httpClient.Transport)
-	if err != nil {
-		return nil, err
-	}
-
-	// New a credential store which always returns the same credential values.
-	creds := registry.NewStaticCredentialStore(d.authConfig)
-
-	// Transport with authentication.
-	d.httpClient.Transport = transport.NewTransport(
-		d.httpClient.Transport,
-		auth.NewAuthorizer(
-			challengeManager,
-			auth.NewTokenHandlerWithOptions(auth.TokenHandlerOptions{
-				Transport:   d.httpClient.Transport,
-				Credentials: creds,
-				Scopes: []auth.Scope{auth.RepositoryScope{
-					Repository: image.name,
-					Actions:    []string{"pull"},
-				}},
-				ClientID: registry.AuthClientID,
-			}),
-			d.interceptorTokenHandler,
-			auth.NewBasicHandler(creds),
-		),
-	)
-
-	return d, nil
-}
-
-// Do sends an HTTP request and returns an HTTP response.
-func (d *imageAuthClient) Do(req *http.Request) (*http.Response, error) {
-	return d.httpClient.Do(req)
-}
-
-// GetAuthToken returns the bearer token.
-func (d *imageAuthClient) GetAuthToken() string {
-	if len(d.issuedToken) > 0 {
-		return d.issuedToken
-	}
-
-	return d.interceptorTokenHandler.GetAuthToken()
-}
-
-// interceptorTokenHandler is a token interceptor
-// intercept bearer token from auth handler.
-type interceptorTokenHandler struct {
-	auth.AuthenticationHandler
-	token string
-}
-
-// NewInterceptorTokenHandler returns a new InterceptorTokenHandler.
-func newInterceptorTokenHandler() *interceptorTokenHandler {
-	return &interceptorTokenHandler{}
-}
-
-// Scheme returns the authentication scheme.
-func (h *interceptorTokenHandler) Scheme() string {
-	return "bearer"
-}
-
-// AuthorizeRequest sets the Authorization header on the request.
-func (h *interceptorTokenHandler) AuthorizeRequest(req *http.Request, params map[string]string) error {
-	h.token = req.Header.Get("Authorization")
-	return nil
-}
-
-// GetAuthToken returns the bearer token.
-func (h *interceptorTokenHandler) GetAuthToken() string {
-	return h.token
 }

@@ -74,7 +74,7 @@ func TestSequence(t *testing.T) {
 				}
 			}()
 			var values []int
-			for i := 0; i < len(tc.values); i++ {
+			for range len(tc.values) {
 				val, ok := q.Dequeue()
 				assert.True(ok, "dequeue should be ok")
 				values = append(values, *val)
@@ -139,7 +139,7 @@ func TestRandom(t *testing.T) {
 				}
 			}()
 			var values []int
-			for i := 0; i < len(tc.values); i++ {
+			for range len(tc.values) {
 				val, ok := q.Dequeue()
 				assert.True(ok, "dequeue should be ok")
 				values = append(values, *val)
@@ -158,7 +158,7 @@ func TestRandom(t *testing.T) {
 func benchmarkRandom(b *testing.B, exponent int, input, output int) {
 	queue := NewRandom[int](exponent)
 	done := false
-	for i := 0; i < input; i++ {
+	for i := range input {
 		go func(i int) {
 			for {
 				if done {
