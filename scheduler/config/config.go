@@ -64,6 +64,9 @@ type Config struct {
 
 	// Network configuration.
 	Network NetworkConfig `yaml:"network" mapstructure:"network"`
+
+	// Auth configuration.
+	Auth AuthConfig `yaml:"auth" mapstructure:"auth"`
 }
 
 type ServerConfig struct {
@@ -317,6 +320,32 @@ type NetworkConfig struct {
 	EnableIPv6 bool `mapstructure:"enableIPv6" yaml:"enableIPv6"`
 }
 
+type AuthConfig struct {
+	// JWT configuration.
+	JWT JWTConfig `yaml:"jwt" mapstructure:"jwt"`
+}
+
+type JWTConfig struct {
+	// Realm name to display to the user, default value is Dragonfly.
+	Realm string `yaml:"realm" mapstructure:"realm"`
+
+	// Key is the secret key used for signing JWT tokens.
+	// SECURITY: This key must be kept secret and should be loaded from a secure secret store in production
+	// (e.g., HashiCorp Vault, AWS Secrets Manager, Kubernetes Secrets, or environment variables with restricted access).
+	// Use a strong random key (minimum 32 bytes recommended).
+	// Example generation: openssl rand -base64 32
+	// If empty, JWT authentication is disabled (not recommended for production).
+	Key string `yaml:"key" mapstructure:"key"`
+
+	// Timeout is the duration that a JWT token remains valid.
+	// For inter-component authentication, use a longer duration (e.g., 24h).
+	// For user-facing authentication, use a shorter duration (e.g., 2h).
+	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
+
+	// MaxRefresh allows clients to refresh their token until MaxRefresh has passed.
+	MaxRefresh time.Duration `yaml:"maxRefresh" mapstructure:"maxRefresh"`
+}
+
 // New default configuration.
 func New() *Config {
 	return &Config{
@@ -388,6 +417,15 @@ func New() *Config {
 		},
 		Network: NetworkConfig{
 			EnableIPv6: DefaultNetworkEnableIPv6,
+		},
+		Auth: AuthConfig{
+			JWT: JWTConfig{
+				Realm: "Dragonfly",
+				// Default timeout of 24 hours for inter-component authentication.
+				// Tokens are long-lived since services are trusted and restart frequently.
+				Timeout:    24 * time.Hour,
+				MaxRefresh: 12 * time.Hour,
+			},
 		},
 	}
 }
@@ -549,6 +587,19 @@ func (cfg *Config) Validate() error {
 	if cfg.Metrics.Enable {
 		if cfg.Metrics.Addr == "" {
 			return errors.New("metrics requires parameter addr")
+		}
+	}
+
+	// Auth validation: only validate JWT fields if a key is configured (JWT is optional for backward compatibility)
+	if cfg.Auth.JWT.Key != "" {
+		if cfg.Auth.JWT.Realm == "" {
+			return errors.New("jwt requires parameter realm when key is set")
+		}
+		if cfg.Auth.JWT.Timeout == 0 {
+			return errors.New("jwt requires parameter timeout when key is set")
+		}
+		if cfg.Auth.JWT.MaxRefresh == 0 {
+			return errors.New("jwt requires parameter maxRefresh when key is set")
 		}
 	}
 

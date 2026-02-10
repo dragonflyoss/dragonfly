@@ -503,20 +503,17 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if cfg.Auth.JWT.Realm == "" {
-		return errors.New("jwt requires parameter realm")
-	}
-
-	if cfg.Auth.JWT.Key == "" {
-		return errors.New("jwt requires parameter key")
-	}
-
-	if cfg.Auth.JWT.Timeout == 0 {
-		return errors.New("jwt requires parameter timeout")
-	}
-
-	if cfg.Auth.JWT.MaxRefresh == 0 {
-		return errors.New("jwt requires parameter maxRefresh")
+	// Auth validation: only validate JWT fields if a key is configured (JWT is optional for backward compatibility)
+	if cfg.Auth.JWT.Key != "" {
+		if cfg.Auth.JWT.Realm == "" {
+			return errors.New("jwt requires parameter realm when key is set")
+		}
+		if cfg.Auth.JWT.Timeout == 0 {
+			return errors.New("jwt requires parameter timeout when key is set")
+		}
+		if cfg.Auth.JWT.MaxRefresh == 0 {
+			return errors.New("jwt requires parameter maxRefresh when key is set")
+		}
 	}
 
 	if cfg.Database.Type == "" {
