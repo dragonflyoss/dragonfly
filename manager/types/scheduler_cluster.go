@@ -92,7 +92,7 @@ type SchedulerClusterConfigDownloadBlockList struct {
 	Applications []string `yaml:"applications" mapstructure:"applications" json:"applications" binding:"omitempty"`
 	URLs         []string `yaml:"urls" mapstructure:"urls" json:"urls" binding:"omitempty"`
 	Tags         []string `yaml:"tags" mapstructure:"tags" json:"tags" binding:"omitempty"`
-	Priorities   []string `yaml:"priorities" mapstructure:"priorities" json:"priorities" binding:"omitempty"`
+	Priorities   []int32  `yaml:"priorities" mapstructure:"priorities" json:"priorities" binding:"omitempty"`
 }
 
 type SchedulerClusterConfigUploadBlockList struct {
