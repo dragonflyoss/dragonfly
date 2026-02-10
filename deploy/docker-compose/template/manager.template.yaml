@@ -63,6 +63,8 @@ auth:
 
 # Database info used for server.
 database:
+  # Database type, supported types include mysql, mariadb, postgres and polardb.
+  type: mysql
   # Mysql configure.
   mysql:
     user: dragonfly
