@@ -17,8 +17,6 @@
 package database
 
 import (
-	"fmt"
-
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -43,13 +41,13 @@ func newPolardb(cfg *config.Config) (*gorm.DB, error) {
 	gormLogger := zapgorm2.New(logger.CoreLogger.Desugar()).LogMode(logLevel)
 
 	db, err := gorm.Open(
-		mysql.New(mysql.Config{
-			DriverName: "polardbx",
-			DSN:        dsn}),
+		mysql.New(
+			mysql.Config{
+				DriverName: "polardbx",
+				DSN:        dsn}),
 		&gorm.Config{
 			NamingStrategy: schema.NamingStrategy{
-				SingularTable: true,
-			},
+				SingularTable: true},
 			DisableForeignKeyConstraintWhenMigrating: true,
 			Logger:                                   gormLogger,
 		})
@@ -60,7 +58,6 @@ func newPolardb(cfg *config.Config) (*gorm.DB, error) {
 
 	// Run migration.
 	if err := migrate(db); err != nil {
-		fmt.Println("migrate err")
 		return nil, err
 	}
 
