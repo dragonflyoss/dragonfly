@@ -80,6 +80,7 @@ var _ = Describe("Containerd with CRI support", func() {
 				fmt.Println(err)
 				Expect(err).NotTo(HaveOccurred())
 			}
+
 			for _, taskMetadata := range taskMetadatas {
 				sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, taskMetadata.ID)
 				Expect(err).NotTo(HaveOccurred())

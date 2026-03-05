@@ -3,10 +3,10 @@ name: E2E Test
 on:
   push:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   pull_request:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   schedule:
     - cron: '0 4 * * *'
 
@@ -27,15 +27,15 @@ jobs:
     strategy:
       matrix:
         module:
-          - "normal"
-          - "ipv6"
+          - 'normal'
+          - 'ipv6'
         include:
           - module: normal
             charts-config: test/testdata/charts/config.yaml
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
           - module: ipv6
             charts-config: test/testdata/charts/config-ipv6.yaml
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
 
     steps:
       - name: Free Disk Space (Ubuntu)

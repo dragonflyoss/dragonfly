@@ -3,10 +3,10 @@ name: E2E Test With Rate Limit
 on:
   push:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   pull_request:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   schedule:
     - cron: '0 4 * * *'
 
@@ -27,11 +27,11 @@ jobs:
     strategy:
       matrix:
         module:
-          - "normal"
+          - 'normal'
         include:
           - module: normal
             charts-config: test/testdata/charts/config-rate-limit.yaml
-            focus: "Rate Limit"
+            focus: 'Rate Limit'
 
     steps:
       - name: Free Disk Space (Ubuntu)

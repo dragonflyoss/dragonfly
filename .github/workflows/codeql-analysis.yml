@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: '0 4 * * *'
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
