@@ -1,7 +1,7 @@
 coverage:
   precision: 2
   round: down
-  range: "50...100"
+  range: '50...100'
   status:
     project:
       default:
@@ -9,10 +9,11 @@ coverage:
         target: 28%
     patch:
       default:
-        enabled: no
+        enabled: yes
+        target: 90%
 
 comment:
-  layout: "reach, diff, flags, files"
+  layout: 'reach, diff, flags, files'
   behavior: default
   require_changes: false
   branches:
