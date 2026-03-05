@@ -680,6 +680,30 @@ func (s *managerServerV2) listSchedulersBySearcher(ctx context.Context, req *man
 			return nil, status.Error(codes.DataLoss, err.Error())
 		}
 
+		// Marshal config of scheduler.
+		config, err := scheduler.SchedulerCluster.Config.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
+		// Marshal client config of scheduler.
+		clientConfig, err := scheduler.SchedulerCluster.ClientConfig.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
+		// Marshal seed client config of scheduler.
+		seedClientConfig, err := scheduler.SchedulerCluster.SeedClientConfig.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
+		// Marshal scopes config of scheduler.
+		scopes, err := scheduler.SchedulerCluster.Scopes.MarshalJSON()
+		if err != nil {
+			return nil, status.Error(codes.DataLoss, err.Error())
+		}
+
 		pbListSchedulersResponse.Schedulers = append(pbListSchedulersResponse.Schedulers, &managerv2.Scheduler{
 			Id:                 uint64(scheduler.ID),
 			Hostname:           scheduler.Hostname,
@@ -690,7 +714,16 @@ func (s *managerServerV2) listSchedulersBySearcher(ctx context.Context, req *man
 			State:              scheduler.State,
 			Features:           features,
 			SchedulerClusterId: uint64(scheduler.SchedulerClusterID),
-			SeedPeers:          seedPeers,
+			SchedulerCluster: &managerv2.SchedulerCluster{
+				Id:               uint64(scheduler.SchedulerCluster.ID),
+				Name:             scheduler.SchedulerCluster.Name,
+				Bio:              scheduler.SchedulerCluster.BIO,
+				Config:           config,
+				ClientConfig:     clientConfig,
+				Scopes:           scopes,
+				SeedClientConfig: seedClientConfig,
+			},
+			SeedPeers: seedPeers,
 		})
 	}
 
