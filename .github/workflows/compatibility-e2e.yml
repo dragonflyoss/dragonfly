@@ -3,10 +3,10 @@ name: Compatibility E2E Test
 on:
   push:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   pull_request:
     branches: [main, release-*]
-    paths-ignore: ["**.md", "**.png", "**.jpg", "**.svg", "**/docs/**"]
+    paths-ignore: ['**.md', '**.png', '**.jpg', '**.svg', '**/docs/**']
   schedule:
     - cron: '0 4 * * *'
 
@@ -27,28 +27,28 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        module: ["manager", "scheduler", "client", "seed-client"]
+        module: ['manager', 'scheduler', 'client', 'seed-client']
         include:
           - module: manager
             image: manager
-            image-tag: v2.4.1-rc.1
+            image-tag: v2.4.2
             chart-name: manager
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
           - module: scheduler
             image: scheduler
-            image-tag: v2.4.1-rc.1
+            image-tag: v2.4.2
             chart-name: scheduler
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
           - module: client
             image: client
-            image-tag: v1.2.4
+            image-tag: v1.2.11
             chart-name: client
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
           - module: seed-client
             image: client
-            image-tag: v1.2.4
+            image-tag: v1.2.11
             chart-name: seed-client
-            skip: "Rate Limit"
+            skip: 'Rate Limit'
 
     steps:
       - name: Free Disk Space (Ubuntu)
