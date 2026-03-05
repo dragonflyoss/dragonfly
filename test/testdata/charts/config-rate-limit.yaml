@@ -5,22 +5,22 @@ manager:
   replicas: 1
   resources:
     requests:
-      cpu: "0"
-      memory: "0"
+      cpu: '0'
+      memory: '0'
     limits:
-      cpu: "1"
-      memory: "2Gi"
+      cpu: '1'
+      memory: '2Gi'
   extraVolumeMounts:
-  - name: logs
-    mountPath: "/var/log/"
-  - name: artifact
-    mountPath: /tmp/artifact
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
   extraVolumes:
-  - name: logs
-    emptyDir: { }
-  - name: artifact
-    hostPath:
-      path: /tmp/artifact
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
   metrics:
     enable: true
   config:
@@ -40,25 +40,25 @@ scheduler:
   replicas: 3
   resources:
     requests:
-      cpu: "0"
-      memory: "0"
+      cpu: '0'
+      memory: '0'
     limits:
-      cpu: "2"
-      memory: "4Gi"
+      cpu: '2'
+      memory: '4Gi'
   service:
     type: NodePort
     nodePort: 30802
   extraVolumeMounts:
-  - name: logs
-    mountPath: "/var/log/"
-  - name: artifact
-    mountPath: /tmp/artifact
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
   extraVolumes:
-  - name: logs
-    emptyDir: { }
-  - name: artifact
-    hostPath:
-      path: /tmp/artifact
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
   metrics:
     enable: true
     enableHost: true
@@ -69,8 +69,8 @@ scheduler:
     scheduler:
       algorithm: default
       retryBackToSourceLimit: 7
-      retryLimit: 10
-      retryInterval: 800ms
+      retryLimit: 15
+      retryInterval: 1s
       gc:
         hostGCInterval: 2m
 
@@ -82,25 +82,25 @@ seedClient:
     tag: latest
   resources:
     requests:
-      cpu: "0"
-      memory: "0"
+      cpu: '0'
+      memory: '0'
     limits:
-      cpu: "2"
-      memory: "4Gi"
+      cpu: '2'
+      memory: '4Gi'
   extraVolumeMounts:
-  - name: logs
-    mountPath: "/var/log/"
-  - name: artifact
-    mountPath: /tmp/artifact
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
   extraVolumes:
-  - name: logs
-    emptyDir: { }
-  - name: artifact
-    hostPath:
-      path: /tmp/artifact
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
   config:
     download:
-      rateLimit: 1MiB
+      bandwidthLimit: 1MB
     dynconfig:
       refreshInterval: 5s
     scheduler:
@@ -109,12 +109,12 @@ seedClient:
       level: debug
     proxy:
       prefetch: true
-      prefetchRateLimit: 1MiB
+      prefetchBandwidthLimit: 1MB
       registryMirror:
         addr: https://index.docker.io
       rules:
-      - regex: blobs/sha256.*
-      - regxe: file-server.*
+        - regex: blobs/sha256.*
+        - regxe: file-server.*
 
 client:
   enable: true
@@ -123,27 +123,27 @@ client:
     tag: latest
   resources:
     requests:
-      cpu: "0"
-      memory: "0"
+      cpu: '0'
+      memory: '0'
     limits:
-      cpu: "2"
-      memory: "4Gi"
+      cpu: '2'
+      memory: '4Gi'
   # Allow client daemonSet to create a pod on master node for testing when the daemon goes offline.
   tolerations:
-    - key: "node-role.kubernetes.io/master"
-      operator: "Exists"
-      effect: "NoSchedule"
+    - key: 'node-role.kubernetes.io/master'
+      operator: 'Exists'
+      effect: 'NoSchedule'
   extraVolumeMounts:
-  - name: logs
-    mountPath: "/var/log/"
-  - name: artifact
-    mountPath: /tmp/artifact
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
   extraVolumes:
-  - name: logs
-    emptyDir: { }
-  - name: artifact
-    hostPath:
-      path: /tmp/artifact
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
   dfinit:
     enable: true
     image:
@@ -156,13 +156,13 @@ client:
           registries:
             - hostNamespace: docker.io
               serverAddr: https://index.docker.io
-              capabilities: ["pull", "resolve"]
+              capabilities: ['pull', 'resolve']
             - hostNamespace: ghcr.io
               serverAddr: https://ghcr.io
-              capabilities: ["pull", "resolve"]
+              capabilities: ['pull', 'resolve']
   config:
     download:
-      rateLimit: 1MiB
+      bandwidthLimit: 1MB
     dynconfig:
       refreshInterval: 5s
     scheduler:
@@ -174,5 +174,5 @@ client:
       registryMirror:
         addr: https://index.docker.io
       rules:
-      - regex: blobs/sha256.*
-      - regxe: file-server.*
+        - regex: blobs/sha256.*
+        - regxe: file-server.*
