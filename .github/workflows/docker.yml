@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: ["manager", "scheduler"]
+        module: ['manager', 'scheduler']
         include:
           - module: manager
             platforms: linux/amd64,linux/arm64
@@ -47,7 +47,7 @@ jobs:
 
       - name: PrepareReg Names
         run: |
-           echo IMAGE_REPOSITORY=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+          echo IMAGE_REPOSITORY=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
@@ -120,8 +120,8 @@ jobs:
 
       - name: Sign container image
         run: |
-            cosign sign -y --key env://COSIGN_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
-            cosign sign -y --key env://COSIGN_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
+          cosign sign -y --key env://COSIGN_KEY dragonflyoss/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
+          cosign sign -y --key env://COSIGN_KEY ghcr.io/${{ env.IMAGE_REPOSITORY }}/${{ matrix.module }}:${{ steps.get_version.outputs.VERSION }}
         env:
           COSIGN_KEY: ${{secrets.COSIGN_KEY}}
           COSIGN_PASSWORD: ${{secrets.COSIGN_PASSWORD}}

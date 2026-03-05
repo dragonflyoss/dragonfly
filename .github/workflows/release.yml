@@ -42,7 +42,7 @@ jobs:
       - name: Generate subject
         id: hash
         env:
-          ARTIFACTS: "${{ steps.run-goreleaser.outputs.artifacts }}"
+          ARTIFACTS: '${{ steps.run-goreleaser.outputs.artifacts }}'
         run: |
           set -euo pipefail
           hashes=$(echo $ARTIFACTS | jq --raw-output '.[] | {name, "digest": (.extra.Digest // .extra.Checksum)} | select(.digest) | {digest} + {name} | join("  ") | sub("^sha256:";"")' | base64 -w0)
@@ -62,9 +62,9 @@ jobs:
       id-token: write
       contents: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
-      base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
+      base64-subjects: '${{ needs.goreleaser.outputs.hashes }}'
 
   upload-provenance:
     needs: [goreleaser, provenance]

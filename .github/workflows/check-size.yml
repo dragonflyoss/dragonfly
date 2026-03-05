@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main, release-*]
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          filesizelimit: "1048576"
+          filesizelimit: '1048576'
           exclusionPatterns: |
             deploy/helm-charts
             manager/console
