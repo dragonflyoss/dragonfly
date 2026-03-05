@@ -113,9 +113,6 @@ func TestResource_New(t *testing.T) {
 						HostGCInterval: 100,
 					},
 				},
-				SeedPeer: config.SeedPeerConfig{
-					Enable: false,
-				},
 			},
 			mock: func(mg *gc.MockGCMockRecorder) {
 				mg.Add(gomock.Any()).Return(nil).Times(3)

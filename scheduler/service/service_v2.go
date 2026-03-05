@@ -1330,7 +1330,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 			!task.HasAvailablePeer(hostID, blocklist):
 
 		// If HostType is normal, trigger seed peer download back-to-source.
-		if host.Type == types.HostTypeNormal && v.config.SeedPeer.Enable {
+		if host.Type == types.HostTypeNormal && v.resource.SeedPeer().HasAvailable() {
 			// If trigger the seed peer download back-to-source,
 			// the need back-to-source flag should be true.
 			download.NeedBackToSource = true

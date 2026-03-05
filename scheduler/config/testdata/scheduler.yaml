@@ -33,8 +33,8 @@ scheduler:
 
 database:
   redis:
-    addrs: [ "foo", "bar" ]
-    masterName: "baz"
+    addrs: ['foo', 'bar']
+    masterName: 'baz'
     host: 127.0.0.1
     port: 6379
     password: foo
@@ -61,7 +61,6 @@ manager:
     interval: 5s
 
 seedPeer:
-  enable: true
   tls:
     caCert: foo
     cert: foo
@@ -76,7 +75,7 @@ job:
 
 metrics:
   enable: false
-  addr: ":8000"
+  addr: ':8000'
   enableHost: true
 
 network:

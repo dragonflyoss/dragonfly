@@ -70,6 +70,9 @@ type SeedPeer interface {
 	// Select selects a seed peer target by the task id.
 	Select(context.Context, string) (*Host, error)
 
+	// HasAvailable returns whether there is any available seed peer.
+	HasAvailable() bool
+
 	// Serve serves the seed peer service.
 	Serve() error
 
@@ -298,6 +301,11 @@ func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 	}
 
 	return host.(*Host), nil
+}
+
+// HasAvailable returns whether there is any available seed peer.
+func (s *seedPeer) HasAvailable() bool {
+	return len(s.hashring.Members()) > 0
 }
 
 // Initialize seed peer.

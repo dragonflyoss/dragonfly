@@ -242,9 +242,9 @@ func (j *job) preheat(ctx context.Context, data string) (string, error) {
 
 // PreheatSinglePeer preheats job by single seed peer, scheduler will trigger seed peer to download task.
 func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	// If seed peer is disabled, return error.
-	if !j.config.SeedPeer.Enable {
-		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	// If scheduler has no available seed peer, return error.
+	if !j.resource.SeedPeer().HasAvailable() {
+		return nil, fmt.Errorf("cluster %d scheduler %s no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
 	// Preheat by v2 grpc protocol. If seed peer does not support
@@ -590,8 +590,9 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 // 3. Percentage: If percentage is provided, selects a proportional number of seed peers (rounded down). Ensures at least one seed peer is selected if percentage > 0.
 // Priority: IPs > Count > Percentage
 func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, log *logger.SugaredLoggerOnWith) ([]*resource.Host, error) {
-	if !j.config.SeedPeer.Enable {
-		return nil, fmt.Errorf("cluster %d scheduler %s has disabled seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
+	// If scheduler has no available seed peer, return error.
+	if !j.resource.SeedPeer().HasAvailable() {
+		return nil, fmt.Errorf("cluster %d scheduler %s no available seed peer", j.config.Manager.SchedulerClusterID, j.config.Server.AdvertiseIP)
 	}
 
 	seedPeers := j.resource.HostManager().LoadAllSeeds()

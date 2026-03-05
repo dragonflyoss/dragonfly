@@ -3,23 +3,23 @@ server:
   # # Access ip for other services,
   # # when local ip is different with access ip, advertiseIP should be set.
   advertiseIP: __IP__
-# # Access port for other services,
-# # when local ip is different with access port, advertisePort should be set.
-# advertisePort: 8002
-# # Listen ip.
-# listenIP: 0.0.0.0
-#
+  # # Access port for other services,
+  # # when local ip is different with access port, advertisePort should be set.
+  # advertisePort: 8002
+  # # Listen ip.
+  # listenIP: 0.0.0.0
+  #
   # Port is the ip and port scheduler server listens on.
   port: 8002
-# # GRPC server tls configuration.
-# tls:
-#   # CA certificate file path for mTLS.
-#   caCert: /etc/ssl/certs/ca.crt
-#   # Certificate file path for mTLS.
-#   cert: /etc/ssl/certs/server.crt
-#   # Key file path for mTLS.
-#   key: /etc/ssl/private/server.pem
-#
+  # # GRPC server tls configuration.
+  # tls:
+  #   # CA certificate file path for mTLS.
+  #   caCert: /etc/ssl/certs/ca.crt
+  #   # Certificate file path for mTLS.
+  #   cert: /etc/ssl/certs/server.crt
+  #   # Key file path for mTLS.
+  #   key: /etc/ssl/private/server.pem
+  #
   # # Server host.
   # host: localhost
   #
@@ -82,7 +82,7 @@ database:
   redis:
     # Redis addresses.
     addrs:
-      - "__IP__:6379"
+      - '__IP__:6379'
     # Redis sentinel master name.
     masterName: ''
     # Redis username.
@@ -109,7 +109,7 @@ host:
 # Manager configuration.
 manager:
   # addr is manager access address.
-  addr: "__IP__:65003"
+  addr: '__IP__:65003'
   # schedulerClusterID cluster id to which scheduler instance belongs.
   schedulerClusterID: 1
   # keepAlive keep alive configuration.
@@ -127,10 +127,6 @@ manager:
 
 # Seed peer configuration.
 seedPeer:
-  # Scheduler enable seed peer as P2P peer,
-  # if the value is false, P2P network will not be back-to-source through
-  # seed peer but by peer and preheat feature does not work.
-  enable: true
 # # GRPC client tls configuration.
 # tls:
 #   # CA certificate file path for mTLS.

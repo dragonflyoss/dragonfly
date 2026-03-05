@@ -1789,16 +1789,16 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *schedulerv2.RegisterPeerRequest
-		run  func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+		run  func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 			peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-			mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder)
+			mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder)
 	}{
 		{
 			name: "host not found",
 			req:  &schedulerv2.RegisterPeerRequest{},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(nil, false).Times(1),
@@ -1816,9 +1816,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -1826,11 +1826,11 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
 				)
 
 				peer.Priority = commonv2.Priority_LEVEL1
-				svc.config.SeedPeer.Enable = true
-
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),
 					status.Errorf(codes.FailedPrecondition, "%s peer is forbidden", commonv2.Priority_LEVEL1.String()))
@@ -1843,9 +1843,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -1853,6 +1853,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
 				)
 
 				peer.Priority = commonv2.Priority_LEVEL1
@@ -1860,7 +1862,6 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(seedPeer)
 				seedPeer.FSM.SetState(standard.PeerStateRunning)
-				svc.config.SeedPeer.Enable = true
 
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),
@@ -1874,9 +1875,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -1884,6 +1885,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(false).Times(1),
 				)
 
 				peer.Task.ContentLength.Store(0)
@@ -1903,9 +1906,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -1913,6 +1916,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(false).Times(1),
 				)
 
 				peer.Task.ContentLength.Store(0)
@@ -1933,9 +1938,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -1943,6 +1948,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(false).Times(1),
 					ma.Send(gomock.Eq(&schedulerv2.AnnouncePeerResponse{
 						Response: &schedulerv2.AnnouncePeerResponse_EmptyTaskResponse{
 							EmptyTaskResponse: &schedulerv2.EmptyTaskResponse{},
@@ -1969,9 +1976,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					NeedBackToSource: true,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -2004,9 +2011,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -2014,6 +2021,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(false).Times(1),
 					ms.ScheduleCandidateParents(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1),
 				)
 
@@ -2037,9 +2046,9 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					Digest: &dgst,
 				},
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, hostManager standard.HostManager, taskManager standard.TaskManager,
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
 				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
-				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
@@ -2047,6 +2056,8 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					mc.HasAvailable().Return(false).Times(1),
 					ms.ScheduleCandidateParents(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1),
 				)
 
@@ -2075,6 +2086,7 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 			hostManager := standard.NewMockHostManager(ctl)
 			peerManager := standard.NewMockPeerManager(ctl)
 			taskManager := standard.NewMockTaskManager(ctl)
+			seedPeerManager := standard.NewMockSeedPeer(ctl)
 			stream := schedulerv2mocks.NewMockScheduler_AnnouncePeerServer(ctl)
 
 			mockHost := standard.NewHost(
@@ -2085,7 +2097,7 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 			seedPeer := standard.NewPeer(mockSeedPeerID, mockTask, mockHost)
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentResource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
-			tc.run(t, svc, tc.req, peer, seedPeer, hostManager, taskManager, peerManager, stream, resource.EXPECT(), hostManager.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT(), stream.EXPECT(), scheduling.EXPECT())
+			tc.run(t, svc, tc.req, peer, seedPeer, seedPeerManager, hostManager, taskManager, peerManager, stream, resource.EXPECT(), hostManager.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT(), seedPeerManager.EXPECT(), stream.EXPECT(), scheduling.EXPECT())
 		})
 	}
 }
