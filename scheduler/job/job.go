@@ -117,6 +117,11 @@ func New(cfg *config.Config, resource resource.Resource) (Job, error) {
 		logger.Errorf("register preheat job to local queue error: %s", err.Error())
 		return nil, err
 	}
+	err = localJob.InitRdb(redisConfig)
+	if err != nil {
+		logger.Errorf("initialize redis for local job error: %s", err.Error())
+		return nil, err
+	}
 
 	return t, nil
 }
@@ -283,17 +288,25 @@ func (j *job) preheatV2(ctx context.Context, req *internaljob.PreheatRequest) er
 
 // syncPeers is a job to sync peers.
 func (j *job) syncPeers() (string, error) {
-	var hosts []*resource.Host
+	var hosts []string
 	j.resource.HostManager().Range(func(key, value any) bool {
 		host, ok := value.(*resource.Host)
 		if !ok {
 			logger.Errorf("invalid host %v %v", key, value)
 			return true
 		}
-
-		hosts = append(hosts, host)
+		val, err := internaljob.MarshalResponse(host)
+		if err != nil {
+			logger.Errorf("invalid host %s", val)
+			return true
+		}
+		hosts = append(hosts, val)
 		return true
 	})
-
-	return internaljob.MarshalResponse(hosts)
+	key, errors := j.localJob.SetTaskResults(hosts, internaljob.SyncPeersJob)
+	if errors != nil {
+		logger.Errorf("Failed to set task results: %v", errors)
+		return "", errors
+	}
+	return key, nil
 }
