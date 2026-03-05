@@ -226,9 +226,6 @@ type GRPCTLSClientConfig struct {
 }
 
 type SeedPeerConfig struct {
-	// Enable is to enable seed peer as P2P peer.
-	Enable bool `yaml:"enable" mapstructure:"enable"`
-
 	// TLS client configuration.
 	TLS *GRPCTLSClientConfig `yaml:"tls" mapstructure:"tls"`
 
@@ -372,7 +369,6 @@ func New() *Config {
 			},
 		},
 		SeedPeer: SeedPeerConfig{
-			Enable:              true,
 			TaskDownloadTimeout: DefaultSeedPeerTaskDownloadTimeout,
 		},
 		Job: JobConfig{

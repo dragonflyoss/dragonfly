@@ -1829,8 +1829,6 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 				)
 
 				peer.Priority = commonv2.Priority_LEVEL1
-				svc.config.SeedPeer.Enable = true
-
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),
 					status.Errorf(codes.FailedPrecondition, "%s peer is forbidden", commonv2.Priority_LEVEL1.String()))
@@ -1860,7 +1858,6 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 				peer.Task.StorePeer(peer)
 				peer.Task.StorePeer(seedPeer)
 				seedPeer.FSM.SetState(standard.PeerStateRunning)
-				svc.config.SeedPeer.Enable = true
 
 				assert := assert.New(t)
 				assert.ErrorIs(svc.handleRegisterPeerRequest(context.Background(), stream, peer.Host.ID, peer.Task.ID, peer.ID, req),

@@ -649,9 +649,9 @@ func (v *V1) LeaveHost(_ctx context.Context, req *schedulerv1.LeaveHostRequest) 
 
 // prefetchTask prefetches the task with seed peer.
 func (v *V1) prefetchTask(ctx context.Context, rawReq *schedulerv1.PeerTaskRequest) (*resource.Task, error) {
-	// If seed peer is disabled, then return error.
-	if !v.config.SeedPeer.Enable {
-		return nil, errors.New("seed peer is disabled")
+	// If scheduler has no available seed peer, return error.
+	if !v.resource.SeedPeer().HasAvailable() {
+		return nil, errors.New("no available seed peer")
 	}
 
 	log := logger.WithTaskAndPeerID(rawReq.GetTaskId(), rawReq.GetPeerId())
@@ -733,7 +733,7 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 
 	switch priority {
 	case commonv1.Priority_LEVEL6, commonv1.Priority_LEVEL0:
-		if v.config.SeedPeer.Enable && !task.IsSeedPeerFailed() {
+		if v.resource.SeedPeer().HasAvailable() && !task.IsSeedPeerFailed() {
 			if len(req.UrlMeta.GetRange()) > 0 {
 				if rg, err := http.ParseURLMetaRange(req.UrlMeta.GetRange(), math.MaxInt64); err == nil {
 					go v.triggerSeedPeerTask(ctx, &rg, task)
@@ -1135,7 +1135,7 @@ func (v *V1) handlePieceFailure(ctx context.Context, peer *resource.Peer, piece 
 		v.handleLegacySeedPeer(ctx, parent)
 
 		// Start trigger seed peer task.
-		if v.config.SeedPeer.Enable {
+		if v.resource.SeedPeer().HasAvailable() {
 			go v.triggerSeedPeerTask(ctx, peer.Range, parent.Task)
 		}
 	default:

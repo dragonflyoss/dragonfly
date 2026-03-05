@@ -123,7 +123,6 @@ func TestConfig_Load(t *testing.T) {
 			},
 		},
 		SeedPeer: SeedPeerConfig{
-			Enable: true,
 			TLS: &GRPCTLSClientConfig{
 				CACert: "foo",
 				Cert:   "foo",

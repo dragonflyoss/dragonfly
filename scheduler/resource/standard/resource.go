@@ -102,10 +102,8 @@ func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.Transpor
 	resource.peerClientPool = dfdaemonclient.GetV2Pool()
 
 	// Initialize seed peer interface.
-	if cfg.SeedPeer.Enable {
-		dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
-		resource.seedPeer = newSeedPeer(peerManager, hostManager, resource.peerClientPool, dialOptions...)
-	}
+	dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
+	resource.seedPeer = newSeedPeer(peerManager, hostManager, resource.peerClientPool, dialOptions...)
 
 	return resource, nil
 }
@@ -138,19 +136,11 @@ func (r *resource) PeerClientPool() dfdaemonclient.Pool {
 // Serve serves resource service.
 func (r *resource) Serve() error {
 	go r.peerClientPool.Serve()
-
-	if r.config.SeedPeer.Enable {
-		return r.seedPeer.Serve()
-	}
-
-	return nil
+	return r.seedPeer.Serve()
 }
 
 // Stop resource service.
 func (r *resource) Stop() {
-	if r.config.SeedPeer.Enable {
-		r.seedPeer.Stop()
-	}
-
+	r.seedPeer.Stop()
 	r.peerClientPool.Stop()
 }

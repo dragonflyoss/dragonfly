@@ -43,6 +43,20 @@ func (m *MockSeedPeer) EXPECT() *MockSeedPeerMockRecorder {
 	return m.recorder
 }
 
+// HasAvailable mocks base method.
+func (m *MockSeedPeer) HasAvailable() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasAvailable")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// HasAvailable indicates an expected call of HasAvailable.
+func (mr *MockSeedPeerMockRecorder) HasAvailable() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasAvailable", reflect.TypeOf((*MockSeedPeer)(nil).HasAvailable))
+}
+
 // Select mocks base method.
 func (m *MockSeedPeer) Select(arg0 context.Context, arg1 string) (*Host, error) {
 	m.ctrl.T.Helper()
