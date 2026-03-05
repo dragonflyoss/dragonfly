@@ -2337,7 +2337,7 @@ func TestServiceV1_triggerTask(t *testing.T) {
 			},
 		},
 		{
-			name: "priority is Priority_LEVEL6 and seed peer is enabled",
+			name: "priority is Priority_LEVEL6 and has available seed peer",
 			config: &config.Config{
 				Scheduler: mockSchedulerConfig,
 			},
@@ -2358,6 +2358,8 @@ func TestServiceV1_triggerTask(t *testing.T) {
 							},
 						},
 					}, nil).Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
 					mr.SeedPeer().Do(func() { wg.Done() }).Return(seedPeer).Times(1),
 					mc.TriggerTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(ctx context.Context, rg *nethttp.Range, task *resource.Task) { wg.Done() }).Return(mockPeer, &schedulerv1.PeerResult{}, nil).Times(1),
 				)
@@ -2383,7 +2385,11 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockSeedPeer.FSM.SetState(resource.PeerStateFailed)
 				mockTask.StorePeer(mockSeedPeer)
 
-				md.GetApplications().Return(nil, errors.New("foo")).Times(1)
+				gomock.InOrder(
+					md.GetApplications().Return(nil, errors.New("foo")).Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2405,14 +2411,16 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockTask.FSM.SetState(resource.TaskStatePending)
 				mockPeer.Task.Application = "bas"
 
-				md.GetApplications().Return([]*managerv2.Application{
-					{
-						Name: "bas",
-						Priority: &managerv2.ApplicationPriority{
-							Value: commonv2.Priority_LEVEL5,
+				gomock.InOrder(
+					md.GetApplications().Return([]*managerv2.Application{
+						{
+							Name: "bas",
+							Priority: &managerv2.ApplicationPriority{
+								Value: commonv2.Priority_LEVEL5,
+							},
 						},
-					},
-				}, nil).Times(1)
+					}, nil).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2434,14 +2442,16 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockTask.FSM.SetState(resource.TaskStatePending)
 				mockPeer.Task.Application = "bas"
 
-				md.GetApplications().Return([]*managerv2.Application{
-					{
-						Name: "bas",
-						Priority: &managerv2.ApplicationPriority{
-							Value: commonv2.Priority_LEVEL4,
+				gomock.InOrder(
+					md.GetApplications().Return([]*managerv2.Application{
+						{
+							Name: "bas",
+							Priority: &managerv2.ApplicationPriority{
+								Value: commonv2.Priority_LEVEL4,
+							},
 						},
-					},
-				}, nil).Times(1)
+					}, nil).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2463,14 +2473,16 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockTask.FSM.SetState(resource.TaskStatePending)
 				mockPeer.Task.Application = "bae"
 
-				md.GetApplications().Return([]*managerv2.Application{
-					{
-						Name: "bae",
-						Priority: &managerv2.ApplicationPriority{
-							Value: commonv2.Priority_LEVEL3,
+				gomock.InOrder(
+					md.GetApplications().Return([]*managerv2.Application{
+						{
+							Name: "bae",
+							Priority: &managerv2.ApplicationPriority{
+								Value: commonv2.Priority_LEVEL3,
+							},
 						},
-					},
-				}, nil).Times(1)
+					}, nil).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2492,14 +2504,16 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockTask.FSM.SetState(resource.TaskStatePending)
 				mockPeer.Task.Application = "bae"
 
-				md.GetApplications().Return([]*managerv2.Application{
-					{
-						Name: "bae",
-						Priority: &managerv2.ApplicationPriority{
-							Value: commonv2.Priority_LEVEL2,
+				gomock.InOrder(
+					md.GetApplications().Return([]*managerv2.Application{
+						{
+							Name: "bae",
+							Priority: &managerv2.ApplicationPriority{
+								Value: commonv2.Priority_LEVEL2,
+							},
 						},
-					},
-				}, nil).Times(1)
+					}, nil).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2519,14 +2533,16 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				mockTask.FSM.SetState(resource.TaskStatePending)
 				mockPeer.Task.Application = "bat"
 
-				md.GetApplications().Return([]*managerv2.Application{
-					{
-						Name: "bat",
-						Priority: &managerv2.ApplicationPriority{
-							Value: commonv2.Priority_LEVEL1,
+				gomock.InOrder(
+					md.GetApplications().Return([]*managerv2.Application{
+						{
+							Name: "bat",
+							Priority: &managerv2.ApplicationPriority{
+								Value: commonv2.Priority_LEVEL1,
+							},
 						},
-					},
-				}, nil).Times(1)
+					}, nil).Times(1),
+				)
 
 				err := svc.triggerTask(context.Background(), &schedulerv1.PeerTaskRequest{
 					UrlMeta: &commonv1.UrlMeta{
@@ -2559,6 +2575,8 @@ func TestServiceV1_triggerTask(t *testing.T) {
 							},
 						},
 					}, nil).Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
 					mr.SeedPeer().Do(func() { wg.Done() }).Return(seedPeer).Times(1),
 					mc.TriggerTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(ctx context.Context, rg *nethttp.Range, task *resource.Task) { wg.Done() }).Return(mockPeer, &schedulerv1.PeerResult{}, nil).Times(1),
 				)
@@ -2575,7 +2593,7 @@ func TestServiceV1_triggerTask(t *testing.T) {
 			},
 		},
 		{
-			name: "register priority is Priority_LEVEL6 and seed peer is enabled",
+			name: "register priority is Priority_LEVEL6 and has available seed peer",
 			config: &config.Config{
 				Scheduler: mockSchedulerConfig,
 			},
@@ -2588,6 +2606,8 @@ func TestServiceV1_triggerTask(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					mc.HasAvailable().Return(true).Times(1),
 					mr.SeedPeer().Do(func() { wg.Done() }).Return(seedPeer).Times(1),
 					mc.TriggerTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(ctx context.Context, rg *nethttp.Range, task *resource.Task) { wg.Done() }).Return(mockPeer, &schedulerv1.PeerResult{}, nil).Times(1),
 				)
