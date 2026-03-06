@@ -183,24 +183,25 @@ func (t *Job) SetTaskResults(data []string, jobName string) (string, error) {
 		return "", ErrRedisNotInitialized
 	}
 
-	key := fmt.Sprintf("%s:%s:%d", jobName, t.Queue.String(), time.Now().UnixNano())
 	if len(data) == 0 {
-		return key, nil
+		return "", nil
 	}
+
+	key := fmt.Sprintf("%s_results:%s:%d", jobName, t.Queue.String(), time.Now().Unix())
 
 	// Use pipeline for batch operations
 	pipe := t.rdb.Pipeline()
 	for _, val := range data {
 		pipe.SAdd(context.Background(), key, val)
 	}
-	pipe.Expire(context.Background(), key, DefaultResultsExpireIn)
+
+	pipe.Expire(context.Background(), key, time.Duration(DefaultResultsExpireIn)*time.Second)
 
 	_, err := pipe.Exec(context.Background())
 	if err != nil {
-		logger.Errorf("Failed to set task results: %v", err)
+		logger.Errorf("Failed to exec pipe : %v", err)
 		return "", err
 	}
-	t.rdb.Close()
 	return key, nil
 }
 

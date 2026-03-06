@@ -295,17 +295,17 @@ func (j *job) syncPeers() (string, error) {
 			logger.Errorf("invalid host %v %v", key, value)
 			return true
 		}
-		val, err := internaljob.MarshalResponse(host)
+		json, err := internaljob.MarshalResponse(host)
 		if err != nil {
-			logger.Errorf("invalid host %s", val)
+			logger.Errorf("Marshal host fail. host: %s, err: %v", host, err)
 			return true
 		}
-		hosts = append(hosts, val)
+		hosts = append(hosts, json)
 		return true
 	})
 	key, errors := j.localJob.SetTaskResults(hosts, internaljob.SyncPeersJob)
 	if errors != nil {
-		logger.Errorf("Failed to set task results: %v", errors)
+		logger.Errorf("Failed to set sync peers task results: %v", errors)
 		return "", errors
 	}
 	return key, nil
