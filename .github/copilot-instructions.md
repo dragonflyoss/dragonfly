@@ -2,7 +2,147 @@
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
-Dragonfly is a P2P file distribution and image acceleration system written in Go 1.25.5. It consists of multiple components: manager (cluster management and web portal), scheduler (download optimization), dfget (P2P download client), dfcache (P2P cache operations), and dfstore (object storage with P2P cache).
+## Project Overview
+
+Dragonfly is a **CNCF Graduated** project that delivers efficient, stable, and secure data distribution and
+acceleration powered by P2P technology. It provides an optional content-addressable filesystem that accelerates
+OCI container launch. The project targets cloud-native architectures and large-scale delivery of files, container
+images, OCI artifacts, AI/ML models, caches, logs, and dependencies.
+
+- **Website**: <https://d7y.io>
+- **Module path**: `d7y.io/dragonfly/v2`
+- **Go version**: 1.25.5
+- **Current version**: v2.4.0
+- **License**: Apache 2.0
+
+## Architecture
+
+Dragonfly consists of the following components:
+
+### Components in this repository
+
+| Component     | Binary      | Default Ports       | Description                                                    |
+| ------------- | ----------- | ------------------- | -------------------------------------------------------------- |
+| **Manager**   | `manager`   | gRPC :65003, REST :8080 | Cluster management, peer lifecycle, dynamic configuration, web console |
+| **Scheduler** | `scheduler` | gRPC :8002          | Optimizes P2P download scheduling and task routing             |
+
+### Submodule components
+
+| Submodule              | Repository                          | Description                                           |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------- |
+| `client/`              | dragonflyoss/client                 | Rust-based dfdaemon (dfget, dfcache, dfstore, proxy)  |
+| `manager/console/`     | dragonflyoss/console                | Node.js/React web console frontend for manager        |
+| `deploy/helm-charts/`  | dragonflyoss/helm-charts            | Kubernetes Helm charts for deploying Dragonfly        |
+
+### Data Flow
+
+```
+Client (dfdaemon/dfget) → Scheduler → Manager
+                              ↓
+                     Seed Peer / Origin Server
+```
+
+- **Manager**: stores cluster configuration in MySQL/PostgreSQL and caches in Redis; exposes both gRPC and REST APIs
+- **Scheduler**: stateless gRPC service that manages the P2P DAG (task graph); stores transient state in Redis
+- **Client (dfdaemon)**: runs on each node; intercepts HTTP/HTTPS requests and coordinates peer-to-peer downloads
+
+## Repository Structure
+
+### Key Directories
+
+```
+cmd/
+  manager/          # Manager binary entry point (main.go)
+  scheduler/        # Scheduler binary entry point (main.go)
+  dependency/       # Shared CLI base options (base.Options) and plugin/version commands
+
+manager/            # Manager service implementation
+  config/           # Configuration structs and defaults (GRPC :65003, REST :8080)
+  handlers/         # Gin HTTP request handlers
+  router/           # HTTP router setup
+  rpcserver/        # gRPC server implementation
+  service/          # Business logic
+  models/           # GORM database models
+  database/         # Database initialization (MySQL, MariaDB, PostgreSQL)
+  middlewares/      # Authentication, CORS, rate-limiting middleware
+  job/              # Async job processing (dragonflyoss/machinery)
+  metrics/          # Prometheus metrics
+  searcher/         # Scheduler cluster selection logic
+  auth/             # JWT authentication
+  permission/       # Casbin RBAC authorization
+  gc/               # Garbage collection
+
+scheduler/          # Scheduler service implementation
+  config/           # Configuration structs and defaults (port :8002)
+  scheduling/       # Core P2P scheduling algorithms and evaluators
+  resource/         # In-memory peer/task/host resource management
+  rpcserver/        # gRPC server implementation
+  service/          # Business logic
+  announcer/        # Announces scheduler to manager
+  job/              # Task job handling
+  metrics/          # Prometheus metrics
+
+pkg/                # Shared libraries
+  auth/             # Authentication utilities
+  balancer/         # gRPC load balancing
+  cache/            # Cache utilities
+  container/        # Container helpers
+  dfnet/            # Network type definitions
+  dfpath/           # Standard Dragonfly paths (/var/lib/dragonfly, /var/log/dragonfly)
+  digest/           # Content digest (SHA-256, MD5, etc.)
+  gc/               # Generic garbage collection framework
+  graph/            # DAG implementation for task graphs
+  idgen/            # ID generation for tasks, peers, hosts
+  math/             # Math utilities
+  net/              # Network utilities (IP, FQDN, HTTP)
+  os/               # OS utilities
+  redis/            # Redis client wrapper
+  rpc/              # gRPC client wrappers (manager, scheduler, dfdaemon)
+  slices/           # Generic slice utilities
+  strings/          # String utilities
+  structure/        # Data structure utilities
+  time/             # Time utilities
+  types/            # Shared type definitions
+
+internal/           # Internal packages (not importable externally)
+  dferrors/         # Dragonfly error types
+  dflog/            # Structured logging (zap-based)
+  dfplugin/         # Plugin system
+  dynconfig/        # Dynamic configuration (polls manager for config updates)
+  job/              # Shared job utilities
+  ratelimiter/      # Rate limiter
+
+api/
+  manager/          # Swagger/OpenAPI generated docs for manager REST API
+
+version/            # Version variables injected at build time
+
+test/
+  e2e/              # End-to-end tests using Ginkgo (require Docker)
+  testdata/         # Shared test fixtures
+
+deploy/
+  docker-compose/   # Docker Compose setup (manager + scheduler + Redis + MySQL)
+  helm-charts/      # Kubernetes Helm charts (submodule)
+
+hack/               # Build and utility scripts
+  build.sh          # Primary build script
+  env.sh            # Build environment variables
+  install.sh        # Binary installation script
+  markdownlint.sh   # Markdown lint runner
+```
+
+### Build Artifacts
+
+- `bin/linux_amd64/`: Built binaries (created by build process)
+- `coverage.txt`: Accumulated test coverage reports
+
+### Important Files
+
+- `Makefile`: All build, test, and lint targets — run `make help` to see all
+- `go.mod`: Go module definition (module `d7y.io/dragonfly/v2`, Go 1.25.5)
+- `.golangci.yml`: Linting configuration (golangci-lint v2)
+- `.markdownlint.yml`: Markdown linting rules
 
 ## Working Effectively
 
@@ -16,18 +156,19 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
 export PATH=$PATH:$(go env GOPATH)/bin
 
-# Build all components (takes ~1.5 minutes)
-make build-manager-server build-scheduler build-dfget build-dfcache build-dfstore
+# Build Go server components (takes ~1.5 minutes)
+make build-manager-server build-scheduler
 # NEVER CANCEL: Build takes 2 minutes. Set timeout to 5+ minutes.
 
 # Verify build success
 ls -la bin/linux_amd64/
-./bin/linux_amd64/dfget version
 ./bin/linux_amd64/scheduler version
 ./bin/linux_amd64/manager version
 ```
 
-**CRITICAL**: The full `make build` target will fail because `build-manager-console` requires a Node.js frontend that is not included in this repository. Always use the individual build targets listed above to build only the Go components.
+**CRITICAL**: The full `make build` target will fail because `build-manager-console` requires the
+`manager/console` Node.js submodule which is not initialized by default. Always use
+`build-manager-server` and `build-scheduler` to build only the Go server components.
 
 ### Testing
 
@@ -59,19 +200,17 @@ Test the built applications:
 
 ```bash
 # Test CLI help (validates binaries work correctly)
-./bin/linux_amd64/dfget --help
-./bin/linux_amd64/dfcache --help
-./bin/linux_amd64/dfstore --help
 ./bin/linux_amd64/scheduler --help
 ./bin/linux_amd64/manager --help
 
 # Test version commands (validates build was successful)
-./bin/linux_amd64/dfget version
 ./bin/linux_amd64/scheduler version
 ./bin/linux_amd64/manager version
 ```
 
-**Important**: You cannot run the full Dragonfly system in a sandboxed environment without proper network configuration, certificates, and storage backends. The components require complex setup with Redis, databases, and network connectivity between peers.
+**Important**: You cannot run the full Dragonfly system in a sandboxed environment without proper network
+configuration, certificates, Redis, and a relational database. The components require complex setup with
+network connectivity between peers.
 
 ## Validation Requirements
 
@@ -83,10 +222,9 @@ Always run these commands before committing changes:
 # NEVER CANCEL: Full precheck takes 8 minutes. Set timeout to 15+ minutes.
 make fmt vet
 golangci-lint run --timeout=10m
-make build-manager-server build-scheduler build-dfget build-dfcache build-dfstore
+make build-manager-server build-scheduler
 
 # Test that binaries still work
-./bin/linux_amd64/dfget version
 ./bin/linux_amd64/scheduler version
 ./bin/linux_amd64/manager version
 ```
@@ -99,31 +237,6 @@ After making changes, always validate:
 2. **Binary Functionality**: Version commands execute successfully
 3. **Help Commands**: All help text displays correctly
 4. **Linting**: No linting errors introduced
-
-## Repository Structure
-
-### Key Directories
-
-- `cmd/`: Main entry points for each component (dfget, scheduler, manager, dfcache, dfstore)
-- `pkg/`: Shared libraries and utilities
-- `scheduler/`: Scheduler service implementation
-- `manager/`: Manager service implementation
-- `client/`: Client-side P2P logic
-- `test/`: Unit and E2E test suites
-- `hack/`: Build scripts and utilities
-- `api/`: API definitions and generated code
-
-### Build Artifacts
-
-- `bin/linux_amd64/`: Built binaries (created by build process)
-- `coverage.txt`: Test coverage reports
-
-### Important Files
-
-- `Makefile`: All build, test, and lint targets
-- `go.mod`: Go 1.2.5 dependencies
-- `.golangci.yml`: Linting configuration
-- `.markdownlint.yml`: Markdown linting rules
 
 ## Timing Expectations
 
@@ -139,9 +252,166 @@ After making changes, always validate:
 
 **CRITICAL**: NEVER CANCEL long-running commands. Builds and tests are CPU-intensive and require time to complete.
 
+## Code Conventions
+
+### License Header
+
+Every Go source file must begin with the Apache 2.0 license header:
+
+```go
+/*
+ *     Copyright <YEAR> The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+```
+
+### Import Ordering
+
+Imports must be organized in exactly four groups (enforced by `gci` linter):
+
+```go
+import (
+    // 1. Standard library
+    "context"
+    "fmt"
+
+    // 2. Third-party dependencies
+    "github.com/gin-gonic/gin"
+
+    // 3. d7y.io/api packages
+    "d7y.io/api/v2/pkg/apis/scheduler/v1"
+
+    // 4. d7y.io/dragonfly/v2 packages (this module)
+    "d7y.io/dragonfly/v2/pkg/idgen"
+)
+```
+
+### Error Handling
+
+- Use `d7y.io/dragonfly/v2/internal/dferrors` for Dragonfly-specific error types
+- Use `fmt.Errorf("context: %w", err)` for wrapping errors
+- The `errcheck` linter enforces that all errors are handled
+
+### Logging
+
+- Use `d7y.io/dragonfly/v2/internal/dflog` (zap-based structured logger)
+- Log fields use `zap.String`, `zap.Int`, etc.
+
+### Configuration
+
+- Configuration structs use both `yaml` and `mapstructure` struct tags
+- All configs embed `base.Options` from `cmd/dependency/base` for shared CLI options
+- Config files default to `/etc/dragonfly/manager.yaml` and `/etc/dragonfly/scheduler.yaml`
+- Dynamic configuration is polled from the manager via gRPC
+
+### gRPC
+
+- Proto definitions are in the separate `d7y.io/api/v2` module
+- gRPC client wrappers are in `pkg/rpc/` (manager, scheduler, dfdaemon clients)
+- All gRPC services implement health checking (`grpc_health_probe`)
+
+### REST API (Manager only)
+
+- Built with Gin framework (`github.com/gin-gonic/gin`)
+- Swagger docs generated with `swag` — run `make swag` to regenerate
+- Generated files are in `api/manager/`
+- Routes defined in `manager/router/`
+- Handlers in `manager/handlers/`
+- JWT authentication via `github.com/appleboy/gin-jwt/v2`
+- RBAC authorization via Casbin (`github.com/casbin/casbin/v2`)
+
+### Testing Patterns
+
+- Unit tests use the standard `testing` package and live alongside source in `_test.go` files
+- Mocks are generated with mockery and placed in `mocks/` subdirectories
+- E2E tests use Ginkgo v2 and are located in `test/e2e/`
+- Use `-race` flag for race condition detection (already set in `make test`)
+- Test fixtures go in `testdata/` directories next to the tests
+
+## Configuration Overview
+
+### Manager Configuration (`/etc/dragonfly/manager.yaml`)
+
+Key sections:
+
+```yaml
+server:
+  grpc:
+    port: { start: 65003, end: 65003 }  # gRPC port range
+  rest:
+    addr: ":8080"                         # REST API address
+database:
+  type: mysql                             # mysql | mariadb | postgres
+  mysql:
+    host: localhost
+    port: 3306
+    db: manager
+cache:
+  redis:
+    addrs: ["localhost:6379"]
+```
+
+### Scheduler Configuration (`/etc/dragonfly/scheduler.yaml`)
+
+Key sections:
+
+```yaml
+server:
+  port: 8002                   # gRPC port
+  advertisePort: 8002
+scheduler:
+  algorithm: default           # Scheduling algorithm
+  backToSourceCount: 200       # Max peers that can download from origin
+database:
+  redis:
+    addrs: ["localhost:6379"]
+manager:
+  addr: "localhost:65003"      # Manager gRPC address
+```
+
+## Deployment
+
+### Docker Compose (Development)
+
+```bash
+cd deploy/docker-compose
+# Edit config files in ./config/ as needed
+docker compose up -d
+```
+
+Services started: Redis, MySQL, Manager (gRPC :65003, REST :8080), Scheduler (:8002), Client (seed + regular)
+
+### Kubernetes (Helm)
+
+The `deploy/helm-charts/` submodule contains Helm charts. Initialize it first:
+
+```bash
+git submodule update --init deploy/helm-charts
+helm install dragonfly deploy/helm-charts/charts/dragonfly
+```
+
+### External Dependencies
+
+| Dependency     | Purpose                               | Required by       |
+| -------------- | ------------------------------------- | ----------------- |
+| Redis          | Cache, job queue, scheduler state     | Manager, Scheduler |
+| MySQL/MariaDB  | Persistent storage (config, metadata) | Manager           |
+| PostgreSQL     | Alternative to MySQL                  | Manager           |
+
 ## Common Tasks
 
-### Viewing Build Targets
+### View All Build Targets
 
 ```bash
 make help
@@ -154,37 +424,52 @@ make clean
 rm -rf bin/
 ```
 
-### Adding Dependencies
+### Add/Update Dependencies
 
 ```bash
 go mod tidy
 go mod download
 ```
 
+### Regenerate Swagger API Docs
+
+```bash
+make swag
+# Output: api/manager/
+```
+
+### Initialize Submodules
+
+```bash
+git submodule update --init --recursive
+```
+
 ## Troubleshooting
 
 ### Build Issues
 
-- **"build-manager-console" fails**: This is expected. The console frontend is not included. Use individual component build targets.
-- **Missing tools**: Install golangci-lint and ginkgo as shown in bootstrap section.
-- **Go version**: Requires Go 1.25.5 as specified in go.mod.
+- **`build-manager-console` fails**: Expected — the `manager/console` frontend submodule is not initialized.
+  Use `build-manager-server` and `build-scheduler` instead.
+- **Missing tools**: Install golangci-lint and ginkgo as shown in the bootstrap section.
+- **Go version**: Requires Go 1.25.5 as specified in `go.mod`.
 
 ### Test Issues
 
-- **Unit test failures**: Some tests may fail in sandboxed environments due to network/permission restrictions. This is expected.
-- **E2E test failures**: Require Docker and complex setup. May not work in all environments.
+- **Unit test failures**: Some tests may fail in sandboxed environments due to network/permission
+  restrictions. This is expected.
+- **E2E test failures**: Require Docker and a running Dragonfly cluster. May not work in all environments.
 
 ### Runtime Issues
 
-- **"command not found"**: Add `$(go env GOPATH)/bin` to PATH for installed Go tools.
+- **`command not found`**: Add `$(go env GOPATH)/bin` to `PATH` for installed Go tools.
 - **Binary execution**: Built binaries are in `bin/linux_amd64/` directory.
 
 ## Development Workflow
 
 1. **Make changes** to Go source files
 2. **Format and vet**: `make fmt vet`
-3. **Build**: Individual component build targets
-4. **Test**: `./bin/linux_amd64/[component] version` to verify
+3. **Build**: `make build-manager-server build-scheduler`
+4. **Verify binaries**: `./bin/linux_amd64/manager version` and `./bin/linux_amd64/scheduler version`
 5. **Lint**: `golangci-lint run --timeout=10m`
 6. **Unit test**: `make test` (optional, may fail in sandbox)
 7. **Commit** changes
