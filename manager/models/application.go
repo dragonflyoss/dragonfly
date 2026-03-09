@@ -25,7 +25,7 @@ type Application struct {
 	BIO      string  `gorm:"column:bio;type:varchar(1024);comment:biography" json:"bio"`
 	Priority JSONMap `gorm:"column:priority;not null;comment:download priority" json:"priority"`
 	UserID   uint    `gorm:"comment:user id" json:"user_id"`
-	User     User    `gorm:"-" json:"user"`
+	User     User    `gorm:"foreignKey:UserID;references:ID" json:"user"`
 }
 
 func (a *Application) AfterFind(tx *gorm.DB) (err error) {
