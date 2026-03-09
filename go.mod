@@ -76,6 +76,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/driver/postgres v1.4.8
+	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.25.0
 	gorm.io/plugin/soft_delete v1.2.1
 	moul.io/zapgorm2 v1.3.0
@@ -217,7 +218,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
