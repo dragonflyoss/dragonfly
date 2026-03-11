@@ -162,13 +162,13 @@ func FormatFilteredQueryParams(params []string) string {
 }
 
 // TaskIDV2ByURLBased generates v2 version of task id by url based.
-func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string) string {
+func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string, revision string) string {
 	url, err := neturl.FilterQueryParams(url, filteredQueryParams)
 	if err != nil {
 		url = ""
 	}
 
-	params := []string{url, tag, application}
+	params := []string{url, tag, application, revision}
 	if pieceLength != nil {
 		params = append(params, strconv.FormatUint(*pieceLength, 10))
 	}

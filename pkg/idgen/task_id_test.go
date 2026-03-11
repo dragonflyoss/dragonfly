@@ -116,6 +116,7 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 		tag         string
 		application string
 		filters     []string
+		revision    string
 		expect      func(t *testing.T, d any)
 	}{
 		{
@@ -125,9 +126,10 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			tag:         "foo",
 			application: "bar",
 			filters:     []string{},
+			revision:    "v1.0",
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
-				assert.Equal(d, "27554d06dfc788c2c2c60e01960152ffbd4b145fc103fcb80b432b4dc238a6fe")
+				assert.Equal(d, "5844f27a257287e9b734256bb25603d8005422ced8c0377f15063ec11963b25f")
 			},
 		},
 		{
@@ -176,11 +178,20 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 				assert.Equal(d, "457b4328cde278e422c9e243f7bfd1e97f511fec43a80f535cf6b0ef6b086776")
 			},
 		},
+		{
+			name:     "generate taskID with revision",
+			url:      "https://example.com",
+			revision: "v1.0",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "b171331534b80e0bf91da38ebbfcdbf4d177898f4b9beac44f14733e3f004d4e")
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, TaskIDV2ByURLBased(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters))
+			tc.expect(t, TaskIDV2ByURLBased(tc.url, tc.pieceLength, tc.tag, tc.application, tc.filters, tc.revision))
 		})
 	}
 }
