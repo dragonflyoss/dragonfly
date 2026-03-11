@@ -267,7 +267,7 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 
 // preheatV1SingleSeedPeer preheats job by v1 grpc protocol.
 func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	taskID := idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams))
+	taskID := idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "")
 	urlMeta := &commonv1.UrlMeta{
 		Tag:         req.Tag,
 		Filter:      req.FilteredQueryParams,

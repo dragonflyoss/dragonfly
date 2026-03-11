@@ -4621,7 +4621,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	for _, url := range layers[0].URLs {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams)
+			taskID := idgen.TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, "")
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             timeout,
@@ -4715,7 +4715,7 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 
 	// For files preheating, we get entries from client first
 	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams),
+		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
 		Url:              req.GetUrl(),
 		Timeout:          req.GetTimeout(),
 		Header:           req.GetHeader(),
@@ -4841,7 +4841,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	defer cancel()
 
 	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams),
+		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
 		Url:              req.GetUrl(),
 		Timeout:          req.GetTimeout(),
 		Header:           req.GetHeader(),
@@ -4879,7 +4879,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, url := range urls {
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams)
+			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "")
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             req.GetTimeout().AsDuration(),
