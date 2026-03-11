@@ -354,6 +354,9 @@ type SyncPeersConfig struct {
 
 	// BatchSize is the batch size when operating gorm database.
 	BatchSize int `yaml:"batchSize" mapstructure:"batchSize"`
+
+	// SyncBatchSize is the batch size when get host info from scheduler.
+	SyncBatchSize int `yaml:"syncBatchSize" mapstructure:"syncBatchSize"`
 }
 
 type PreheatTLSClientConfig struct {
@@ -446,9 +449,10 @@ func New() *Config {
 				TLS: PreheatTLSClientConfig{},
 			},
 			SyncPeers: SyncPeersConfig{
-				Interval:  DefaultJobSyncPeersInterval,
-				Timeout:   DefaultJobSyncPeersTimeout,
-				BatchSize: DefaultJobSyncPeersBatchSize,
+				Interval:      DefaultJobSyncPeersInterval,
+				Timeout:       DefaultJobSyncPeersTimeout,
+				BatchSize:     DefaultJobSyncPeersDatabaseBatchSize,
+				SyncBatchSize: DefaultJobSyncPeersBatchSize,
 			},
 		},
 		Metrics: MetricsConfig{
