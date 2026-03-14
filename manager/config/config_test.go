@@ -63,6 +63,14 @@ var (
 		Migrate:              true,
 	}
 
+	mockPolardbConfig = PolardbConfig{
+		User:     "foo",
+		Password: "foo",
+		AddrList: "127.0.0.1:8527",
+		DBName:   "foo",
+		Migrate:  true,
+	}
+
 	mockRedisConfig = RedisConfig{
 		Addrs:      []string{"127.0.0.0:6379"},
 		MasterName: "master",
@@ -148,6 +156,13 @@ func TestConfig_Load(t *testing.T) {
 				Timezone:             "UTC",
 				Migrate:              true,
 			},
+			Polardb: PolardbConfig{
+				User:     "foo",
+				Password: "foo",
+				AddrList: "127.0.0.1:8527",
+				DBName:   "foo",
+				Migrate:  true,
+			},
 			Redis: RedisConfig{
 				Password:    "bar",
 				Addrs:       []string{"foo", "bar"},
@@ -216,6 +231,20 @@ func TestConfig_Validate(t *testing.T) {
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
 				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name:   "valid polardb config",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
 				cfg.Database.Redis = mockRedisConfig
 			},
 			expect: func(t *testing.T, err error) {
@@ -621,6 +650,81 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "postgres requires parameter timezone")
+			},
+		},
+		{
+			name:   "polardb requires parameter user",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
+				cfg.Database.Polardb.User = ""
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "polardb requires parameter user")
+			},
+		},
+		{
+			name:   "polardb requires parameter password",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
+				cfg.Database.Polardb.Password = ""
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "polardb requires parameter password")
+			},
+		},
+		{
+			name:   "polardb requires parameter addrList",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
+				cfg.Database.Polardb.AddrList = ""
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "polardb requires parameter addrList, format: \"host1:port1,host2:port2\"")
+			},
+		},
+		{
+			name:   "polardb requires valid addrList format",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
+				cfg.Database.Polardb.AddrList = "invalid"
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "polardb requires parameter addrList, format: \"host1:port1,host2:port2\"")
+			},
+		},
+		{
+			name:   "polardb requires parameter dbname",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypePolardb
+				cfg.Database.Polardb = mockPolardbConfig
+				cfg.Database.Polardb.DBName = ""
+				cfg.Database.Redis = mockRedisConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "polardb requires parameter dbname")
 			},
 		},
 		{
