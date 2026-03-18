@@ -33,6 +33,11 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
+)
+
+var (
+	ErrRedisNotInitialized = errors.New("redis client not initialized")
 )
 
 type Config struct {
@@ -48,6 +53,7 @@ type Job struct {
 	Server *machinery.Server
 	Worker *machinery.Worker
 	Queue  Queue
+	rdb    redis.UniversalClient
 }
 
 func New(cfg *Config, queue Queue) (*Job, error) {
@@ -101,6 +107,27 @@ func (t *Job) LaunchWorker(consumerTag string, concurrency int) error {
 	return t.Worker.Launch()
 }
 
+// InitRdb initializes the redis client for job.
+func (t *Job) InitRdb(cfg *Config) error {
+	if t.rdb != nil {
+		return nil
+	}
+	// Initialize redis client.
+	var rdb redis.UniversalClient
+	rdb, err := pkgredis.NewRedis(&redis.UniversalOptions{
+		Addrs:      cfg.Addrs,
+		MasterName: cfg.MasterName,
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		DB:         cfg.BackendDB,
+	})
+	if err != nil {
+		return err
+	}
+	t.rdb = rdb
+	return nil
+}
+
 type GroupJobState struct {
 	GroupUUID string
 	State     string
@@ -148,6 +175,61 @@ func (t *Job) GetGroupJobState(groupID string) (*GroupJobState, error) {
 		CreatedAt: taskStates[0].CreatedAt,
 		JobStates: taskStates,
 	}, nil
+}
+
+// SetTaskResults sets task results to redis by key.
+func (t *Job) SetTaskResults(data []string, jobName string) (string, error) {
+	if t.rdb == nil {
+		return "", ErrRedisNotInitialized
+	}
+
+	if len(data) == 0 {
+		return "", nil
+	}
+
+	key := fmt.Sprintf("%s_results:%s:%d", jobName, t.Queue.String(), time.Now().Unix())
+
+	ctx := context.Background()
+
+	// save results to redis set
+	for _, val := range data {
+		if err := t.rdb.SAdd(ctx, key, val).Err(); err != nil {
+			logger.Errorf("Failed to SAdd: %v", err)
+			return "", err
+		}
+	}
+
+	// set expire time for the results
+	if err := t.rdb.Expire(ctx, key, time.Duration(DefaultResultsExpireIn)*time.Second).Err(); err != nil {
+		logger.Errorf("Failed to set expire: %v", err)
+		return "", err
+	}
+
+	return key, nil
+}
+
+// GetTaskResults gets task results from redis by key.
+// results is not sorted, caller should sort it if needed.
+func (t *Job) GetTaskResults(key string) ([]string, error) {
+	if t.rdb == nil {
+		return nil, ErrRedisNotInitialized
+	}
+	var cursor uint64 = 0
+	var results []string
+	for {
+		items, nextCursor, err := t.rdb.SScan(context.Background(), key, cursor, "", 50).Result()
+		if err != nil {
+			break
+		}
+		for _, item := range items {
+			results = append(results, item)
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return results, nil
 }
 
 func MarshalResponse(v any) (string, error) {

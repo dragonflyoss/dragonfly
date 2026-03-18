@@ -163,10 +163,28 @@ func (s *syncPeers) createSyncPeers(ctx context.Context, scheduler models.Schedu
 		return nil, err
 	}
 
-	// Unmarshal sync peer task result.
-	var hosts []*resource.Host
-	if err := internaljob.UnmarshalResponse(results, &hosts); err != nil {
+	if len(results) == 0 || results[0].String() == "" {
+		logger.Infof("sync peers task %s result is empty", task.UUID)
+		return nil, fmt.Errorf("sync peers task result is empty")
+	}
+
+	res_key := results[0].String()
+
+	hostStringList, err := s.job.GetTaskResults(res_key)
+	if err != nil {
+		logger.Errorf("failed to get sync peer data: %v", err)
 		return nil, err
+	}
+
+	var hosts []*resource.Host
+
+	for _, item := range hostStringList {
+		var host resource.Host
+		if err := internaljob.UnmarshalRequest(item, &host); err != nil {
+			logger.Errorf("Unmarshal sync peer item fail. item: %s, err: %v", item, err)
+			continue
+		}
+		hosts = append(hosts, &host)
 	}
 
 	return hosts, nil
