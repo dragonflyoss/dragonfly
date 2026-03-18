@@ -189,19 +189,22 @@ func (t *Job) SetTaskResults(data []string, jobName string) (string, error) {
 
 	key := fmt.Sprintf("%s_results:%s:%d", jobName, t.Queue.String(), time.Now().Unix())
 
-	// Use pipeline for batch operations
-	pipe := t.rdb.Pipeline()
+	ctx := context.Background()
+
+	// save results to redis set
 	for _, val := range data {
-		pipe.SAdd(context.Background(), key, val)
+		if err := t.rdb.SAdd(ctx, key, val).Err(); err != nil {
+			logger.Errorf("Failed to SAdd: %v", err)
+			return "", err
+		}
 	}
 
-	pipe.Expire(context.Background(), key, time.Duration(DefaultResultsExpireIn)*time.Second)
-
-	_, err := pipe.Exec(context.Background())
-	if err != nil {
-		logger.Errorf("Failed to exec pipe : %v", err)
+	// set expire time for the results
+	if err := t.rdb.Expire(ctx, key, time.Duration(DefaultResultsExpireIn)*time.Second).Err(); err != nil {
+		logger.Errorf("Failed to set expire: %v", err)
 		return "", err
 	}
+
 	return key, nil
 }
 
@@ -214,7 +217,7 @@ func (t *Job) GetTaskResults(key string) ([]string, error) {
 	var cursor uint64 = 0
 	var results []string
 	for {
-		items, nextCursor, err := t.rdb.SScan(context.Background(), key, cursor, "", 100).Result()
+		items, nextCursor, err := t.rdb.SScan(context.Background(), key, cursor, "", 50).Result()
 		if err != nil {
 			break
 		}
