@@ -55,6 +55,17 @@ func New(cfg *config.Config, gdb *gorm.DB) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = j.InitRdb(&internaljob.Config{
+		Addrs:      cfg.Database.Redis.Addrs,
+		MasterName: cfg.Database.Redis.MasterName,
+		Username:   cfg.Database.Redis.Username,
+		Password:   cfg.Database.Redis.Password,
+		BrokerDB:   cfg.Database.Redis.BrokerDB,
+		BackendDB:  cfg.Database.Redis.BackendDB,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	var certPool *x509.CertPool
 	if cfg.Job.Preheat.TLS != nil {
