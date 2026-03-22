@@ -232,7 +232,7 @@ redis.call("HSET", peer_key,
     "cost", cost,
     "created_at", created_at,
     "updated_at", updated_at,
-		"concurrent_piece_count", concurrent_piece_count)
+    "concurrent_piece_count", concurrent_piece_count)
 
 -- Set expiration for the peer key
 redis.call("EXPIRE", peer_key, ttl_seconds)
@@ -277,8 +277,8 @@ return true
 		peer.Cost.Nanoseconds(),
 		peer.CreatedAt.Format(time.RFC3339),
 		peer.UpdatedAt.Format(time.RFC3339),
-		peer.ConcurrentPieceCount,
 		remainingTTLSeconds,
+		peer.ConcurrentPieceCount,
 	}
 
 	// Execute the script.
