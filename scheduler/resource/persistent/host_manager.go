@@ -150,7 +150,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
-	cpuProcessPercent, err := strconv.ParseFloat(rawHost["cpu_processe_percent"], 64)
+	cpuProcessPercent, err := strconv.ParseFloat(rawHost["cpu_process_percent"], 64)
 	if err != nil {
 		log.Errorf("parsing cpu process percent failed: %v", err)
 		return nil, false
@@ -260,7 +260,7 @@ func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 		return nil, false
 	}
 
-	memoryProcessUsedPercent, err := strconv.ParseFloat(rawHost["memory_processe_used_percent"], 64)
+	memoryProcessUsedPercent, err := strconv.ParseFloat(rawHost["memory_process_used_percent"], 64)
 	if err != nil {
 		log.Errorf("parsing memory process used percent failed: %v", err)
 		return nil, false
@@ -546,7 +546,7 @@ redis.call("HSET", host_key,
     "cpu_logical_count", cpu_logical_count,
     "cpu_physical_count", cpu_physical_count,
     "cpu_percent", cpu_percent,
-    "cpu_processe_percent", cpu_process_percent,
+    "cpu_process_percent", cpu_process_percent,
     "cpu_times_user", cpu_times_user,
     "cpu_times_system", cpu_times_system,
     "cpu_times_idle", cpu_times_idle,
@@ -561,7 +561,7 @@ redis.call("HSET", host_key,
     "memory_available", memory_available,
     "memory_used", memory_used,
     "memory_used_percent", memory_used_percent,
-    "memory_processe_used_percent", memory_process_used_percent,
+    "memory_process_used_percent", memory_process_used_percent,
     "memory_free", memory_free,
     "network_tcp_connection_count", network_tcp_connection_count,
     "network_upload_tcp_connection_count", network_upload_tcp_connection_count,
