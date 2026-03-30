@@ -37,6 +37,9 @@ jobs:
           sudo ip addr
 
       - name: Run Unit tests
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |-
           # switch to installed go
           sudo ln -sf `which go` `sudo which go`
