@@ -172,12 +172,12 @@ func (s *syncPeers) createSyncPeers(ctx context.Context, scheduler models.Schedu
 		}
 		tasks = append(tasks, task)
 	}
+	if len(tasks) <= 0 {
+		return []*resource.Host{}, nil
+	}
 	group, err := machineryv1tasks.NewGroup(tasks...)
 	if err != nil {
 		return nil, err
-	}
-	if len(tasks) <= 0 {
-		return []*resource.Host{}, nil
 	}
 	for i, signature := range group.Tasks {
 		// Set signature args.
@@ -201,7 +201,7 @@ func (s *syncPeers) createSyncPeers(ctx context.Context, scheduler models.Schedu
 	}
 
 	// Get sync peer task result.
-	results := make([]reflect.Value, len(asyncResults))
+	results := make([]reflect.Value, 0, len(asyncResults))
 	for _, asyncResult := range asyncResults {
 		result, err := asyncResult.GetWithTimeout(s.config.Job.SyncPeers.Timeout, DefaultTaskPollingInterval)
 		if err != nil {
