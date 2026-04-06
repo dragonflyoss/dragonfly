@@ -25,7 +25,7 @@ require (
 	github.com/go-echarts/statsview v0.3.4
 	github.com/go-gorm/caches/v4 v4.0.5
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
-	github.com/go-playground/validator/v10 v10.30.1
+	github.com/go-playground/validator/v10 v10.30.2
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -65,7 +65,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
