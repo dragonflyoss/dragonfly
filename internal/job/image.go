@@ -74,7 +74,7 @@ func (p *preheatImage) manifestURL() string {
 	return fmt.Sprintf("%s://%s/v2/%s/manifests/%s", p.protocol, p.domain, p.name, p.tag)
 }
 
-func (p *preheatImage) blobsURL(digest string) string {
+func (p *preheatImage) blobURL(digest string) string {
 	return fmt.Sprintf("%s://%s/v2/%s/blobs/%s", p.protocol, p.domain, p.name, digest)
 }
 
@@ -348,7 +348,7 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *Ma
 	for _, m := range manifests {
 		for _, v := range m.References() {
 			header.Set("Accept", v.MediaType)
-			layerURLs = append(layerURLs, image.blobsURL(v.Digest.String()))
+			layerURLs = append(layerURLs, image.blobURL(v.Digest.String()))
 		}
 	}
 
