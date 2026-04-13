@@ -4713,22 +4713,21 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
 	defer cancel()
 
-	// For files preheating, we get entries from client first
-	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
-		Url:              req.GetUrl(),
-		Timeout:          req.GetTimeout(),
-		Header:           req.GetHeader(),
-		CertificateChain: req.GetCertificateChain(),
-		ObjectStorage:    req.GetObjectStorage(),
-		Hdfs:             req.GetHdfs(),
-	}, log)
-	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
-	}
-
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
+			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			Url:              req.GetUrl(),
+			Timeout:          req.GetTimeout(),
+			Header:           req.GetHeader(),
+			CertificateChain: req.GetCertificateChain(),
+			ObjectStorage:    req.GetObjectStorage(),
+			Hdfs:             req.GetHdfs(),
+		}, log)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
+		}
+
 		if len(listResp.Entries) == 0 {
 			return status.Errorf(codes.InvalidArgument, "preheat url is a directory, but with no entry: %s", req.GetUrl())
 		}
@@ -4840,21 +4839,21 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	ctx, cancel := context.WithTimeout(ctx, req.GetTimeout().AsDuration())
 	defer cancel()
 
-	listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-		TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
-		Url:              req.GetUrl(),
-		Timeout:          req.GetTimeout(),
-		Header:           req.GetHeader(),
-		CertificateChain: req.GetCertificateChain(),
-		ObjectStorage:    req.GetObjectStorage(),
-		Hdfs:             req.GetHdfs(),
-	}, log)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
-	}
-
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
+			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			Url:              req.GetUrl(),
+			Timeout:          req.GetTimeout(),
+			Header:           req.GetHeader(),
+			CertificateChain: req.GetCertificateChain(),
+			ObjectStorage:    req.GetObjectStorage(),
+			Hdfs:             req.GetHdfs(),
+		}, log)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "failed to list task entries: %s", err)
+		}
+
 		if len(listResp.Entries) == 0 {
 			return nil, status.Errorf(codes.InvalidArgument, "stat url is a directory, but with no entry: %s", req.GetUrl())
 		}
@@ -4927,6 +4926,5 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 		log.Infof("stat file for peer %s", peer.Ip)
 	}
 
-	log.Infof("stat file finished, total files: %d, total peers: %d", len(listResp.Entries), len(resp.Peers))
 	return resp, nil
 }

@@ -4163,10 +4163,6 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				Scope: "invalid-scope",
 			},
 			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
-				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{
-					Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}},
-				}, nil).Times(1)
-
 				assert := assert.New(t)
 				assert.ErrorIs(svc.PreheatFile(context.Background(), req), status.Errorf(codes.InvalidArgument, "unsupported preheat scope: invalid-scope"))
 			},
@@ -4182,7 +4178,6 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
 				)
 
@@ -4202,9 +4197,9 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
 				)
+
 				assert := assert.New(t)
 				assert.NoError(svc.PreheatFile(context.Background(), req))
 			},
@@ -4221,9 +4216,9 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
 				)
+
 				assert := assert.New(t)
 				assert.NoError(svc.PreheatFile(context.Background(), req))
 			},
@@ -4240,9 +4235,9 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
 				)
+
 				assert := assert.New(t)
 				assert.NoError(svc.PreheatFile(context.Background(), req))
 			},
@@ -4259,9 +4254,9 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
 				)
+
 				assert := assert.New(t)
 				assert.NoError(svc.PreheatFile(context.Background(), req))
 			},
@@ -4278,9 +4273,9 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
 				)
+
 				assert := assert.New(t)
 				assert.NoError(svc.PreheatFile(context.Background(), req))
 			},
@@ -4297,7 +4292,6 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
 				)
 
@@ -4334,7 +4328,7 @@ func TestServiceV2_StatFile(t *testing.T) {
 		{
 			name: "list task entries failed",
 			req: &schedulerv2.StatFileRequest{
-				Url: "https://example.com/file.txt",
+				Url: "https://example.com/dir/",
 			},
 			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
 				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("list task entries failed")).Times(1)
@@ -4356,7 +4350,6 @@ func TestServiceV2_StatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("get task failed")).Times(1),
 				)
 
@@ -4377,7 +4370,6 @@ func TestServiceV2_StatFile(t *testing.T) {
 				defer wg.Wait()
 
 				gomock.InOrder(
-					mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(&internaljob.ListTaskEntriesResponse{Entries: []*dfdaemonv2.Entry{{Url: "https://example.com/file.txt"}}}, nil).Times(1),
 					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
 				)
 
