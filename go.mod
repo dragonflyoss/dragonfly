@@ -15,7 +15,7 @@ require (
 	github.com/containerd/containerd v1.7.13
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v25.0.3+incompatible
-	github.com/docker/go-connections v0.6.0
+	github.com/docker/go-connections v0.7.0
 	github.com/dragonflyoss/machinery v1.10.14
 	github.com/elastic/go-freelru v0.16.0
 	github.com/gin-contrib/gzip v1.2.6
