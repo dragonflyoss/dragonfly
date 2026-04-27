@@ -47,7 +47,7 @@ func (s *service) CreateApplication(ctx context.Context, json types.CreateApplic
 
 func (s *service) DestroyApplication(ctx context.Context, id uint) error {
 	application := models.Application{}
-	if err := s.db.WithContext(ctx).First(&application, id).Error; err != nil {
+	if err := s.db.WithContext(ctx).Preload("User").First(&application, id).Error; err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (s *service) UpdateApplication(ctx context.Context, id uint, json types.Upd
 	}
 
 	application := models.Application{}
-	if err := s.db.WithContext(ctx).Preload("User").First(&application, id).Updates(models.Application{
+	if err := s.db.WithContext(ctx).First(&application, id).Updates(models.Application{
 		Name:     json.Name,
 		URL:      json.URL,
 		BIO:      json.BIO,
@@ -86,7 +86,7 @@ func (s *service) UpdateApplication(ctx context.Context, id uint, json types.Upd
 
 func (s *service) GetApplication(ctx context.Context, id uint) (*models.Application, error) {
 	application := models.Application{}
-	if err := s.db.WithContext(ctx).Preload("User").First(&application, id).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&application, id).Error; err != nil {
 		return nil, err
 	}
 
