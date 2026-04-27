@@ -819,6 +819,63 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
+			name:   "redis tls requires parameter caCert",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
+					CACert: "",
+					Cert:   "foo",
+					Key:    "foo",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis tls requires parameter caCert")
+			},
+		},
+		{
+			name:   "redis tls requires parameter cert",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
+					CACert: "foo",
+					Cert:   "",
+					Key:    "foo",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis tls requires parameter cert")
+			},
+		},
+		{
+			name:   "redis tls requires parameter key",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
+					CACert: "foo",
+					Cert:   "foo",
+					Key:    "",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis tls requires parameter key")
+			},
+		},
+		{
 			name:   "local requires parameter size",
 			config: New(),
 			mock: func(cfg *Config) {
