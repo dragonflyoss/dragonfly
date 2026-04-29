@@ -20,9 +20,9 @@ jobs:
         module: ['manager', 'scheduler']
         include:
           - module: manager
-            platforms: linux/amd64,linux/arm64
+            platforms: linux/amd64,linux/arm64,freebsd/amd64
           - module: scheduler
-            platforms: linux/amd64,linux/arm64
+            platforms: linux/amd64,linux/arm64,freebsd/amd64
     timeout-minutes: 120
     steps:
       - name: Check out code
