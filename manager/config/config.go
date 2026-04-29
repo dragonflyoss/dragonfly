@@ -267,6 +267,24 @@ type RedisConfig struct {
 	// manager's IP and port need to be exposed.
 	// Note: Only a single Redis address is supported by the proxy.
 	Proxy RedisProxyConfig `yaml:"proxy" mapstructure:"proxy"`
+
+	// Custom TLS client configuration for connecting to redis.
+	TLS *RedisTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+}
+
+type RedisTLSClientConfig struct {
+	// CACert is the file path of CA certificate for redis.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the client certificate file path.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the client key file path.
+	Key string `yaml:"key" mapstructure:"key"`
+
+	// InsecureSkipVerify controls whether a client verifies the
+	// server's certificate chain and host name.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
 }
 
 type CacheConfig struct {
@@ -651,6 +669,24 @@ func (cfg *Config) Validate() error {
 	if cfg.Database.Redis.Proxy.Enable {
 		if cfg.Database.Redis.Proxy.Addr == "" {
 			return errors.New("redis proxy requires parameter addr")
+		}
+	}
+
+	if cfg.Database.Redis.TLS != nil {
+		tls := cfg.Database.Redis.TLS
+
+		// Permitted shapes:
+		//   - InsecureSkipVerify=true (no certs required, trust on first use)
+		//   - CACert only (server-side TLS, common with managed Redis like
+		//     AWS ElastiCache, Azure Cache for Redis, GCP Memorystore)
+		//   - CACert + Cert + Key (mutual TLS)
+		if !tls.InsecureSkipVerify {
+			if tls.CACert == "" {
+				return errors.New("redis tls requires parameter caCert or insecureSkipVerify")
+			}
+			if (tls.Cert == "") != (tls.Key == "") {
+				return errors.New("redis tls cert and key must be provided together")
+			}
 		}
 	}
 
