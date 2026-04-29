@@ -296,6 +296,24 @@ type RedisConfig struct {
 
 	// BackendDB is backend database name.
 	BackendDB int `yaml:"backendDB" mapstructure:"backendDB"`
+
+	// Custom TLS client configuration for connecting to redis.
+	TLS *RedisTLSClientConfig `yaml:"tls" mapstructure:"tls"`
+}
+
+type RedisTLSClientConfig struct {
+	// CACert is the file path of CA certificate for redis.
+	CACert string `yaml:"caCert" mapstructure:"caCert"`
+
+	// Cert is the client certificate file path.
+	Cert string `yaml:"cert" mapstructure:"cert"`
+
+	// Key is the client key file path.
+	Key string `yaml:"key" mapstructure:"key"`
+
+	// InsecureSkipVerify controls whether a client verifies the
+	// server's certificate chain and host name.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
 }
 
 type MetricsConfig struct {
@@ -478,6 +496,20 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Database.Redis.BackendDB < 0 {
 		return errors.New("redis requires parameter backendDB")
+	}
+
+	if cfg.Database.Redis.TLS != nil {
+		if cfg.Database.Redis.TLS.CACert == "" {
+			return errors.New("redis tls requires parameter caCert")
+		}
+
+		if cfg.Database.Redis.TLS.Cert == "" {
+			return errors.New("redis tls requires parameter cert")
+		}
+
+		if cfg.Database.Redis.TLS.Key == "" {
+			return errors.New("redis tls requires parameter key")
+		}
 	}
 
 	if cfg.DynConfig.RefreshInterval <= 0 {
