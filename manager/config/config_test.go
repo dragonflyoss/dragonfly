@@ -819,7 +819,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
-			name:   "redis tls requires parameter caCert",
+			name:   "redis tls allows insecureSkipVerify only",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
@@ -827,18 +827,16 @@ func TestConfig_Validate(t *testing.T) {
 				cfg.Database.Mysql = mockMysqlConfig
 				cfg.Database.Redis = mockRedisConfig
 				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
-					CACert: "",
-					Cert:   "foo",
-					Key:    "foo",
+					InsecureSkipVerify: true,
 				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls requires parameter caCert")
+				assert.NoError(err)
 			},
 		},
 		{
-			name:   "redis tls requires parameter cert",
+			name:   "redis tls allows caCert only",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
@@ -847,17 +845,49 @@ func TestConfig_Validate(t *testing.T) {
 				cfg.Database.Redis = mockRedisConfig
 				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
 					CACert: "foo",
-					Cert:   "",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name:   "redis tls allows mutual tls",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
+					CACert: "foo",
+					Cert:   "foo",
 					Key:    "foo",
 				}
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls requires parameter cert")
+				assert.NoError(err)
 			},
 		},
 		{
-			name:   "redis tls requires parameter key",
+			name:   "redis tls requires caCert or insecureSkipVerify",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis tls requires parameter caCert or insecureSkipVerify")
+			},
+		},
+		{
+			name:   "redis tls cert and key must be paired",
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Auth.JWT = mockJWTConfig
@@ -872,7 +902,26 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls requires parameter key")
+				assert.EqualError(err, "redis tls cert and key must be provided together")
+			},
+		},
+		{
+			name:   "redis tls cert and key must be paired (reverse)",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Auth.JWT = mockJWTConfig
+				cfg.Database.Type = DatabaseTypeMysql
+				cfg.Database.Mysql = mockMysqlConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Database.Redis.TLS = &RedisTLSClientConfig{
+					CACert: "foo",
+					Cert:   "",
+					Key:    "foo",
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis tls cert and key must be provided together")
 			},
 		},
 		{

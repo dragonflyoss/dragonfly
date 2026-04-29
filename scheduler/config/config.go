@@ -499,16 +499,20 @@ func (cfg *Config) Validate() error {
 	}
 
 	if cfg.Database.Redis.TLS != nil {
-		if cfg.Database.Redis.TLS.CACert == "" {
-			return errors.New("redis tls requires parameter caCert")
-		}
+		tls := cfg.Database.Redis.TLS
 
-		if cfg.Database.Redis.TLS.Cert == "" {
-			return errors.New("redis tls requires parameter cert")
-		}
-
-		if cfg.Database.Redis.TLS.Key == "" {
-			return errors.New("redis tls requires parameter key")
+		// Permitted shapes:
+		//   - InsecureSkipVerify=true (no certs required, trust on first use)
+		//   - CACert only (server-side TLS, common with managed Redis like
+		//     AWS ElastiCache, Azure Cache for Redis, GCP Memorystore)
+		//   - CACert + Cert + Key (mutual TLS)
+		if !tls.InsecureSkipVerify {
+			if tls.CACert == "" {
+				return errors.New("redis tls requires parameter caCert or insecureSkipVerify")
+			}
+			if (tls.Cert == "") != (tls.Key == "") {
+				return errors.New("redis tls cert and key must be provided together")
+			}
 		}
 	}
 
