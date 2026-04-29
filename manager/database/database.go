@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/go-connections/tlsconfig"
 	caches "github.com/go-gorm/caches/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -93,7 +94,7 @@ func New(cfg *config.Config) (*Database, error) {
 		return nil, err
 	}
 
-	rdb, err := pkgredis.NewRedis(&redis.UniversalOptions{
+	redisOpts := &redis.UniversalOptions{
 		Addrs:            cfg.Database.Redis.Addrs,
 		MasterName:       cfg.Database.Redis.MasterName,
 		DB:               cfg.Database.Redis.DB,
@@ -103,7 +104,22 @@ func New(cfg *config.Config) (*Database, error) {
 		SentinelPassword: cfg.Database.Redis.SentinelPassword,
 		PoolSize:         cfg.Database.Redis.PoolSize,
 		PoolTimeout:      cfg.Database.Redis.PoolTimeout,
-	})
+	}
+
+	if redisTLS := cfg.Database.Redis.TLS; redisTLS != nil {
+		tlsCfg, err := tlsconfig.Client(tlsconfig.Options{
+			CAFile:             redisTLS.CACert,
+			CertFile:           redisTLS.Cert,
+			KeyFile:            redisTLS.Key,
+			InsecureSkipVerify: redisTLS.InsecureSkipVerify,
+		})
+		if err != nil {
+			return nil, err
+		}
+		redisOpts.TLSConfig = tlsCfg
+	}
+
+	rdb, err := pkgredis.NewRedis(redisOpts)
 	if err != nil {
 		return nil, err
 	}

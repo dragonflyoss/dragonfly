@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/docker/go-connections/tlsconfig"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -118,7 +119,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	// Initialize redis client.
 	var rdb redis.UniversalClient
 	if pkgredis.IsEnabled(cfg.Database.Redis.Addrs) {
-		rdb, err = pkgredis.NewRedis(&redis.UniversalOptions{
+		redisOpts := &redis.UniversalOptions{
 			Addrs:            cfg.Database.Redis.Addrs,
 			MasterName:       cfg.Database.Redis.MasterName,
 			Username:         cfg.Database.Redis.Username,
@@ -127,7 +128,22 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 			SentinelPassword: cfg.Database.Redis.SentinelPassword,
 			PoolSize:         cfg.Database.Redis.PoolSize,
 			PoolTimeout:      cfg.Database.Redis.PoolTimeout,
-		})
+		}
+
+		if redisTLS := cfg.Database.Redis.TLS; redisTLS != nil {
+			tlsCfg, err := tlsconfig.Client(tlsconfig.Options{
+				CAFile:             redisTLS.CACert,
+				CertFile:           redisTLS.Cert,
+				KeyFile:            redisTLS.Key,
+				InsecureSkipVerify: redisTLS.InsecureSkipVerify,
+			})
+			if err != nil {
+				return nil, err
+			}
+			redisOpts.TLSConfig = tlsCfg
+		}
+
+		rdb, err = pkgredis.NewRedis(redisOpts)
 		if err != nil {
 			return nil, err
 		}
