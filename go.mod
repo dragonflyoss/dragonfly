@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/montanaflynn/stats v0.9.0
 	github.com/onsi/ginkgo/v2 v2.28.2
-	github.com/onsi/gomega v1.39.1
+	github.com/onsi/gomega v1.40.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/polardb/polardbx-connector-go v1.0.3-18
 	github.com/prometheus/client_golang v1.23.2
