@@ -116,6 +116,7 @@ func New(cfg *config.Config) (*Database, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		redisOpts.TLSConfig = tlsCfg
 	}
 

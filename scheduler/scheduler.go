@@ -140,6 +140,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 			if err != nil {
 				return nil, err
 			}
+
 			redisOpts.TLSConfig = tlsCfg
 		}
 
