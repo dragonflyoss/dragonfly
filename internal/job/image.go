@@ -165,6 +165,9 @@ type ManifestRequest struct {
 
 	// InsecureSkipVerify indicates whether to skip TLS verification.
 	InsecureSkipVerify bool
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation.
+	EnableTaskIDBasedBlobDigest *bool
 }
 
 // Image implements the interface for handling container images.
@@ -353,21 +356,22 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *Ma
 	}
 
 	layers := &PreheatRequest{
-		URLs:                layerURLs,
-		PieceLength:         req.PieceLength,
-		Tag:                 req.Tag,
-		Application:         req.Application,
-		FilteredQueryParams: req.FilteredQueryParams,
-		Headers:             nethttp.HeaderToMap(header),
-		Scope:               req.Scope,
-		IPs:                 req.IPs,
-		Percentage:          req.Percentage,
-		Count:               req.Count,
-		ConcurrentTaskCount: req.ConcurrentTaskCount,
-		ConcurrentPeerCount: req.ConcurrentPeerCount,
-		CertificateChain:    certificateChain,
-		InsecureSkipVerify:  req.InsecureSkipVerify,
-		Timeout:             req.Timeout,
+		URLs:                        layerURLs,
+		PieceLength:                 req.PieceLength,
+		Tag:                         req.Tag,
+		Application:                 req.Application,
+		FilteredQueryParams:         req.FilteredQueryParams,
+		Headers:                     nethttp.HeaderToMap(header),
+		Scope:                       req.Scope,
+		IPs:                         req.IPs,
+		Percentage:                  req.Percentage,
+		Count:                       req.Count,
+		ConcurrentTaskCount:         req.ConcurrentTaskCount,
+		ConcurrentPeerCount:         req.ConcurrentPeerCount,
+		CertificateChain:            certificateChain,
+		InsecureSkipVerify:          req.InsecureSkipVerify,
+		Timeout:                     req.Timeout,
+		EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 	}
 
 	return []*PreheatRequest{layers}, nil
