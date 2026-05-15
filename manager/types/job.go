@@ -16,7 +16,11 @@
 
 package types
 
-import "time"
+import (
+	"time"
+
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+)
 
 const (
 	// SingleSeedPeerScope represents the scope that only single seed peer will be preheated.
@@ -183,6 +187,12 @@ type PreheatArgs struct {
 
 	// Timeout is the timeout for preheating, default is 60 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
+
+	// ObjectStorage is the object storage configuration for preheating files from object storage backends (e.g. s3, gcs, oss).
+	ObjectStorage *commonv2.ObjectStorage `json:"object_storage" binding:"omitempty"`
+
+	// Hdfs is the hdfs configuration for preheating files from hdfs.
+	Hdfs *commonv2.HDFS `json:"hdfs" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
