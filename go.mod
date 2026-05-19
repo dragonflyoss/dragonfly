@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.25.5
+go 1.25.10
 
 require (
 	d7y.io/api/v2 v2.2.28
@@ -14,7 +14,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/containerd/containerd v1.7.31
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v25.0.3+incompatible
+	github.com/docker/docker v25.0.16+incompatible
 	github.com/docker/go-connections v0.7.0
 	github.com/dragonflyoss/machinery v1.10.14
 	github.com/elastic/go-freelru v0.16.0

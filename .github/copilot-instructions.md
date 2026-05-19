@@ -11,7 +11,7 @@ images, OCI artifacts, AI/ML models, caches, logs, and dependencies.
 
 - **Website**: <https://d7y.io>
 - **Module path**: `d7y.io/dragonfly/v2`
-- **Go version**: 1.25.5
+- **Go version**: 1.25.10
 - **Current version**: v2.4.0
 - **License**: Apache 2.0
 
@@ -140,7 +140,7 @@ hack/               # Build and utility scripts
 ### Important Files
 
 - `Makefile`: All build, test, and lint targets — run `make help` to see all
-- `go.mod`: Go module definition (module `d7y.io/dragonfly/v2`, Go 1.25.5)
+- `go.mod`: Go module definition (module `d7y.io/dragonfly/v2`, Go 1.25.10)
 - `.golangci.yml`: Linting configuration (golangci-lint v2)
 - `.markdownlint.yml`: Markdown linting rules
 
@@ -451,7 +451,7 @@ git submodule update --init --recursive
 - **`build-manager-console` fails**: Expected — the `manager/console` frontend submodule is not initialized.
   Use `build-manager-server` and `build-scheduler` instead.
 - **Missing tools**: Install golangci-lint and ginkgo as shown in the bootstrap section.
-- **Go version**: Requires Go 1.25.5 as specified in `go.mod`.
+- **Go version**: Requires Go 1.25.10 as specified in `go.mod`.
 
 ### Test Issues
 
