@@ -157,9 +157,6 @@ func seed(db *gorm.DB) error {
 
 	if schedulerClusterCount <= 0 {
 		if err := db.Create(&models.SchedulerCluster{
-			BaseModel: models.BaseModel{
-				ID: uint(1),
-			},
 			Name: DefaultClusterName,
 			Config: map[string]any{
 				"candidate_parent_limit": schedulerconfig.DefaultSchedulerCandidateParentLimit,
@@ -185,9 +182,6 @@ func seed(db *gorm.DB) error {
 
 	if seedPeerClusterCount <= 0 {
 		if err := db.Create(&models.SeedPeerCluster{
-			BaseModel: models.BaseModel{
-				ID: uint(1),
-			},
 			Name: DefaultClusterName,
 			Config: map[string]any{
 				"load_limit": schedulerconfig.DefaultSeedPeerConcurrentUploadLimit,
