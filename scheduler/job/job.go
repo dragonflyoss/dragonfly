@@ -327,6 +327,7 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 
 // preheatV2SingleSeedPeer preheats job by v2 grpc protocol for single seed peer by multiple URLs.
 func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
+	var mu sync.Mutex
 	preheatResp := &internaljob.PreheatResponse{}
 
 	eg, _ := errgroup.WithContext(ctx)
@@ -339,8 +340,10 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 				return err
 			}
 
+			mu.Lock()
 			preheatResp.SuccessTasks = append(preheatResp.SuccessTasks, resp.SuccessTasks...)
 			preheatResp.FailureTasks = append(preheatResp.FailureTasks, resp.FailureTasks...)
+			mu.Unlock()
 			log.Infof("[preheat]: preheat succeeded for %s", url)
 			return nil
 		})
