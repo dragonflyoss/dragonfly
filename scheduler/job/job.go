@@ -45,6 +45,7 @@ import (
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/dfnet"
+	pkgdigest "d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	cndsystemclient "d7y.io/dragonfly/v2/pkg/rpc/cdnsystem/client"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -360,7 +361,13 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 // preheatV2SingleSeedPeerByURL preheats job by v2 grpc protocol for single seed peer by URL.
 func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+	isBlobURL := pkgdigest.IsBlobURL(url)
+	var taskID string
+	if isBlobURL {
+		taskID = idgen.TaskIDByBlobDigest(url)
+	} else {
+		taskID = idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+	}
 	advertiseIP := j.config.Server.AdvertiseIP.String()
 
 	selected, err := j.resource.SeedPeer().Select(ctx, taskID)
@@ -378,20 +385,21 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 
 	stream, err := client.DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
-			Url:                 url,
-			PieceLength:         req.PieceLength,
-			Type:                commonv2.TaskType_STANDARD,
-			Tag:                 &req.Tag,
-			Application:         &req.Application,
-			Priority:            commonv2.Priority(req.Priority),
-			FilteredQueryParams: filteredQueryParams,
-			RequestHeader:       req.Headers,
-			CertificateChain:    req.CertificateChain,
-			RemoteIp:            &advertiseIP,
-			Timeout:             durationpb.New(req.Timeout),
-			ObjectStorage:       req.ObjectStorage,
-			Hdfs:                req.Hdfs,
-			OutputPath:          req.OutputPath,
+			Url:                          url,
+			PieceLength:                  req.PieceLength,
+			Type:                         commonv2.TaskType_STANDARD,
+			Tag:                          &req.Tag,
+			Application:                  &req.Application,
+			Priority:                     commonv2.Priority(req.Priority),
+			FilteredQueryParams:          filteredQueryParams,
+			RequestHeader:                req.Headers,
+			CertificateChain:             req.CertificateChain,
+			RemoteIp:                     &advertiseIP,
+			Timeout:                      durationpb.New(req.Timeout),
+			ObjectStorage:                req.ObjectStorage,
+			Hdfs:                         req.Hdfs,
+			OutputPath:                   req.OutputPath,
+			EnableTaskIdBasedBlobDigest:  isBlobURL,
 		}})
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -455,7 +463,13 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					isBlobURL := pkgdigest.IsBlobURL(url)
+					var taskID string
+					if isBlobURL {
+						taskID = idgen.TaskIDByBlobDigest(url)
+					} else {
+						taskID = idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					}
 					hostID := idgen.HostIDV2(ip, hostname, true)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
@@ -479,20 +493,21 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 						ctx,
 						taskID,
 						&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-							Url:                 url,
-							PieceLength:         req.PieceLength,
-							Type:                commonv2.TaskType_STANDARD,
-							Tag:                 &req.Tag,
-							Application:         &req.Application,
-							Priority:            commonv2.Priority(req.Priority),
-							FilteredQueryParams: filteredQueryParams,
-							RequestHeader:       req.Headers,
-							Timeout:             durationpb.New(req.Timeout),
-							CertificateChain:    req.CertificateChain,
-							RemoteIp:            &advertiseIP,
-							ObjectStorage:       req.ObjectStorage,
-							Hdfs:                req.Hdfs,
-							OutputPath:          req.OutputPath,
+							Url:                          url,
+							PieceLength:                  req.PieceLength,
+							Type:                         commonv2.TaskType_STANDARD,
+							Tag:                          &req.Tag,
+							Application:                  &req.Application,
+							Priority:                     commonv2.Priority(req.Priority),
+							FilteredQueryParams:          filteredQueryParams,
+							RequestHeader:                req.Headers,
+							Timeout:                      durationpb.New(req.Timeout),
+							CertificateChain:             req.CertificateChain,
+							RemoteIp:                     &advertiseIP,
+							ObjectStorage:                req.ObjectStorage,
+							Hdfs:                         req.Hdfs,
+							OutputPath:                   req.OutputPath,
+							EnableTaskIdBasedBlobDigest:  isBlobURL,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -676,7 +691,13 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					isBlobURL := pkgdigest.IsBlobURL(url)
+					var taskID string
+					if isBlobURL {
+						taskID = idgen.TaskIDByBlobDigest(url)
+					} else {
+						taskID = idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					}
 					hostID := idgen.HostIDV2(ip, hostname, false)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
@@ -700,20 +721,21 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 						ctx,
 						taskID,
 						&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-							Url:                 url,
-							PieceLength:         req.PieceLength,
-							Type:                commonv2.TaskType_STANDARD,
-							Tag:                 &req.Tag,
-							Application:         &req.Application,
-							Priority:            commonv2.Priority(req.Priority),
-							FilteredQueryParams: filteredQueryParams,
-							RequestHeader:       req.Headers,
-							Timeout:             durationpb.New(req.Timeout),
-							CertificateChain:    req.CertificateChain,
-							RemoteIp:            &advertiseIP,
-							ObjectStorage:       req.ObjectStorage,
-							Hdfs:                req.Hdfs,
-							OutputPath:          req.OutputPath,
+							Url:                          url,
+							PieceLength:                  req.PieceLength,
+							Type:                         commonv2.TaskType_STANDARD,
+							Tag:                          &req.Tag,
+							Application:                  &req.Application,
+							Priority:                     commonv2.Priority(req.Priority),
+							FilteredQueryParams:          filteredQueryParams,
+							RequestHeader:                req.Headers,
+							Timeout:                      durationpb.New(req.Timeout),
+							CertificateChain:             req.CertificateChain,
+							RemoteIp:                     &advertiseIP,
+							ObjectStorage:                req.ObjectStorage,
+							Hdfs:                         req.Hdfs,
+							OutputPath:                   req.OutputPath,
+							EnableTaskIdBasedBlobDigest:  isBlobURL,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
