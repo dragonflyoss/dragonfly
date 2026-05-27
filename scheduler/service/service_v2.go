@@ -275,7 +275,7 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 				log.Error(err)
 			}
 		default:
-			msg := fmt.Sprintf("receive unknow request: %#v", announcePeerRequest)
+			msg := fmt.Sprintf("receive unknown request: %#v", announcePeerRequest)
 			log.Error(msg)
 			return status.Error(codes.FailedPrecondition, msg)
 		}
@@ -2019,7 +2019,7 @@ func (v *V2) AnnouncePersistentPeer(stream schedulerv2.Scheduler_AnnouncePersist
 				log.Error(err)
 			}
 		default:
-			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentPeerRequest)
+			msg := fmt.Sprintf("receive unknown request: %#v", announcePersistentPeerRequest)
 			log.Error(msg)
 			return status.Error(codes.FailedPrecondition, msg)
 		}
@@ -3296,7 +3296,7 @@ func (v *V2) AnnouncePersistentCachePeer(stream schedulerv2.Scheduler_AnnouncePe
 				log.Error(err)
 			}
 		default:
-			msg := fmt.Sprintf("receive unknow request: %#v", announcePersistentCachePeerRequest)
+			msg := fmt.Sprintf("receive unknown request: %#v", announcePersistentCachePeerRequest)
 			log.Error(msg)
 			return status.Error(codes.FailedPrecondition, msg)
 		}

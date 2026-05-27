@@ -274,7 +274,7 @@ func (v *V1) ReportPieceResult(stream schedulerv1.Scheduler_ReportPieceResultSer
 			continue
 		}
 
-		peer.Log.Warnf("receive unknow piece: %#v %#v", piece, piece.PieceInfo)
+		peer.Log.Warnf("receive unknown piece: %#v %#v", piece, piece.PieceInfo)
 	}
 }
 

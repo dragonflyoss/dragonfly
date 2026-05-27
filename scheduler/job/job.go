@@ -65,12 +65,12 @@ type Job interface {
 	// PreheatSinglePeer preheats job by single seed peer, scheduler will trigger seed peer to download task.
 	PreheatSingleSeedPeer(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error)
 
-	// PreheatAllSeedPeers preheats job by all peer seed peers, only suoported by v2 protocol. Scheduler will trigger all seed peers to download task.
+	// PreheatAllSeedPeers preheats job by all peer seed peers, only supported by v2 protocol. Scheduler will trigger all seed peers to download task.
 	// If all the seed peers download task failed, return error. If some of the seed peers download task failed, return success tasks and failure tasks.
 	// Notify the client that the preheat is successful.
 	PreheatAllSeedPeers(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error)
 
-	// PreheatAllPeers preheats job by all peers, only suoported by v2 protocol. Scheduler will trigger all peers to download task.
+	// PreheatAllPeers preheats job by all peers, only supported by v2 protocol. Scheduler will trigger all peers to download task.
 	// If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 	// failure tasks. Notify the client that the preheat is successful.
 	PreheatAllPeers(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error)
@@ -305,7 +305,7 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 	for {
 		piece, err := stream.Recv()
 		if err != nil {
-			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
+			log.Errorf("[preheat]: receive piece failed: %s", err.Error())
 			return nil, err
 		}
 
@@ -319,7 +319,7 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 
 			log.Warnf("[preheat]: host %s not found", piece.HostId)
 			return &internaljob.PreheatResponse{
-				SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknow", IP: "unknow"}},
+				SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: req.URL, Hostname: "unknown", IP: "unknown"}},
 			}, nil
 		}
 	}
@@ -413,11 +413,11 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 
 				log.Warnf("[preheat]: host %s not found", hostID)
 				return &internaljob.PreheatResponse{
-					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: url, Hostname: "unknow", IP: "unknow"}},
+					SuccessTasks: []*internaljob.PreheatSuccessTask{{URL: url, Hostname: "unknown", IP: "unknown"}},
 				}, nil
 			}
 
-			log.Errorf("[preheat]: recive piece failed: %s", err.Error())
+			log.Errorf("[preheat]: receive piece failed: %s", err.Error())
 			return nil, err
 		}
 
@@ -425,7 +425,7 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 	}
 }
 
-// PreheatAllSeedPeers preheats job by all peer seed peers, only suoported by v2 protocol. Scheduler will trigger all seed peers to download task.
+// PreheatAllSeedPeers preheats job by all peer seed peers, only supported by v2 protocol. Scheduler will trigger all seed peers to download task.
 // If all the seed peers download task failed, return error. If some of the seed peers download task failed, return success tasks and failure tasks.
 // Notify the client that the preheat is successful.
 func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
@@ -646,7 +646,7 @@ func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, l
 	return seedPeers, nil
 }
 
-// PreheatAllPeers preheats job by all peers, only suoported by v2 protocol. Scheduler will trigger all peers to download task.
+// PreheatAllPeers preheats job by all peers, only supported by v2 protocol. Scheduler will trigger all peers to download task.
 // If all the peers download task failed, return error. If some of the peers download task failed, return success tasks and
 // failure tasks. Notify the client that the preheat is successful.
 func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {

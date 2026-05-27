@@ -3287,7 +3287,7 @@ func TestServiceV1_handlePieceFail(t *testing.T) {
 			},
 		},
 		{
-			name: "piece result code is unknow",
+			name: "piece result code is unknown",
 			config: &config.Config{
 				Scheduler: mockSchedulerConfig,
 				Metrics:   config.MetricsConfig{EnableHost: true},
