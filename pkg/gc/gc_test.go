@@ -54,7 +54,7 @@ func TestGC_Add(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "Interval value is greater than 0")
+				assert.EqualError(err, "Interval value needs to be greater than 0")
 			},
 		},
 		{
@@ -66,7 +66,7 @@ func TestGC_Add(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "Timeout value is greater than 0")
+				assert.EqualError(err, "Timeout value needs to be greater than 0")
 			},
 		},
 		{

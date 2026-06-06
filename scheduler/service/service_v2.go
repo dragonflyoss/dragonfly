@@ -191,7 +191,7 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			}
 		case *schedulerv2.AnnouncePeerRequest_ReschedulePeerRequest:
 			reschedulePeerRequest := announcePeerRequest.ReschedulePeerRequest
-			log.Infof("receive ReschedulePeerRequestescription: %s", reschedulePeerRequest.GetDescription())
+			log.Infof("receive ReschedulePeerRequest, description: %s", reschedulePeerRequest.GetDescription())
 			if err := v.handleReschedulePeerRequest(ctx, req.GetPeerId(), reschedulePeerRequest.GetCandidateParents()); err != nil {
 				log.Error(err)
 
