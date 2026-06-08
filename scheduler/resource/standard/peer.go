@@ -145,6 +145,15 @@ func WithConcurrentPieceCount(count uint32) PeerOption {
 	}
 }
 
+// WithTinyFileHTTPClient overrides the HTTP client used to download tiny files.
+// This is primarily intended for use in tests to replace the default safe client
+// with one that can reach loopback addresses.
+func WithTinyFileHTTPClient(client *http.Client) PeerOption {
+	return func(p *Peer) {
+		p.tinyFileHTTPClient = client
+	}
+}
+
 // Peer contains content for peer.
 type Peer struct {
 	// ID is peer id.
@@ -206,6 +215,11 @@ type Peer struct {
 
 	// Peer log.
 	Log *logger.SugaredLoggerOnWith
+
+	// tinyFileHTTPClient is the HTTP client used to download tiny files.
+	// Defaults to a client with SafeDialer to prevent SSRF. Can be overridden
+	// for testing via WithTinyFileHTTPClient.
+	tinyFileHTTPClient *http.Client
 }
 
 // New Peer instance.
@@ -227,6 +241,17 @@ func NewPeer(id string, task *Task, host *Host, options ...PeerOption) *Peer {
 		CreatedAt:               atomic.NewTime(time.Now()),
 		UpdatedAt:               atomic.NewTime(time.Now()),
 		Log:                     logger.WithPeer(host.ID, task.ID, id),
+		tinyFileHTTPClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				// Restrict the destination to global-unicast addresses so that an
+				// attacker-controlled PeerHost.Ip/DownPort cannot force the scheduler
+				// to connect to loopback or link-local (e.g. cloud metadata) targets.
+				// This mirrors the manager preheat path (internal/job/image.go).
+				DialContext:     nethttp.NewSafeDialer().DialContext,
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
 	}
 
 	// Initialize state machine.
@@ -454,19 +479,7 @@ func (p *Peer) DownloadTinyFile() ([]byte, error) {
 	req.Header.Set(headers.Range, fmt.Sprintf("bytes=%d-%d", 0, p.Task.ContentLength.Load()-1))
 	p.Log.Infof("download tiny file %s, header is : %#v", targetURL.String(), req.Header)
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			// Restrict the destination to global-unicast addresses so that an
-			// attacker-controlled PeerHost.Ip/DownPort cannot force the scheduler
-			// to connect to loopback or link-local (e.g. cloud metadata) targets.
-			// This mirrors the manager preheat path (internal/job/image.go).
-			DialContext:     nethttp.NewSafeDialer().DialContext,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
-
-	resp, err := client.Do(req)
+	resp, err := p.tinyFileHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
