@@ -19,12 +19,18 @@ FROM ${BASE_IMAGE} AS health
 ENV GRPC_HEALTH_PROBE_VERSION=v0.4.48
 
 RUN if [ "$(uname -m)" = "ppc64le" ]; then \
-    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-ppc64le; \
+    probe_arch=ppc64le; \
     elif [ "$(uname -m)" = "aarch64" ]; then \
-    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-arm64; \
+    probe_arch=arm64; \
     else \
-    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64; \
+    probe_arch=amd64; \
     fi && \
+    probe_url=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-${probe_arch} && \
+    for i in 1 2 3 4 5; do \
+    wget -q -T 30 -O /bin/grpc_health_probe "${probe_url}" && break; \
+    [ "${i}" -eq 5 ] && exit 1; \
+    sleep 2; \
+    done && \
     chmod +x /bin/grpc_health_probe
 
 FROM ${BASE_IMAGE}
