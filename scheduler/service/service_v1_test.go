@@ -3452,7 +3452,9 @@ func TestServiceV1_handlePeerSuccess(t *testing.T) {
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockPeerHost.ProxyPort, mockRawHost.Type)
 			mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
-			peer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+			// Inject the test server's HTTP client so the SafeDialer does not block
+			// connections to the loopback test server.
+			peer := resource.NewPeer(mockPeerID, mockTask, mockHost, resource.WithTinyFileHTTPClient(s.Client()))
 			svc := NewV1(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, res, scheduling, dynconfig)
 
 			tc.mock(peer)

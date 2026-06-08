@@ -664,6 +664,10 @@ func TestPeer_DownloadTinyFile(t *testing.T) {
 			s := tc.mockServer(t, peer)
 			defer s.Close()
 
+			// Override the HTTP client with the test server's client so that the
+			// SafeDialer does not block connections to the loopback test server.
+			peer.tinyFileHTTPClient = s.Client()
+
 			url, err := url.Parse(s.URL)
 			if err != nil {
 				t.Fatal(err)
