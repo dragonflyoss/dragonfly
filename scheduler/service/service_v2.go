@@ -1303,13 +1303,23 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 		peer.Host.Type.Name()).Inc()
 
-	// Provides a exponential delay to prevent thundering herd problems. When a host has many concurrent registration requests, later requests
-	// are delayed progressively to avoid overwhelming the source with simultaneous back-to-source tasks from a single host.
-	if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
-		// Collect RegisterPeerFailureCount metrics.
-		metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-			peer.Host.Type.Name()).Inc()
-		return status.Error(codes.Internal, err.Error())
+	// Provides an exponential delay with jitter to prevent thundering herd problems. When a host has many
+	// concurrent registration requests, later requests are delayed progressively to avoid overwhelming the
+	// source with simultaneous back-to-source tasks from a single host.
+	//
+	// Note that the delay is skipped for seed peers for the following reasons:
+	//  1. Seed peers serve latency-sensitive workloads such as nydus, which issue large numbers of small
+	//     IO requests. Applying a backoff delay would significantly increase the latency of these requests.
+	//  2. The number of seed peers in a cluster is controlled and limited, and the scheduler can control
+	//     the concurrency of back-to-source tasks for seed peers. Therefore, there is no risk of a
+	//     thundering herd against the source, and the delay is unnecessary.
+	if peer.Host.Type != types.HostTypeSuperSeed {
+		if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	blocklist := set.NewSafeSet[string]()
