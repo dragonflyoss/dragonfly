@@ -17,6 +17,7 @@
 package dependency
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -79,12 +80,36 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 		// Config for binding env
 		viper.SetEnvPrefix(rootName)
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		viper.AutomaticEnv()
 		_ = viper.BindEnv("config")
+
+		// Bind env for keys absent from the config file
+		bindEnvsFromConfig(config)
 
 		// Add common cmds only on root cmd
 		cmd.AddCommand(VersionCmd)
 		cmd.AddCommand(newDocCommand(cmd.Name()))
 		cmd.AddCommand(PluginCmd)
+	}
+}
+
+// bindEnvsFromConfig binds an env for every config key, so AutomaticEnv can
+// override keys that are not present in the config file.
+func bindEnvsFromConfig(config any) {
+	// Marshal the default config and let viper flatten it into keys.
+	b, err := yaml.Marshal(config)
+	if err != nil {
+		panic(fmt.Errorf("marshal config for env binding: %w", err))
+	}
+
+	keys := viper.New()
+	keys.SetConfigType("yaml")
+	if err := keys.ReadConfig(bytes.NewReader(b)); err != nil {
+		panic(fmt.Errorf("read config for env binding: %w", err))
+	}
+
+	for _, key := range keys.AllKeys() {
+		_ = viper.BindEnv(key)
 	}
 }
 
