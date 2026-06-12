@@ -443,6 +443,8 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
 		eg.Go(func() error {
+			peg, _ := errgroup.WithContext(ctx)
+			peg.SetLimit(int(req.ConcurrentPeerCount))
 			for _, seedPeer := range seedPeers {
 				var (
 					hostname = seedPeer.Hostname
@@ -451,8 +453,6 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				)
 
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
-				peg, _ := errgroup.WithContext(ctx)
-				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
 					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
@@ -533,11 +533,11 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 						}
 					}
 				})
+			}
 
-				// Wait for all seed peers to download single task and print the errors.
-				if err := peg.Wait(); err != nil {
-					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				}
+			// Wait for all seed peers to download single task and print the errors.
+			if err := peg.Wait(); err != nil {
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 			}
 
 			return nil
@@ -664,6 +664,8 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
 		eg.Go(func() error {
+			peg, _ := errgroup.WithContext(ctx)
+			peg.SetLimit(int(req.ConcurrentPeerCount))
 			for _, peer := range peers {
 				var (
 					hostname = peer.Hostname
@@ -672,8 +674,6 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				)
 
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
-				peg, _ := errgroup.WithContext(ctx)
-				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
 					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
@@ -754,11 +754,11 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 						}
 					}
 				})
+			}
 
-				// Wait for all peers to download single task and print the errors.
-				if err := peg.Wait(); err != nil {
-					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				}
+			// Wait for all peers to download single task and print the errors.
+			if err := peg.Wait(); err != nil {
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 			}
 
 			return nil
