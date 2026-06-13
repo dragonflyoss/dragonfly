@@ -75,3 +75,15 @@ func formatPostgresDSN(cfg *config.PostgresConfig) string {
 		cfg.Timezone,
 	)
 }
+
+func syncSequenceAfterExplicitInsert(db *gorm.DB, table string, id uint) error {
+	if db.Dialector.Name() != "postgres" {
+		return nil
+	}
+
+	return db.Exec(
+		"SELECT setval(pg_get_serial_sequence(?, 'id'), ?, true)",
+		table,
+		id,
+	).Error
+}

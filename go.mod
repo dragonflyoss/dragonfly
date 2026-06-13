@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	d7y.io/api/v2 v2.2.30
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/Showmax/go-fqdn v1.0.0
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/appleboy/gin-jwt/v2 v2.10.3

@@ -156,7 +156,7 @@ func seed(db *gorm.DB) error {
 	}
 
 	if schedulerClusterCount <= 0 {
-		if err := db.Create(&models.SchedulerCluster{
+		schedulerCluster := models.SchedulerCluster{
 			BaseModel: models.BaseModel{
 				ID: uint(1),
 			},
@@ -172,7 +172,13 @@ func seed(db *gorm.DB) error {
 			SeedClientConfig: map[string]any{},
 			Scopes:           map[string]any{},
 			IsDefault:        true,
-		}).Error; err != nil {
+		}
+
+		if err := db.Create(&schedulerCluster).Error; err != nil {
+			return err
+		}
+
+		if err := syncSequenceAfterExplicitInsert(db, "scheduler_cluster", schedulerCluster.ID); err != nil {
 			return err
 		}
 	}
@@ -184,7 +190,7 @@ func seed(db *gorm.DB) error {
 	}
 
 	if seedPeerClusterCount <= 0 {
-		if err := db.Create(&models.SeedPeerCluster{
+		seedPeerCluster := models.SeedPeerCluster{
 			BaseModel: models.BaseModel{
 				ID: uint(1),
 			},
@@ -192,11 +198,17 @@ func seed(db *gorm.DB) error {
 			Config: map[string]any{
 				"load_limit": schedulerconfig.DefaultSeedPeerConcurrentUploadLimit,
 			},
-		}).Error; err != nil {
+		}
+
+		if err := db.Create(&seedPeerCluster).Error; err != nil {
 			return err
 		}
 
-		seedPeerCluster := models.SeedPeerCluster{}
+		if err := syncSequenceAfterExplicitInsert(db, "seed_peer_cluster", seedPeerCluster.ID); err != nil {
+			return err
+		}
+
+		seedPeerCluster = models.SeedPeerCluster{}
 		if err := db.First(&seedPeerCluster).Error; err != nil {
 			return err
 		}
