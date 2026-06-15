@@ -96,8 +96,10 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 // bindEnvsFromConfig binds an env for every config key, so AutomaticEnv can
 // override keys that are not present in the config file.
 func bindEnvsFromConfig(config any) {
-	// Marshal the default config and let viper flatten it into keys.
-	b, err := yaml.Marshal(config)
+	schema := reflect.New(reflect.TypeOf(config).Elem()).Interface()
+	materializeStructPtrs(reflect.ValueOf(schema).Elem())
+
+	b, err := yaml.Marshal(schema)
 	if err != nil {
 		panic(fmt.Errorf("marshal config for env binding: %w", err))
 	}
@@ -110,6 +112,29 @@ func bindEnvsFromConfig(config any) {
 
 	for _, key := range keys.AllKeys() {
 		_ = viper.BindEnv(key)
+	}
+}
+
+// materializeStructPtrs allocates nil struct-pointers so their nested keys serialize.
+func materializeStructPtrs(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.Type().Elem().Kind() != reflect.Struct {
+			return
+		}
+		if v.IsNil() {
+			if !v.CanSet() {
+				return
+			}
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		materializeStructPtrs(v.Elem())
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if f := v.Field(i); f.CanSet() {
+				materializeStructPtrs(f)
+			}
+		}
 	}
 }
 
