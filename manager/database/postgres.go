@@ -79,7 +79,7 @@ func formatPostgresDSN(cfg *config.PostgresConfig) string {
 // setPostgresSequence advances the serial sequence of the given table's id
 // column so the next auto-generated row starts after the explicitly inserted value.
 func setPostgresSequence(db *gorm.DB, table string, value uint) error {
-	if db.Dialector.Name() != "postgres" {
+	if db.Name() != "postgres" {
 		return nil
 	}
 
