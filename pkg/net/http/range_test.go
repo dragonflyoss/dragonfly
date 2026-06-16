@@ -17,6 +17,7 @@
 package http
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,6 +158,10 @@ func TestParseRange(t *testing.T) {
 		{"bytes=0-2,5-4", 10, nil},
 		{"bytes=2-5,4-3", 10, nil},
 		{"bytes=--5,4--3", 10, nil},
+		{"bytes=--5", 10, nil},
+		{"bytes=--1", 10, nil},
+		{"bytes=--5", math.MaxInt64, nil},
+		{"bytes=-", 10, nil},
 		{"bytes=A-", 10, nil},
 		{"bytes=A- ", 10, nil},
 		{"bytes=A-Z", 10, nil},

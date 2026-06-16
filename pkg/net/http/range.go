@@ -88,9 +88,15 @@ func ParseRange(s string, size int64) ([]Range, error) {
 		var r Range
 		if start == "" {
 			// If no Serve is specified, end specifies the
-			// range Serve relative to the end of the file.
+			// range Serve relative to the end of the file, and the
+			// suffix-length must be a non-negative integer as per
+			// RFC 7233 Section 2.1.
+			if end == "" || end[0] == '-' {
+				return nil, errors.New("invalid range")
+			}
+
 			i, err := strconv.ParseInt(end, 10, 64)
-			if err != nil {
+			if i < 0 || err != nil {
 				return nil, errors.New("invalid range")
 			}
 
