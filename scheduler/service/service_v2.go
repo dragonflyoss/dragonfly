@@ -122,6 +122,23 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 
+	// Track the registered peer so we can delete its gRPC stream reference
+	// when this handler exits on ANY path (success, error, EOF, context cancel).
+	// Without this, the peer retains a reference to the closed stream, which
+	// retains the underlying gRPC transport (bufio.Reader ~32KB, hpack decoder
+	// table, flate writer) until the peer itself is eventually GC'd, causing
+	// steady memory growth under load. Mirrors V1's ReportPieceResult which
+	// defers peer.DeleteReportPieceResultStream().
+	var registeredPeerID string
+	defer func() {
+		if registeredPeerID == "" {
+			return
+		}
+		if peer, loaded := v.resource.PeerManager().Load(registeredPeerID); loaded {
+			peer.DeleteAnnouncePeerStream()
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -146,6 +163,10 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			registerPeerRequest := announcePeerRequest.RegisterPeerRequest
 			log.Infof("receive RegisterPeerRequest, url: %s, range: %#v, header: %#v, need back-to-source: %t",
 				registerPeerRequest.Download.GetUrl(), registerPeerRequest.Download.GetRange(), registerPeerRequest.Download.GetRequestHeader(), registerPeerRequest.Download.GetNeedBackToSource())
+			// Track peer ID before registration so the function-level defer
+			// cleans up the stream even if handleRegisterPeerRequest fails
+			// after handleResource has stored it.
+			registeredPeerID = req.GetPeerId()
 			if err := v.handleRegisterPeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPeerRequest); err != nil {
 				log.Error(err)
 
