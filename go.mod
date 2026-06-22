@@ -12,7 +12,7 @@ require (
 	github.com/casbin/casbin/v2 v2.81.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/containerd/containerd v1.7.32
+	github.com/containerd/containerd v1.7.33
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v25.0.16+incompatible
 	github.com/docker/go-connections v0.7.0
