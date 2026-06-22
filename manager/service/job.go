@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	retry "github.com/avast/retry-go/v4"
+	retry "github.com/avast/retry-go/v5"
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
@@ -751,7 +751,13 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUI
 		job models.Job
 		log = logger.WithGroupAndJobID(groupUUID, fmt.Sprint(id))
 	)
-	if err := retry.Do(func() error {
+	if err := retry.New(
+		retry.Attempts(attempts),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Delay(delay),
+		retry.MaxDelay(maxDelay),
+		retry.Context(ctx),
+	).Do(func() error {
 		groupJob, err := s.job.GetGroupJobState(name, groupUUID)
 		if err != nil {
 			err = fmt.Errorf("get group job state failed: %w", err)
@@ -790,13 +796,7 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUI
 			log.Info(msg)
 			return errors.New(msg)
 		}
-	},
-		retry.Attempts(attempts),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Delay(delay),
-		retry.MaxDelay(maxDelay),
-		retry.Context(ctx),
-	); err != nil {
+	}); err != nil {
 		err = fmt.Errorf("polling group job failed: %w", err)
 		log.Error(err)
 	}
