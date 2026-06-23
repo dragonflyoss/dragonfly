@@ -305,7 +305,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("-100", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("-100", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -354,7 +356,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("0-100", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("0-100", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -403,7 +407,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -452,7 +458,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-500", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-500", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -501,7 +509,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("0-1048575", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("0-1048575", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -550,7 +560,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-10240", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-10240", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -599,7 +611,9 @@ var _ = Describe("Download Using Proxy", func() {
 
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-1024", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-1024", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
@@ -831,7 +845,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("-100", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("-100", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-100")))
@@ -869,7 +885,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("0-100", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("0-100", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-0-100")))
@@ -907,7 +925,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-100-")))
@@ -945,7 +965,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-1048575", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-1048575", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-100-1048575")))
@@ -983,7 +1005,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("0-1048575", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("0-1048575", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-0-1048575")))
@@ -1021,7 +1045,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-10240", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-10240", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-100-10240")))
@@ -1059,7 +1085,9 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-1024", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-1024", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			time.Sleep(1 * time.Second)
 			sha256sum, err = util.CalculateSha256ByTaskID([]*util.PodExec{seedClientPod}, testFile.GetTaskID(util.WithTaskIDTag("prefetch-proxy-bytes-100-1024")))

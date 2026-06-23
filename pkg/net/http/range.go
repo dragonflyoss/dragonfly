@@ -52,7 +52,8 @@ func (r *Range) URLMetaString() string {
 }
 
 // ParseRange parses a Range header string as per RFC 7233.
-// ErrNoOverlap is returned if none of the ranges overlap.
+// errNoOverlap is returned if none of the ranges overlap.
+//
 // Example:
 //
 //	"Range": "bytes=100-200"
@@ -60,37 +61,38 @@ func (r *Range) URLMetaString() string {
 //	"Range": "bytes=150-"
 //	"Range": "bytes=0-0,-1"
 //
-// copy from go/1.15.2 net/http/fs.go ParseRange
+// copy from go/1.15 net/http/fs.go ParseRange
 func ParseRange(s string, size int64) ([]Range, error) {
 	if s == "" {
 		return nil, nil // header not present
 	}
 
-	const b = RangePrefix
+	const b = "bytes="
 	if !strings.HasPrefix(s, b) {
 		return nil, errors.New("invalid range")
 	}
 
 	var ranges []Range
 	noOverlap := false
-	for _, ra := range strings.Split(s[len(b):], ",") {
+	for ra := range strings.SplitSeq(s[len(b):], ",") {
 		ra = textproto.TrimString(ra)
 		if ra == "" {
 			continue
 		}
 
-		i := strings.Index(ra, "-")
-		if i < 0 {
+		start, end, ok := strings.Cut(ra, "-")
+		if !ok {
 			return nil, errors.New("invalid range")
 		}
-		start, end := textproto.TrimString(ra[:i]), textproto.TrimString(ra[i+1:])
+		start, end = textproto.TrimString(start), textproto.TrimString(end)
 
 		var r Range
 		if start == "" {
-			// If no Serve is specified, end specifies the
-			// range Serve relative to the end of the file, and the
-			// suffix-length must be a non-negative integer as per
-			// RFC 7233 Section 2.1.
+			// If no start is specified, end specifies the
+			// range start relative to the end of the file,
+			// and we are dealing with <suffix-length>
+			// which has to be a non-negative integer as per
+			// RFC 7233 Section 2.1 "Byte-Ranges".
 			if end == "" || end[0] == '-' {
 				return nil, errors.New("invalid range")
 			}
@@ -103,7 +105,6 @@ func ParseRange(s string, size int64) ([]Range, error) {
 			if i > size {
 				i = size
 			}
-
 			r.Start = size - i
 			r.Length = size - r.Start
 		} else {
@@ -118,7 +119,6 @@ func ParseRange(s string, size int64) ([]Range, error) {
 				noOverlap = true
 				continue
 			}
-
 			r.Start = i
 			if end == "" {
 				// If no end is specified, range extends to end of the file.
@@ -145,42 +145,4 @@ func ParseRange(s string, size int64) ([]Range, error) {
 	}
 
 	return ranges, nil
-}
-
-// MustParseRange is like ParseRange but panics if the range cannot be parsed.
-func MustParseRange(s string, size int64) Range {
-	rs, err := ParseRange(s, size)
-	if err != nil {
-		panic(fmt.Sprintf("parse range %q error: %s", s, err))
-	}
-
-	if len(rs) != 1 {
-		panic("parse range length must be 1")
-	}
-
-	return rs[0]
-}
-
-// ParseOneRange parses only one range of Range header string as per RFC 7233.
-func ParseOneRange(s string, size int64) (Range, error) {
-	rs, err := ParseRange(s, size)
-	if err != nil {
-		return Range{}, err
-	}
-
-	if len(rs) != 1 {
-		return Range{}, fmt.Errorf("parse range length must be 1")
-	}
-
-	return rs[0], nil
-}
-
-// ParseRange parses a Range string of grpc UrlMeta.
-// Example:
-//
-//	"Range": "100-200"
-//	"Range": "-50"
-//	"Range": "150-"
-func ParseURLMetaRange(s string, size int64) (Range, error) {
-	return ParseOneRange(fmt.Sprintf("%s%s", RangePrefix, s), size)
 }

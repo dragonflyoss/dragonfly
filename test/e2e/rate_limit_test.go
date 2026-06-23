@@ -242,7 +242,9 @@ var _ = Describe("Download Using Prefetch Proxy With Rate Limit", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-200", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-200", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			// Prefetch should not be completed within 25 seconds.
 			Consistently(func() error {
@@ -299,7 +301,9 @@ var _ = Describe("Download Using Prefetch Proxy With Rate Limit", func() {
 
 			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{seedClientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetRangeSha256("100-200", testFile.GetInfo().Size())).To(Equal(sha256sum))
+			got, err := testFile.GetRangeSha256("100-200", testFile.GetInfo().Size())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(sha256sum))
 
 			// Prefetch should not be completed within 80 seconds.
 			Consistently(func() error {

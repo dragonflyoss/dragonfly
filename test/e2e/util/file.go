@@ -73,21 +73,21 @@ func (f *File) GetSha256() string {
 }
 
 // GetRangeSha256 returns the sha256 of the range part of the file content.
-func (f *File) GetRangeSha256(r string, fileSize int64) string {
-	// parse the range header
-	parsedRange := nethttp.MustParseRange(fmt.Sprintf("bytes=%s", r), fileSize)
-	start, end := parsedRange.Start, parsedRange.Start+parsedRange.Length-1
+func (f *File) GetRangeSha256(r string, fileSize int64) (string, error) {
+	parsedRange, err := nethttp.ParseRange(fmt.Sprintf("bytes=%s", r), fileSize)
+	if err != nil {
+		return "", err
+	}
 
+	start, end := parsedRange[0].Start, parsedRange[0].Start+parsedRange[0].Length-1
 	file, err := os.Open(f.localPath)
 	if err != nil {
-		fmt.Printf("open file %s error: %v\n", f.localPath, err)
-		return ""
+		return "", err
 	}
 	defer file.Close()
 
 	if _, err = file.Seek(start, 0); err != nil {
-		fmt.Printf("seek file %s to %d error: %v\n", f.localPath, start, err)
-		return ""
+		return "", err
 	}
 
 	limitedReader := io.LimitReader(file, end-start+1)
@@ -95,11 +95,10 @@ func (f *File) GetRangeSha256(r string, fileSize int64) string {
 
 	hash := sha256.New()
 	if _, err = io.Copy(hash, bufferedReader); err != nil {
-		fmt.Printf("copy file %s content error: %v\n", f.localPath, err)
-		return ""
+		return "", err
 	}
 
-	return fmt.Sprintf("%x", hash.Sum(nil))
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 // GetDownloadURL returns the download URL of the file from remote file server.
