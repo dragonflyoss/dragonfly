@@ -735,7 +735,7 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 	case commonv1.Priority_LEVEL6, commonv1.Priority_LEVEL0:
 		if v.resource.SeedPeer().HasAvailable() && !task.IsSeedPeerFailed() {
 			if len(req.UrlMeta.GetRange()) > 0 {
-				if rgs, err := http.ParseRange(req.UrlMeta.GetRange(), math.MaxInt64); err == nil {
+				if rgs, err := http.ParseURLMetaRange(req.UrlMeta.GetRange(), math.MaxInt64); err == nil {
 					go v.triggerSeedPeerTask(ctx, &rgs[0], task)
 					return nil
 				}
@@ -855,7 +855,7 @@ func (v *V1) storePeer(_ context.Context, id string, priority commonv1.Priority,
 		}
 
 		if len(rg) > 0 {
-			if rgs, err := http.ParseRange(rg, math.MaxInt64); err == nil {
+			if rgs, err := http.ParseURLMetaRange(rg, math.MaxInt64); err == nil {
 				options = append(options, resource.WithRange(rgs[0]))
 			} else {
 				logger.WithPeer(host.ID, task.ID, id).Error(err)

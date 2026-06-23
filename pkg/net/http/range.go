@@ -146,3 +146,13 @@ func ParseRange(s string, size int64) ([]Range, error) {
 
 	return ranges, nil
 }
+
+// ParseRange parses a Range string of grpc UrlMeta.
+// Example:
+//
+//	"Range": "100-200"
+//	"Range": "-50"
+//	"Range": "150-"
+func ParseURLMetaRange(s string, size int64) ([]Range, error) {
+	return ParseRange(fmt.Sprintf("%s%s", RangePrefix, s), size)
+}
