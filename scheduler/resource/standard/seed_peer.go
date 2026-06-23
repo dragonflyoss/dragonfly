@@ -345,7 +345,8 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 func (s *seedPeer) refresh(ctx context.Context) error {
 	hosts := s.hostManager.LoadAllSeeds()
 	if len(hosts) == 0 {
-		return fmt.Errorf("no seed peer found in host manager")
+		logger.Warnf("no seed peer found in host manager")
+		return nil
 	}
 
 	healthyHosts := &sync.Map{}
