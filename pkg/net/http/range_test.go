@@ -222,15 +222,15 @@ func TestParseURLMetaRange(t *testing.T) {
 	tests := []struct {
 		s      string
 		size   int64
-		expect func(t *testing.T, rg Range, err error)
+		expect func(t *testing.T, rg []Range, err error)
 	}{
 		{
 			s:    "0-65575",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg, Range{
+				assert.EqualValues(rg[0], Range{
 					Start:  0,
 					Length: 65576,
 				})
@@ -239,10 +239,10 @@ func TestParseURLMetaRange(t *testing.T) {
 		{
 			s:    "2-2",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg, Range{
+				assert.EqualValues(rg[0], Range{
 					Start:  2,
 					Length: 1,
 				})
@@ -251,10 +251,10 @@ func TestParseURLMetaRange(t *testing.T) {
 		{
 			s:    "2-",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg, Range{
+				assert.EqualValues(rg[0], Range{
 					Start:  2,
 					Length: 65574,
 				})
@@ -263,10 +263,10 @@ func TestParseURLMetaRange(t *testing.T) {
 		{
 			s:    "-100",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg, Range{
+				assert.EqualValues(rg[0], Range{
 					Start:  65476,
 					Length: 100,
 				})
@@ -275,10 +275,10 @@ func TestParseURLMetaRange(t *testing.T) {
 		{
 			s:    "0-66575",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg, Range{
+				assert.EqualValues(rg[0], Range{
 					Start:  0,
 					Length: 65576,
 				})
@@ -287,32 +287,36 @@ func TestParseURLMetaRange(t *testing.T) {
 		{
 			s:    "0-65-575",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.Empty(rg)
 				assert.Error(err)
 			},
 		},
 		{
 			s:    "0-hello",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.Empty(rg)
 				assert.Error(err)
 			},
 		},
 		{
 			s:    "65575-0",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.Empty(rg)
 				assert.Error(err)
 			},
 		},
 		{
 			s:    "-1-8",
 			size: 65576,
-			expect: func(t *testing.T, rg Range, err error) {
+			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.Empty(rg)
 				assert.Error(err)
 			},
 		},
@@ -321,7 +325,7 @@ func TestParseURLMetaRange(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.s, func(t *testing.T) {
 			rg, err := ParseURLMetaRange(tc.s, tc.size)
-			tc.expect(t, rg[0], err)
+			tc.expect(t, rg, err)
 		})
 	}
 }
