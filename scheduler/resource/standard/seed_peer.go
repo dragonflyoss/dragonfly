@@ -342,10 +342,11 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 	return peer, nil
 }
 
-func (s *seedPeer) refresh(ctx context.Context) error {
+func (s *seedPeer) refresh(ctx context.Context) {
 	hosts := s.hostManager.LoadAllSeeds()
 	if len(hosts) == 0 {
-		return fmt.Errorf("no seed peer found in host manager")
+		logger.Warnf("no seed peer found in host manager")
+		return
 	}
 
 	healthyHosts := &sync.Map{}
@@ -358,7 +359,6 @@ func (s *seedPeer) refresh(ctx context.Context) error {
 			healthyHosts.Store(addr, host)
 		}
 	}
-
 	s.hosts = healthyHosts
 
 	hashring := consistent.New()
@@ -368,7 +368,6 @@ func (s *seedPeer) refresh(ctx context.Context) error {
 	})
 
 	s.hashring = hashring
-	return nil
 }
 
 // Serve serves the seed peer service.
@@ -381,9 +380,7 @@ func (s *seedPeer) Serve() error {
 	for {
 		select {
 		case <-ticker.C:
-			if err := s.refresh(context.Background()); err != nil {
-				logger.Errorf("failed to refresh seed peers: %v", err)
-			}
+			s.refresh(context.Background())
 		case <-s.done:
 			return nil
 		}
