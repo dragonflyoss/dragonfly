@@ -84,18 +84,27 @@ func (s *service) GetPersonalAccessToken(ctx context.Context, id uint) (*models.
 		return nil, err
 	}
 
+	// The token is a secret credential and is only returned once on creation,
+	// do not expose it on read paths.
+	personalAccessToken.Token = ""
 	return &personalAccessToken, nil
 }
 
 func (s *service) GetPersonalAccessTokens(ctx context.Context, q types.GetPersonalAccessTokensQuery) ([]models.PersonalAccessToken, int64, error) {
 	var count int64
-	personalAccessToken := []models.PersonalAccessToken{}
+	personalAccessTokens := []models.PersonalAccessToken{}
 	if err := s.db.WithContext(ctx).Scopes(models.Paginate(q.Page, q.PerPage)).Where(&models.PersonalAccessToken{
 		State:  q.State,
 		UserID: q.UserID,
-	}).Preload("User").Find(&personalAccessToken).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
+	}).Preload("User").Find(&personalAccessTokens).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return personalAccessToken, count, nil
+	// The token is a secret credential and is only returned once on creation,
+	// do not expose it on read paths.
+	for i := range personalAccessTokens {
+		personalAccessTokens[i].Token = ""
+	}
+
+	return personalAccessTokens, count, nil
 }
