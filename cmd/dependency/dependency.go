@@ -17,6 +17,7 @@
 package dependency
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -79,12 +80,61 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 		// Config for binding env
 		viper.SetEnvPrefix(rootName)
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		viper.AutomaticEnv()
 		_ = viper.BindEnv("config")
+
+		// Bind env for keys absent from the config file
+		bindEnvsFromConfig(config)
 
 		// Add common cmds only on root cmd
 		cmd.AddCommand(VersionCmd)
 		cmd.AddCommand(newDocCommand(cmd.Name()))
 		cmd.AddCommand(PluginCmd)
+	}
+}
+
+// bindEnvsFromConfig binds an env for every config key, so AutomaticEnv can
+// override keys that are not present in the config file.
+func bindEnvsFromConfig(config any) {
+	schema := reflect.New(reflect.TypeOf(config).Elem()).Interface()
+	materializeStructPtrs(reflect.ValueOf(schema).Elem())
+
+	b, err := yaml.Marshal(schema)
+	if err != nil {
+		panic(fmt.Errorf("marshal config for env binding: %w", err))
+	}
+
+	keys := viper.New()
+	keys.SetConfigType("yaml")
+	if err := keys.ReadConfig(bytes.NewReader(b)); err != nil {
+		panic(fmt.Errorf("read config for env binding: %w", err))
+	}
+
+	for _, key := range keys.AllKeys() {
+		_ = viper.BindEnv(key)
+	}
+}
+
+// materializeStructPtrs allocates nil struct-pointers so their nested keys serialize.
+func materializeStructPtrs(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.Type().Elem().Kind() != reflect.Struct {
+			return
+		}
+		if v.IsNil() {
+			if !v.CanSet() {
+				return
+			}
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		materializeStructPtrs(v.Elem())
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if f := v.Field(i); f.CanSet() {
+				materializeStructPtrs(f)
+			}
+		}
 	}
 }
 
