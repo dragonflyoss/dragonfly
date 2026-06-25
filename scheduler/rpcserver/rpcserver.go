@@ -19,6 +19,7 @@ package rpcserver
 import (
 	"google.golang.org/grpc"
 
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -39,6 +40,8 @@ func New(
 	dynconfig config.DynconfigInterface,
 	opts ...grpc.ServerOption,
 ) *grpc.Server {
+	// Provide JWT key from config to scheduler server via auth package.
+	auth.SetServerKey("scheduler", cfg.Auth.JWT.Key)
 	return server.New(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
 		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
