@@ -105,10 +105,32 @@ func Parse(digest string) (*Digest, error) {
 		return nil, errors.New("invalid algorithm")
 	}
 
+	// The supported algorithms all produce hex-encoded digests. The switch only
+	// checks the length, so reject any encoded value that is not valid
+	// hexadecimal, otherwise a malformed digest such as a 64 character non-hex
+	// string would be accepted as a sha256.
+	if !isHex(encoded) {
+		return nil, errors.New("invalid encoded")
+	}
+
 	return &Digest{
 		Algorithm: algorithm,
 		Encoded:   encoded,
 	}, nil
+}
+
+// isHex reports whether s consists solely of hexadecimal characters.
+func isHex(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+			continue
+		}
+
+		return false
+	}
+
+	return true
 }
 
 // SHA256FromStrings computes the SHA256 checksum with multiple strings.
