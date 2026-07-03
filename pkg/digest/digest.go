@@ -121,13 +121,10 @@ func Parse(digest string) (*Digest, error) {
 
 // isHex reports whether s consists solely of hexadecimal characters.
 func isHex(s string) bool {
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
-			continue
+	for _, r := range s {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return false
 		}
-
-		return false
 	}
 
 	return true
