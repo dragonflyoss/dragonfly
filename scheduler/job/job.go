@@ -633,6 +633,10 @@ func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, l
 	if percentage != nil {
 		seedPeerCount := (len(seedPeers) * int(*percentage)) / 100
 
+		// Clamp to the number of available seed peers, a percentage over 100
+		// would otherwise make the slice bound exceed len(seedPeers) and panic.
+		seedPeerCount = min(seedPeerCount, len(seedPeers))
+
 		// Ensure at least one peer is selected if percentage > 0.
 		if seedPeerCount == 0 && *percentage > 0 {
 			seedPeerCount = 1
@@ -848,6 +852,10 @@ func (j *job) selectPeers(ips []string, count *uint32, percentage *uint32, log *
 
 	if percentage != nil {
 		peerCount := (len(peers) * int(*percentage)) / 100
+
+		// Clamp to the number of available peers, a percentage over 100 would
+		// otherwise make the slice bound exceed len(peers) and panic.
+		peerCount = min(peerCount, len(peers))
 
 		// Ensure at least one peer is selected if percentage > 0.
 		if peerCount == 0 && *percentage > 0 {
