@@ -178,7 +178,7 @@ func seed(db *gorm.DB) error {
 			return err
 		}
 
-		if err := setPostgresSequence(db, "seed_peer_cluster", schedulerCluster.ID); err != nil {
+		if err := setPostgresSequence(db, "scheduler_cluster", schedulerCluster.ID); err != nil {
 			return err
 		}
 	}
