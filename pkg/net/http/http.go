@@ -33,7 +33,9 @@ const (
 func HeaderToMap(header http.Header) map[string]string {
 	m := make(map[string]string)
 	for k, v := range header {
-		m[k] = v[0]
+		if len(v) > 0 {
+			m[k] = v[0]
+		}
 	}
 	return m
 }
