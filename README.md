@@ -78,9 +78,3 @@ You should check out our
 ## Code of Conduct
 
 Please refer to our [Code of Conduct][codeconduct] which applies to all Dragonfly community members.
-
-<!-- Scarf tracking pixel -->
-
-<img referrerpolicy="no-referrer-when-downgrade"
-  src="https://static.scarf.sh/a.png?x-pxid=0ee6c839-4734-449f-b053-8aadddee8902"
-  style="display:none" alt="" />
