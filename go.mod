@@ -40,7 +40,7 @@ require (
 	github.com/looplab/fsm v1.0.2
 	github.com/mcuadros/go-gin-prometheus v0.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/montanaflynn/stats v0.9.0
+	github.com/montanaflynn/stats v0.10.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.0
 	github.com/opencontainers/image-spec v1.1.0
