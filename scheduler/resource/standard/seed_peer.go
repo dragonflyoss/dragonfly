@@ -88,8 +88,14 @@ type seedPeer struct {
 	// hostManager is HostManager interface.
 	hostManager HostManager
 
+	// taskManager is TaskManager interface.
+	taskManager TaskManager
+
 	// clientPool is Pool interface.
 	clientPool dfdaemonclient.Pool
+
+	// backToSourceLimit is back-to-source limit of task.
+	backToSourceLimit int32
 
 	// dialOpts is the options for grpc dial.
 	dialOptions []grpc.DialOption
@@ -105,15 +111,17 @@ type seedPeer struct {
 }
 
 // New SeedPeer interface.
-func newSeedPeer(peerManager PeerManager, hostManager HostManager, clientPool dfdaemonclient.Pool, dialOptions ...grpc.DialOption) SeedPeer {
+func newSeedPeer(peerManager PeerManager, hostManager HostManager, taskManager TaskManager, clientPool dfdaemonclient.Pool, backToSourceLimit int32, dialOptions ...grpc.DialOption) SeedPeer {
 	return &seedPeer{
-		peerManager: peerManager,
-		hostManager: hostManager,
-		clientPool:  clientPool,
-		dialOptions: dialOptions,
-		hosts:       &sync.Map{},
-		hashring:    consistent.New(),
-		done:        make(chan struct{}),
+		peerManager:       peerManager,
+		hostManager:       hostManager,
+		taskManager:       taskManager,
+		clientPool:        clientPool,
+		backToSourceLimit: backToSourceLimit,
+		dialOptions:       dialOptions,
+		hosts:             &sync.Map{},
+		hashring:          consistent.New(),
+		done:              make(chan struct{}),
 	}
 }
 
@@ -141,17 +149,291 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 		return err
 	}
 
-	// Wait for the download task to complete.
+	// Wait for the download task to complete. Meanwhile, mirror the seed peer
+	// progress into scheduler memory. This is important after scheduler restarts:
+	// the seed may still have a complete local task, but the scheduler has lost
+	// the in-memory task/peer DAG. The DownloadTask stream is the on-demand
+	// reconciliation point that makes the seed peer available as a parent again.
+	var peer *Peer
 	for {
-		_, err := stream.Recv()
+		resp, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
+				if peer != nil {
+					if err := s.completeSeedPeerDownloadTask(ctx, peer); err != nil {
+						return err
+					}
+				}
+
 				return nil
+			}
+
+			if peer != nil && !peer.FSM.Is(PeerStateFailed) {
+				if err := peer.FSM.Event(ctx, PeerEventDownloadFailed); err != nil {
+					peer.Log.Errorf("seed peer download task failed, but set peer failed state failed: %s", err.Error())
+				}
 			}
 
 			return err
 		}
+
+		peer, err = s.handleDownloadTaskResponse(ctx, taskID, req.GetDownload(), resp, peer)
+		if err != nil {
+			return err
+		}
 	}
+}
+
+func (s *seedPeer) handleDownloadTaskResponse(ctx context.Context, taskID string, download *commonv2.Download, resp *dfdaemonv2.DownloadTaskResponse, peer *Peer) (*Peer, error) {
+	if resp == nil {
+		return peer, nil
+	}
+
+	if resp.GetTaskId() != "" && resp.GetTaskId() != taskID {
+		return nil, fmt.Errorf("seed peer download task response task id %s does not match %s", resp.GetTaskId(), taskID)
+	}
+
+	if peer == nil {
+		var err error
+		peer, err = s.initSeedPeerForDownloadTask(ctx, taskID, download, resp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := s.ensureSeedPeerDownloading(ctx, peer, download.GetNeedBackToSource()); err != nil {
+		return nil, err
+	}
+
+	switch r := resp.GetResponse().(type) {
+	case *dfdaemonv2.DownloadTaskResponse_DownloadTaskStartedResponse:
+		started := r.DownloadTaskStartedResponse
+		if started == nil {
+			return peer, nil
+		}
+
+		peer.Task.ContentLength.Store(int64(started.GetContentLength()))
+		if download.GetActualPieceCount() > 0 {
+			peer.Task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
+		} else {
+			if count := calculatePieceCount(started.GetContentLength(), peer.Task.PieceLength); count > 0 {
+				peer.Task.TotalPieceCount.Store(count)
+			}
+		}
+
+		// When the seed local task is already complete, dfdaemon may return all
+		// pieces in the started response and set is_finished. Store those pieces and
+		// mark the seed peer completed immediately, so later scheduling retries can
+		// select it as parent without waiting for another scheduler announce path.
+		if started.GetIsFinished() {
+			for _, piece := range started.GetPieces() {
+				if err := storeSeedPeerPiece(peer, piece); err != nil {
+					return nil, err
+				}
+			}
+
+			if err := s.completeSeedPeerDownloadTask(ctx, peer); err != nil {
+				return nil, err
+			}
+		}
+	case *dfdaemonv2.DownloadTaskResponse_DownloadPieceFinishedResponse:
+		finished := r.DownloadPieceFinishedResponse
+		if finished == nil {
+			return peer, nil
+		}
+
+		if err := storeSeedPeerPiece(peer, finished.GetPiece()); err != nil {
+			return nil, err
+		}
+	}
+
+	return peer, nil
+}
+
+func (s *seedPeer) initSeedPeerForDownloadTask(ctx context.Context, taskID string, download *commonv2.Download, resp *dfdaemonv2.DownloadTaskResponse) (*Peer, error) {
+	if download == nil {
+		download = &commonv2.Download{}
+	}
+
+	hostID := resp.GetHostId()
+	if hostID == "" {
+		return nil, fmt.Errorf("seed peer download task response host id is empty")
+	}
+
+	peerID := resp.GetPeerId()
+	if peerID == "" {
+		return nil, fmt.Errorf("seed peer download task response peer id is empty")
+	}
+
+	host, loaded := s.hostManager.Load(hostID)
+	if !loaded {
+		return nil, fmt.Errorf("can not find seed host id: %s", hostID)
+	}
+	host.UpdatedAt.Store(time.Now())
+
+	task, loaded := s.taskManager.Load(taskID)
+	if !loaded {
+		options := []TaskOption{WithPieceLength(download.GetActualPieceLength())}
+		if download.GetDigest() != "" {
+			d, err := digest.Parse(download.GetDigest())
+			if err != nil {
+				return nil, err
+			}
+
+			options = append(options, WithDigest(d))
+		}
+
+		task = NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
+			download.GetFilteredQueryParams(), download.GetRequestHeader(), s.backToSourceLimit, options...)
+		s.taskManager.Store(task)
+	} else {
+		task.URL = download.GetUrl()
+		task.FilteredQueryParams = download.GetFilteredQueryParams()
+		task.Header = download.GetRequestHeader()
+		if task.PieceLength == 0 && download.GetActualPieceLength() > 0 {
+			task.PieceLength = download.GetActualPieceLength()
+		}
+	}
+
+	if download.GetActualContentLength() > 0 || download.ActualContentLength != nil {
+		task.ContentLength.Store(int64(download.GetActualContentLength()))
+	}
+	if download.GetActualPieceCount() > 0 || download.ActualPieceCount != nil {
+		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
+	}
+
+	if !task.FSM.Is(TaskStateRunning) && !task.FSM.Is(TaskStateSucceeded) {
+		if err := task.FSM.Event(ctx, TaskEventDownload); err != nil {
+			return nil, err
+		}
+	}
+
+	peer, loaded := s.peerManager.Load(peerID)
+	if loaded {
+		peer.UpdatedAt.Store(time.Now())
+		return peer, nil
+	}
+
+	options := []PeerOption{WithPriority(download.GetPriority())}
+	if download.GetRange() != nil {
+		options = append(options, WithRange(http.Range{Start: int64(download.GetRange().GetStart()), Length: int64(download.GetRange().GetLength())}))
+	}
+	if download.ConcurrentPieceCount != nil {
+		options = append(options, WithConcurrentPieceCount(download.GetConcurrentPieceCount()))
+	}
+
+	peer = NewPeer(peerID, task, host, options...)
+	s.peerManager.Store(peer)
+	peer.Log.Info("seed peer has been stored from download task response")
+
+	if err := peer.FSM.Event(ctx, PeerEventRegisterNormal); err != nil {
+		return nil, err
+	}
+
+	return peer, nil
+}
+
+func (s *seedPeer) ensureSeedPeerDownloading(ctx context.Context, peer *Peer, needBackToSource bool) error {
+	if !peer.Task.FSM.Is(TaskStateRunning) && !peer.Task.FSM.Is(TaskStateSucceeded) {
+		if err := peer.Task.FSM.Event(ctx, TaskEventDownload); err != nil {
+			return err
+		}
+	}
+
+	if !peer.FSM.Is(PeerStateReceivedNormal) && !peer.FSM.Is(PeerStateReceivedSmall) && !peer.FSM.Is(PeerStateReceivedTiny) && !peer.FSM.Is(PeerStateReceivedEmpty) {
+		return nil
+	}
+
+	if needBackToSource {
+		return peer.FSM.Event(ctx, PeerEventDownloadBackToSource)
+	}
+
+	return peer.FSM.Event(ctx, PeerEventDownload)
+}
+
+func (s *seedPeer) completeSeedPeerDownloadTask(ctx context.Context, peer *Peer) error {
+	if !peer.FSM.Is(PeerStateSucceeded) {
+		if err := peer.FSM.Event(ctx, PeerEventDownloadSucceeded); err != nil {
+			return err
+		}
+	}
+
+	if peer.Range == nil && !peer.Task.FSM.Is(TaskStateSucceeded) {
+		if !peer.Task.FSM.Is(TaskStateRunning) {
+			if err := peer.Task.FSM.Event(ctx, TaskEventDownload); err != nil {
+				return err
+			}
+		}
+
+		if err := peer.Task.FSM.Event(ctx, TaskEventDownloadSucceeded); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func storeSeedPeerPiece(peer *Peer, protoPiece *commonv2.Piece) error {
+	if protoPiece == nil {
+		return nil
+	}
+
+	cost := time.Duration(0)
+	if protoPiece.GetCost() != nil {
+		cost = protoPiece.GetCost().AsDuration()
+	}
+
+	createdAt := time.Now()
+	if protoPiece.GetCreatedAt() != nil {
+		createdAt = protoPiece.GetCreatedAt().AsTime()
+	} else if cost > 0 {
+		createdAt = createdAt.Add(-cost)
+	}
+
+	piece := &Piece{
+		Number:      int32(protoPiece.GetNumber()),
+		ParentID:    protoPiece.GetParentId(),
+		Offset:      protoPiece.GetOffset(),
+		Length:      protoPiece.GetLength(),
+		TrafficType: protoPiece.GetTrafficType(),
+		Cost:        cost,
+		CreatedAt:   createdAt,
+	}
+
+	if len(protoPiece.GetDigest()) > 0 {
+		d, err := digest.Parse(protoPiece.GetDigest())
+		if err != nil {
+			return err
+		}
+
+		piece.Digest = d
+	}
+
+	peer.FinishedPieces.Set(uint(piece.Number))
+	peer.AppendPieceCost(piece.Cost)
+	peer.PieceUpdatedAt.Store(time.Now())
+	peer.UpdatedAt.Store(time.Now())
+	peer.Host.UpdatedAt.Store(time.Now())
+	peer.Task.StorePiece(piece)
+	peer.Task.UpdatedAt.Store(time.Now())
+	if peer.Task.TotalPieceCount.Load() <= piece.Number {
+		peer.Task.TotalPieceCount.Store(piece.Number + 1)
+	}
+
+	metrics.DownloadPieceCount.WithLabelValues(piece.TrafficType.String(), peer.Task.Type.String(),
+		peer.Host.Type.Name()).Inc()
+	metrics.Traffic.WithLabelValues(piece.TrafficType.String(), peer.Task.Type.String(),
+		peer.Host.Type.Name()).Add(float64(piece.Length))
+
+	return nil
+}
+
+func calculatePieceCount(contentLength uint64, pieceLength uint64) int32 {
+	if pieceLength == 0 {
+		return 0
+	}
+
+	return int32((contentLength + pieceLength - 1) / pieceLength)
 }
 
 // TriggerTask triggers the seed peer to download task.
