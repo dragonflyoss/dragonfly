@@ -1801,7 +1801,9 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 		return nil, nil, nil, status.Errorf(codes.NotFound, "host %s not found", hostID)
 	}
 
-	// Store new task or update task.
+	// Store new task or update task. Use LoadOrStore when creating a task to avoid
+	// concurrent requests with the same task ID replacing the canonical task
+	// instance and splitting peers into different DAGs.
 	task, loaded := v.resource.TaskManager().Load(taskID)
 	if !loaded {
 		options := []standard.TaskOption{
@@ -1817,12 +1819,13 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			options = append(options, standard.WithDigest(d))
 		}
 
-		task = standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
+		newTask := standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
-		task.ContentLength.Store(int64(download.GetActualContentLength()))
-		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
-		v.resource.TaskManager().Store(task)
-	} else {
+		newTask.ContentLength.Store(int64(download.GetActualContentLength()))
+		newTask.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
+		task, loaded = v.resource.TaskManager().LoadOrStore(newTask)
+	}
+	if loaded {
 		task.URL = download.GetUrl()
 		task.FilteredQueryParams = download.GetFilteredQueryParams()
 		task.Header = download.GetRequestHeader()

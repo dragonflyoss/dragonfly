@@ -796,15 +796,19 @@ func (v *V1) storeTask(_ context.Context, req *schedulerv1.PeerTaskRequest, typ 
 		}
 
 		// Piece length is not supported in Protocol V1, use default value 0.
-		task := resource.NewTask(req.GetTaskId(), req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(),
+		newTask := resource.NewTask(req.GetTaskId(), req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(),
 			typ, filteredQueryParams, req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
-		v.resource.TaskManager().Store(task)
-		task.Log.Info("create new task")
-		return task
+		task, loaded = v.resource.TaskManager().LoadOrStore(newTask)
+		if !loaded {
+			task.Log.Info("create new task")
+			return task
+		}
 	}
 
 	// Task is the pointer, if the task already exists, the next request will
-	// update the task's Url and UrlMeta in task manager.
+	// update the task's Url and UrlMeta in task manager. LoadOrStore prevents
+	// concurrent requests with the same task ID from replacing the canonical
+	// task instance and splitting peers into different DAGs.
 	task.URL = req.GetUrl()
 	task.FilteredQueryParams = filteredQueryParams
 	task.Header = req.UrlMeta.GetHeader()

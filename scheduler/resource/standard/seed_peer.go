@@ -283,10 +283,11 @@ func (s *seedPeer) initSeedPeerForDownloadTask(ctx context.Context, taskID strin
 			options = append(options, WithDigest(d))
 		}
 
-		task = NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
+		newTask := NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), s.backToSourceLimit, options...)
-		s.taskManager.Store(task)
-	} else {
+		task, loaded = s.taskManager.LoadOrStore(newTask)
+	}
+	if loaded {
 		task.URL = download.GetUrl()
 		task.FilteredQueryParams = download.GetFilteredQueryParams()
 		task.Header = download.GetRequestHeader()

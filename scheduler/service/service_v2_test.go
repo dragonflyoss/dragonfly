@@ -3312,7 +3312,9 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *standard.Task) (*standard.Task, bool) {
+						return task, false
+					}).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
 				)

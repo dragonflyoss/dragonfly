@@ -2686,7 +2686,9 @@ func TestServiceV1_storeTask(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *resource.Task) (*resource.Task, bool) {
+						return task, false
+					}).Times(1),
 				)
 
 				task := svc.storeTask(context.Background(), &schedulerv1.PeerTaskRequest{
