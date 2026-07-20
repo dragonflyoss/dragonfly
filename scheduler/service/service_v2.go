@@ -1311,6 +1311,56 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 		peer.Host.Type.Name()).Inc()
 
+	// If the download hits the local cache of the peer completely, the peer only reports
+	// the metadata to the scheduler and no need to be scheduled or trigger the seed peer
+	// to download back-to-source. Send the HitLocalCacheResponse to the peer directly,
+	// and the peer will report the download peer started and finished requests, so that
+	// the peer can be scheduled as a candidate parent for other peers.
+	if req.GetDownload().GetHitLocalCache() {
+		// Handle task with peer register request.
+		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
+			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+				// Collect RegisterPeerFailureCount metrics.
+				metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+					peer.Host.Type.Name()).Inc()
+				return status.Error(codes.Internal, err.Error())
+			}
+		} else {
+			peer.Task.UpdatedAt.Store(time.Now())
+		}
+
+		stream, loaded := peer.LoadAnnouncePeerStream()
+		if !loaded {
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.NotFound, "AnnouncePeerStream not found")
+		}
+
+		if err := peer.FSM.Event(ctx, standard.PeerEventRegisterNormal); err != nil {
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		peer.Log.Info("peer hits local cache, send HitLocalCacheResponse")
+		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
+			Response: &schedulerv2.AnnouncePeerResponse_HitLocalCacheResponse{
+				HitLocalCacheResponse: &schedulerv2.HitLocalCacheResponse{},
+			},
+		}); err != nil {
+			peer.Log.Error(err)
+
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return nil
+	}
+
 	// Provides an exponential delay with jitter to prevent thundering herd problems. When a host has many
 	// concurrent registration requests, later requests are delayed progressively to avoid overwhelming the
 	// source with simultaneous back-to-source tasks from a single host.
