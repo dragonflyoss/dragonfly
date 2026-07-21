@@ -1314,7 +1314,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	// If the download hits the local cache of the peer completely, the peer only reports
 	// the metadata to the scheduler and no need to be scheduled or trigger the seed peer
 	// to download back-to-source.
-	if req.GetDownload().GetHitLocalCache() {
+	if req.GetDownload().GetMetadataOnly() {
 		// Handle task with peer register request.
 		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
 			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
@@ -1342,10 +1342,10 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 			return status.Error(codes.Internal, err.Error())
 		}
 
-		peer.Log.Info("peer hits local cache, send HitLocalCacheResponse")
+		peer.Log.Info("peer hits local cache, send MetadataOnlyResponse")
 		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
-			Response: &schedulerv2.AnnouncePeerResponse_HitLocalCacheResponse{
-				HitLocalCacheResponse: &schedulerv2.HitLocalCacheResponse{},
+			Response: &schedulerv2.AnnouncePeerResponse_MetadataOnlyResponse{
+				MetadataOnlyResponse: &schedulerv2.MetadataOnlyResponse{},
 			},
 		}); err != nil {
 			peer.Log.Error(err)
