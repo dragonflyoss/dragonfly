@@ -1,10 +1,11 @@
 ARG BASE_IMAGE=alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
-FROM node:20-alpine@sha256:658d0f63e501824d6c23e06d4bb95c71e7d704537c9d9272f488ac03a370d448 AS console-builder
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS console-builder
 
 WORKDIR /build
 
 COPY ./manager/console/package.json /build
+COPY ./manager/console/yarn.lock /build
 
 RUN yarn install --frozen-lockfile --network-timeout 1000000
 
