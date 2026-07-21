@@ -2005,6 +2005,44 @@ func TestServiceV2_handleRegisterPeerRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "size scope is SizeScope_NORMAL and seed peer with range length smaller than minRangeLengthForSeedPeerScheduling",
+			req: &schedulerv2.RegisterPeerRequest{
+				Download: &commonv2.Download{
+					Digest: &dgst,
+					Range: &commonv2.Range{
+						Start:  0,
+						Length: 1024,
+					},
+				},
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.RegisterPeerRequest, peer *standard.Peer, seedPeer *standard.Peer, seedPeerManager standard.SeedPeer, hostManager standard.HostManager, taskManager standard.TaskManager,
+				peerManager standard.PeerManager, stream schedulerv2.Scheduler_AnnouncePeerServer, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, mc *standard.MockSeedPeerMockRecorder, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, ms *schedulingmocks.MockSchedulingMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(peer.Host.ID)).Return(peer.Host, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(peer.Task.ID)).Return(peer.Task, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(peer.ID)).Return(peer, true).Times(1),
+					ms.ScheduleCandidateParents(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1),
+				)
+
+				peer.Host.Type = pkgtypes.HostTypeSuperSeed
+				peer.Task.ContentLength.Store(129)
+				peer.Task.TotalPieceCount.Store(2)
+				peer.Task.StorePeer(peer)
+				peer.Priority = commonv2.Priority_LEVEL6
+				peer.StoreAnnouncePeerStream(stream)
+
+				assert := assert.New(t)
+				assert.NoError(svc.handleRegisterPeerRequest(context.Background(), nil, peer.Host.ID, peer.Task.ID, peer.ID, req))
+				assert.Equal(peer.FSM.Current(), standard.PeerStateReceivedNormal)
+				assert.Equal(peer.NeedBackToSource.Load(), true)
+				assert.Equal(peer.Task.FSM.Current(), standard.TaskStateRunning)
+			},
+		},
+		{
 			name: "size scope is SizeScope_NORMAL",
 			req: &schedulerv2.RegisterPeerRequest{
 				Download: &commonv2.Download{

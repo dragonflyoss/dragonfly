@@ -170,3 +170,11 @@ const (
 	// DefaultLogRotateMaxBackups is the default number of old log files to keep.
 	DefaultLogRotateMaxBackups = 20
 )
+
+const (
+	// MinPieceLength is the minimum length of a piece.
+	MinPieceLength = 4 * 1024 * 1024
+
+	// MaxPieceLength is the maximum length of a piece.
+	MaxPieceLength = 64 * 1024 * 1024
+)

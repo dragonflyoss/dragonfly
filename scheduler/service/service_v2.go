@@ -1387,6 +1387,15 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	case download.GetNeedBackToSource():
 		peer.Log.Info("peer need back to source")
 		peer.NeedBackToSource.Store(true)
+	// If peer is seed peer and the range length is smaller than
+	// config.MinPieceLength, skip scheduling and let the seed peer
+	// download back-to-source directly to avoid the scheduling overhead of
+	// small range requests.
+	case host.Type != types.HostTypeNormal && download.GetRange() != nil &&
+		download.GetRange().GetLength() < config.MinPieceLength:
+		peer.Log.Infof("seed peer need back to source, because range length %d is smaller than %d",
+			download.GetRange().GetLength(), uint64(config.MinPieceLength))
+		peer.NeedBackToSource.Store(true)
 	// If task is pending, failed, leave, or succeeded and has no available peer,
 	// scheduler trigger seed peer download back-to-source.
 	case task.FSM.Is(standard.TaskStatePending) ||
