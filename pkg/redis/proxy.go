@@ -31,9 +31,10 @@ type Proxy interface {
 }
 
 type proxy struct {
-	from string
-	to   string
-	done chan struct{}
+	from      string
+	to        string
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
 // NewProxy creates a new proxy instance for redirecting traffic to redis.
@@ -70,11 +71,9 @@ func (p *proxy) Serve() error {
 
 // Stop stops the proxy server and closes all connections.
 func (p *proxy) Stop() {
-	if p.done == nil {
-		return
-	}
-	close(p.done)
-	p.done = nil
+	p.closeOnce.Do(func() {
+		close(p.done)
+	})
 }
 
 // handleConn handles the incoming connection and establishes a connection to the remote host.
