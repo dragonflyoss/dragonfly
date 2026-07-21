@@ -49,11 +49,6 @@ func RBAC(e *casbin.Enforcer) gin.HandlerFunc {
 			return
 		}
 
-		// The id is stored as a float64 because it is decoded from JSON JWT
-		// claims. Convert it back to uint so the subject matches the grouping
-		// policies, which are written from the integer user id. Formatting the
-		// float64 directly renders ids >= 1000000 in scientific notation and
-		// never matches the policy.
 		if ok, err := e.Enforce(fmt.Sprint(uint(id.(float64))), permission, action); err != nil {
 			logger.Errorf("RBAC validate error: %s", err)
 			c.JSON(http.StatusUnauthorized, gin.H{

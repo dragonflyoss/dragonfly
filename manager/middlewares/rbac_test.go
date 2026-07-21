@@ -30,7 +30,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 )
 
-// rbacModelText mirrors the Casbin model used by the manager's enforcer.
 const rbacModelText = `
 [request_definition]
 r = sub, obj, act
@@ -48,24 +47,21 @@ e = some(where (p.eft == allow))
 m = g(r.sub, p.sub) && r.obj == p.obj && (r.act == p.act || p.act == "*")
 `
 
-// mockRBACRouter builds a router that injects the user id into the context the
-// same way the JWT middleware does (a float64 decoded from JSON claims) and
-// guards the route with the RBAC middleware.
 func mockRBACRouter(e *casbin.Enforcer, id float64) *gin.Engine {
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
 		c.Set("id", id)
+		c.Next()
 	})
+
 	r.Use(RBAC(e))
 	r.GET("/api/v1/users", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
+
 	return r
 }
 
-// newRBACEnforcer returns an in-memory enforcer that grants the given user id
-// the root role, storing the grouping policy from the integer id the same way
-// the manager does.
 func newRBACEnforcer(t *testing.T, id uint) *casbin.Enforcer {
 	m, err := model.NewModelFromString(rbacModelText)
 	assert.NoError(t, err)
@@ -78,7 +74,6 @@ func newRBACEnforcer(t *testing.T, id uint) *casbin.Enforcer {
 
 	_, err = e.AddRoleForUser(fmt.Sprint(id), rbac.RootRole)
 	assert.NoError(t, err)
-
 	return e
 }
 
