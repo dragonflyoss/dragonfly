@@ -201,6 +201,15 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			peer.Log.Warnf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
 		}
 
+		if len(addedParents) == 0 {
+			n++
+			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
+
+			// Sleep with context-aware timeout to avoid blocking on cancellation.
+			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			continue
+		}
+
 		stream, loaded := peer.LoadAnnouncePeerStream()
 		if !loaded {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
@@ -215,7 +224,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 
 		peer.Log.Info("send NormalTaskResponse")
 		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
-			Response: constructSuccessNormalTaskResponse(candidateParents),
+			Response: constructSuccessNormalTaskResponse(addedParents),
 		}); err != nil {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 				err = fmt.Errorf("peer deletes inedges failed: %w", err)
@@ -355,6 +364,15 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Debugf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
 		}
 
+		if len(addedParents) == 0 {
+			n++
+			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
+
+			// Sleep with context-aware timeout to avoid blocking on cancellation.
+			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			continue
+		}
+
 		stream, loaded := peer.LoadReportPieceResultStream()
 		if !loaded {
 			n++
@@ -370,7 +388,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 		}
 
 		peer.Log.Info("send PeerPacket to peer")
-		if err := stream.Send(constructSuccessPeerPacket(peer, candidateParents[0], candidateParents[1:])); err != nil {
+		if err := stream.Send(constructSuccessPeerPacket(peer, addedParents[0], addedParents[1:])); err != nil {
 			n++
 			err = fmt.Errorf("send PeerPacket to peer failed in %d times, because of %w", n, err)
 			peer.Log.Error(err)
