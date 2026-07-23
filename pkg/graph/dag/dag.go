@@ -154,8 +154,7 @@ func (d *dag[T]) GetVertex(id string) (*Vertex[T], error) {
 	return d.getVertex(id)
 }
 
-// getVertex gets vertex from graph without locking,
-// the caller must hold the lock.
+// getVertex gets vertex from graph without locking, the caller must hold the lock.
 func (d *dag[T]) getVertex(id string) (*Vertex[T], error) {
 	vertex, ok := d.vertices[id]
 	if !ok {

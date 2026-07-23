@@ -194,8 +194,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			continue
 		}
 
-		// Add edges from candidate parents to the peer in a single batch,
-		// computing the cycle-detection search once for all edges.
+		// Add edges from candidate parents to the peer in a single batch.
 		addedParents := peer.Task.AddPeerEdges(candidateParents, peer)
 		if len(addedParents) < len(candidateParents) {
 			peer.Log.Warnf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
@@ -357,8 +356,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			continue
 		}
 
-		// Add edges from candidate parents to the peer in a single batch,
-		// computing the cycle-detection search once for all edges.
+		// Add edges from candidate parents to the peer in a single batch.
 		addedParents := peer.Task.AddPeerEdges(candidateParents, peer)
 		if len(addedParents) < len(candidateParents) {
 			peer.Log.Debugf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
