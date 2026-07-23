@@ -115,6 +115,7 @@ func (w *RollingWindow) Snapshot() Snapshot {
 
 	snapshot := Snapshot{
 		Count:      len(w.samples),
+		Capacity:   w.capacity,
 		Last:       w.last,
 		sum:        w.sum,
 		sumSquares: w.sumSquares,
@@ -139,6 +140,9 @@ type Snapshot struct {
 	// Count is the number of samples in the window.
 	Count int
 
+	// Capacity is the maximum number of samples the window retains.
+	Capacity int
+
 	// Last is the most recently added sample.
 	Last float64
 
@@ -153,6 +157,12 @@ type Snapshot struct {
 
 	// sumSquares is the rolling sum of the squared samples in the window.
 	sumSquares float64
+}
+
+// IsFull reports whether the window has reached its capacity, i.e. the
+// statistics cover a complete window of the most recent samples.
+func (s Snapshot) IsFull() bool {
+	return s.Count >= s.Capacity
 }
 
 // MeanExcludingLast returns the mean of the window excluding the latest
