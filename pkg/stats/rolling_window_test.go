@@ -219,7 +219,7 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 		},
 		{
 			name: "window with capacity one keeps only the latest sample",
-			expect: func(t *testing.T, window *RollingWindow) {
+			expect: func(t *testing.T, _window *RollingWindow) {
 				assert := assert.New(t)
 				window = NewRollingWindow(1)
 				for i := range 10 {
