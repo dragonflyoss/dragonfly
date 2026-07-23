@@ -207,6 +207,18 @@ func (mr *MockDAGMockRecorder[T]) GetVertices() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVertices", reflect.TypeOf((*MockDAG[T])(nil).GetVertices))
 }
 
+// Range mocks base method.
+func (m *MockDAG[T]) Range(f func(string, *dag.Vertex[T]) bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Range", f)
+}
+
+// Range indicates an expected call of Range.
+func (mr *MockDAGMockRecorder[T]) Range(f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Range", reflect.TypeOf((*MockDAG[T])(nil).Range), f)
+}
+
 // VertexCount mocks base method.
 func (m *MockDAG[T]) VertexCount() uint64 {
 	m.ctrl.T.Helper()

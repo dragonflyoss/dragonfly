@@ -60,16 +60,13 @@ func (s *safeSet[T]) Values() []T {
 }
 
 func (s *safeSet[T]) Add(v T) bool {
-	s.mu.RLock()
-	_, found := s.data[v]
-	if found {
-		s.mu.RUnlock()
-		return false
-	}
-	s.mu.RUnlock()
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if _, found := s.data[v]; found {
+		return false
+	}
+
 	s.data[v] = struct{}{}
 	return true
 }
