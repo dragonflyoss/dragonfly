@@ -54,8 +54,7 @@ const (
 	defaultConcurrentPieceCount uint32 = 8
 
 	// pieceCostsWindowLen bounds the number of piece download costs retained per peer.
-	// It matches the evaluator's normalDistributionLen so the three-sigma rule can
-	// apply once the window fills.
+	// 2000 samples are enough for the evaluator to treat the costs as normally distributed.
 	pieceCostsWindowLen = 2000
 )
 
