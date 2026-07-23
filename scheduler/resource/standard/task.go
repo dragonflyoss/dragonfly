@@ -305,36 +305,6 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		return err
 	}
 
-	t.addUploadLoad(fromPeer, toPeer)
-	return nil
-}
-
-// AddPeerEdges adds edges from the given peers to the peer in a single batch.
-func (t *Task) AddPeerEdges(fromPeers []*Peer, toPeer *Peer) []*Peer {
-	fromPeerIDs := make([]string, 0, len(fromPeers))
-	for _, fromPeer := range fromPeers {
-		fromPeerIDs = append(fromPeerIDs, fromPeer.ID)
-	}
-
-	added := t.DAG.AddEdges(fromPeerIDs, toPeer.ID)
-	addedPeers := make([]*Peer, 0, len(added))
-	for _, fromPeer := range fromPeers {
-		if _, ok := added[fromPeer.ID]; !ok {
-			continue
-		}
-
-		delete(added, fromPeer.ID)
-		t.addUploadLoad(fromPeer, toPeer)
-		addedPeers = append(addedPeers, fromPeer)
-	}
-
-	return addedPeers
-}
-
-// addUploadLoad adds the estimated upload load of a new edge fromPeer -> toPeer
-// to the fromPeer's host. The evaluator reads these fields to score the parent's
-// load quality.
-func (t *Task) addUploadLoad(fromPeer *Peer, toPeer *Peer) {
 	fromPeer.Host.UploadCount.Inc()
 	fromPeer.Host.ConcurrentUploadCount.Inc()
 	fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
@@ -357,6 +327,51 @@ func (t *Task) addUploadLoad(fromPeer *Peer, toPeer *Peer) {
 		fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
 		fromPeer.Host.UploadContentLength.Load(), contentLength,
 	)
+	return nil
+}
+
+// AddPeerEdges adds edges from the given peers to the peer in a single batch.
+func (t *Task) AddPeerEdges(fromPeers []*Peer, toPeer *Peer) []*Peer {
+	fromPeerIDs := make([]string, 0, len(fromPeers))
+	for _, fromPeer := range fromPeers {
+		fromPeerIDs = append(fromPeerIDs, fromPeer.ID)
+	}
+
+	added := t.DAG.AddEdges(fromPeerIDs, toPeer.ID)
+	addedPeers := make([]*Peer, 0, len(added))
+	for _, fromPeer := range fromPeers {
+		if _, ok := added[fromPeer.ID]; !ok {
+			continue
+		}
+
+		delete(added, fromPeer.ID)
+		fromPeer.Host.UploadCount.Inc()
+		fromPeer.Host.ConcurrentUploadCount.Inc()
+		fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
+		fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(toPeer.ConcurrentPieceCount))
+		var contentLength uint64
+		if cl := t.ContentLength.Load(); cl > 0 { // Handle -1 (unknown length).
+			contentLength = uint64(cl)
+		}
+
+		fromPeer.Host.UploadContentLength.Add(contentLength)
+		t.Log.Debugf("increment host %s metrics on adding edge %s -> %s: "+
+			"UploadCount=%d(+1), ConcurrentUploadCount=%d(+1), "+
+			"TxBandwidth=%d(+%d), ConcurrentUploadPieceCount=%d(+%d), "+
+			"UploadContentLength=%d(+%d)",
+			fromPeer.Host.ID,
+			fromPeer.ID, toPeer.ID,
+			fromPeer.Host.UploadCount.Load(),
+			fromPeer.Host.ConcurrentUploadCount.Load(),
+			fromPeer.Host.TxBandwidth.Load(), toPeer.PeakBandwidthUsage(t.PieceLength),
+			fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
+			fromPeer.Host.UploadContentLength.Load(), contentLength,
+		)
+
+		addedPeers = append(addedPeers, fromPeer)
+	}
+
+	return addedPeers
 }
 
 // DeletePeerInEdges deletes inedges of peer.
@@ -426,8 +441,8 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 			continue
 		}
 
-		totalTxBandwidth += peer.PeakBandwidthUsage(t.PieceLength)
-		totalConcurrentUploadPiece += uint64(peer.ConcurrentPieceCount)
+		totalTxBandwidth += child.Value.PeakBandwidthUsage(t.PieceLength)
+		totalConcurrentUploadPiece += uint64(child.Value.ConcurrentPieceCount)
 		totalUploadContentLength += contentLength
 	}
 

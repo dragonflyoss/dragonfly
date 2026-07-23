@@ -675,6 +675,44 @@ func TestTask_DeletePeerOutEdges(t *testing.T) {
 				assert.Equal(mockHost.PeerCount.Load(), int32(3))
 			},
 		},
+		{
+			name: "delete peer outedges releases upload load of children with different concurrent piece counts",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				task.PieceLength = 1024
+				task.ContentLength.Store(4096)
+
+				mockParent := NewPeer(idgen.PeerIDV1("127.0.0.1"), task, mockHost, WithConcurrentPieceCount(4))
+				mockChildE := NewPeer(idgen.PeerIDV1("127.0.0.1"), task, mockHost, WithConcurrentPieceCount(8))
+				mockChildF := NewPeer(idgen.PeerIDV1("127.0.0.1"), task, mockHost, WithConcurrentPieceCount(1))
+
+				task.StorePeer(mockParent)
+				task.StorePeer(mockChildE)
+				task.StorePeer(mockChildF)
+				mockHost.StorePeer(mockParent)
+				mockHost.StorePeer(mockChildE)
+				mockHost.StorePeer(mockChildF)
+
+				var err error
+				err = task.AddPeerEdge(mockParent, mockChildE)
+				assert.NoError(err)
+				err = task.AddPeerEdge(mockParent, mockChildF)
+				assert.NoError(err)
+				assert.Equal(mockHost.TxBandwidth.Load(), uint64(1024*8*8+1024*1*8))
+				assert.Equal(mockHost.ConcurrentUploadPieceCount.Load(), uint64(9))
+				assert.Equal(mockHost.UploadContentLength.Load(), uint64(2*4096))
+				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
+				assert.Equal(mockHost.UploadCount.Load(), int64(2))
+
+				err = task.DeletePeerOutEdges(mockParent.ID)
+				assert.NoError(err)
+				assert.Equal(mockHost.TxBandwidth.Load(), uint64(0))
+				assert.Equal(mockHost.ConcurrentUploadPieceCount.Load(), uint64(0))
+				assert.Equal(mockHost.UploadContentLength.Load(), uint64(0))
+				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(0))
+				assert.Equal(mockHost.UploadCount.Load(), int64(2))
+			},
+		},
 	}
 
 	for _, tc := range tests {
