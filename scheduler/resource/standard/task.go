@@ -305,6 +305,36 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		return err
 	}
 
+	t.addUploadLoad(fromPeer, toPeer)
+	return nil
+}
+
+// AddPeerEdges adds edges from the given peers to the peer in a single batch.
+func (t *Task) AddPeerEdges(fromPeers []*Peer, toPeer *Peer) []*Peer {
+	fromPeerIDs := make([]string, 0, len(fromPeers))
+	for _, fromPeer := range fromPeers {
+		fromPeerIDs = append(fromPeerIDs, fromPeer.ID)
+	}
+
+	added := t.DAG.AddEdges(fromPeerIDs, toPeer.ID)
+	addedPeers := make([]*Peer, 0, len(added))
+	for _, fromPeer := range fromPeers {
+		if _, ok := added[fromPeer.ID]; !ok {
+			continue
+		}
+
+		delete(added, fromPeer.ID)
+		t.addUploadLoad(fromPeer, toPeer)
+		addedPeers = append(addedPeers, fromPeer)
+	}
+
+	return addedPeers
+}
+
+// addUploadLoad adds the estimated upload load of a new edge fromPeer -> toPeer
+// to the fromPeer's host. The evaluator reads these fields to score the parent's
+// load quality.
+func (t *Task) addUploadLoad(fromPeer *Peer, toPeer *Peer) {
 	fromPeer.Host.UploadCount.Inc()
 	fromPeer.Host.ConcurrentUploadCount.Inc()
 	fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
@@ -327,8 +357,6 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
 		fromPeer.Host.UploadContentLength.Load(), contentLength,
 	)
-
-	return nil
 }
 
 // DeletePeerInEdges deletes inedges of peer.
@@ -428,6 +456,13 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 // CanAddPeerEdge finds whether there are peer circles through depth-first search.
 func (t *Task) CanAddPeerEdge(fromPeerKey, toPeerKey string) bool {
 	return t.DAG.CanAddEdge(fromPeerKey, toPeerKey)
+}
+
+// CanAddPeerEdges reports which of the given peers can currently have an edge
+// added to the peer, running the cycle-detection search once for all
+// candidates instead of once per candidate.
+func (t *Task) CanAddPeerEdges(fromPeerKeys []string, toPeerKey string) map[string]struct{} {
+	return t.DAG.CanAddEdges(fromPeerKeys, toPeerKey)
 }
 
 // PeerDegree returns the degree of peer.

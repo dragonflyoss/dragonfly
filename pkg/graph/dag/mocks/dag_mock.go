@@ -54,6 +54,20 @@ func (mr *MockDAGMockRecorder[T]) AddEdge(fromVertexID, toVertexID any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEdge", reflect.TypeOf((*MockDAG[T])(nil).AddEdge), fromVertexID, toVertexID)
 }
 
+// AddEdges mocks base method.
+func (m *MockDAG[T]) AddEdges(fromVertexIDs []string, toVertexID string) map[string]struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddEdges", fromVertexIDs, toVertexID)
+	ret0, _ := ret[0].(map[string]struct{})
+	return ret0
+}
+
+// AddEdges indicates an expected call of AddEdges.
+func (mr *MockDAGMockRecorder[T]) AddEdges(fromVertexIDs, toVertexID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEdges", reflect.TypeOf((*MockDAG[T])(nil).AddEdges), fromVertexIDs, toVertexID)
+}
+
 // AddVertex mocks base method.
 func (m *MockDAG[T]) AddVertex(id string, value T) error {
 	m.ctrl.T.Helper()
@@ -80,6 +94,20 @@ func (m *MockDAG[T]) CanAddEdge(fromVertexID, toVertexID string) bool {
 func (mr *MockDAGMockRecorder[T]) CanAddEdge(fromVertexID, toVertexID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanAddEdge", reflect.TypeOf((*MockDAG[T])(nil).CanAddEdge), fromVertexID, toVertexID)
+}
+
+// CanAddEdges mocks base method.
+func (m *MockDAG[T]) CanAddEdges(fromVertexIDs []string, toVertexID string) map[string]struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanAddEdges", fromVertexIDs, toVertexID)
+	ret0, _ := ret[0].(map[string]struct{})
+	return ret0
+}
+
+// CanAddEdges indicates an expected call of CanAddEdges.
+func (mr *MockDAGMockRecorder[T]) CanAddEdges(fromVertexIDs, toVertexID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanAddEdges", reflect.TypeOf((*MockDAG[T])(nil).CanAddEdges), fromVertexIDs, toVertexID)
 }
 
 // DeleteEdge mocks base method.
