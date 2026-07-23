@@ -61,8 +61,7 @@ type DAG[T comparable] interface {
 	GetVertices() map[string]*Vertex[T]
 
 	// Range calls f for each vertex in the graph without copying vertices.
-	// If f returns false, range stops the iteration. The graph is read-locked
-	// during the iteration, so f must not call methods of DAG.
+	// If f returns false, range stops the iteration.
 	Range(f func(id string, vertex *Vertex[T]) bool)
 
 	// GetRandomVertices returns random map of vertices.
@@ -175,8 +174,7 @@ func (d *dag[T]) GetVertices() map[string]*Vertex[T] {
 }
 
 // Range calls f for each vertex in the graph without copying vertices.
-// If f returns false, range stops the iteration. The graph is read-locked
-// during the iteration, so f must not call methods of DAG.
+// If f returns false, range stops the iteration.
 func (d *dag[T]) Range(f func(id string, vertex *Vertex[T]) bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
