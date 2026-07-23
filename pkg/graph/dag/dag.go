@@ -20,9 +20,8 @@ package dag
 
 import (
 	"errors"
+	"maps"
 	"sync"
-
-	"go.uber.org/atomic"
 
 	"d7y.io/dragonfly/v2/pkg/container/set"
 )
@@ -61,6 +60,11 @@ type DAG[T comparable] interface {
 	// GetVertices returns map of vertices.
 	GetVertices() map[string]*Vertex[T]
 
+	// Range calls f for each vertex in the graph without copying vertices.
+	// If f returns false, range stops the iteration. The graph is read-locked
+	// during the iteration, so f must not call methods of DAG.
+	Range(f func(id string, vertex *Vertex[T]) bool)
+
 	// GetRandomVertices returns random map of vertices.
 	GetRandomVertices(n uint) []*Vertex[T]
 
@@ -91,17 +95,14 @@ type DAG[T comparable] interface {
 
 // dag provides directed acyclic graph function.
 type dag[T comparable] struct {
-	vertices *sync.Map
-	count    *atomic.Uint64
 	mu       sync.RWMutex
+	vertices map[string]*Vertex[T]
 }
 
 // New returns a new DAG interface.
 func NewDAG[T comparable]() DAG[T] {
 	return &dag[T]{
-		vertices: &sync.Map{},
-		count:    atomic.NewUint64(0),
-		mu:       sync.RWMutex{},
+		vertices: make(map[string]*Vertex[T]),
 	}
 }
 
@@ -110,11 +111,11 @@ func (d *dag[T]) AddVertex(id string, value T) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if _, loaded := d.vertices.LoadOrStore(id, NewVertex(id, value)); loaded {
+	if _, ok := d.vertices[id]; ok {
 		return ErrVertexAlreadyExists
 	}
 
-	d.count.Inc()
+	d.vertices[id] = NewVertex(id, value)
 	return nil
 }
 
@@ -123,12 +124,7 @@ func (d *dag[T]) DeleteVertex(id string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	rawVertex, loaded := d.vertices.Load(id)
-	if !loaded {
-		return
-	}
-
-	vertex, ok := rawVertex.(*Vertex[T])
+	vertex, ok := d.vertices[id]
 	if !ok {
 		return
 	}
@@ -139,23 +135,25 @@ func (d *dag[T]) DeleteVertex(id string) {
 
 	for _, child := range vertex.Children.Values() {
 		child.Parents.Delete(vertex)
-		continue
 	}
 
-	d.vertices.Delete(id)
-	d.count.Dec()
+	delete(d.vertices, id)
 }
 
 // GetVertex gets vertex from graph.
 func (d *dag[T]) GetVertex(id string) (*Vertex[T], error) {
-	rawVertex, loaded := d.vertices.Load(id)
-	if !loaded {
-		return nil, ErrVertexNotFound
-	}
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 
-	vertex, ok := rawVertex.(*Vertex[T])
+	return d.getVertex(id)
+}
+
+// getVertex gets vertex from graph without locking,
+// the caller must hold the lock.
+func (d *dag[T]) getVertex(id string) (*Vertex[T], error) {
+	vertex, ok := d.vertices[id]
 	if !ok {
-		return nil, ErrVertexInvalid
+		return nil, ErrVertexNotFound
 	}
 
 	return vertex, nil
@@ -166,23 +164,21 @@ func (d *dag[T]) GetVertices() map[string]*Vertex[T] {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	vertices := make(map[string]*Vertex[T], d.count.Load())
-	d.vertices.Range(func(key, value any) bool {
-		vertex, ok := value.(*Vertex[T])
-		if !ok {
-			return true
+	return maps.Clone(d.vertices)
+}
+
+// Range calls f for each vertex in the graph without copying vertices.
+// If f returns false, range stops the iteration. The graph is read-locked
+// during the iteration, so f must not call methods of DAG.
+func (d *dag[T]) Range(f func(id string, vertex *Vertex[T]) bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	for id, vertex := range d.vertices {
+		if !f(id, vertex) {
+			return
 		}
-
-		id, ok := key.(string)
-		if !ok {
-			return true
-		}
-
-		vertices[id] = vertex
-		return true
-	})
-
-	return vertices
+	}
 }
 
 // GetRandomVertices returns random map of vertices.
@@ -195,22 +191,22 @@ func (d *dag[T]) GetRandomVertices(n uint) []*Vertex[T] {
 	}
 
 	randomVertices := make([]*Vertex[T], 0, n)
-	d.vertices.Range(func(key, value any) bool {
-		vertex, ok := value.(*Vertex[T])
-		if !ok {
-			return true
-		}
-
+	for _, vertex := range d.vertices {
 		randomVertices = append(randomVertices, vertex)
-		return uint(len(randomVertices)) < n
-	})
+		if uint(len(randomVertices)) >= n {
+			break
+		}
+	}
 
 	return randomVertices
 }
 
 // VertexCount returns count of vertices.
 func (d *dag[T]) VertexCount() uint64 {
-	return d.count.Load()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	return uint64(len(d.vertices))
 }
 
 // AddEdge adds edge between two vertices.
@@ -222,12 +218,12 @@ func (d *dag[T]) AddEdge(fromVertexID, toVertexID string) error {
 		return ErrCycleBetweenVertices
 	}
 
-	fromVertex, err := d.GetVertex(fromVertexID)
+	fromVertex, err := d.getVertex(fromVertexID)
 	if err != nil {
 		return err
 	}
 
-	toVertex, err := d.GetVertex(toVertexID)
+	toVertex, err := d.getVertex(toVertexID)
 	if err != nil {
 		return err
 	}
@@ -258,12 +254,12 @@ func (d *dag[T]) DeleteEdge(fromVertexID, toVertexID string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	fromVertex, err := d.GetVertex(fromVertexID)
+	fromVertex, err := d.getVertex(fromVertexID)
 	if err != nil {
 		return err
 	}
 
-	toVertex, err := d.GetVertex(toVertexID)
+	toVertex, err := d.getVertex(toVertexID)
 	if err != nil {
 		return err
 	}
@@ -282,12 +278,12 @@ func (d *dag[T]) CanAddEdge(fromVertexID, toVertexID string) bool {
 		return false
 	}
 
-	fromVertex, err := d.GetVertex(fromVertexID)
+	fromVertex, err := d.getVertex(fromVertexID)
 	if err != nil {
 		return false
 	}
 
-	if _, err := d.GetVertex(toVertexID); err != nil {
+	if _, err := d.getVertex(toVertexID); err != nil {
 		return false
 	}
 
@@ -309,7 +305,7 @@ func (d *dag[T]) DeleteVertexInEdges(id string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	vertex, err := d.GetVertex(id)
+	vertex, err := d.getVertex(id)
 	if err != nil {
 		return err
 	}
@@ -327,7 +323,7 @@ func (d *dag[T]) DeleteVertexOutEdges(id string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	vertex, err := d.GetVertex(id)
+	vertex, err := d.getVertex(id)
 	if err != nil {
 		return err
 	}
@@ -346,7 +342,7 @@ func (d *dag[T]) GetSourceVertices() []*Vertex[T] {
 	defer d.mu.RUnlock()
 
 	var sourceVertices []*Vertex[T]
-	for _, vertex := range d.GetVertices() {
+	for _, vertex := range d.vertices {
 		if vertex.InDegree() == 0 {
 			sourceVertices = append(sourceVertices, vertex)
 		}
@@ -361,7 +357,7 @@ func (d *dag[T]) GetSinkVertices() []*Vertex[T] {
 	defer d.mu.RUnlock()
 
 	var sinkVertices []*Vertex[T]
-	for _, vertex := range d.GetVertices() {
+	for _, vertex := range d.vertices {
 		if vertex.OutDegree() == 0 {
 			sinkVertices = append(sinkVertices, vertex)
 		}
@@ -380,7 +376,7 @@ func (d *dag[T]) depthFirstSearch(fromVertexID, toVertexID string) bool {
 
 // search finds successors of vertex.
 func (d *dag[T]) search(vertexID string, successors map[string]struct{}) {
-	vertex, err := d.GetVertex(vertexID)
+	vertex, err := d.getVertex(vertexID)
 	if err != nil {
 		return
 	}
