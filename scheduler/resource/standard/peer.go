@@ -41,6 +41,7 @@ import (
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
+	"d7y.io/dragonfly/v2/pkg/stats"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -51,6 +52,11 @@ const (
 	// defaultConcurrentPieceCount is the fallback value for concurrent pieces per peer
 	// when ConcurrentPieceCount is not reported by the client.
 	defaultConcurrentPieceCount uint32 = 8
+
+	// pieceCostsWindowLen bounds the number of piece download costs retained per peer.
+	// It matches the evaluator's normalDistributionLen so the three-sigma rule can
+	// apply once the window fills.
+	pieceCostsWindowLen = 2000
 )
 
 const (
@@ -168,8 +174,9 @@ type Peer struct {
 	// Pieces is finished pieces bitset.
 	FinishedPieces *bitset.BitSet
 
-	// pieceCosts is piece downloaded duration.
-	pieceCosts []time.Duration
+	// pieceCosts is a bounded sliding window over the most recent piece download costs,
+	// unit is nanoseconds.
+	pieceCosts *stats.RollingWindow
 
 	// Cost is the cost of downloading.
 	Cost *atomic.Duration
@@ -229,7 +236,7 @@ func NewPeer(id string, task *Task, host *Host, options ...PeerOption) *Peer {
 		Priority:                commonv2.Priority_LEVEL0,
 		ConcurrentPieceCount:    defaultConcurrentPieceCount,
 		FinishedPieces:          &bitset.BitSet{},
-		pieceCosts:              []time.Duration{},
+		pieceCosts:              stats.NewRollingWindow(pieceCostsWindowLen),
 		Cost:                    atomic.NewDuration(0),
 		ReportPieceResultStream: &atomic.Value{},
 		AnnouncePeerStream:      &atomic.Value{},
@@ -354,14 +361,26 @@ func NewPeer(id string, task *Task, host *Host, options ...PeerOption) *Peer {
 	return p
 }
 
-// AppendPieceCost append piece cost to costs slice.
+// AppendPieceCost appends piece cost to the bounded window.
 func (p *Peer) AppendPieceCost(duration time.Duration) {
-	p.pieceCosts = append(p.pieceCosts, duration)
+	p.pieceCosts.Add(float64(duration.Nanoseconds()))
 }
 
-// PieceCosts return piece costs slice.
+// PieceCosts returns a copy of the piece costs in the window,
+// ordered from oldest to newest.
 func (p *Peer) PieceCosts() []time.Duration {
-	return p.pieceCosts
+	samples := p.pieceCosts.Values()
+	costs := make([]time.Duration, 0, len(samples))
+	for _, sample := range samples {
+		costs = append(costs, time.Duration(sample))
+	}
+
+	return costs
+}
+
+// PieceCostsStats returns a snapshot of the piece costs window.
+func (p *Peer) PieceCostsStats() stats.Snapshot {
+	return p.pieceCosts.Snapshot()
 }
 
 // LoadReportPieceResultStream return the grpc stream of Scheduler_ReportPieceResultServer,

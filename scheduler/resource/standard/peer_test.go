@@ -274,6 +274,55 @@ func TestPeer_PieceCosts(t *testing.T) {
 	}
 }
 
+func TestPeer_PieceCostsStats(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, peer *Peer)
+	}{
+		{
+			name: "stats cover the window excluding the latest cost",
+			expect: func(t *testing.T, peer *Peer) {
+				assert := assert.New(t)
+				peer.AppendPieceCost(time.Duration(100))
+				peer.AppendPieceCost(time.Duration(200))
+				peer.AppendPieceCost(time.Duration(600))
+				stats := peer.PieceCostsStats()
+				assert.Equal(stats.Count, 3)
+				assert.Equal(stats.Last, float64(600))
+				assert.Equal(stats.MeanExcludingLast(), float64(150))
+				assert.Equal(stats.StdDevExcludingLast(), float64(50))
+			},
+		},
+		{
+			name: "window is bounded by pieceCostsWindowLen",
+			expect: func(t *testing.T, peer *Peer) {
+				assert := assert.New(t)
+				for i := range pieceCostsWindowLen + 100 {
+					peer.AppendPieceCost(time.Duration(i))
+				}
+
+				costs := peer.PieceCosts()
+				assert.Equal(len(costs), pieceCostsWindowLen)
+				assert.Equal(costs[0], time.Duration(100))
+				assert.Equal(costs[len(costs)-1], time.Duration(pieceCostsWindowLen+99))
+				assert.Equal(peer.PieceCostsStats().Count, pieceCostsWindowLen)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
+			peer := NewPeer(mockPeerID, mockTask, mockHost)
+
+			tc.expect(t, peer)
+		})
+	}
+}
+
 func TestPeer_LoadReportPieceResultStream(t *testing.T) {
 	tests := []struct {
 		name   string
