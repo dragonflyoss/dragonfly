@@ -23,8 +23,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
@@ -35,6 +33,9 @@ type FileSize = uint64
 const (
 	// FileSize1MiB represents the size of 1MiB.
 	FileSize1MiB FileSize = 1024 * 1024
+
+	// FileSize5MiB represents the size of 5MiB.
+	FileSize5MiB FileSize = 5 * FileSize1MiB
 
 	// FileSize10MiB represents the size of 10MiB.
 	FileSize10MiB FileSize = 10 * FileSize1MiB
@@ -122,36 +123,4 @@ func (f *File) GetTaskID(opts ...TaskIDOption) string {
 // GetOutputPath returns the output path of the file.
 func (f *File) GetOutputPath() string {
 	return path.Join("/tmp", f.info.Name())
-}
-
-// parseRangeHeader parses the Range header value and returns start and end positions.
-func parseRangeHeader(rangeHeader string, fileSize int64) (start, end int64) {
-	if rangeHeader == "" {
-		return 0, fileSize - 1
-	}
-
-	// split the range header by "-"
-	parts := strings.Split(rangeHeader, "-")
-
-	// handle different range formats
-	switch {
-	case parts[0] == "": // -N: last N bytes
-		end = fileSize - 1
-		bytes, _ := strconv.ParseInt(parts[1], 10, 64)
-		start = fileSize - bytes
-		start = max(start, 0)
-
-	case parts[1] == "": // N-: from N to end
-		start, _ = strconv.ParseInt(parts[0], 10, 64)
-		end = fileSize - 1
-
-	default: // N-M: from N to M
-		start, _ = strconv.ParseInt(parts[0], 10, 64)
-		end, _ = strconv.ParseInt(parts[1], 10, 64)
-		if end >= fileSize {
-			end = fileSize - 1
-		}
-	}
-
-	return start, end
 }

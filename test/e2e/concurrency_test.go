@@ -33,7 +33,7 @@ var _ = Describe("Download Concurrency", func() {
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})

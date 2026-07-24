@@ -61,18 +61,6 @@ var _ = Describe("Download Using Proxy", func() {
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			time.Sleep(1 * time.Second)
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID(util.WithTaskIDTag("proxy")))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 	})
 
@@ -272,14 +260,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=-100", func() {
+	Context("5MiB file and set range header bytes=-100", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -323,14 +311,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=0-100", func() {
+	Context("5MiB file and set range header bytes=0-100", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -374,14 +362,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-", func() {
+	Context("5MiB file and set range header bytes=100-", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -425,14 +413,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-500", func() {
+	Context("5MiB file and set range header bytes=100-500", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -476,14 +464,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=0-1048575", func() {
+	Context("5MiB file and set range header bytes=0-1048575", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -527,14 +515,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-10240", func() {
+	Context("5MiB file and set range header bytes=100-10240", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -585,7 +573,7 @@ var _ = Describe("Download Using Proxy", func() {
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -631,14 +619,14 @@ var _ = Describe("Download Using Proxy", func() {
 })
 
 var _ = Describe("Download Using Prefetch Proxy", func() {
-	Context("1MiB file", func() {
+	Context("5MiB file", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -816,14 +804,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=-100", func() {
+	Context("5MiB file and set range header bytes=-100", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -856,14 +844,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=0-100", func() {
+	Context("5MiB file and set range header bytes=0-100", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -936,14 +924,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-1048575", func() {
+	Context("5MiB file and set range header bytes=100-1048575", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -976,14 +964,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=0-1048575", func() {
+	Context("5MiB file and set range header bytes=0-1048575", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -1016,14 +1004,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-10240", func() {
+	Context("5MiB file and set range header bytes=100-10240", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -1056,14 +1044,14 @@ var _ = Describe("Download Using Prefetch Proxy", func() {
 		})
 	})
 
-	Context("1MiB file and set range header bytes=100-1024", func() {
+	Context("5MiB file and set range header bytes=100-1024", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})

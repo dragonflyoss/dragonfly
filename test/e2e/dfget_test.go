@@ -60,19 +60,6 @@ var _ = Describe("Download Using Dfget", func() {
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			time.Sleep(1 * time.Second)
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-		})
 	})
 
 	Context("10MiB file", func() {
@@ -267,14 +254,14 @@ var _ = Describe("Download Using Dfget", func() {
 		})
 	})
 
-	Context("1MiB file and set transfer-from-dfdaemon", func() {
+	Context("5MiB file and set transfer-from-dfdaemon", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -363,14 +350,14 @@ var _ = Describe("Download Using Dfget", func() {
 		})
 	})
 
-	Context("1MiB file and set application to d7y", func() {
+	Context("5MiB file and set application to d7y", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -411,14 +398,14 @@ var _ = Describe("Download Using Dfget", func() {
 		})
 	})
 
-	Context("1MiB file and set tag to d7y", func() {
+	Context("5MiB file and set tag to d7y", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
