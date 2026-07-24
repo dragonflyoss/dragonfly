@@ -241,3 +241,74 @@ func TestPersistentCacheTaskIDbyContent(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskIDByBlobDigest(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, d string)
+	}{
+		{
+			name: "generate taskID from sha256 blob URL",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d)
+			},
+		},
+		{
+			name: "generate taskID from sha256 blob URL with query params",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4?foo=bar",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d)
+			},
+		},
+		{
+			name: "generate taskID from sha256 blob URL with nested repository",
+			url:  "https://registry.example.com/v2/org/team/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d)
+			},
+		},
+		{
+			name: "generate taskID from sha512 blob URL",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha512:dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557", d)
+			},
+		},
+		{
+			name: "same blob digest from different registries produces same taskID",
+			url:  "https://another-registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d)
+			},
+		},
+		{
+			name: "invalid URL returns empty taskID",
+			url:  "https://example.com/file.tar.gz",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("", d)
+			},
+		},
+		{
+			name: "empty URL returns empty taskID",
+			url:  "",
+			expect: func(t *testing.T, d string) {
+				assert := assert.New(t)
+				assert.Equal("", d)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, TaskIDByBlobDigest(tc.url))
+		})
+	}
+}

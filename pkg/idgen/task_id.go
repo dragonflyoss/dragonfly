@@ -182,6 +182,18 @@ func TaskIDV2ByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
 }
 
+// TaskIDByBlobDigest generates task id by blob digest.
+// It extracts the digest from the OCI blob URL and returns the encoded value as the task ID,
+// consistent with the Rust client's BlobDigestBased task ID calculation.
+func TaskIDByBlobDigest(url string) string {
+	d, err := pkgdigest.ExtractFromBlobURL(url)
+	if err != nil {
+		return ""
+	}
+
+	return d.Encoded
+}
+
 // PersistentCacheTaskIDByContent generates persistent cache task id by content.
 func PersistentCacheTaskIDByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)

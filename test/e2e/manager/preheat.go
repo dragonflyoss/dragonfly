@@ -234,11 +234,11 @@ var _ = Describe("Preheat with Manager", func() {
 
 			taskMetadatas := []util.TaskMetadata{
 				{
-					ID:     "a5040eb77de7f771cb3ce3ecb2ebb61af124d3341e0b5c6854b7e220eb0dc680",
+					ID:     "a711f05d33845e2e9deffcfcc5adf082d7c6e97e3e3a881d193d9aae38f092a8",
 					Sha256: "a711f05d33845e2e9deffcfcc5adf082d7c6e97e3e3a881d193d9aae38f092a8",
 				},
 				{
-					ID:     "f9f24ea0c08c3637d2d5770fbf80a201f69482226de7cf4490bb1c540ac51b37",
+					ID:     "f643e116a03d9604c344edb345d7592c48cc00f2a4848aaf773411f4fb30d2f5",
 					Sha256: "f643e116a03d9604c344edb345d7592c48cc00f2a4848aaf773411f4fb30d2f5",
 				},
 			}
