@@ -60,6 +60,7 @@ var _ = Describe("Download Using Dfget", func() {
 			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+		})
 	})
 
 	Context("10MiB file", func() {
