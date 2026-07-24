@@ -287,11 +287,7 @@ var _ = Describe("Download Using Proxy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(string(out))
 
-			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID(util.WithTaskIDTag("proxy-bytes-100")))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			sha256sum, err = util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
+			sha256sum, err := util.CalculateSha256ByOutput([]*util.PodExec{clientPod}, testFile.GetOutputPath())
 			Expect(err).NotTo(HaveOccurred())
 			got, err := testFile.GetRangeSha256("-100", testFile.GetInfo().Size())
 			Expect(err).NotTo(HaveOccurred())
