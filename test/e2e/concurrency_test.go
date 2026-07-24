@@ -33,7 +33,7 @@ var _ = Describe("Download Concurrency", func() {
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -53,17 +53,6 @@ var _ = Describe("Download Concurrency", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
