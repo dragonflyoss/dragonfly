@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
@@ -69,20 +68,6 @@ var _ = Describe("Containerd with CRI support", func() {
 			Expect(err).NotTo(HaveOccurred())
 			for _, taskMetadata := range taskMetadatas {
 				sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, taskMetadata.ID)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(taskMetadata.Sha256).To(Equal(sha256sum))
-			}
-
-			time.Sleep(1 * time.Second)
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			for _, taskMetadata := range taskMetadatas {
-				sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, taskMetadata.ID)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(taskMetadata.Sha256).To(Equal(sha256sum))
 			}

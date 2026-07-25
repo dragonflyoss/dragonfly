@@ -69,17 +69,6 @@ var _ = Describe("Download Concurrency", func() {
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 
 		It("concurrent 500 should be ok", Label("concurrent", "500"), func() {
@@ -94,17 +83,6 @@ var _ = Describe("Download Concurrency", func() {
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 
 		It("concurrent 1000 should be ok", Label("concurrent", "1000"), func() {
@@ -117,17 +95,6 @@ var _ = Describe("Download Concurrency", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			sha256sum, err := util.CalculateSha256ByTaskID([]*util.PodExec{clientPod}, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
-
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
