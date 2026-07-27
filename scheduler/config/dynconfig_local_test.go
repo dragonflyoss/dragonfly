@@ -100,25 +100,13 @@ func TestLocalDynconfig_GetWithoutManager(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	_, err = d.GetScheduler()
-	assert.EqualError(err, "manager is not configured")
-
 	_, err = d.GetApplications()
-	assert.EqualError(err, "manager is not configured")
-
-	_, err = d.GetSeedPeers()
 	assert.EqualError(err, "manager is not configured")
 
 	_, err = d.GetSeedPeerClusterConfig()
 	assert.EqualError(err, "manager is not configured")
 
-	_, err = d.GetSchedulerCluster()
-	assert.EqualError(err, "manager is not configured")
-
 	_, err = d.GetSchedulerClusterClientConfig()
-	assert.EqualError(err, "manager is not configured")
-
-	_, err = d.Get()
 	assert.EqualError(err, "manager is not configured")
 }
 

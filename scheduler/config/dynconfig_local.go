@@ -93,21 +93,9 @@ func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
 	return d, nil
 }
 
-// GetScheduler returns the scheduler config from manager. It is not supported
-// when the manager is not configured.
-func (d *localDynconfig) GetScheduler() (*managerv2.Scheduler, error) {
-	return nil, errors.New("manager is not configured")
-}
-
 // GetApplications returns the applications config from manager. It is not
 // supported when the manager is not configured.
 func (d *localDynconfig) GetApplications() ([]*managerv2.Application, error) {
-	return nil, errors.New("manager is not configured")
-}
-
-// GetSeedPeers returns the seed peers config from manager. It is not supported
-// when the manager is not configured.
-func (d *localDynconfig) GetSeedPeers() ([]*managerv2.SeedPeer, error) {
 	return nil, errors.New("manager is not configured")
 }
 
@@ -115,12 +103,6 @@ func (d *localDynconfig) GetSeedPeers() ([]*managerv2.SeedPeer, error) {
 // supported when the manager is not configured.
 func (d *localDynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig, error) {
 	return types.SeedPeerClusterConfig{}, errors.New("manager is not configured")
-}
-
-// GetSchedulerCluster returns the scheduler cluster config from manager. It is
-// not supported when the manager is not configured.
-func (d *localDynconfig) GetSchedulerCluster() (*managerv2.SchedulerCluster, error) {
-	return nil, errors.New("manager is not configured")
 }
 
 // GetSchedulerClusterConfig returns the scheduler cluster config.
@@ -137,12 +119,6 @@ func (d *localDynconfig) GetSchedulerClusterConfig() (types.SchedulerClusterConf
 // supported when the manager is not configured.
 func (d *localDynconfig) GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error) {
 	return types.SchedulerClusterClientConfig{}, errors.New("manager is not configured")
-}
-
-// Get returns the dynamic config from manager. It is not supported when the
-// manager is not configured.
-func (d *localDynconfig) Get() (*DynconfigData, error) {
-	return nil, errors.New("manager is not configured")
 }
 
 // Serve the dynconfig listening service.
