@@ -72,7 +72,7 @@ type localDynconfig struct {
 // newLocalDynconfig returns a new local dynconfig instance.
 func newLocalDynconfig(cfg *Config) (DynconfigInterface, error) {
 	configPath := viper.GetString("dynconfig")
-	if _, err := os.Stat(viper.GetString("dynconfig")); os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		content, err := yaml.Marshal(NewLocalDynconfigData())
 		if err != nil {
 			return nil, err
