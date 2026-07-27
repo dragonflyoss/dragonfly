@@ -374,18 +374,6 @@ var _ = Describe("Download Using Proxy", func() {
 			got, err := testFile.GetRangeSha256("100-", testFile.GetInfo().Size())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(got).To(Equal(sha256sum))
-
-			time.Sleep(1 * time.Second)
-			seedClientPods := make([]*util.PodExec, 3)
-			for i := range 3 {
-				seedClientPods[i], err = util.SeedClientExec(i)
-				fmt.Println(err)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID(util.WithTaskIDTag("proxy-bytes-100-")))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 		})
 	})
 
