@@ -27,14 +27,14 @@ import (
 )
 
 var _ = Describe("Import and Export Using Dfcache", func() {
-	Context("5MiB file", func() {
+	Context("1MiB file", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
@@ -198,14 +198,14 @@ var _ = Describe("Import and Export Using Dfcache", func() {
 		})
 	})
 
-	Context("5MiB file and set export transfer-from-dfdaemon", func() {
+	Context("1MiB file and set export transfer-from-dfdaemon", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize5MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize1MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})

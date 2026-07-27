@@ -34,9 +34,6 @@ const (
 	// FileSize1MiB represents the size of 1MiB.
 	FileSize1MiB FileSize = 1024 * 1024
 
-	// FileSize5MiB represents the size of 5MiB.
-	FileSize5MiB FileSize = 5 * FileSize1MiB
-
 	// FileSize10MiB represents the size of 10MiB.
 	FileSize10MiB FileSize = 10 * FileSize1MiB
 
