@@ -54,7 +54,7 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 		refreshInterval time.Duration
 		sleep           func()
 		mock            func(m *mocks.MockV2MockRecorder)
-		expect          func(t *testing.T, data *DynconfigData, err error)
+		expect          func(t *testing.T, data *RemoteDynconfigData, err error)
 	}{
 		{
 			name:            "get dynconfig success",
@@ -113,9 +113,9 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 					},
 				}, nil).Times(1)
 			},
-			expect: func(t *testing.T, data *DynconfigData, err error) {
+			expect: func(t *testing.T, data *RemoteDynconfigData, err error) {
 				assert := assert.New(t)
-				assert.EqualValues(data, &DynconfigData{
+				assert.EqualValues(data, &RemoteDynconfigData{
 					Scheduler: &managerv2.Scheduler{
 						Id:       1,
 						Hostname: "foo",
@@ -230,9 +230,9 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 					m.GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1),
 				)
 			},
-			expect: func(t *testing.T, data *DynconfigData, err error) {
+			expect: func(t *testing.T, data *RemoteDynconfigData, err error) {
 				assert := assert.New(t)
-				assert.EqualValues(data, &DynconfigData{
+				assert.EqualValues(data, &RemoteDynconfigData{
 					Scheduler: &managerv2.Scheduler{
 						Id:       1,
 						Hostname: "foo",
@@ -379,9 +379,9 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 					m.ListApplications(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1),
 				)
 			},
-			expect: func(t *testing.T, data *DynconfigData, err error) {
+			expect: func(t *testing.T, data *RemoteDynconfigData, err error) {
 				assert := assert.New(t)
-				assert.EqualValues(data, &DynconfigData{
+				assert.EqualValues(data, &RemoteDynconfigData{
 					Scheduler: &managerv2.Scheduler{
 						Id:       1,
 						Hostname: "foo",

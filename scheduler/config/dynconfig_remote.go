@@ -32,8 +32,8 @@ import (
 	"d7y.io/dragonfly/v2/pkg/slices"
 )
 
-// DynconfigData is the dynamic configuration fetched from the manager.
-type DynconfigData struct {
+// RemoteDynconfigData is the dynamic configuration fetched from the manager.
+type RemoteDynconfigData struct {
 	// Scheduler is the scheduler config from manager.
 	Scheduler *managerv2.Scheduler
 
@@ -44,12 +44,12 @@ type DynconfigData struct {
 // remoteDynconfig is the remote dynconfig, which fetches the dynamic
 // configuration from the manager.
 type remoteDynconfig struct {
-	dc.Dynconfig[DynconfigData]
+	dc.Dynconfig[RemoteDynconfigData]
 }
 
 // newRemoteDynconfig returns a new remote dynconfig instance.
 func newRemoteDynconfig(rawManagerClient managerclient.V2, cfg *Config) (DynconfigInterface, error) {
-	client, err := dc.New[DynconfigData](
+	client, err := dc.New[RemoteDynconfigData](
 		newManagerClient(rawManagerClient, cfg),
 		cfg.DynConfig.RefreshInterval,
 	)
@@ -196,7 +196,7 @@ func (mc *managerClient) Get() (any, error) {
 		if st, ok := status.FromError(err); ok {
 			// TODO Compatible with old version manager.
 			if slices.Contains([]codes.Code{codes.Unimplemented, codes.NotFound}, st.Code()) {
-				return DynconfigData{
+				return RemoteDynconfigData{
 					Scheduler:    getSchedulerResp,
 					Applications: nil,
 				}, nil
@@ -206,7 +206,7 @@ func (mc *managerClient) Get() (any, error) {
 		return nil, err
 	}
 
-	return DynconfigData{
+	return RemoteDynconfigData{
 		Scheduler:    getSchedulerResp,
 		Applications: listApplicationsResp.Applications,
 	}, nil

@@ -156,8 +156,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	}
 
 	// Initialize announcer when the manager is configured, since announcing
-	// only makes sense when a manager is present. If job is enabled, add
-	// scheduler feature preheat.
+	// only makes sense when a manager is present.
 	if s.managerClient != nil {
 		schedulerFeatures := []string{managertypes.SchedulerFeatureSchedule}
 		if cfg.Job.Enable && rdb != nil {
