@@ -90,8 +90,9 @@ type Server struct {
 }
 
 // New creates a new scheduler server.
-func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath string) (*Server, error) {
 	s := &Server{config: cfg}
+
 	// Initialize redis client if redis is enabled.
 	rdb, err := newRedisClient(cfg)
 	if err != nil {
@@ -125,7 +126,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	s.gc = gc.New(gc.WithLogger(logger.GCLogger))
 
 	// Initialize dynconfig.
-	dynconfig, err := config.NewDynconfig(s.managerClient, cfg)
+	dynconfig, err := config.NewDynconfig(s.managerClient, dynconfigPath, cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -444,7 +444,7 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 			tc.mock(mockManagerClient.EXPECT())
 
 			mockConfig.DynConfig.RefreshInterval = tc.refreshInterval
-			d, err := NewDynconfig(mockManagerClient, mockConfig)
+			d, err := NewDynconfig(mockManagerClient, "", mockConfig)
 			if err != nil {
 				t.Fatal(err)
 			}

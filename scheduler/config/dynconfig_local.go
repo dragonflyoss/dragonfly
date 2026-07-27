@@ -69,9 +69,9 @@ type localDynconfig struct {
 	dc.Dynconfig[LocalDynconfigData]
 }
 
-// newLocalDynconfig returns a new local dynconfig instance.
-func newLocalDynconfig(cfg *Config) (DynconfigInterface, error) {
-	configPath := viper.GetString("dynconfig")
+// newLocalDynconfig returns a new local dynconfig instance, which loads the
+// dynamic configuration from the local file specified by configPath.
+func newLocalDynconfig(configPath string, cfg *Config) (DynconfigInterface, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		content, err := yaml.Marshal(NewLocalDynconfigData())
 		if err != nil {

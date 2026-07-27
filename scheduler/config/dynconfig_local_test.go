@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
@@ -35,15 +34,6 @@ var mockLocalDynconfig = &Config{
 	DynConfig: DynConfig{
 		RefreshInterval: 10 * time.Second,
 	},
-}
-
-// newMockLocalDynconfig returns a new local dynconfig with the dynconfig flag
-// pointing to the given config path.
-func newMockLocalDynconfig(t *testing.T, configPath string, cfg *Config) (DynconfigInterface, error) {
-	viper.Set("dynconfig", configPath)
-	t.Cleanup(func() { viper.Set("dynconfig", "") })
-
-	return newLocalDynconfig(cfg)
 }
 
 func TestLocalDynconfig_New(t *testing.T) {
@@ -95,14 +85,14 @@ func TestLocalDynconfig_New(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			configPath := tc.configPath(t)
-			d, err := newMockLocalDynconfig(t, configPath, mockLocalDynconfig)
+			d, err := newLocalDynconfig(configPath, mockLocalDynconfig)
 			tc.expect(t, configPath, d, err)
 		})
 	}
 }
 
 func TestLocalDynconfig_GetApplications(t *testing.T) {
-	d, err := newMockLocalDynconfig(t, filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +120,7 @@ func TestLocalDynconfig_GetApplications(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
-	d, err := newMockLocalDynconfig(t, filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +134,7 @@ func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
-	d, err := newMockLocalDynconfig(t, filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +150,7 @@ func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSchedulerClusterClientConfig(t *testing.T) {
-	d, err := newMockLocalDynconfig(t, filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +169,7 @@ func TestLocalDynconfig_Refresh(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	d, err := newMockLocalDynconfig(t, configPath, &Config{
+	d, err := newLocalDynconfig(configPath, &Config{
 		DynConfig: DynConfig{
 			RefreshInterval: 100 * time.Millisecond,
 		},

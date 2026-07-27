@@ -67,16 +67,6 @@ upload:
   # bandwidthLimit is the default rate limit of the upload speed in KB/MB/GB per second, default is 50GB/s.
   bandwidthLimit: 50GB
 
-manager:
-  # addr is manager addresses.
-  addr: http://__IP__:65003
-# # CA certificate file path for mTLS.
-# caCert: /etc/ssl/certs/ca.crt
-# # GRPC client certificate file path for mTLS.
-# cert: /etc/ssl/certs/client.crt
-# # GRPC client key file path for mTLS.
-# key: /etc/ssl/private/client.pem
-
 scheduler:
   # announceInterval is the interval to announce peer to the scheduler.
   # Announcer will provide the scheduler with peer information for scheduling,
@@ -101,13 +91,11 @@ seedPeer:
   enable: true
   # type is the type of seed peer.
   type: super
-  # clusterID is the cluster id of the seed peer cluster.
-  clusterID: 1
-  # keepaliveInterval is the interval to keep alive with manager.
-  keepaliveInterval: 15s
 
 dynconfig:
-  # refreshInterval is the interval to refresh dynamic configuration from manager.
+  # refreshInterval is the interval to refresh dynamic configuration. The manager
+  # address is not configured, so the dynamic configuration is loaded from the
+  # local dynconfig.yaml in the same directory as dfdaemon.yaml.
   refreshInterval: 1m
 
 storage:

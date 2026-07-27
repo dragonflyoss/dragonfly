@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
@@ -32,10 +31,8 @@ import (
 
 func TestNewDynconfig(t *testing.T) {
 	assert := assert.New(t)
-	viper.Set("dynconfig", filepath.Join(t.TempDir(), "dynconfig.yaml"))
-	defer viper.Set("dynconfig", "")
 
-	d, err := NewDynconfig(nil, &Config{
+	d, err := NewDynconfig(nil, filepath.Join(t.TempDir(), "dynconfig.yaml"), &Config{
 		DynConfig: DynConfig{
 			RefreshInterval: 10 * time.Second,
 		},
@@ -51,7 +48,7 @@ func TestNewDynconfig(t *testing.T) {
 	mockManagerClient.EXPECT().ListApplications(gomock.Any(), gomock.Any()).Return(&managerv2.ListApplicationsResponse{}, nil).Times(1)
 
 	mockManagerAddr := "localhost"
-	d, err = NewDynconfig(mockManagerClient, &Config{
+	d, err = NewDynconfig(mockManagerClient, "", &Config{
 		Server: ServerConfig{
 			Host: "localhost",
 		},
