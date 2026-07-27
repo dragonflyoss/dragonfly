@@ -95,29 +95,36 @@ type Server struct {
 func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	s := &Server{config: cfg}
 
-	// Initialize dial options of manager grpc client.
-	managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
-	if cfg.Manager.TLS != nil {
-		clientTransportCredentials, err := rpc.NewClientCredentials(cfg.Manager.TLS.CACert, cfg.Manager.TLS.Cert, cfg.Manager.TLS.Key)
-		if err != nil {
-			logger.Errorf("failed to create client credentials: %v", err)
-			return nil, err
+	// Initialize manager client when the manager address is configured. If it
+	// is not configured, the scheduler runs without a manager.
+	if cfg.Manager.Addr != "" {
+		// Initialize dial options of manager grpc client.
+		managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
+		if cfg.Manager.TLS != nil {
+			clientTransportCredentials, err := rpc.NewClientCredentials(cfg.Manager.TLS.CACert, cfg.Manager.TLS.Cert, cfg.Manager.TLS.Key)
+			if err != nil {
+				logger.Errorf("failed to create client credentials: %v", err)
+				return nil, err
+			}
+
+			managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(clientTransportCredentials))
+		} else {
+			managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(rpc.NewInsecureCredentials()))
 		}
 
-		managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(clientTransportCredentials))
-	} else {
-		managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(rpc.NewInsecureCredentials()))
+		// Initialize manager client.
+		managerClient, err := managerclient.GetV2ByAddr(ctx, cfg.Manager.Addr, managerDialOptions...)
+		if err != nil {
+			return nil, err
+		}
+		s.managerClient = managerClient
 	}
-
-	// Initialize manager client.
-	managerClient, err := managerclient.GetV2ByAddr(ctx, cfg.Manager.Addr, managerDialOptions...)
-	if err != nil {
-		return nil, err
-	}
-	s.managerClient = managerClient
 
 	// Initialize redis client.
-	var rdb redis.UniversalClient
+	var (
+		rdb redis.UniversalClient
+		err error
+	)
 	if pkgredis.IsEnabled(cfg.Database.Redis.Addrs) {
 		redisOpts := &redis.UniversalOptions{
 			Addrs:            cfg.Database.Redis.Addrs,
@@ -150,16 +157,21 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 		}
 	}
 
-	// Initialize announcer. If job is enabled, add scheduler feature preheat.
-	schedulerFeatures := []string{managertypes.SchedulerFeatureSchedule}
-	if cfg.Job.Enable && rdb != nil {
-		schedulerFeatures = append(schedulerFeatures, managertypes.SchedulerFeaturePreheat)
+	// Initialize announcer when the manager is configured, since announcing
+	// only makes sense when a manager is present. If job is enabled, add
+	// scheduler feature preheat.
+	if s.managerClient != nil {
+		schedulerFeatures := []string{managertypes.SchedulerFeatureSchedule}
+		if cfg.Job.Enable && rdb != nil {
+			schedulerFeatures = append(schedulerFeatures, managertypes.SchedulerFeaturePreheat)
+		}
+
+		announcer, err := announcer.New(cfg, s.managerClient, schedulerFeatures)
+		if err != nil {
+			return nil, err
+		}
+		s.announcer = announcer
 	}
-	announcer, err := announcer.New(cfg, s.managerClient, schedulerFeatures)
-	if err != nil {
-		return nil, err
-	}
-	s.announcer = announcer
 
 	// Initialize GC.
 	s.gc = gc.New(gc.WithLogger(logger.GCLogger))
@@ -293,10 +305,12 @@ func (s *Server) Serve() error {
 	}
 
 	// Serve announcer.
-	go func() {
-		s.announcer.Serve()
-		logger.Info("announcer start successfully")
-	}()
+	if s.announcer != nil {
+		go func() {
+			s.announcer.Serve()
+			logger.Info("announcer start successfully")
+		}()
+	}
 
 	// Serve resource.
 	go func() {
@@ -350,8 +364,10 @@ func (s *Server) Stop() {
 	}
 
 	// Stop announcer.
-	s.announcer.Stop()
-	logger.Info("stop announcer closed")
+	if s.announcer != nil {
+		s.announcer.Stop()
+		logger.Info("stop announcer closed")
+	}
 
 	// Stop manager client.
 	if s.managerClient != nil {

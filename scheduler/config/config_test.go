@@ -181,6 +181,19 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
+			name:   "valid config without manager",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager.Addr = ""
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Job = mockJobConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
 			name:   "server requires parameter advertiseIP",
 			config: New(),
 			mock: func(cfg *Config) {
@@ -589,20 +602,6 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "dynconfig requires parameter refreshInterval")
-			},
-		},
-		{
-			name:   "manager requires parameter addr",
-			config: New(),
-			mock: func(cfg *Config) {
-				cfg.Manager = mockManagerConfig
-				cfg.Database.Redis = mockRedisConfig
-				cfg.Job = mockJobConfig
-				cfg.Manager.Addr = ""
-			},
-			expect: func(t *testing.T, err error) {
-				assert := assert.New(t)
-				assert.EqualError(err, "manager requires parameter addr")
 			},
 		},
 		{

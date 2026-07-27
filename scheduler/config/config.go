@@ -44,7 +44,9 @@ type Config struct {
 	// Dynconfig configuration.
 	DynConfig DynConfig `yaml:"dynConfig" mapstructure:"dynConfig"`
 
-	// Manager configuration.
+	// Manager configuration. If the manager address is not configured, the
+	// scheduler runs without a manager, and the dynamic configuration is
+	// loaded from the local file.
 	Manager ManagerConfig `yaml:"manager" mapstructure:"manager"`
 
 	// SeedPeer configuration.
@@ -515,30 +517,30 @@ func (cfg *Config) Validate() error {
 		return errors.New("dynconfig requires parameter refreshInterval")
 	}
 
-	if cfg.Manager.Addr == "" {
-		return errors.New("manager requires parameter addr")
-	}
+	// If the manager address is not configured, the scheduler runs without
+	// a manager and skips the manager validation.
+	if cfg.Manager.Addr != "" {
+		if cfg.Manager.TLS != nil {
+			if cfg.Manager.TLS.CACert == "" {
+				return errors.New("manager tls requires parameter caCert")
+			}
 
-	if cfg.Manager.TLS != nil {
-		if cfg.Manager.TLS.CACert == "" {
-			return errors.New("manager tls requires parameter caCert")
+			if cfg.Manager.TLS.Cert == "" {
+				return errors.New("manager tls requires parameter cert")
+			}
+
+			if cfg.Manager.TLS.Key == "" {
+				return errors.New("manager tls requires parameter key")
+			}
 		}
 
-		if cfg.Manager.TLS.Cert == "" {
-			return errors.New("manager tls requires parameter cert")
+		if cfg.Manager.SchedulerClusterID == 0 {
+			return errors.New("manager requires parameter schedulerClusterID")
 		}
 
-		if cfg.Manager.TLS.Key == "" {
-			return errors.New("manager tls requires parameter key")
+		if cfg.Manager.KeepAlive.Interval <= 0 {
+			return errors.New("manager requires parameter keepAlive interval")
 		}
-	}
-
-	if cfg.Manager.SchedulerClusterID == 0 {
-		return errors.New("manager requires parameter schedulerClusterID")
-	}
-
-	if cfg.Manager.KeepAlive.Interval <= 0 {
-		return errors.New("manager requires parameter keepAlive interval")
 	}
 
 	if cfg.SeedPeer.TaskDownloadTimeout <= 0 {

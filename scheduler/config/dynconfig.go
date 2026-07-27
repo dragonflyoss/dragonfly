@@ -88,8 +88,15 @@ type dynconfig struct {
 	mu                   *sync.Mutex
 }
 
-// NewDynconfig returns a new dynconfig instance.
+// NewDynconfig returns a new dynconfig instance. If the manager address is
+// not configured, it returns the local dynconfig, which loads the dynamic
+// configuration from the local file. Otherwise, it returns the dynconfig
+// that fetches the dynamic configuration from the manager.
 func NewDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
+	if cfg.Manager.Addr == "" {
+		return newLocalDynconfig(localDynconfigPath())
+	}
+
 	cachePath := filepath.Join(cacheDir, cacheFileName)
 	d := &dynconfig{
 		done:                 make(chan struct{}),

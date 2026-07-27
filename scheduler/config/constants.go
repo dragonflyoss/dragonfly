@@ -107,6 +107,9 @@ const (
 const (
 	// DefaultDynConfigRefreshInterval is default refresh interval for dynamic configuration.
 	DefaultDynConfigRefreshInterval = 1 * time.Minute
+
+	// DefaultLocalDynconfigRefreshInterval is default refresh interval for local dynamic configuration.
+	DefaultLocalDynconfigRefreshInterval = 5 * time.Second
 )
 
 const (

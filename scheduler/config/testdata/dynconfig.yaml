@@ -1,0 +1,5 @@
+refreshInterval: 5s
+schedulerClusterConfig:
+  candidateParentLimit: 5
+  filterParentLimit: 10
+  jobRateLimit: 10

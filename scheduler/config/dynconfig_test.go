@@ -47,6 +47,7 @@ func TestDynconfig_Get(t *testing.T) {
 			Host: "localhost",
 		},
 		Manager: ManagerConfig{
+			Addr:               "localhost",
 			SchedulerClusterID: 1,
 		},
 	}
