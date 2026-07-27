@@ -27,8 +27,10 @@ import (
 )
 
 var (
+	mockManagerAddr = "localhost"
+
 	mockManagerConfig = ManagerConfig{
-		Addr:               "localhost",
+		Addr:               &mockManagerAddr,
 		SchedulerClusterID: DefaultManagerSchedulerClusterID,
 		KeepAlive: KeepAliveConfig{
 			Interval: DefaultManagerKeepAliveInterval,
@@ -58,6 +60,7 @@ var (
 )
 
 func TestConfig_Load(t *testing.T) {
+	mockManagerLoadAddr := "127.0.0.1:65003"
 	config := &Config{
 		Scheduler: SchedulerConfig{
 			Algorithm:              "default",
@@ -86,7 +89,6 @@ func TestConfig_Load(t *testing.T) {
 				Cert:   "foo",
 				Key:    "foo",
 			},
-			CacheDir:      "foo",
 			LogDir:        "foo",
 			LogLevel:      "debug",
 			LogMaxSize:    512,
@@ -111,7 +113,7 @@ func TestConfig_Load(t *testing.T) {
 			RefreshInterval: 10 * time.Second,
 		},
 		Manager: ManagerConfig{
-			Addr: "127.0.0.1:65003",
+			Addr: &mockManagerLoadAddr,
 			TLS: &GRPCTLSClientConfig{
 				CACert: "foo",
 				Cert:   "foo",
@@ -172,6 +174,19 @@ func TestConfig_Validate(t *testing.T) {
 			config: New(),
 			mock: func(cfg *Config) {
 				cfg.Manager = mockManagerConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Job = mockJobConfig
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name:   "valid config without manager",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager.Addr = nil
 				cfg.Database.Redis = mockRedisConfig
 				cfg.Job = mockJobConfig
 			},
@@ -598,7 +613,8 @@ func TestConfig_Validate(t *testing.T) {
 				cfg.Manager = mockManagerConfig
 				cfg.Database.Redis = mockRedisConfig
 				cfg.Job = mockJobConfig
-				cfg.Manager.Addr = ""
+				emptyAddr := ""
+				cfg.Manager.Addr = &emptyAddr
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)

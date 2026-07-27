@@ -91,7 +91,6 @@ func TestConfig_Load(t *testing.T) {
 	config := &Config{
 		Server: ServerConfig{
 			Name:          "foo",
-			CacheDir:      "foo",
 			LogDir:        "foo",
 			LogLevel:      "debug",
 			LogMaxSize:    512,

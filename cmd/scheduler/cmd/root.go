@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -66,6 +67,13 @@ generate and maintain a P2P network during the download process, and push suitab
 			return err
 		}
 
+		// Get the path of the local dynamic configuration file from the
+		// dynconfig flag.
+		dynconfigPath, err := cmd.Flags().GetString("dynconfig")
+		if err != nil {
+			return err
+		}
+
 		rotateConfig := logger.LogRotateConfig{
 			MaxSize:    cfg.Server.LogMaxSize,
 			MaxAge:     cfg.Server.LogMaxAge,
@@ -77,7 +85,7 @@ generate and maintain a P2P network during the download process, and push suitab
 		}
 		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.SchedulerName))
 
-		return runScheduler(ctx, d)
+		return runScheduler(ctx, d, dynconfigPath)
 	},
 }
 
@@ -96,16 +104,13 @@ func init() {
 
 	// Initialize command and config.
 	dependency.InitCommandAndConfig(rootCmd, true, cfg)
+	rootCmd.Flags().String("dynconfig", filepath.Join(dfpath.DefaultConfigDir, "dynconfig.yaml"), "the path of local dynamic configuration file with yaml extension name, only used when the manager addr is not configured")
 }
 
 func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	var options []dfpath.Option
 	if cfg.LogDir != "" {
 		options = append(options, dfpath.WithLogDir(cfg.LogDir))
-	}
-
-	if cfg.CacheDir != "" {
-		options = append(options, dfpath.WithCacheDir(cfg.CacheDir))
 	}
 
 	if cfg.PluginDir != "" {
@@ -115,12 +120,12 @@ func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
 	return dfpath.New(options...)
 }
 
-func runScheduler(ctx context.Context, d dfpath.Dfpath) error {
+func runScheduler(ctx context.Context, d dfpath.Dfpath, dynconfigPath string) error {
 	logger.Infof("version:\n%s", version.Version())
 	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
 	defer shutdown()
 
-	svr, err := scheduler.New(ctx, cfg, d)
+	svr, err := scheduler.New(ctx, cfg, d, dynconfigPath)
 	if err != nil {
 		return err
 	}

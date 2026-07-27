@@ -19,267 +19,34 @@
 package config
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-	"os"
-	"path/filepath"
-	"sync"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
-
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
-	dc "d7y.io/dragonfly/v2/internal/dynconfig"
 	"d7y.io/dragonfly/v2/manager/types"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
-	"d7y.io/dragonfly/v2/pkg/slices"
 )
 
-var (
-	// Cache filename.
-	cacheFileName = "scheduler"
-)
-
-type DynconfigData struct {
-	Scheduler    *managerv2.Scheduler
-	Applications []*managerv2.Application
-}
-
+// DynconfigInterface is the interface for dynconfig, which provides methods to get the dynamic configuration.
 type DynconfigInterface interface {
-	// GetScheduler returns the scheduler config from manager.
-	GetScheduler() (*managerv2.Scheduler, error)
-
-	// GetApplications returns the applications config from manager.
+	// GetApplications returns the applications config.
 	GetApplications() ([]*managerv2.Application, error)
-
-	// GetSeedPeers returns the dynamic seed peers config from manager.
-	GetSeedPeers() ([]*managerv2.SeedPeer, error)
 
 	// GetSeedPeerClusterConfig returns the seed peer cluster config.
 	GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig, error)
-
-	// GetSchedulerCluster returns the scheduler cluster config from manager.
-	GetSchedulerCluster() (*managerv2.SchedulerCluster, error)
 
 	// GetSchedulerClusterConfig returns the scheduler cluster config.
 	GetSchedulerClusterConfig() (types.SchedulerClusterConfig, error)
 
 	// GetSchedulerClusterClientConfig returns the client config.
 	GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error)
-
-	// Get returns the dynamic config from manager.
-	Get() (*DynconfigData, error)
-
-	// Serve the dynconfig listening service.
-	Serve() error
-
-	// Stop the dynconfig listening service.
-	Stop() error
 }
 
-type dynconfig struct {
-	dc.Dynconfig[DynconfigData]
-	done                 chan struct{}
-	cachePath            string
-	transportCredentials credentials.TransportCredentials
-	mu                   *sync.Mutex
-}
-
-// NewDynconfig returns a new dynconfig instance.
-func NewDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
-	cachePath := filepath.Join(cacheDir, cacheFileName)
-	d := &dynconfig{
-		done:                 make(chan struct{}),
-		cachePath:            cachePath,
-		transportCredentials: transportCredentials,
-		mu:                   &sync.Mutex{},
+// NewDynconfig returns a new dynconfig instance. If the manager client is nil, it returns the local
+// dynconfig, which loads the dynamic configuration from the local file specified by dynconfig.
+// Otherwise, it returns the remote dynconfig, which fetches the dynamic configuration from the manager.
+func NewDynconfig(client managerclient.V2, dynconfigPath string, cfg *Config) (DynconfigInterface, error) {
+	if client == nil {
+		return newLocalDynconfig(dynconfigPath, cfg)
 	}
 
-	if rawManagerClient != nil {
-		client, err := dc.New[DynconfigData](
-			newManagerClient(rawManagerClient, cfg),
-			cachePath,
-			cfg.DynConfig.RefreshInterval,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		d.Dynconfig = client
-	}
-
-	return d, nil
-}
-
-// GetScheduler returns the scheduler config from manager.
-func (d *dynconfig) GetScheduler() (*managerv2.Scheduler, error) {
-	data, err := d.Get()
-	if err != nil {
-		return nil, err
-	}
-
-	if data.Scheduler == nil {
-		return nil, errors.New("invalid scheduler")
-	}
-
-	return data.Scheduler, nil
-}
-
-// GetApplications returns the applications config from manager.
-func (d *dynconfig) GetApplications() ([]*managerv2.Application, error) {
-	data, err := d.Get()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(data.Applications) == 0 {
-		return nil, errors.New("application not found")
-	}
-
-	return data.Applications, nil
-}
-
-// GetSeedPeers returns the seed peers config from manager.
-func (d *dynconfig) GetSeedPeers() ([]*managerv2.SeedPeer, error) {
-	scheduler, err := d.GetScheduler()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(scheduler.SeedPeers) == 0 {
-		return nil, errors.New("seed peer not found ")
-	}
-
-	return scheduler.SeedPeers, nil
-}
-
-// GetSeedPeerClusterConfig returns the seed peer cluster config.
-func (d *dynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig, error) {
-	seedPeers, err := d.GetSeedPeers()
-	if err != nil {
-		return types.SeedPeerClusterConfig{}, err
-	}
-
-	if len(seedPeers) == 0 {
-		return types.SeedPeerClusterConfig{}, errors.New("seed peer not found ")
-	}
-
-	var config types.SeedPeerClusterConfig
-	if err := json.Unmarshal(seedPeers[0].SeedPeerCluster.Config, &config); err != nil {
-		return types.SeedPeerClusterConfig{}, err
-	}
-
-	return config, nil
-}
-
-// GetSchedulerCluster returns the scheduler cluster config from manager.
-func (d *dynconfig) GetSchedulerCluster() (*managerv2.SchedulerCluster, error) {
-	scheduler, err := d.GetScheduler()
-	if err != nil {
-		return nil, err
-	}
-
-	if scheduler.SchedulerCluster == nil {
-		return nil, errors.New("invalid scheduler cluster")
-	}
-
-	return scheduler.SchedulerCluster, nil
-}
-
-// GetSchedulerClusterConfig returns the scheduler cluster config.
-func (d *dynconfig) GetSchedulerClusterConfig() (types.SchedulerClusterConfig, error) {
-	schedulerCluster, err := d.GetSchedulerCluster()
-	if err != nil {
-		return types.SchedulerClusterConfig{}, err
-	}
-
-	var config types.SchedulerClusterConfig
-	if err := json.Unmarshal(schedulerCluster.Config, &config); err != nil {
-		return types.SchedulerClusterConfig{}, err
-	}
-
-	return config, nil
-}
-
-// GetSchedulerClusterClientConfig returns the client config.
-func (d *dynconfig) GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error) {
-	schedulerCluster, err := d.GetSchedulerCluster()
-	if err != nil {
-		return types.SchedulerClusterClientConfig{}, err
-	}
-
-	var config types.SchedulerClusterClientConfig
-	if err := json.Unmarshal(schedulerCluster.ClientConfig, &config); err != nil {
-		return types.SchedulerClusterClientConfig{}, err
-	}
-
-	return config, nil
-}
-
-// Serve the dynconfig listening service.
-func (d *dynconfig) Serve() error {
-	return nil
-}
-
-// Stop the dynconfig listening service.
-func (d *dynconfig) Stop() error {
-	close(d.done)
-	if err := os.Remove(d.cachePath); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Manager client for dynconfig.
-type managerClient struct {
-	managerClient managerclient.V2
-	config        *Config
-}
-
-// New the manager client used by dynconfig.
-func newManagerClient(client managerclient.V2, cfg *Config) dc.ManagerClient {
-	return &managerClient{
-		managerClient: client,
-		config:        cfg,
-	}
-}
-
-func (mc *managerClient) Get() (any, error) {
-	getSchedulerResp, err := mc.managerClient.GetScheduler(context.Background(), &managerv2.GetSchedulerRequest{
-		SourceType:         managerv2.SourceType_SCHEDULER_SOURCE,
-		Hostname:           mc.config.Server.Host,
-		Ip:                 mc.config.Server.AdvertiseIP.String(),
-		SchedulerClusterId: uint64(mc.config.Manager.SchedulerClusterID),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	listApplicationsResp, err := mc.managerClient.ListApplications(context.Background(), &managerv2.ListApplicationsRequest{
-		SourceType: managerv2.SourceType_SCHEDULER_SOURCE,
-		Hostname:   mc.config.Server.Host,
-		Ip:         mc.config.Server.AdvertiseIP.String(),
-	})
-	if err != nil {
-		if st, ok := status.FromError(err); ok {
-			// TODO Compatible with old version manager.
-			if slices.Contains([]codes.Code{codes.Unimplemented, codes.NotFound}, st.Code()) {
-				return DynconfigData{
-					Scheduler:    getSchedulerResp,
-					Applications: nil,
-				}, nil
-			}
-		}
-
-		return nil, err
-	}
-
-	return DynconfigData{
-		Scheduler:    getSchedulerResp,
-		Applications: listApplicationsResp.Applications,
-	}, nil
+	return newRemoteDynconfig(client, cfg)
 }

@@ -18,8 +18,6 @@ package dynconfig
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -40,25 +38,19 @@ type SchedulerOption struct {
 
 func TestDynconfig_Get(t *testing.T) {
 	schedulerName := "scheduler"
-	cachePath, err := mockCachePath()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	tests := []struct {
-		name           string
-		expire         time.Duration
-		sleep          func()
-		cleanFileCache func(t *testing.T)
-		mock           func(m *mocks.MockManagerClientMockRecorder)
-		run            func(t *testing.T, d Dynconfig[TestDynconfig])
+		name   string
+		expire time.Duration
+		sleep  func()
+		mock   func(m *mocks.MockClientMockRecorder)
+		run    func(t *testing.T, d Dynconfig[TestDynconfig])
 	}{
 		{
-			name:           "get config success without file cache",
-			expire:         1 * time.Millisecond,
-			sleep:          func() {},
-			cleanFileCache: func(t *testing.T) {},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			name:   "get config success",
+			expire: 1 * time.Millisecond,
+			sleep:  func() {},
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -82,17 +74,12 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 		},
 		{
-			name:   "get expire config with file cache",
+			name:   "get expired config",
 			expire: 1 * time.Millisecond,
 			sleep: func() {
 				time.Sleep(30 * time.Millisecond)
 			},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -121,12 +108,7 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep: func() {
 				time.Sleep(30 * time.Millisecond)
 			},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -153,15 +135,10 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 		},
 		{
-			name:   "get config with file cache",
+			name:   "get config with cache",
 			expire: 10 * time.Second,
 			sleep:  func() {},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -198,12 +175,7 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep: func() {
 				time.Sleep(30 * time.Millisecond)
 			},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -261,12 +233,7 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep: func() {
 				time.Sleep(30 * time.Millisecond)
 			},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -302,12 +269,7 @@ func TestDynconfig_Get(t *testing.T) {
 			name:   "config is not changed and cache is not expired",
 			expire: 10 * time.Second,
 			sleep:  func() {},
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(cachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			mock: func(m *mocks.MockManagerClientMockRecorder) {
+			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
 				if err := mapstructure.Decode(TestDynconfig{
 					Scheduler: SchedulerOption{
@@ -344,26 +306,16 @@ func TestDynconfig_Get(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
-			mockManagerClient := mocks.NewMockManagerClient(ctl)
-			tc.mock(mockManagerClient.EXPECT())
+			mockClient := mocks.NewMockClient(ctl)
+			tc.mock(mockClient.EXPECT())
 
-			d, err := New[TestDynconfig](mockManagerClient, cachePath, tc.expire)
+			d, err := New[TestDynconfig](mockClient, tc.expire)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			tc.sleep()
 			tc.run(t, d)
-			tc.cleanFileCache(t)
 		})
 	}
-}
-
-func mockCachePath() (string, error) {
-	userDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(userDir, ".dynconfig"), nil
 }

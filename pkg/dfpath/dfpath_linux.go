@@ -18,12 +18,8 @@
 
 package dfpath
 
-import "os"
-
 var (
-	DefaultCacheDir     = "/var/cache/dragonfly"
-	DefaultCacheDirMode = os.FileMode(0700)
-	DefaultConfigDir    = "/etc/dragonfly"
-	DefaultLogDir       = "/var/log/dragonfly"
-	DefaultPluginDir    = "/usr/local/dragonfly/plugins"
+	DefaultConfigDir = "/etc/dragonfly"
+	DefaultLogDir    = "/var/log/dragonfly"
+	DefaultPluginDir = "/usr/local/dragonfly/plugins"
 )

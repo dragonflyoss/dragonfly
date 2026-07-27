@@ -1,56 +1,7 @@
 services:
-  redis:
-    image: redis:6-alpine
-    container_name: dragonfly-redis
-    command: >
-      --requirepass dragonfly
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "dragonfly", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
-    ports:
-      - 6379:6379
-
-  mysql:
-    image: mariadb:10.6
-    container_name: dragonfly-mysql
-    environment:
-      - MARIADB_USER=dragonfly
-      - MARIADB_PASSWORD=dragonfly
-      - MARIADB_DATABASE=manager
-      - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=yes
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
-    ports:
-      - 3306:3306
-
-  manager:
-    image: dragonflyoss/manager:latest
-    container_name: manager
-    depends_on:
-      - redis
-      - mysql
-    restart: always
-    volumes:
-      - ./log/manager:/var/log/dragonfly
-      - ./config/manager.yaml:/etc/dragonfly/manager.yaml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "/bin/grpc_health_probe -addr=:65003 || exit 1"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
-    ports:
-      - 65003:65003
-      - 8080:8080
-
   client:
     image: dragonflyoss/client:latest
     depends_on:
-      - manager
       - scheduler
       - seed-client
     container_name: client
@@ -63,6 +14,7 @@ services:
     volumes:
       - ./log/client:/var/log/dragonfly
       - ./config/client.yaml:/etc/dragonfly/dfdaemon.yaml:ro
+      - ./config/client-dynconfig.yaml:/etc/dragonfly/dynconfig.yaml:ro
     ports:
       - 4000:4000
       - 4001:4001
@@ -70,8 +22,6 @@ services:
 
   scheduler:
     image: dragonflyoss/scheduler:latest
-    depends_on:
-      - manager
     container_name: scheduler
     restart: always
     healthcheck:
@@ -82,13 +32,13 @@ services:
     volumes:
       - ./log/scheduler:/var/log/dragonfly
       - ./config/scheduler.yaml:/etc/dragonfly/scheduler.yaml:ro
+      - ./config/scheduler-dynconfig.yaml:/etc/dragonfly/dynconfig.yaml:ro
     ports:
       - 8002:8002
 
   seed-client:
     image: dragonflyoss/client:latest
     depends_on:
-      - manager
       - scheduler
     container_name: seed-client
     restart: always
@@ -100,6 +50,7 @@ services:
     volumes:
       - ./log/seed-client:/var/log/dragonfly
       - ./config/seed-client.yaml:/etc/dragonfly/dfdaemon.yaml:ro
+      - ./config/client-dynconfig.yaml:/etc/dragonfly/dynconfig.yaml:ro
     ports:
       - 4010:4010
       - 4011:4011

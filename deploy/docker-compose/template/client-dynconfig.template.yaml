@@ -1,0 +1,7 @@
+scheduler:
+  # addrs is the static list of scheduler addresses with port. When set, it
+  # takes precedence over addr.
+  addrs: ['__IP__:8002']
+  # # addr is the address of the scheduler headless service with port, resolved
+  # # via DNS to the list of scheduler IPs (e.g. in Kubernetes).
+  # addr: 'scheduler-headless.default.svc:8002'

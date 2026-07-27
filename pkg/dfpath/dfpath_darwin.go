@@ -19,17 +19,14 @@
 package dfpath
 
 import (
-	"os"
 	"path/filepath"
 
 	"d7y.io/dragonfly/v2/pkg/os/user"
 )
 
 var (
-	DefaultWorkHome     = filepath.Join(user.HomeDir(), ".dragonfly")
-	DefaultCacheDir     = filepath.Join(DefaultWorkHome, "cache")
-	DefaultCacheDirMode = os.FileMode(0700)
-	DefaultConfigDir    = filepath.Join(DefaultWorkHome, "config")
-	DefaultLogDir       = filepath.Join(DefaultWorkHome, "logs")
-	DefaultPluginDir    = filepath.Join(DefaultWorkHome, "plugins")
+	DefaultWorkHome  = filepath.Join(user.HomeDir(), ".dragonfly")
+	DefaultConfigDir = filepath.Join(DefaultWorkHome, "config")
+	DefaultLogDir    = filepath.Join(DefaultWorkHome, "logs")
+	DefaultPluginDir = filepath.Join(DefaultWorkHome, "plugins")
 )

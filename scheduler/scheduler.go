@@ -20,7 +20,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -28,10 +27,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/internal/dynconfig"
 	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
 	"d7y.io/dragonfly/v2/pkg/gc"
@@ -92,94 +90,53 @@ type Server struct {
 }
 
 // New creates a new scheduler server.
-func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath string) (*Server, error) {
 	s := &Server{config: cfg}
 
-	// Initialize dial options of manager grpc client.
-	managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
-	if cfg.Manager.TLS != nil {
-		clientTransportCredentials, err := rpc.NewClientCredentials(cfg.Manager.TLS.CACert, cfg.Manager.TLS.Cert, cfg.Manager.TLS.Key)
-		if err != nil {
-			logger.Errorf("failed to create client credentials: %v", err)
-			return nil, err
-		}
-
-		managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(clientTransportCredentials))
-	} else {
-		managerDialOptions = append(managerDialOptions, grpc.WithTransportCredentials(rpc.NewInsecureCredentials()))
-	}
-
-	// Initialize manager client.
-	managerClient, err := managerclient.GetV2ByAddr(ctx, cfg.Manager.Addr, managerDialOptions...)
+	// Initialize redis client if redis is enabled.
+	rdb, err := newRedisClient(cfg)
 	if err != nil {
 		return nil, err
 	}
-	s.managerClient = managerClient
 
-	// Initialize redis client.
-	var rdb redis.UniversalClient
-	if pkgredis.IsEnabled(cfg.Database.Redis.Addrs) {
-		redisOpts := &redis.UniversalOptions{
-			Addrs:            cfg.Database.Redis.Addrs,
-			MasterName:       cfg.Database.Redis.MasterName,
-			Username:         cfg.Database.Redis.Username,
-			Password:         cfg.Database.Redis.Password,
-			SentinelUsername: cfg.Database.Redis.SentinelUsername,
-			SentinelPassword: cfg.Database.Redis.SentinelPassword,
-			PoolSize:         cfg.Database.Redis.PoolSize,
-			PoolTimeout:      cfg.Database.Redis.PoolTimeout,
-		}
-
-		if redisTLS := cfg.Database.Redis.TLS; redisTLS != nil {
-			tlsCfg, err := tlsconfig.Client(tlsconfig.Options{
-				CAFile:             redisTLS.CACert,
-				CertFile:           redisTLS.Cert,
-				KeyFile:            redisTLS.Key,
-				InsecureSkipVerify: redisTLS.InsecureSkipVerify,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			redisOpts.TLSConfig = tlsCfg
-		}
-
-		rdb, err = pkgredis.NewRedis(redisOpts)
+	// Initialize manager client and announcer when the manager addr is
+	// configured. If it is nil, the scheduler runs without a manager and
+	// the announcer is disabled.
+	if cfg.Manager.Addr != nil {
+		managerClient, err := newManagerClient(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-	}
+		s.managerClient = managerClient
 
-	// Initialize announcer. If job is enabled, add scheduler feature preheat.
-	schedulerFeatures := []string{managertypes.SchedulerFeatureSchedule}
-	if cfg.Job.Enable && rdb != nil {
-		schedulerFeatures = append(schedulerFeatures, managertypes.SchedulerFeaturePreheat)
+		// If job is enabled, add scheduler feature preheat.
+		schedulerFeatures := []string{managertypes.SchedulerFeatureSchedule}
+		if cfg.Job.Enable && rdb != nil {
+			schedulerFeatures = append(schedulerFeatures, managertypes.SchedulerFeaturePreheat)
+		}
+
+		announcer, err := announcer.New(cfg, s.managerClient, schedulerFeatures)
+		if err != nil {
+			return nil, err
+		}
+		s.announcer = announcer
 	}
-	announcer, err := announcer.New(cfg, s.managerClient, schedulerFeatures)
-	if err != nil {
-		return nil, err
-	}
-	s.announcer = announcer
 
 	// Initialize GC.
 	s.gc = gc.New(gc.WithLogger(logger.GCLogger))
 
-	// Initialize seed peer client transport credentials.
-	seedPeerClientTransportCredentials := rpc.NewInsecureCredentials()
-	if cfg.SeedPeer.TLS != nil {
-		seedPeerClientTransportCredentials, err = rpc.NewClientCredentials(cfg.SeedPeer.TLS.CACert, cfg.SeedPeer.TLS.Cert, cfg.SeedPeer.TLS.Key)
-		if err != nil {
-			logger.Errorf("failed to create seed peer client credentials: %v", err)
-			return nil, err
-		}
-	}
-
 	// Initialize dynconfig.
-	dynconfig, err := config.NewDynconfig(s.managerClient, filepath.Join(d.CacheDir(), dynconfig.CacheDirName), cfg, seedPeerClientTransportCredentials)
+	dynconfig, err := config.NewDynconfig(s.managerClient, dynconfigPath, cfg)
 	if err != nil {
 		return nil, err
 	}
 	s.dynconfig = dynconfig
+
+	// Initialize seed peer client transport credentials.
+	seedPeerClientTransportCredentials, err := newClientTransportCredentials(cfg.SeedPeer.TLS)
+	if err != nil {
+		return nil, err
+	}
 
 	// Initialize resource.
 	resource, err := standard.New(cfg, s.gc, seedPeerClientTransportCredentials)
@@ -188,40 +145,30 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	}
 	s.resource = resource
 
-	// Initialize seed peer client transport credentials.
-	peerClientTransportCredentials := rpc.NewInsecureCredentials()
-	if cfg.Peer.TLS != nil {
-		peerClientTransportCredentials, err = rpc.NewClientCredentials(cfg.Peer.TLS.CACert, cfg.Peer.TLS.Cert, cfg.Peer.TLS.Key)
+	// Initialize persistent resource and persistent cache resource if redis
+	// is enabled.
+	if rdb != nil {
+		peerClientTransportCredentials, err := newClientTransportCredentials(cfg.Peer.TLS)
 		if err != nil {
-			logger.Errorf("failed to create peer client credentials: %v", err)
 			return nil, err
 		}
-	}
 
-	if rdb != nil {
-		// Initialize persistent resource.
 		s.persistentResource, err = persistent.New(cfg, s.gc, rdb, peerClientTransportCredentials)
 		if err != nil {
-			logger.Errorf("failed to create persistent resource: %v", err)
 			return nil, err
 		}
 
-		// Initialize persistent cache resource.
 		s.persistentCacheResource, err = persistentcache.New(cfg, s.gc, rdb, peerClientTransportCredentials)
 		if err != nil {
-			logger.Errorf("failed to create persistent cache resource: %v", err)
 			return nil, err
 		}
 	}
 
-	// Initialize job service.
+	// Initialize job service if job is enabled and redis is enabled.
 	if cfg.Job.Enable && rdb != nil {
-		dialOptions := []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		s.job, err = job.New(cfg, resource,
 			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-			grpc.WithTransportCredentials(seedPeerClientTransportCredentials),
-		}
-		s.job, err = job.New(cfg, resource, dialOptions...)
+			grpc.WithTransportCredentials(seedPeerClientTransportCredentials))
 		if err != nil {
 			return nil, err
 		}
@@ -230,26 +177,17 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	// Initialize scheduling.
 	scheduling := scheduling.New(&cfg.Scheduler, s.persistentResource, s.persistentCacheResource, dynconfig, d.PluginDir())
 
-	// Initialize server options of scheduler grpc server.
-	schedulerServerOptions := []grpc.ServerOption{}
+	// Initialize server transport credentials of scheduler grpc server.
+	serverTransportCredentials := rpc.NewInsecureCredentials()
 	if cfg.Server.TLS != nil {
-		// Initialize grpc server with tls.
-		transportCredentials, err := rpc.NewServerCredentials(cfg.Server.TLS.CACert, cfg.Server.TLS.Cert, cfg.Server.TLS.Key)
+		serverTransportCredentials, err = rpc.NewServerCredentials(cfg.Server.TLS.CACert, cfg.Server.TLS.Cert, cfg.Server.TLS.Key)
 		if err != nil {
-			logger.Errorf("failed to create server credentials: %v", err)
 			return nil, err
 		}
-
-		schedulerServerOptions = append(schedulerServerOptions, grpc.Creds(transportCredentials))
-	} else {
-		// Initialize grpc server without tls.
-		schedulerServerOptions = append(schedulerServerOptions, grpc.Creds(rpc.NewInsecureCredentials()))
 	}
+	s.grpcServer = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
 
-	svr := rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, schedulerServerOptions...)
-	s.grpcServer = svr
-
-	// Initialize metrics.
+	// Initialize metrics server if metrics is enabled.
 	if cfg.Metrics.Enable {
 		s.metricsServer = metrics.New(&cfg.Metrics, s.grpcServer)
 	}
@@ -259,15 +197,6 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 
 // Serve starts the scheduler server.
 func (s *Server) Serve() error {
-	// Serve dynconfig.
-	go func() {
-		if err := s.dynconfig.Serve(); err != nil {
-			logger.Fatalf("dynconfig start failed %s", err.Error())
-		}
-
-		logger.Info("dynconfig start successfully")
-	}()
-
 	// Serve GC.
 	s.gc.Start(context.Background())
 	logger.Info("gc start successfully")
@@ -293,10 +222,12 @@ func (s *Server) Serve() error {
 	}
 
 	// Serve announcer.
-	go func() {
-		s.announcer.Serve()
-		logger.Info("announcer start successfully")
-	}()
+	if s.announcer != nil {
+		go func() {
+			s.announcer.Serve()
+			logger.Info("announcer start successfully")
+		}()
+	}
 
 	// Serve resource.
 	go func() {
@@ -325,13 +256,6 @@ func (s *Server) Serve() error {
 
 // Stop stops the scheduler server.
 func (s *Server) Stop() {
-	// Stop dynconfig.
-	if err := s.dynconfig.Stop(); err != nil {
-		logger.Errorf("stop dynconfig failed %s", err.Error())
-	} else {
-		logger.Info("stop dynconfig closed")
-	}
-
 	// Stop resource.
 	s.resource.Stop()
 	logger.Info("stop resource closed")
@@ -350,8 +274,10 @@ func (s *Server) Stop() {
 	}
 
 	// Stop announcer.
-	s.announcer.Stop()
-	logger.Info("stop announcer closed")
+	if s.announcer != nil {
+		s.announcer.Stop()
+		logger.Info("stop announcer closed")
+	}
 
 	// Stop manager client.
 	if s.managerClient != nil {
@@ -377,4 +303,62 @@ func (s *Server) Stop() {
 	case <-stopped:
 		t.Stop()
 	}
+}
+
+// newManagerClient returns a new manager client.
+func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2, error) {
+	clientTransportCredentials, err := newClientTransportCredentials(cfg.Manager.TLS)
+	if err != nil {
+		return nil, err
+	}
+
+	return managerclient.GetV2ByAddr(ctx, *cfg.Manager.Addr,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpc.WithTransportCredentials(clientTransportCredentials))
+}
+
+// newRedisClient returns a new redis client. If redis is not enabled, it
+// returns nil.
+func newRedisClient(cfg *config.Config) (redis.UniversalClient, error) {
+	if !pkgredis.IsEnabled(cfg.Database.Redis.Addrs) {
+		return nil, nil
+	}
+
+	redisOpts := &redis.UniversalOptions{
+		Addrs:            cfg.Database.Redis.Addrs,
+		MasterName:       cfg.Database.Redis.MasterName,
+		Username:         cfg.Database.Redis.Username,
+		Password:         cfg.Database.Redis.Password,
+		SentinelUsername: cfg.Database.Redis.SentinelUsername,
+		SentinelPassword: cfg.Database.Redis.SentinelPassword,
+		PoolSize:         cfg.Database.Redis.PoolSize,
+		PoolTimeout:      cfg.Database.Redis.PoolTimeout,
+	}
+
+	if redisTLS := cfg.Database.Redis.TLS; redisTLS != nil {
+		tlsCfg, err := tlsconfig.Client(tlsconfig.Options{
+			CAFile:             redisTLS.CACert,
+			CertFile:           redisTLS.Cert,
+			KeyFile:            redisTLS.Key,
+			InsecureSkipVerify: redisTLS.InsecureSkipVerify,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		redisOpts.TLSConfig = tlsCfg
+	}
+
+	return pkgredis.NewRedis(redisOpts)
+}
+
+// newClientTransportCredentials returns the client transport credentials for
+// the given TLS configuration. If it is nil, it returns insecure transport
+// credentials.
+func newClientTransportCredentials(tlsConfig *config.GRPCTLSClientConfig) (credentials.TransportCredentials, error) {
+	if tlsConfig == nil {
+		return rpc.NewInsecureCredentials(), nil
+	}
+
+	return rpc.NewClientCredentials(tlsConfig.CACert, tlsConfig.Cert, tlsConfig.Key)
 }

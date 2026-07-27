@@ -28,18 +28,14 @@ import (
 
 // Dfpath is the interface used for init project path.
 type Dfpath interface {
-	CacheDir() string
-	CacheDirMode() fs.FileMode
 	LogDir() string
 	PluginDir() string
 }
 
 // Dfpath provides init project path function.
 type dfpath struct {
-	cacheDir     string
-	cacheDirMode fs.FileMode
-	logDir       string
-	pluginDir    string
+	logDir    string
+	pluginDir string
 }
 
 // Cache of the dfpath.
@@ -51,20 +47,6 @@ var cache struct {
 
 // Option is a functional option for configuring the dfpath.
 type Option func(d *dfpath)
-
-// WithCacheDir set the cache directory.
-func WithCacheDir(dir string) Option {
-	return func(d *dfpath) {
-		d.cacheDir = dir
-	}
-}
-
-// WithCacheDirMode sets the cacheDir mode
-func WithCacheDirMode(mode fs.FileMode) Option {
-	return func(d *dfpath) {
-		d.cacheDirMode = mode
-	}
-}
 
 // WithLogDir set the log directory.
 func WithLogDir(dir string) Option {
@@ -84,10 +66,8 @@ func WithPluginDir(dir string) Option {
 func New(options ...Option) (Dfpath, error) {
 	cache.Do(func() {
 		d := &dfpath{
-			logDir:       DefaultLogDir,
-			pluginDir:    DefaultPluginDir,
-			cacheDir:     DefaultCacheDir,
-			cacheDirMode: DefaultCacheDirMode,
+			logDir:    DefaultLogDir,
+			pluginDir: DefaultPluginDir,
 		}
 
 		for _, opt := range options {
@@ -104,11 +84,6 @@ func New(options ...Option) (Dfpath, error) {
 			cache.err = multierror.Append(cache.err, err)
 		}
 
-		// Create cache directory.
-		if err := os.MkdirAll(d.cacheDir, d.cacheDirMode); err != nil {
-			cache.err = multierror.Append(cache.err, err)
-		}
-
 		cache.d = d
 	})
 
@@ -118,14 +93,6 @@ func New(options ...Option) (Dfpath, error) {
 
 	d := *cache.d
 	return &d, nil
-}
-
-func (d *dfpath) CacheDir() string {
-	return d.cacheDir
-}
-
-func (d *dfpath) CacheDirMode() fs.FileMode {
-	return d.cacheDirMode
 }
 
 func (d *dfpath) LogDir() string {

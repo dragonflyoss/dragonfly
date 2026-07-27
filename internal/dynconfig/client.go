@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-//go:generate mockgen -destination mocks/manager_client_mock.go -source manager_client.go -package mocks
+//go:generate mockgen -destination mocks/client_mock.go -source client.go -package mocks
 
 package dynconfig
 
-// managerClient is a client of manager.
-type ManagerClient interface {
+// Client is the client that fetches the latest dynamic configuration data
+// from a source, e.g. the manager or a local file.
+type Client interface {
 	Get() (any, error)
 }

@@ -54,7 +54,7 @@ const (
 	SeedPeerFailedTimeout = 30 * time.Minute
 
 	// SeedPeerRefreshInterval is the interval of refreshing seed peers.
-	SeedPeerRefreshInterval = 1 * time.Minute
+	SeedPeerRefreshInterval = 30 * time.Second
 )
 
 // SeedPeer is the interface used for seed peer.

@@ -27,10 +27,6 @@ server:
   # In linux, default value is /var/log/dragonfly.
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/logs.
   logDir: ''
-  # cacheDir is dynconfig cache directory.
-  # In linux, default value is /var/cache/dragonfly.
-  # In macos(just for testing), default value is /Users/$USER/.dragonfly/cache.
-  cacheDir: ''
   # pluginDir is the plugin directory.
   # In linux, default value is /usr/local/dragonfly/plugins.
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/plugins.
@@ -57,7 +53,7 @@ scheduler:
   # Retry scheduling limit times.
   retryLimit: 5
   # Retry scheduling interval.
-  retryInterval: 400ms
+  retryInterval: 1s
   # GC metadata configuration.
   gc:
     # pieceDownloadTimeout is the timeout of downloading piece.
@@ -76,24 +72,6 @@ scheduler:
     # then HostTTl will be reset.
     hostTTL: 1h
 
-# Database info used for server.
-database:
-  # Redis configuration.
-  redis:
-    # Redis addresses.
-    addrs:
-      - '__IP__:6379'
-    # Redis sentinel master name.
-    masterName: ''
-    # Redis username.
-    username: ''
-    # Redis password.
-    password: dragonfly
-    # Redis broker DB.
-    brokerDB: 1
-    # Redis backend DB.
-    backendDB: 2
-
 # Dynamic data configuration.
 dynConfig:
   # Dynamic config refresh interval.
@@ -105,25 +83,6 @@ host:
   idc: ''
   # location is the location of scheduler instance.
   location: ''
-
-# Manager configuration.
-manager:
-  # addr is manager access address.
-  addr: '__IP__:65003'
-  # schedulerClusterID cluster id to which scheduler instance belongs.
-  schedulerClusterID: 1
-  # keepAlive keep alive configuration.
-  keepAlive:
-    # KeepAlive interval.
-    interval: 5s
-# # GRPC client tls configuration.
-# tls:
-#   # CA certificate file path for mTLS.
-#   caCert: /etc/ssl/certs/ca.crt
-#   # Certificate file path for mTLS.
-#   cert: /etc/ssl/certs/client.crt
-#   # Key file path for mTLS.
-#   key: /etc/ssl/private/client.pem
 
 # Seed peer configuration.
 seedPeer:
@@ -139,14 +98,10 @@ seedPeer:
 # Machinery async job configuration,
 # see https://github.com/RichardKnop/machinery.
 job:
-  # Scheduler enable job service.
-  enable: true
-  # Number of workers in global queue.
-  globalWorkerNum: 500
-  # Number of workers in scheduler queue.
-  schedulerWorkerNum: 500
-  # Number of workers in local queue.
-  localWorkerNum: 1000
+  # Scheduler enable job service. Job requires redis and is used by the
+  # manager to submit preheat jobs, so it is disabled when the scheduler
+  # runs without a manager.
+  enable: false
 
 # Store task download information.
 storage:
