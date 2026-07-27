@@ -517,8 +517,6 @@ func (cfg *Config) Validate() error {
 		return errors.New("dynconfig requires parameter refreshInterval")
 	}
 
-	// If the manager address is not configured, the scheduler runs without
-	// a manager and skips the manager validation.
 	if cfg.Manager.Addr != "" {
 		if cfg.Manager.TLS != nil {
 			if cfg.Manager.TLS.CACert == "" {
