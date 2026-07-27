@@ -173,6 +173,13 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	// Initialize GC.
 	s.gc = gc.New(gc.WithLogger(logger.GCLogger))
 
+	// Initialize dynconfig.
+	dynconfig, err := config.NewDynconfig(s.managerClient, cfg)
+	if err != nil {
+		return nil, err
+	}
+	s.dynconfig = dynconfig
+
 	// Initialize seed peer client transport credentials.
 	seedPeerClientTransportCredentials := rpc.NewInsecureCredentials()
 	if cfg.SeedPeer.TLS != nil {
@@ -182,13 +189,6 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 			return nil, err
 		}
 	}
-
-	// Initialize dynconfig.
-	dynconfig, err := config.NewDynconfig(s.managerClient, cfg)
-	if err != nil {
-		return nil, err
-	}
-	s.dynconfig = dynconfig
 
 	// Initialize resource.
 	resource, err := standard.New(cfg, s.gc, seedPeerClientTransportCredentials)
