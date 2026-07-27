@@ -24,6 +24,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
+
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
@@ -54,6 +57,9 @@ func TestLocalDynconfig_New(t *testing.T) {
 				assert.NoError(err)
 				assert.FileExists(configPath)
 
+				_, err = d.GetApplications()
+				assert.EqualError(err, "application not found")
+
 				seedPeerConfig, err := d.GetSeedPeerClusterConfig()
 				assert.NoError(err)
 				assert.Equal(uint32(DefaultSeedPeerConcurrentUploadLimit), seedPeerConfig.LoadLimit)
@@ -83,6 +89,34 @@ func TestLocalDynconfig_New(t *testing.T) {
 			tc.expect(t, configPath, d, err)
 		})
 	}
+}
+
+func TestLocalDynconfig_GetApplications(t *testing.T) {
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	applications, err := d.GetApplications()
+	assert.NoError(err)
+	assert.EqualValues(applications, []*managerv2.Application{
+		{
+			Id:   1,
+			Name: "foo",
+			Url:  "example.com",
+			Bio:  "bar",
+			Priority: &managerv2.ApplicationPriority{
+				Value: commonv2.Priority_LEVEL1,
+				Urls: []*managerv2.URLPriority{
+					{
+						Regex: "blobs*",
+						Value: commonv2.Priority_LEVEL2,
+					},
+				},
+			},
+		},
+	})
 }
 
 func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
@@ -127,17 +161,6 @@ func TestLocalDynconfig_GetSchedulerClusterClientConfig(t *testing.T) {
 	assert.Equal(types.SchedulerClusterClientConfig{
 		LoadLimit: 100,
 	}, config)
-}
-
-func TestLocalDynconfig_GetWithoutManager(t *testing.T) {
-	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert := assert.New(t)
-	_, err = d.GetApplications()
-	assert.EqualError(err, "manager is not configured")
 }
 
 func TestLocalDynconfig_RefreshInterval(t *testing.T) {

@@ -37,6 +37,9 @@ type LocalDynconfigData struct {
 	// RefreshInterval is the interval for refreshing the local dynamic configuration.
 	RefreshInterval time.Duration `yaml:"refreshInterval" mapstructure:"refreshInterval"`
 
+	// Applications is the applications configuration.
+	Applications []*managerv2.Application `yaml:"applications" mapstructure:"applications"`
+
 	// SeedPeerClusterConfig is the seed peer cluster configuration.
 	SeedPeerClusterConfig types.SeedPeerClusterConfig `yaml:"seedPeerClusterConfig" mapstructure:"seedPeerClusterConfig"`
 
@@ -105,10 +108,18 @@ func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
 	return d, nil
 }
 
-// GetApplications returns the applications config from manager. It is not
-// supported when the manager is not configured.
+// GetApplications returns the applications config.
 func (d *localDynconfig) GetApplications() ([]*managerv2.Application, error) {
-	return nil, errors.New("manager is not configured")
+	data := d.data.Load()
+	if data == nil {
+		return nil, errors.New("invalid data")
+	}
+
+	if len(data.Applications) == 0 {
+		return nil, errors.New("application not found")
+	}
+
+	return data.Applications, nil
 }
 
 // GetSeedPeerClusterConfig returns the seed peer cluster config.

@@ -1,4 +1,14 @@
 refreshInterval: 5s
+applications:
+  - id: 1
+    name: foo
+    url: example.com
+    bio: bar
+    priority:
+      value: 1
+      urls:
+        - regex: blobs*
+          value: 2
 seedPeerClusterConfig:
   loadLimit: 2000
 schedulerClusterConfig:
