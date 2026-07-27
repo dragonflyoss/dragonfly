@@ -30,6 +30,12 @@ import (
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
+var mockLocalDynconfig = &Config{
+	DynConfig: DynConfig{
+		RefreshInterval: 10 * time.Second,
+	},
+}
+
 func TestLocalDynconfig_New(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -72,12 +78,6 @@ func TestLocalDynconfig_New(t *testing.T) {
 				clientConfig, err := d.GetSchedulerClusterClientConfig()
 				assert.NoError(err)
 				assert.Equal(uint32(DefaultPeerConcurrentUploadLimit), clientConfig.LoadLimit)
-
-				ld, ok := d.(*localDynconfig)
-				if !ok {
-					t.Fatal("invalid local dynconfig type")
-				}
-				assert.Equal(DefaultLocalDynconfigRefreshInterval, ld.refreshInterval())
 			},
 		},
 	}
@@ -85,14 +85,14 @@ func TestLocalDynconfig_New(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			configPath := tc.configPath(t)
-			d, err := newLocalDynconfig(configPath)
+			d, err := newLocalDynconfig(configPath, mockLocalDynconfig)
 			tc.expect(t, configPath, d, err)
 		})
 	}
 }
 
 func TestLocalDynconfig_GetApplications(t *testing.T) {
-	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestLocalDynconfig_GetApplications(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
-	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
-	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
 }
 
 func TestLocalDynconfig_GetSchedulerClusterClientConfig(t *testing.T) {
-	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"), mockLocalDynconfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,46 +163,27 @@ func TestLocalDynconfig_GetSchedulerClusterClientConfig(t *testing.T) {
 	}, config)
 }
 
-func TestLocalDynconfig_RefreshInterval(t *testing.T) {
+func TestLocalDynconfig_Refresh(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "dynconfig.yaml")
 	if err := os.WriteFile(configPath, []byte("schedulerClusterConfig:\n  candidateParentLimit: 5\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	d, err := newLocalDynconfig(configPath)
+	d, err := newLocalDynconfig(configPath, &Config{
+		DynConfig: DynConfig{
+			RefreshInterval: 100 * time.Millisecond,
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert := assert.New(t)
-	ld, ok := d.(*localDynconfig)
-	if !ok {
-		t.Fatal("invalid local dynconfig type")
-	}
-	assert.Equal(DefaultLocalDynconfigRefreshInterval, ld.refreshInterval())
+	config, err := d.GetSchedulerClusterConfig()
+	assert.NoError(err)
+	assert.Equal(uint32(5), config.CandidateParentLimit)
 
-	if err := os.WriteFile(configPath, []byte("refreshInterval: 10s\nschedulerClusterConfig:\n  candidateParentLimit: 5\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	assert.NoError(ld.load())
-	assert.Equal(10*time.Second, ld.refreshInterval())
-}
-
-func TestLocalDynconfig_Serve(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), "dynconfig.yaml")
-	if err := os.WriteFile(configPath, []byte("refreshInterval: 100ms\nschedulerClusterConfig:\n  candidateParentLimit: 5\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	d, err := newLocalDynconfig(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert := assert.New(t)
-	assert.NoError(d.Serve())
-
-	if err := os.WriteFile(configPath, []byte("refreshInterval: 100ms\nschedulerClusterConfig:\n  candidateParentLimit: 10\n"), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte("schedulerClusterConfig:\n  candidateParentLimit: 10\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -210,6 +191,4 @@ func TestLocalDynconfig_Serve(t *testing.T) {
 		config, err := d.GetSchedulerClusterConfig()
 		return err == nil && config.CandidateParentLimit == 10
 	}, 3*time.Second, 100*time.Millisecond)
-
-	assert.NoError(d.Stop())
 }

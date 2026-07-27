@@ -100,31 +100,3 @@ func (mr *MockDynconfigInterfaceMockRecorder) GetSeedPeerClusterConfig() *gomock
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedPeerClusterConfig", reflect.TypeOf((*MockDynconfigInterface)(nil).GetSeedPeerClusterConfig))
 }
-
-// Serve mocks base method.
-func (m *MockDynconfigInterface) Serve() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Serve")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Serve indicates an expected call of Serve.
-func (mr *MockDynconfigInterfaceMockRecorder) Serve() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockDynconfigInterface)(nil).Serve))
-}
-
-// Stop mocks base method.
-func (m *MockDynconfigInterface) Stop() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stop")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Stop indicates an expected call of Stop.
-func (mr *MockDynconfigInterfaceMockRecorder) Stop() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockDynconfigInterface)(nil).Stop))
-}

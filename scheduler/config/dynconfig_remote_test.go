@@ -18,8 +18,6 @@ package config
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -29,7 +27,6 @@ import (
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
-	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/pkg/rpc/manager/client/mocks"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
@@ -40,7 +37,6 @@ var (
 )
 
 func TestRemoteDynconfig_Get(t *testing.T) {
-	mockCacheDir := t.TempDir()
 	mockConfig := &Config{
 		DynConfig: DynConfig{},
 		Server: ServerConfig{
@@ -52,24 +48,17 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 		},
 	}
 
-	mockCachePath := filepath.Join(mockCacheDir, cacheFileName)
 	tests := []struct {
 		name            string
 		refreshInterval time.Duration
 		sleep           func()
-		cleanFileCache  func(t *testing.T)
 		mock            func(m *mocks.MockV2MockRecorder)
 		expect          func(t *testing.T, data *DynconfigData, err error)
 	}{
 		{
 			name:            "get dynconfig success",
 			refreshInterval: 10 * time.Second,
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(mockCachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
-			sleep: func() {},
+			sleep:           func() {},
 			mock: func(m *mocks.MockV2MockRecorder) {
 				m.GetScheduler(gomock.Any(), gomock.Any()).Return(&managerv2.Scheduler{
 					Id:       1,
@@ -181,11 +170,6 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 		{
 			name:            "get scheduler error",
 			refreshInterval: 10 * time.Millisecond,
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(mockCachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
 			sleep: func() {
 				time.Sleep(100 * time.Millisecond)
 			},
@@ -303,11 +287,6 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 		{
 			name:            "list application error",
 			refreshInterval: 10 * time.Millisecond,
-			cleanFileCache: func(t *testing.T) {
-				if err := os.Remove(mockCachePath); err != nil {
-					t.Fatal(err)
-				}
-			},
 			sleep: func() {
 				time.Sleep(100 * time.Millisecond)
 			},
@@ -464,7 +443,7 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 			tc.mock(mockManagerClient.EXPECT())
 
 			mockConfig.DynConfig.RefreshInterval = tc.refreshInterval
-			d, err := NewDynconfig(mockManagerClient, mockCacheDir, mockConfig, rpc.NewInsecureCredentials())
+			d, err := NewDynconfig(mockManagerClient, mockConfig)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -477,7 +456,6 @@ func TestRemoteDynconfig_Get(t *testing.T) {
 			tc.sleep()
 			data, err := rd.Get()
 			tc.expect(t, data, err)
-			tc.cleanFileCache(t)
 		})
 	}
 }

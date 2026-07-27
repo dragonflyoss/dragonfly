@@ -30,13 +30,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/cache"
 )
 
-type SourceType string
-
-const (
-	// CacheDirName is dir name of dynconfig cache.
-	CacheDirName = "dynconfig"
-)
-
 const (
 	// defaultCacheKey represents cache key of dynconfig.
 	defaultCacheKey = "dynconfig"
@@ -45,29 +38,24 @@ const (
 type Dynconfig[T any] interface {
 	// Get raw dynamic config.
 	Get() (*T, error)
-
-	// Refresh refreshes dynconfig in cache.
-	Refresh() error
 }
 
 type dynconfig[T any] struct {
-	cache     cache.Cache
-	client    ManagerClient
-	cachePath string
-	data      *atomic.Pointer[T]
-	expire    time.Duration
-	mu        *sync.Mutex
+	cache  cache.Cache
+	client Client
+	data   *atomic.Pointer[T]
+	expire time.Duration
+	mu     *sync.Mutex
 }
 
 // New returns a new dynconfig instance.
-func New[T any](client ManagerClient, cachePath string, expire time.Duration) (Dynconfig[T], error) {
+func New[T any](client Client, expire time.Duration) (Dynconfig[T], error) {
 	d := &dynconfig[T]{
-		cache:     cache.New(expire, cache.NoCleanup),
-		cachePath: cachePath,
-		data:      atomic.NewPointer[T](nil),
-		expire:    expire,
-		client:    client,
-		mu:        &sync.Mutex{},
+		cache:  cache.New(expire, cache.NoCleanup),
+		data:   atomic.NewPointer[T](nil),
+		expire: expire,
+		client: client,
+		mu:     &sync.Mutex{},
 	}
 
 	if err := d.load(); err != nil {
@@ -75,11 +63,6 @@ func New[T any](client ManagerClient, cachePath string, expire time.Duration) (D
 	}
 
 	return d, nil
-}
-
-// Refresh refreshes dynconfig in cache.
-func (d *dynconfig[T]) Refresh() error {
-	return d.load()
 }
 
 // Get dynamic config.
@@ -106,7 +89,7 @@ func (d *dynconfig[T]) Get() (*T, error) {
 	return nil, errors.New("cache not found")
 }
 
-// Load dynamic config from manager.
+// Load dynamic config from the client.
 func (d *dynconfig[T]) load() error {
 	// If another load is in progress, return directly.
 	if !d.mu.TryLock() {
@@ -126,10 +109,6 @@ func (d *dynconfig[T]) load() error {
 	d.data.Store(&data)
 
 	d.cache.Set(defaultCacheKey, rawData, d.expire)
-	if err := d.cache.SaveFile(d.cachePath); err != nil {
-		return err
-	}
-
 	return nil
 }
 

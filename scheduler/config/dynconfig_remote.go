@@ -20,12 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
-	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
@@ -34,11 +30,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/types"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/pkg/slices"
-)
-
-var (
-	// cacheFileName is the cache file name of the remote dynamic configuration.
-	cacheFileName = "scheduler"
 )
 
 // DynconfigData is the dynamic configuration fetched from the manager.
@@ -54,36 +45,19 @@ type DynconfigData struct {
 // configuration from the manager.
 type remoteDynconfig struct {
 	dc.Dynconfig[DynconfigData]
-	done                 chan struct{}
-	cachePath            string
-	transportCredentials credentials.TransportCredentials
-	mu                   *sync.Mutex
 }
 
 // newRemoteDynconfig returns a new remote dynconfig instance.
-func newRemoteDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
-	cachePath := filepath.Join(cacheDir, cacheFileName)
-	d := &remoteDynconfig{
-		done:                 make(chan struct{}),
-		cachePath:            cachePath,
-		transportCredentials: transportCredentials,
-		mu:                   &sync.Mutex{},
+func newRemoteDynconfig(rawManagerClient managerclient.V2, cfg *Config) (DynconfigInterface, error) {
+	client, err := dc.New[DynconfigData](
+		newManagerClient(rawManagerClient, cfg),
+		cfg.DynConfig.RefreshInterval,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	if rawManagerClient != nil {
-		client, err := dc.New[DynconfigData](
-			newManagerClient(rawManagerClient, cfg),
-			cachePath,
-			cfg.DynConfig.RefreshInterval,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		d.Dynconfig = client
-	}
-
-	return d, nil
+	return &remoteDynconfig{Dynconfig: client}, nil
 }
 
 // GetApplications returns the applications config from manager.
@@ -105,10 +79,6 @@ func (d *remoteDynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfi
 	seedPeers, err := d.getSeedPeers()
 	if err != nil {
 		return types.SeedPeerClusterConfig{}, err
-	}
-
-	if len(seedPeers) == 0 {
-		return types.SeedPeerClusterConfig{}, errors.New("seed peer not found ")
 	}
 
 	var config types.SeedPeerClusterConfig
@@ -149,21 +119,6 @@ func (d *remoteDynconfig) GetSchedulerClusterClientConfig() (types.SchedulerClus
 	return config, nil
 }
 
-// Serve the dynconfig listening service.
-func (d *remoteDynconfig) Serve() error {
-	return nil
-}
-
-// Stop the dynconfig listening service.
-func (d *remoteDynconfig) Stop() error {
-	close(d.done)
-	if err := os.Remove(d.cachePath); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // getScheduler returns the scheduler config from manager.
 func (d *remoteDynconfig) getScheduler() (*managerv2.Scheduler, error) {
 	data, err := d.Get()
@@ -186,7 +141,7 @@ func (d *remoteDynconfig) getSeedPeers() ([]*managerv2.SeedPeer, error) {
 	}
 
 	if len(scheduler.SeedPeers) == 0 {
-		return nil, errors.New("seed peer not found ")
+		return nil, errors.New("seed peer not found")
 	}
 
 	return scheduler.SeedPeers, nil
@@ -206,20 +161,21 @@ func (d *remoteDynconfig) getSchedulerCluster() (*managerv2.SchedulerCluster, er
 	return scheduler.SchedulerCluster, nil
 }
 
-// Manager client for dynconfig.
+// managerClient is the client that fetches the dynamic configuration from the manager.
 type managerClient struct {
 	managerClient managerclient.V2
 	config        *Config
 }
 
-// New the manager client used by dynconfig.
-func newManagerClient(client managerclient.V2, cfg *Config) dc.ManagerClient {
+// newManagerClient returns the manager client used by dynconfig.
+func newManagerClient(client managerclient.V2, cfg *Config) dc.Client {
 	return &managerClient{
 		managerClient: client,
 		config:        cfg,
 	}
 }
 
+// Get returns the dynamic configuration fetched from the manager.
 func (mc *managerClient) Get() (any, error) {
 	getSchedulerResp, err := mc.managerClient.GetScheduler(context.Background(), &managerv2.GetSchedulerRequest{
 		SourceType:         managerv2.SourceType_SCHEDULER_SOURCE,

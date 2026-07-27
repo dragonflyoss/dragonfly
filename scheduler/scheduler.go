@@ -20,7 +20,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -31,7 +30,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
-	"d7y.io/dragonfly/v2/internal/dynconfig"
 	managertypes "d7y.io/dragonfly/v2/manager/types"
 	"d7y.io/dragonfly/v2/pkg/dfpath"
 	"d7y.io/dragonfly/v2/pkg/gc"
@@ -187,7 +185,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 	}
 
 	// Initialize dynconfig.
-	dynconfig, err := config.NewDynconfig(s.managerClient, filepath.Join(d.CacheDir(), dynconfig.CacheDirName), cfg, seedPeerClientTransportCredentials)
+	dynconfig, err := config.NewDynconfig(s.managerClient, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -271,15 +269,6 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 
 // Serve starts the scheduler server.
 func (s *Server) Serve() error {
-	// Serve dynconfig.
-	go func() {
-		if err := s.dynconfig.Serve(); err != nil {
-			logger.Fatalf("dynconfig start failed %s", err.Error())
-		}
-
-		logger.Info("dynconfig start successfully")
-	}()
-
 	// Serve GC.
 	s.gc.Start(context.Background())
 	logger.Info("gc start successfully")
@@ -339,13 +328,6 @@ func (s *Server) Serve() error {
 
 // Stop stops the scheduler server.
 func (s *Server) Stop() {
-	// Stop dynconfig.
-	if err := s.dynconfig.Stop(); err != nil {
-		logger.Errorf("stop dynconfig failed %s", err.Error())
-	} else {
-		logger.Info("stop dynconfig closed")
-	}
-
 	// Stop resource.
 	s.resource.Stop()
 	logger.Info("stop resource closed")

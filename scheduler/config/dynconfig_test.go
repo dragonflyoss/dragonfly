@@ -27,7 +27,6 @@ import (
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
-	"d7y.io/dragonfly/v2/pkg/rpc"
 	"d7y.io/dragonfly/v2/pkg/rpc/manager/client/mocks"
 )
 
@@ -36,7 +35,11 @@ func TestNewDynconfig(t *testing.T) {
 	viper.Set("dynconfig", filepath.Join(t.TempDir(), "dynconfig.yaml"))
 	defer viper.Set("dynconfig", "")
 
-	d, err := NewDynconfig(nil, t.TempDir(), &Config{}, rpc.NewInsecureCredentials())
+	d, err := NewDynconfig(nil, &Config{
+		DynConfig: DynConfig{
+			RefreshInterval: 10 * time.Second,
+		},
+	})
 	assert.NoError(err)
 	_, ok := d.(*localDynconfig)
 	assert.True(ok)
@@ -47,7 +50,7 @@ func TestNewDynconfig(t *testing.T) {
 	mockManagerClient.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&managerv2.Scheduler{}, nil).Times(1)
 	mockManagerClient.EXPECT().ListApplications(gomock.Any(), gomock.Any()).Return(&managerv2.ListApplicationsResponse{}, nil).Times(1)
 
-	d, err = NewDynconfig(mockManagerClient, t.TempDir(), &Config{
+	d, err = NewDynconfig(mockManagerClient, &Config{
 		Server: ServerConfig{
 			Host: "localhost",
 		},
@@ -58,7 +61,7 @@ func TestNewDynconfig(t *testing.T) {
 			Addr:               "localhost",
 			SchedulerClusterID: 1,
 		},
-	}, rpc.NewInsecureCredentials())
+	})
 	assert.NoError(err)
 
 	_, ok = d.(*remoteDynconfig)

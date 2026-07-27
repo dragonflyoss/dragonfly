@@ -20,7 +20,6 @@ package config
 
 import (
 	"github.com/spf13/viper"
-	"google.golang.org/grpc/credentials"
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
@@ -41,22 +40,16 @@ type DynconfigInterface interface {
 
 	// GetSchedulerClusterClientConfig returns the client config.
 	GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error)
-
-	// Serve the dynconfig listening service.
-	Serve() error
-
-	// Stop the dynconfig listening service.
-	Stop() error
 }
 
 // NewDynconfig returns a new dynconfig instance. If the manager address is not configured, it returns
 // the local dynconfig, which loads the dynamic configuration from the local file specified by the
 // dynconfig flag. Otherwise, it returns the remote dynconfig, which fetches the dynamic configuration
 // from the manager.
-func NewDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
+func NewDynconfig(rawManagerClient managerclient.V2, cfg *Config) (DynconfigInterface, error) {
 	if cfg.Manager.Addr == "" {
-		return newLocalDynconfig(viper.GetString("dynconfig"))
+		return newLocalDynconfig(viper.GetString("dynconfig"), cfg)
 	}
 
-	return newRemoteDynconfig(rawManagerClient, cacheDir, cfg, transportCredentials)
+	return newRemoteDynconfig(rawManagerClient, cfg)
 }

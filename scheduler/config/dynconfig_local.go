@@ -20,23 +20,19 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/viper"
-	"go.uber.org/atomic"
 	"gopkg.in/yaml.v3"
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	dc "d7y.io/dragonfly/v2/internal/dynconfig"
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
 // LocalDynconfigData is the dynamic configuration loaded from the local file.
 type LocalDynconfigData struct {
-	// RefreshInterval is the interval for refreshing the local dynamic configuration.
-	RefreshInterval time.Duration `yaml:"refreshInterval" mapstructure:"refreshInterval"`
-
 	// Applications is the applications configuration.
 	Applications []*managerv2.Application `yaml:"applications" mapstructure:"applications"`
 
@@ -53,7 +49,6 @@ type LocalDynconfigData struct {
 // NewLocalDynconfigData returns the default local dynamic configuration data.
 func NewLocalDynconfigData() *LocalDynconfigData {
 	return &LocalDynconfigData{
-		RefreshInterval: DefaultLocalDynconfigRefreshInterval,
 		SeedPeerClusterConfig: types.SeedPeerClusterConfig{
 			LoadLimit: DefaultSeedPeerConcurrentUploadLimit,
 		},
@@ -68,16 +63,14 @@ func NewLocalDynconfigData() *LocalDynconfigData {
 }
 
 // localDynconfig is the local dynconfig, which loads the dynamic configuration
-// from the local file instead of the manager. It is used when the manager
+// from the local file instead of the manager. It is used when the manager addr
 // is not configured.
 type localDynconfig struct {
-	configPath string
-	data       *atomic.Pointer[LocalDynconfigData]
-	done       chan struct{}
+	dc.Dynconfig[LocalDynconfigData]
 }
 
 // newLocalDynconfig returns a new local dynconfig instance.
-func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
+func newLocalDynconfig(configPath string, cfg *Config) (DynconfigInterface, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		content, err := yaml.Marshal(NewLocalDynconfigData())
 		if err != nil {
@@ -95,24 +88,22 @@ func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
 		logger.Infof("generate local dynconfig %s with default values", configPath)
 	}
 
-	d := &localDynconfig{
-		configPath: configPath,
-		data:       atomic.NewPointer[LocalDynconfigData](nil),
-		done:       make(chan struct{}),
-	}
-
-	if err := d.load(); err != nil {
+	client, err := dc.New[LocalDynconfigData](
+		&localFileClient{configPath: configPath},
+		cfg.DynConfig.RefreshInterval,
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	return d, nil
+	return &localDynconfig{Dynconfig: client}, nil
 }
 
 // GetApplications returns the applications config.
 func (d *localDynconfig) GetApplications() ([]*managerv2.Application, error) {
-	data := d.data.Load()
-	if data == nil {
-		return nil, errors.New("invalid data")
+	data, err := d.Get()
+	if err != nil {
+		return nil, err
 	}
 
 	if len(data.Applications) == 0 {
@@ -124,9 +115,9 @@ func (d *localDynconfig) GetApplications() ([]*managerv2.Application, error) {
 
 // GetSeedPeerClusterConfig returns the seed peer cluster config.
 func (d *localDynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig, error) {
-	data := d.data.Load()
-	if data == nil {
-		return types.SeedPeerClusterConfig{}, errors.New("invalid data")
+	data, err := d.Get()
+	if err != nil {
+		return types.SeedPeerClusterConfig{}, err
 	}
 
 	return data.SeedPeerClusterConfig, nil
@@ -134,9 +125,9 @@ func (d *localDynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig
 
 // GetSchedulerClusterConfig returns the scheduler cluster config.
 func (d *localDynconfig) GetSchedulerClusterConfig() (types.SchedulerClusterConfig, error) {
-	data := d.data.Load()
-	if data == nil {
-		return types.SchedulerClusterConfig{}, errors.New("invalid data")
+	data, err := d.Get()
+	if err != nil {
+		return types.SchedulerClusterConfig{}, err
 	}
 
 	return data.SchedulerClusterConfig, nil
@@ -144,66 +135,34 @@ func (d *localDynconfig) GetSchedulerClusterConfig() (types.SchedulerClusterConf
 
 // GetSchedulerClusterClientConfig returns the client config.
 func (d *localDynconfig) GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error) {
-	data := d.data.Load()
-	if data == nil {
-		return types.SchedulerClusterClientConfig{}, errors.New("invalid data")
+	data, err := d.Get()
+	if err != nil {
+		return types.SchedulerClusterClientConfig{}, err
 	}
 
 	return data.SchedulerClusterClientConfig, nil
 }
 
-// Serve the dynconfig listening service.
-func (d *localDynconfig) Serve() error {
-	go d.refresh()
-	return nil
+// localFileClient is the client that loads the dynamic configuration from the
+// local file. The file is reread on each load, so updating the mounted file
+// (e.g. a Kubernetes ConfigMap) propagates the new configuration within one
+// refresh interval.
+type localFileClient struct {
+	configPath string
 }
 
-// Stop the dynconfig listening service.
-func (d *localDynconfig) Stop() error {
-	close(d.done)
-	return nil
-}
-
-// refresh reloads the local dynamic configuration periodically.
-func (d *localDynconfig) refresh() {
-	for {
-		select {
-		case <-time.After(d.refreshInterval()):
-			if err := d.load(); err != nil {
-				logger.Warnf("refresh local dynconfig %s failed: %s", d.configPath, err.Error())
-			}
-		case <-d.done:
-			return
-		}
-	}
-}
-
-// refreshInterval returns the interval for refreshing the local dynamic
-// configuration.
-func (d *localDynconfig) refreshInterval() time.Duration {
-	if data := d.data.Load(); data != nil && data.RefreshInterval > 0 {
-		return data.RefreshInterval
-	}
-
-	logger.Warnf("invalid refresh interval, use default value %s", DefaultLocalDynconfigRefreshInterval)
-	return DefaultLocalDynconfigRefreshInterval
-}
-
-// load loads the dynamic configuration from the local file. The local file is
-// reread on each load, so updating the mounted file (e.g. a Kubernetes
-// ConfigMap) propagates the new configuration within one refresh interval.
-func (d *localDynconfig) load() error {
+// Get returns the dynamic configuration loaded from the local file.
+func (c *localFileClient) Get() (any, error) {
 	v := viper.New()
-	v.SetConfigFile(d.configPath)
+	v.SetConfigFile(c.configPath)
 	if err := v.ReadInConfig(); err != nil {
-		return err
+		return nil, err
 	}
 
 	var data LocalDynconfigData
 	if err := v.Unmarshal(&data); err != nil {
-		return err
+		return nil, err
 	}
-	d.data.Store(&data)
 
-	return nil
+	return data, nil
 }
