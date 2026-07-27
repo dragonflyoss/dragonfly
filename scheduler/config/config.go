@@ -91,9 +91,6 @@ type ServerConfig struct {
 	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
 	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
 
-	// Server dynamic config cache directory.
-	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
-
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`
 
@@ -203,8 +200,9 @@ type HostConfig struct {
 }
 
 type ManagerConfig struct {
-	// Addr is manager address.
-	Addr string `yaml:"addr" mapstructure:"addr"`
+	// Addr is manager address. If it is nil, the scheduler runs without a
+	// manager, and the dynamic configuration is loaded from the local file.
+	Addr *string `yaml:"addr" mapstructure:"addr"`
 
 	// TLS client configuration.
 	TLS *GRPCTLSClientConfig `yaml:"tls" mapstructure:"tls"`
@@ -517,7 +515,11 @@ func (cfg *Config) Validate() error {
 		return errors.New("dynconfig requires parameter refreshInterval")
 	}
 
-	if cfg.Manager.Addr != "" {
+	if cfg.Manager.Addr != nil {
+		if *cfg.Manager.Addr == "" {
+			return errors.New("manager requires parameter addr")
+		}
+
 		if cfg.Manager.TLS != nil {
 			if cfg.Manager.TLS.CACert == "" {
 				return errors.New("manager tls requires parameter caCert")

@@ -35,10 +35,6 @@ server:
   # In linux, default value is /var/log/dragonfly.
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/logs.
   logDir: ''
-  # cacheDir is dynconfig cache directory.
-  # In linux, default value is /var/cache/dragonfly.
-  # In macos(just for testing), default value is /Users/$USER/.dragonfly/cache.
-  cacheDir: ''
   # pluginDir is the plugin directory.
   # In linux, default value is /usr/local/dragonfly/plugins.
   # In macos(just for testing), default value is /Users/$USER/.dragonfly/plugins.

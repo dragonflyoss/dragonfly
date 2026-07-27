@@ -42,12 +42,12 @@ type DynconfigInterface interface {
 	GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error)
 }
 
-// NewDynconfig returns a new dynconfig instance. If the manager address is not configured, it returns
-// the local dynconfig, which loads the dynamic configuration from the local file specified by the
-// dynconfig flag. Otherwise, it returns the remote dynconfig, which fetches the dynamic configuration
-// from the manager.
+// NewDynconfig returns a new dynconfig instance. If the manager addr is nil, it returns the local
+// dynconfig, which loads the dynamic configuration from the local file specified by the dynconfig
+// flag. Otherwise, it returns the remote dynconfig, which fetches the dynamic configuration from
+// the manager.
 func NewDynconfig(rawManagerClient managerclient.V2, cfg *Config) (DynconfigInterface, error) {
-	if cfg.Manager.Addr == "" {
+	if cfg.Manager.Addr == nil {
 		return newLocalDynconfig(viper.GetString("dynconfig"), cfg)
 	}
 

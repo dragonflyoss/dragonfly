@@ -93,9 +93,9 @@ type Server struct {
 func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	s := &Server{config: cfg}
 
-	// Initialize manager client when the manager address is configured. If it
-	// is not configured, the scheduler runs without a manager.
-	if cfg.Manager.Addr != "" {
+	// Initialize manager client when the manager addr is configured. If it
+	// is nil, the scheduler runs without a manager.
+	if cfg.Manager.Addr != nil {
 		// Initialize dial options of manager grpc client.
 		managerDialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler())}
 		if cfg.Manager.TLS != nil {
@@ -111,7 +111,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath) (*Server, err
 		}
 
 		// Initialize manager client.
-		managerClient, err := managerclient.GetV2ByAddr(ctx, cfg.Manager.Addr, managerDialOptions...)
+		managerClient, err := managerclient.GetV2ByAddr(ctx, *cfg.Manager.Addr, managerDialOptions...)
 		if err != nil {
 			return nil, err
 		}

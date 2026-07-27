@@ -10,7 +10,6 @@
 package mocks
 
 import (
-	fs "io/fs"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -38,34 +37,6 @@ func NewMockDfpath(ctrl *gomock.Controller) *MockDfpath {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDfpath) EXPECT() *MockDfpathMockRecorder {
 	return m.recorder
-}
-
-// CacheDir mocks base method.
-func (m *MockDfpath) CacheDir() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CacheDir")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// CacheDir indicates an expected call of CacheDir.
-func (mr *MockDfpathMockRecorder) CacheDir() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheDir", reflect.TypeOf((*MockDfpath)(nil).CacheDir))
-}
-
-// CacheDirMode mocks base method.
-func (m *MockDfpath) CacheDirMode() fs.FileMode {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CacheDirMode")
-	ret0, _ := ret[0].(fs.FileMode)
-	return ret0
-}
-
-// CacheDirMode indicates an expected call of CacheDirMode.
-func (mr *MockDfpathMockRecorder) CacheDirMode() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheDirMode", reflect.TypeOf((*MockDfpath)(nil).CacheDirMode))
 }
 
 // LogDir mocks base method.

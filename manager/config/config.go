@@ -59,9 +59,6 @@ type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
 
-	// Server dynamic config cache directory.
-	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
-
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`
 

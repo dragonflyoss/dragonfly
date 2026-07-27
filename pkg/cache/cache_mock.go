@@ -10,7 +10,6 @@
 package cache
 
 import (
-	io "io"
 	reflect "reflect"
 	time "time"
 
@@ -164,34 +163,6 @@ func (mr *MockCacheMockRecorder) Keys() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Keys", reflect.TypeOf((*MockCache)(nil).Keys))
 }
 
-// Load mocks base method.
-func (m *MockCache) Load(r io.Reader) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Load", r)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Load indicates an expected call of Load.
-func (mr *MockCacheMockRecorder) Load(r any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockCache)(nil).Load), r)
-}
-
-// LoadFile mocks base method.
-func (m *MockCache) LoadFile(fname string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadFile", fname)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// LoadFile indicates an expected call of LoadFile.
-func (mr *MockCacheMockRecorder) LoadFile(fname any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadFile", reflect.TypeOf((*MockCache)(nil).LoadFile), fname)
-}
-
 // OnEvicted mocks base method.
 func (m *MockCache) OnEvicted(f func(string, any)) {
 	m.ctrl.T.Helper()
@@ -202,34 +173,6 @@ func (m *MockCache) OnEvicted(f func(string, any)) {
 func (mr *MockCacheMockRecorder) OnEvicted(f any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnEvicted", reflect.TypeOf((*MockCache)(nil).OnEvicted), f)
-}
-
-// Save mocks base method.
-func (m *MockCache) Save(w io.Writer) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", w)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Save indicates an expected call of Save.
-func (mr *MockCacheMockRecorder) Save(w any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockCache)(nil).Save), w)
-}
-
-// SaveFile mocks base method.
-func (m *MockCache) SaveFile(fname string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveFile", fname)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveFile indicates an expected call of SaveFile.
-func (mr *MockCacheMockRecorder) SaveFile(fname any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFile", reflect.TypeOf((*MockCache)(nil).SaveFile), fname)
 }
 
 // Scan mocks base method.

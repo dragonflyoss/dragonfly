@@ -37,13 +37,14 @@ var (
 )
 
 func TestRemoteDynconfig_Get(t *testing.T) {
+	mockManagerAddr := "localhost"
 	mockConfig := &Config{
 		DynConfig: DynConfig{},
 		Server: ServerConfig{
 			Host: "localhost",
 		},
 		Manager: ManagerConfig{
-			Addr:               "localhost",
+			Addr:               &mockManagerAddr,
 			SchedulerClusterID: 1,
 		},
 	}

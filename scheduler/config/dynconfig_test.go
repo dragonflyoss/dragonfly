@@ -50,6 +50,7 @@ func TestNewDynconfig(t *testing.T) {
 	mockManagerClient.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&managerv2.Scheduler{}, nil).Times(1)
 	mockManagerClient.EXPECT().ListApplications(gomock.Any(), gomock.Any()).Return(&managerv2.ListApplicationsResponse{}, nil).Times(1)
 
+	mockManagerAddr := "localhost"
 	d, err = NewDynconfig(mockManagerClient, &Config{
 		Server: ServerConfig{
 			Host: "localhost",
@@ -58,7 +59,7 @@ func TestNewDynconfig(t *testing.T) {
 			RefreshInterval: 10 * time.Second,
 		},
 		Manager: ManagerConfig{
-			Addr:               "localhost",
+			Addr:               &mockManagerAddr,
 			SchedulerClusterID: 1,
 		},
 	})
