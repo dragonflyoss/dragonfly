@@ -26,6 +26,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	managerserver "d7y.io/dragonfly/v2/pkg/rpc/manager/server"
 )
 
@@ -59,6 +60,8 @@ func New(
 		searcher: searcher,
 	}
 
+	// Provide JWT key from config to manager server via auth package.
+	auth.SetServerKey("manager", cfg.Auth.JWT.Key)
 	return s, managerserver.New(
 		newManagerServerV1(s.config, database, s.cache, s.searcher),
 		newManagerServerV2(s.config, database, s.cache, s.searcher),
