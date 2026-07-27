@@ -30,33 +30,49 @@ import (
 func TestLocalDynconfig_New(t *testing.T) {
 	tests := []struct {
 		name       string
-		configPath string
-		expect     func(t *testing.T, d DynconfigInterface, err error)
+		configPath func(t *testing.T) string
+		expect     func(t *testing.T, configPath string, d DynconfigInterface, err error)
 	}{
 		{
-			name:       "new local dynconfig success",
-			configPath: filepath.Join("testdata", "dynconfig.yaml"),
-			expect: func(t *testing.T, d DynconfigInterface, err error) {
+			name: "new local dynconfig success",
+			configPath: func(t *testing.T) string {
+				return filepath.Join("testdata", "dynconfig.yaml")
+			},
+			expect: func(t *testing.T, configPath string, d DynconfigInterface, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.NotNil(d)
 			},
 		},
 		{
-			name:       "local dynconfig file not found",
-			configPath: filepath.Join("testdata", "foo.yaml"),
-			expect: func(t *testing.T, d DynconfigInterface, err error) {
+			name: "generate local dynconfig with default values when file does not exist",
+			configPath: func(t *testing.T) string {
+				return filepath.Join(t.TempDir(), "dynconfig.yaml")
+			},
+			expect: func(t *testing.T, configPath string, d DynconfigInterface, err error) {
 				assert := assert.New(t)
-				assert.Error(err)
-				assert.Nil(d)
+				assert.NoError(err)
+				assert.FileExists(configPath)
+
+				config, err := d.GetSchedulerClusterConfig()
+				assert.NoError(err)
+				assert.Equal(uint32(DefaultSchedulerCandidateParentLimit), config.CandidateParentLimit)
+				assert.Equal(uint32(DefaultSchedulerFilterParentLimit), config.FilterParentLimit)
+
+				ld, ok := d.(*localDynconfig)
+				if !ok {
+					t.Fatal("invalid local dynconfig type")
+				}
+				assert.Equal(DefaultLocalDynconfigRefreshInterval, ld.refreshInterval())
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := newLocalDynconfig(tc.configPath)
-			tc.expect(t, d, err)
+			configPath := tc.configPath(t)
+			d, err := newLocalDynconfig(configPath)
+			tc.expect(t, configPath, d, err)
 		})
 	}
 }
@@ -107,7 +123,7 @@ func TestLocalDynconfig_GetWithoutManager(t *testing.T) {
 }
 
 func TestLocalDynconfig_RefreshInterval(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), localDynconfigFileName)
+	configPath := filepath.Join(t.TempDir(), "dynconfig.yaml")
 	if err := os.WriteFile(configPath, []byte("schedulerClusterConfig:\n  candidateParentLimit: 5\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +148,7 @@ func TestLocalDynconfig_RefreshInterval(t *testing.T) {
 }
 
 func TestLocalDynconfig_Serve(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), localDynconfigFileName)
+	configPath := filepath.Join(t.TempDir(), "dynconfig.yaml")
 	if err := os.WriteFile(configPath, []byte("refreshInterval: 100ms\nschedulerClusterConfig:\n  candidateParentLimit: 5\n"), 0600); err != nil {
 		t.Fatal(err)
 	}

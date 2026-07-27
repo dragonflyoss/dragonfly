@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
@@ -88,12 +89,14 @@ type dynconfig struct {
 	mu                   *sync.Mutex
 }
 
-// NewDynconfig returns a new dynconfig instance. If the manager address is not configured, it returns the
-// local dynconfig, which loads the dynamic configuration from the local file. Otherwise, it returns the
-// dynconfig that fetches the dynamic configuration from the manager.
+// NewDynconfig returns a new dynconfig instance. If the manager address is
+// not configured, it returns the local dynconfig, which loads the dynamic
+// configuration from the local file specified by the dynconfig flag.
+// Otherwise, it returns the dynconfig that fetches the dynamic configuration
+// from the manager.
 func NewDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
 	if cfg.Manager.Addr == "" {
-		return newLocalDynconfig(localDynconfigPath())
+		return newLocalDynconfig(viper.GetString("dynconfig"))
 	}
 
 	cachePath := filepath.Join(cacheDir, cacheFileName)

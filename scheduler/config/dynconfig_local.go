@@ -18,22 +18,18 @@ package config
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/spf13/viper"
 	"go.uber.org/atomic"
+	"gopkg.in/yaml.v3"
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/types"
-	"d7y.io/dragonfly/v2/pkg/dfpath"
-)
-
-var (
-	// localDynconfigFileName is the file name of the local dynamic configuration.
-	localDynconfigFileName = "dynconfig.yaml"
 )
 
 // LocalDynconfigData is the dynamic configuration loaded from the local file.
@@ -43,6 +39,17 @@ type LocalDynconfigData struct {
 
 	// SchedulerClusterConfig is the scheduler cluster configuration.
 	SchedulerClusterConfig types.SchedulerClusterConfig `yaml:"schedulerClusterConfig" mapstructure:"schedulerClusterConfig"`
+}
+
+// NewLocalDynconfigData returns the default local dynamic configuration data.
+func NewLocalDynconfigData() *LocalDynconfigData {
+	return &LocalDynconfigData{
+		RefreshInterval: DefaultLocalDynconfigRefreshInterval,
+		SchedulerClusterConfig: types.SchedulerClusterConfig{
+			CandidateParentLimit: DefaultSchedulerCandidateParentLimit,
+			FilterParentLimit:    DefaultSchedulerFilterParentLimit,
+		},
+	}
 }
 
 // localDynconfig is the local dynconfig, which loads the dynamic configuration
@@ -56,6 +63,25 @@ type localDynconfig struct {
 
 // newLocalDynconfig returns a new local dynconfig instance.
 func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
+	// Generate the local dynamic configuration file with default values
+	// when it does not exist.
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		content, err := yaml.Marshal(NewLocalDynconfigData())
+		if err != nil {
+			return nil, err
+		}
+
+		if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
+			return nil, err
+		}
+
+		if err := os.WriteFile(configPath, content, 0600); err != nil {
+			return nil, err
+		}
+
+		logger.Infof("generate local dynconfig %s with default values", configPath)
+	}
+
 	d := &localDynconfig{
 		configPath: configPath,
 		data:       atomic.NewPointer[LocalDynconfigData](nil),
@@ -67,17 +93,6 @@ func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
 	}
 
 	return d, nil
-}
-
-// localDynconfigPath returns the path of the local dynamic configuration file,
-// which is located in the same directory as the config file.
-func localDynconfigPath() string {
-	configDir := dfpath.DefaultConfigDir
-	if configFile := viper.ConfigFileUsed(); configFile != "" {
-		configDir = filepath.Dir(configFile)
-	}
-
-	return filepath.Join(configDir, localDynconfigFileName)
 }
 
 // GetScheduler returns the scheduler config from manager. It is not supported
