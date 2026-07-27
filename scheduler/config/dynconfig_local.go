@@ -63,8 +63,6 @@ type localDynconfig struct {
 
 // newLocalDynconfig returns a new local dynconfig instance.
 func newLocalDynconfig(configPath string) (DynconfigInterface, error) {
-	// Generate the local dynamic configuration file with default values
-	// when it does not exist.
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		content, err := yaml.Marshal(NewLocalDynconfigData())
 		if err != nil {

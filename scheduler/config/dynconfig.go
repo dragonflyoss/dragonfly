@@ -45,7 +45,10 @@ var (
 )
 
 type DynconfigData struct {
-	Scheduler    *managerv2.Scheduler
+	// Scheduler is the scheduler config from manager.
+	Scheduler *managerv2.Scheduler
+
+	// Applications is the applications config from manager.
 	Applications []*managerv2.Application
 }
 
@@ -89,11 +92,9 @@ type dynconfig struct {
 	mu                   *sync.Mutex
 }
 
-// NewDynconfig returns a new dynconfig instance. If the manager address is
-// not configured, it returns the local dynconfig, which loads the dynamic
-// configuration from the local file specified by the dynconfig flag.
-// Otherwise, it returns the dynconfig that fetches the dynamic configuration
-// from the manager.
+// NewDynconfig returns a new dynconfig instance. If the manager address is not configured, it returns
+// the local dynconfig, which loads the dynamic configuration from the local file specified by the
+// dynconfig flag. Otherwise, it returns the dynconfig that fetches the dynamic configuration from the manager.
 func NewDynconfig(rawManagerClient managerclient.V2, cacheDir string, cfg *Config, transportCredentials credentials.TransportCredentials) (DynconfigInterface, error) {
 	if cfg.Manager.Addr == "" {
 		return newLocalDynconfig(viper.GetString("dynconfig"))

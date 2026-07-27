@@ -71,9 +71,7 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 		flags.Bool("console", false, "whether logger output records to the stdout")
 		flags.String("config", "", fmt.Sprintf("the path of configuration file with yaml extension name, default is %s, it can also be set by env var: %s", filepath.Join(dfpath.DefaultConfigDir, rootName+".yaml"), strings.ToUpper(rootName+"_config")))
 
-		// Add dynconfig flag only for scheduler, which specifies the path of
-		// the local dynamic configuration file when the manager addr is not
-		// configured.
+		// Add dynconfig flag for scheduler only.
 		if rootName == types.SchedulerName {
 			flags.String("dynconfig", filepath.Join(dfpath.DefaultConfigDir, "dynconfig.yaml"), "the path of local dynamic configuration file with yaml extension name, only used when the manager addr is not configured")
 		}
