@@ -54,10 +54,18 @@ func TestLocalDynconfig_New(t *testing.T) {
 				assert.NoError(err)
 				assert.FileExists(configPath)
 
+				seedPeerConfig, err := d.GetSeedPeerClusterConfig()
+				assert.NoError(err)
+				assert.Equal(uint32(DefaultSeedPeerConcurrentUploadLimit), seedPeerConfig.LoadLimit)
+
 				config, err := d.GetSchedulerClusterConfig()
 				assert.NoError(err)
 				assert.Equal(uint32(DefaultSchedulerCandidateParentLimit), config.CandidateParentLimit)
 				assert.Equal(uint32(DefaultSchedulerFilterParentLimit), config.FilterParentLimit)
+
+				clientConfig, err := d.GetSchedulerClusterClientConfig()
+				assert.NoError(err)
+				assert.Equal(uint32(DefaultPeerConcurrentUploadLimit), clientConfig.LoadLimit)
 
 				ld, ok := d.(*localDynconfig)
 				if !ok {
@@ -77,6 +85,20 @@ func TestLocalDynconfig_New(t *testing.T) {
 	}
 }
 
+func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	config, err := d.GetSeedPeerClusterConfig()
+	assert.NoError(err)
+	assert.Equal(types.SeedPeerClusterConfig{
+		LoadLimit: 2000,
+	}, config)
+}
+
 func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
 	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
 	if err != nil {
@@ -93,6 +115,20 @@ func TestLocalDynconfig_GetSchedulerClusterConfig(t *testing.T) {
 	}, config)
 }
 
+func TestLocalDynconfig_GetSchedulerClusterClientConfig(t *testing.T) {
+	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	config, err := d.GetSchedulerClusterClientConfig()
+	assert.NoError(err)
+	assert.Equal(types.SchedulerClusterClientConfig{
+		LoadLimit: 100,
+	}, config)
+}
+
 func TestLocalDynconfig_GetWithoutManager(t *testing.T) {
 	d, err := newLocalDynconfig(filepath.Join("testdata", "dynconfig.yaml"))
 	if err != nil {
@@ -101,12 +137,6 @@ func TestLocalDynconfig_GetWithoutManager(t *testing.T) {
 
 	assert := assert.New(t)
 	_, err = d.GetApplications()
-	assert.EqualError(err, "manager is not configured")
-
-	_, err = d.GetSeedPeerClusterConfig()
-	assert.EqualError(err, "manager is not configured")
-
-	_, err = d.GetSchedulerClusterClientConfig()
 	assert.EqualError(err, "manager is not configured")
 }
 

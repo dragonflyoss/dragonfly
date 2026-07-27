@@ -28,6 +28,7 @@ import (
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 )
 
+// DynconfigInterface is the interface for dynconfig, which provides methods to get the dynamic configuration.
 type DynconfigInterface interface {
 	// GetApplications returns the applications config.
 	GetApplications() ([]*managerv2.Application, error)

@@ -37,17 +37,29 @@ type LocalDynconfigData struct {
 	// RefreshInterval is the interval for refreshing the local dynamic configuration.
 	RefreshInterval time.Duration `yaml:"refreshInterval" mapstructure:"refreshInterval"`
 
+	// SeedPeerClusterConfig is the seed peer cluster configuration.
+	SeedPeerClusterConfig types.SeedPeerClusterConfig `yaml:"seedPeerClusterConfig" mapstructure:"seedPeerClusterConfig"`
+
 	// SchedulerClusterConfig is the scheduler cluster configuration.
 	SchedulerClusterConfig types.SchedulerClusterConfig `yaml:"schedulerClusterConfig" mapstructure:"schedulerClusterConfig"`
+
+	// SchedulerClusterClientConfig is the client configuration.
+	SchedulerClusterClientConfig types.SchedulerClusterClientConfig `yaml:"schedulerClusterClientConfig" mapstructure:"schedulerClusterClientConfig"`
 }
 
 // NewLocalDynconfigData returns the default local dynamic configuration data.
 func NewLocalDynconfigData() *LocalDynconfigData {
 	return &LocalDynconfigData{
 		RefreshInterval: DefaultLocalDynconfigRefreshInterval,
+		SeedPeerClusterConfig: types.SeedPeerClusterConfig{
+			LoadLimit: DefaultSeedPeerConcurrentUploadLimit,
+		},
 		SchedulerClusterConfig: types.SchedulerClusterConfig{
 			CandidateParentLimit: DefaultSchedulerCandidateParentLimit,
 			FilterParentLimit:    DefaultSchedulerFilterParentLimit,
+		},
+		SchedulerClusterClientConfig: types.SchedulerClusterClientConfig{
+			LoadLimit: DefaultPeerConcurrentUploadLimit,
 		},
 	}
 }
@@ -99,10 +111,14 @@ func (d *localDynconfig) GetApplications() ([]*managerv2.Application, error) {
 	return nil, errors.New("manager is not configured")
 }
 
-// GetSeedPeerClusterConfig returns the seed peer cluster config. It is not
-// supported when the manager is not configured.
+// GetSeedPeerClusterConfig returns the seed peer cluster config.
 func (d *localDynconfig) GetSeedPeerClusterConfig() (types.SeedPeerClusterConfig, error) {
-	return types.SeedPeerClusterConfig{}, errors.New("manager is not configured")
+	data := d.data.Load()
+	if data == nil {
+		return types.SeedPeerClusterConfig{}, errors.New("invalid data")
+	}
+
+	return data.SeedPeerClusterConfig, nil
 }
 
 // GetSchedulerClusterConfig returns the scheduler cluster config.
@@ -115,10 +131,14 @@ func (d *localDynconfig) GetSchedulerClusterConfig() (types.SchedulerClusterConf
 	return data.SchedulerClusterConfig, nil
 }
 
-// GetSchedulerClusterClientConfig returns the client config. It is not
-// supported when the manager is not configured.
+// GetSchedulerClusterClientConfig returns the client config.
 func (d *localDynconfig) GetSchedulerClusterClientConfig() (types.SchedulerClusterClientConfig, error) {
-	return types.SchedulerClusterClientConfig{}, errors.New("manager is not configured")
+	data := d.data.Load()
+	if data == nil {
+		return types.SchedulerClusterClientConfig{}, errors.New("invalid data")
+	}
+
+	return data.SchedulerClusterClientConfig, nil
 }
 
 // Serve the dynconfig listening service.
@@ -154,6 +174,7 @@ func (d *localDynconfig) refreshInterval() time.Duration {
 		return data.RefreshInterval
 	}
 
+	logger.Warnf("invalid refresh interval, use default value %s", DefaultLocalDynconfigRefreshInterval)
 	return DefaultLocalDynconfigRefreshInterval
 }
 

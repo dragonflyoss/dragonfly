@@ -1,5 +1,9 @@
 refreshInterval: 5s
+seedPeerClusterConfig:
+  loadLimit: 2000
 schedulerClusterConfig:
   candidateParentLimit: 5
   filterParentLimit: 10
   jobRateLimit: 10
+schedulerClusterClientConfig:
+  loadLimit: 100
