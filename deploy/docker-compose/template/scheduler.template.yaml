@@ -72,9 +72,7 @@ scheduler:
     # then HostTTl will be reset.
     hostTTL: 1h
 
-# Dynamic data configuration. The manager address is not configured, so the
-# dynamic configuration is loaded from the local dynconfig.yaml in the same
-# directory as scheduler.yaml, and refreshed every refresh interval.
+# Dynamic data configuration.
 dynConfig:
   # Dynamic config refresh interval.
   refreshInterval: 1m

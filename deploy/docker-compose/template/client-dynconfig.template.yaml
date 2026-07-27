@@ -1,7 +1,3 @@
-# Dynamic configuration for the client running without a manager. It is
-# loaded from this file instead of being fetched from the manager, and
-# refreshed every dynconfig.refreshInterval defined in dfdaemon.yaml.
-
 scheduler:
   # addrs is the static list of scheduler addresses with port. When set, it
   # takes precedence over addr.

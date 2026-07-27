@@ -93,9 +93,7 @@ seedPeer:
   type: super
 
 dynconfig:
-  # refreshInterval is the interval to refresh dynamic configuration. The manager
-  # address is not configured, so the dynamic configuration is loaded from the
-  # local dynconfig.yaml in the same directory as dfdaemon.yaml.
+  # refreshInterval is the interval to refresh dynamic configuration.
   refreshInterval: 1m
 
 storage:
