@@ -63,13 +63,6 @@ and security insights are detailed in [SECURITY-INSIGHTS.yml](SECURITY-INSIGHTS.
 
 We publish SBOMs with all of our releases. You can find them in Github release assets.
 
-[arch]: docs/images/arch.png
-[logo-linear]: docs/images/logo/dragonfly-linear.svg
-[discussion]: https://github.com/dragonflyoss/dragonfly/discussions
-[contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
-[codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
-[d7y.io]: https://d7y.io/
-
 ## Contributing
 
 You should check out our
@@ -82,3 +75,9 @@ You should check out our
 Please refer to our [Code of Conduct][codeconduct] which applies to all Dragonfly community members. <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=0ee6c839-4734-449f-b053-8aadddee8902" width="1" height="1" alt="" />
 
 <!-- markdownlint-enable -->
+
+[logo-linear]: docs/images/logo/dragonfly-linear.svg
+[discussion]: https://github.com/dragonflyoss/dragonfly/discussions
+[contributing]: https://github.com/dragonflyoss/community/blob/master/CONTRIBUTING.md
+[codeconduct]: https://github.com/dragonflyoss/community/blob/master/CODE_OF_CONDUCT.md
+[d7y.io]: https://d7y.io/
