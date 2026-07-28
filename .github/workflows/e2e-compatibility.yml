@@ -51,7 +51,7 @@ jobs:
             chart-name: seedClient
           - mode: lightweight
             charts-config: test/testdata/charts/config.yaml
-            skip: 'Manager|Rate Limit'
+            skip: 'Manager|Rate Limit|Dfcache'
           - mode: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
             skip: 'Rate Limit'

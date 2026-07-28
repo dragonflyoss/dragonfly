@@ -35,7 +35,7 @@ jobs:
           - module: lightweight
             charts-config: test/testdata/charts/config.yaml
             mode: lightweight
-            skip: 'Manager|Rate Limit'
+            skip: 'Manager|Rate Limit|Dfcache'
           - module: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
             mode: with-manager
