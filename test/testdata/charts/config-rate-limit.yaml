@@ -1,38 +1,3 @@
-manager:
-  image:
-    repository: dragonflyoss/manager
-    tag: latest
-  replicas: 1
-  resources:
-    requests:
-      cpu: '0'
-      memory: '0'
-    limits:
-      cpu: '1'
-      memory: '2Gi'
-  extraVolumeMounts:
-    - name: logs
-      mountPath: '/var/log/'
-    - name: artifact
-      mountPath: /tmp/artifact
-  extraVolumes:
-    - name: logs
-      emptyDir: {}
-    - name: artifact
-      hostPath:
-        path: /tmp/artifact
-  metrics:
-    enable: true
-  config:
-    console: false
-    server:
-      logLevel: debug
-    job:
-      rateLimit:
-        fillInterval: 1m
-        capacity: 100
-        quantum: 100
-
 scheduler:
   image:
     repository: dragonflyoss/scheduler
@@ -128,7 +93,6 @@ client:
     limits:
       cpu: '2'
       memory: '4Gi'
-  # Allow client daemonSet to create a pod on master node for testing when the daemon goes offline.
   tolerations:
     - key: 'node-role.kubernetes.io/master'
       operator: 'Exists'

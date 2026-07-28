@@ -1,4 +1,5 @@
 manager:
+  enable: true
   image:
     repository: dragonflyoss/manager
     tag: latest
@@ -141,7 +142,6 @@ client:
     limits:
       cpu: '2'
       memory: '4Gi'
-  # Allow client daemonSet to create a pod on master node for testing when the daemon goes offline.
   tolerations:
     - key: 'node-role.kubernetes.io/master'
       operator: 'Exists'
@@ -192,3 +192,9 @@ client:
         - regex: dufs.dragonfly-e2e.svc.*
     network:
       enableIPv6: true
+
+mysql:
+  enable: true
+
+redis:
+  enable: true

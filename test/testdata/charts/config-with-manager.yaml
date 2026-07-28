@@ -1,3 +1,44 @@
+manager:
+  enable: true
+  image:
+    repository: dragonflyoss/manager
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: '0'
+      memory: '0'
+    limits:
+      cpu: '1'
+      memory: '2Gi'
+  extraVolumeMounts:
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
+  extraVolumes:
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
+  metrics:
+    enable: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+    cache:
+      redis:
+        ttl: 5s
+      local:
+        ttl: 3s
+    job:
+      rateLimit:
+        fillInterval: 1m
+        capacity: 100
+        quantum: 100
+
 scheduler:
   image:
     repository: dragonflyoss/scheduler
@@ -10,6 +51,9 @@ scheduler:
     limits:
       cpu: '2'
       memory: '4Gi'
+  service:
+    type: NodePort
+    nodePort: 30802
   extraVolumeMounts:
     - name: logs
       mountPath: '/var/log/'
@@ -140,3 +184,9 @@ client:
         - regex: blobs/sha256.*
         - regex: file-server.*
         - regex: dufs.dragonfly-e2e.svc.*
+
+mysql:
+  enable: true
+
+redis:
+  enable: true

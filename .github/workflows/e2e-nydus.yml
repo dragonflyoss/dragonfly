@@ -77,17 +77,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
-      - name: Build Manager Image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
-        with:
-          context: .
-          file: build/images/manager/Dockerfile
-          push: false
-          load: true
-          tags: dragonflyoss/manager:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
-
       - name: Setup Kind
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc
         with:
@@ -97,7 +86,6 @@ jobs:
 
       - name: Kind load images
         run: |
-          kind load docker-image dragonflyoss/manager:latest
           kind load docker-image dragonflyoss/scheduler:latest
           kind load docker-image dragonflyoss/client:latest
           kind load docker-image dragonflyoss/dfinit:latest
