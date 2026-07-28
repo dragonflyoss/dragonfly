@@ -51,9 +51,6 @@ scheduler:
     limits:
       cpu: '2'
       memory: '4Gi'
-  service:
-    type: NodePort
-    nodePort: 30802
   extraVolumeMounts:
     - name: logs
       mountPath: '/var/log/'
@@ -115,7 +112,17 @@ seedClient:
       announceInterval: 15s
     log:
       level: debug
+    # Override the chart's default request rate limits (400 req/s), which are
+    # too low for the concurrency e2e tests (up to `ab -c 1000 -n 2000`).
+    download:
+      server:
+        requestRateLimit: 4000
+    upload:
+      server:
+        requestRateLimit: 4000
     proxy:
+      server:
+        requestRateLimit: 4000
       prefetch: true
       registryMirror:
         addr: https://index.docker.io
@@ -177,6 +184,10 @@ client:
     log:
       level: debug
     proxy:
+      # Override the chart's default proxy request rate limit (50 req/s), which
+      # is too low for the concurrency e2e tests (up to `ab -c 1000 -n 2000`).
+      server:
+        requestRateLimit: 4000
       prefetch: false
       registryMirror:
         addr: https://index.docker.io
