@@ -148,11 +148,7 @@ jobs:
             helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
           fi
 
-          # The scheduler service in the chart is headless for DNS-based discovery, so expose
-          # the scheduler with an extra NodePort service for the e2e tests to access it via
-          # the kind port mapping (hostPort 8002 -> nodePort 30802).
           kubectl apply -f ${{ env.DRAGONFLY_SCHEDULER_NODEPORT_SERVICE_PATH }}
-
           mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
           kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
