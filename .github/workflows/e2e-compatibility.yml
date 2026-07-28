@@ -23,7 +23,7 @@ env:
 
 jobs:
   compatibility_e2e_tests:
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: oracle-vm-32cpu-128gb-x86-64
     timeout-minutes: 60
     strategy:
       matrix:
