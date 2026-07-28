@@ -170,6 +170,12 @@ func WithHostnameAndIP(hostname, ip string) *SugaredLoggerOnWith {
 	}
 }
 
+func WithSeedPeer(hostID, hostname, ip string, port int) *SugaredLoggerOnWith {
+	return &SugaredLoggerOnWith{
+		withArgs: []any{"seedPeerHostID", hostID, "seedPeerHostname", hostname, "seedPeerIP", ip, "seedPeerPort", port},
+	}
+}
+
 func WithGroupUUID(groupUUID string) *SugaredLoggerOnWith {
 	return &SugaredLoggerOnWith{
 		withArgs: []any{"groupUUID", groupUUID},
