@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -144,4 +145,26 @@ func SHA256FromStrings(data ...string) string {
 	}
 
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// blobURLRegex is the regex pattern for OCI blob URLs,
+// e.g. http(s)://<registry>/v2/<repository>/blobs/<digest>.
+var blobURLRegex = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/blobs/([^?]+)(?:\?.*)?$`)
+
+// IsBlobURL checks whether the url is an OCI blob URL.
+func IsBlobURL(url string) bool {
+	return blobURLRegex.MatchString(url)
+}
+
+// ExtractFromBlobURL extracts the digest from an OCI blob URL.
+// e.g. https://registry.example.com/v2/library/nginx/blobs/sha256:abc123...
+//
+//	returns Digest{Algorithm: "sha256", Encoded: "abc123..."}, nil
+func ExtractFromBlobURL(url string) (*Digest, error) {
+	matches := blobURLRegex.FindStringSubmatch(url)
+	if len(matches) < 5 {
+		return nil, errors.New("invalid blob URL")
+	}
+
+	return Parse(matches[4])
 }

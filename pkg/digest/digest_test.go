@@ -146,3 +146,146 @@ func TestDigest_Parse(t *testing.T) {
 func TestDigest_SHA256FromStrings(t *testing.T) {
 	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", SHA256FromStrings("hello"))
 }
+
+func TestIsBlobURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect bool
+	}{
+		{
+			name:   "https blob URL",
+			url:    "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: true,
+		},
+		{
+			name:   "http blob URL",
+			url:    "http://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: true,
+		},
+		{
+			name:   "blob URL with query params",
+			url:    "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4?foo=bar",
+			expect: true,
+		},
+		{
+			name:   "blob URL with nested repository",
+			url:    "https://registry.example.com/v2/org/team/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: true,
+		},
+		{
+			name:   "manifest URL is not a blob URL",
+			url:    "https://registry.example.com/v2/library/nginx/manifests/latest",
+			expect: false,
+		},
+		{
+			name:   "tags list URL is not a blob URL",
+			url:    "https://registry.example.com/v2/library/nginx/tags/list",
+			expect: false,
+		},
+		{
+			name:   "plain URL is not a blob URL",
+			url:    "https://example.com/file.tar.gz",
+			expect: false,
+		},
+		{
+			name:   "empty URL is not a blob URL",
+			url:    "",
+			expect: false,
+		},
+		{
+			name:   "v2 API base URL is not a blob URL",
+			url:    "https://registry.example.com/v2/",
+			expect: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expect, IsBlobURL(tc.url))
+		})
+	}
+}
+
+func TestExtractFromBlobURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, d *Digest, err error)
+	}{
+		{
+			name: "extract sha256 digest from blob URL",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(AlgorithmSHA256, d.Algorithm)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d.Encoded)
+			},
+		},
+		{
+			name: "extract sha256 digest from blob URL with query params",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4?foo=bar&baz=qux",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(AlgorithmSHA256, d.Algorithm)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d.Encoded)
+			},
+		},
+		{
+			name: "extract sha256 digest from blob URL with nested repository",
+			url:  "https://registry.example.com/v2/org/team/nginx/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(AlgorithmSHA256, d.Algorithm)
+				assert.Equal("c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4", d.Encoded)
+			},
+		},
+		{
+			name: "extract sha512 digest from blob URL",
+			url:  "https://registry.example.com/v2/library/nginx/blobs/sha512:dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(AlgorithmSHA512, d.Algorithm)
+				assert.Equal("dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557", d.Encoded)
+			},
+		},
+		{
+			name: "invalid URL - not a blob URL",
+			url:  "https://example.com/file.tar.gz",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(d)
+			},
+		},
+		{
+			name: "invalid URL - empty string",
+			url:  "",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(d)
+			},
+		},
+		{
+			name: "invalid URL - manifest URL",
+			url:  "https://registry.example.com/v2/library/nginx/manifests/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(d)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := ExtractFromBlobURL(tc.url)
+			tc.expect(t, d, err)
+		})
+	}
+}
