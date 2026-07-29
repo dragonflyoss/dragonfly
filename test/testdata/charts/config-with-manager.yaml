@@ -1,3 +1,44 @@
+manager:
+  enable: true
+  image:
+    repository: dragonflyoss/manager
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: '0'
+      memory: '0'
+    limits:
+      cpu: '1'
+      memory: '2Gi'
+  extraVolumeMounts:
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
+  extraVolumes:
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
+  metrics:
+    enable: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+    cache:
+      redis:
+        ttl: 5s
+      local:
+        ttl: 3s
+    job:
+      rateLimit:
+        fillInterval: 1m
+        capacity: 100
+        quantum: 100
+
 scheduler:
   image:
     repository: dragonflyoss/scheduler
@@ -35,6 +76,8 @@ scheduler:
       retryInterval: 1s
       gc:
         hostGCInterval: 2m
+    dynconfig:
+      refreshInterval: 5s
 
 seedClient:
   enable: true
@@ -61,22 +104,30 @@ seedClient:
       hostPath:
         path: /tmp/artifact
   config:
-    download:
-      bandwidthLimit: 1MB
+    host:
+      schedulerClusterID: 1
     dynconfig:
       refreshInterval: 5s
     scheduler:
       announceInterval: 15s
     log:
       level: debug
+    download:
+      server:
+        requestRateLimit: 4000
+    upload:
+      server:
+        requestRateLimit: 4000
     proxy:
+      server:
+        requestRateLimit: 4000
       prefetch: true
-      prefetchBandwidthLimit: 1MB
       registryMirror:
         addr: https://index.docker.io
       rules:
         - regex: blobs/sha256.*
-        - regxe: file-server.*
+        - regex: file-server.*
+        - regex: dufs.dragonfly-e2e.svc.*
 
 client:
   enable: true
@@ -122,8 +173,8 @@ client:
               serverAddr: https://ghcr.io
               capabilities: ['pull', 'resolve']
   config:
-    download:
-      bandwidthLimit: 1MB
+    host:
+      schedulerClusterID: 1
     dynconfig:
       refreshInterval: 5s
     scheduler:
@@ -131,9 +182,18 @@ client:
     log:
       level: debug
     proxy:
+      server:
+        requestRateLimit: 4000
       prefetch: false
       registryMirror:
         addr: https://index.docker.io
       rules:
         - regex: blobs/sha256.*
-        - regxe: file-server.*
+        - regex: file-server.*
+        - regex: dufs.dragonfly-e2e.svc.*
+
+mysql:
+  enable: true
+
+redis:
+  enable: true
