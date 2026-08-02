@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/casbin/casbin/v2"
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	managermodels "d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/pkg/strings"
 )
@@ -61,9 +63,75 @@ const (
 	ReadAction = "read"
 )
 
+const (
+	// RootUserName is the name of the built-in root user.
+	RootUserName = "root"
+
+	// DragonflyRootPasswordEnvName is the environment variable name of the root user's
+	// password. When set, the password is reconciled with it on every start.
+	DragonflyRootPasswordEnvName = "DRAGONFLY_ROOT_PASSWORD"
+
+	// DefaultRootPassword is the password of the root user when DragonflyRootPasswordEnvName
+	// is not set.
+	DefaultRootPassword = "dragonfly"
+)
+
+// MinRootPasswordLength and MaxRootPasswordLength match the password binding of
+// types.SignInRequest, so that the seeded password can be used to sign in.
+const (
+	MinRootPasswordLength = 8
+	MaxRootPasswordLength = 20
+)
+
 var (
 	apiGroupRegexp = regexp.MustCompile(`^/api/v[0-9]+/([-_a-zA-Z]*)[/.*]*`)
 )
+
+// rootPassword returns the root user's password and whether it was set explicitly through
+// DragonflyRootPasswordEnvName, which allows reconciling it instead of only seeding it.
+func rootPassword() (string, bool, error) {
+	password := os.Getenv(DragonflyRootPasswordEnvName)
+	if password == "" {
+		return DefaultRootPassword, false, nil
+	}
+
+	if len(password) < MinRootPasswordLength || len(password) > MaxRootPasswordLength {
+		return "", false, fmt.Errorf("%s must be between %d and %d characters", DragonflyRootPasswordEnvName, MinRootPasswordLength, MaxRootPasswordLength)
+	}
+
+	return password, true, nil
+}
+
+// reconcileRootPassword updates the root user's password when it differs from the given one,
+// letting an operator rotate it by restarting the manager with a new DragonflyRootPasswordEnvName.
+func reconcileRootPassword(db *gorm.DB, password string) error {
+	rootUser := managermodels.User{}
+	if err := db.First(&rootUser, managermodels.User{Name: RootUserName}).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(rootUser.EncryptedPassword), []byte(password)); err == nil {
+		return nil
+	}
+
+	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Model(&rootUser).Updates(managermodels.User{
+		EncryptedPassword: string(encryptedPasswordBytes),
+	}).Error; err != nil {
+		return err
+	}
+
+	logger.Infof("reset the root user's password from %s", DragonflyRootPasswordEnvName)
+	return nil
+}
 
 func NewEnforcer(gdb *gorm.DB) (*casbin.Enforcer, error) {
 	adapter, err := gormadapter.NewAdapterByDBWithCustomTable(gdb, &managermodels.CasbinRule{})
@@ -103,15 +171,24 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 		return err
 	}
 
+	password, explicit, err := rootPassword()
+	if err != nil {
+		return err
+	}
+
 	if rootUserCount <= 0 {
-		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte("dragonfly"), bcrypt.MinCost)
+		if !explicit {
+			logger.Warnf("seed the root user with the default password, set %s to override it", DragonflyRootPasswordEnvName)
+		}
+
+		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 		if err != nil {
 			return err
 		}
 
 		rootUser := managermodels.User{
 			EncryptedPassword: string(encryptedPasswordBytes),
-			Name:              "root",
+			Name:              RootUserName,
 			State:             managermodels.UserStateEnabled,
 		}
 
@@ -122,9 +199,17 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 		if _, err := e.AddRoleForUser(fmt.Sprint(rootUser.ID), RootRole); err != nil {
 			return err
 		}
+
+		return nil
 	}
 
-	return nil
+	// Leave the password of an existing root user alone unless it is managed explicitly, so that
+	// a password changed from the console is not reverted on the next start.
+	if !explicit {
+		return nil
+	}
+
+	return reconcileRootPassword(db, password)
 }
 
 type Permission struct {
