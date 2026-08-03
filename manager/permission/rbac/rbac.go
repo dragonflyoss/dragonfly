@@ -67,17 +67,18 @@ const (
 	// RootUserName is the name of the built-in root user.
 	RootUserName = "root"
 
-	// DragonflyRootPasswordEnvName is the environment variable name of the root user's
-	// password. When set, the password is reconciled with it on every start.
-	DragonflyRootPasswordEnvName = "DRAGONFLY_ROOT_PASSWORD"
+	// DragonflyInitialRootPasswordEnvName is the environment variable name of the root
+	// user's initial password. It is only used when seeding the root user for the first
+	// time; the password is managed in the database afterwards.
+	DragonflyInitialRootPasswordEnvName = "DRAGONFLY_INITIAL_ROOT_PASSWORD"
 
-	// DefaultRootPassword is the password of the root user when DragonflyRootPasswordEnvName
-	// is not set.
+	// DefaultRootPassword is the initial password of the root user when
+	// DragonflyInitialRootPasswordEnvName is not set.
 	DefaultRootPassword = "dragonfly"
 )
 
 // MinRootPasswordLength and MaxRootPasswordLength match the password binding of
-// types.SignInRequest, so that the seeded password can be used to sign in.
+// types.SignInRequest, so that the seeded password can always be used to sign in.
 const (
 	MinRootPasswordLength = 8
 	MaxRootPasswordLength = 20
@@ -87,50 +88,19 @@ var (
 	apiGroupRegexp = regexp.MustCompile(`^/api/v[0-9]+/([-_a-zA-Z]*)[/.*]*`)
 )
 
-// rootPassword returns the root user's password and whether it was set explicitly through
-// DragonflyRootPasswordEnvName, which allows reconciling it instead of only seeding it.
-func rootPassword() (string, bool, error) {
-	password := os.Getenv(DragonflyRootPasswordEnvName)
+// initialRootPassword returns the password to seed the root user with, which is
+// DragonflyInitialRootPasswordEnvName if set and DefaultRootPassword otherwise.
+func initialRootPassword() (string, error) {
+	password := os.Getenv(DragonflyInitialRootPasswordEnvName)
 	if password == "" {
-		return DefaultRootPassword, false, nil
+		return DefaultRootPassword, nil
 	}
 
 	if len(password) < MinRootPasswordLength || len(password) > MaxRootPasswordLength {
-		return "", false, fmt.Errorf("%s must be between %d and %d characters", DragonflyRootPasswordEnvName, MinRootPasswordLength, MaxRootPasswordLength)
+		return "", fmt.Errorf("%s must be between %d and %d characters", DragonflyInitialRootPasswordEnvName, MinRootPasswordLength, MaxRootPasswordLength)
 	}
 
-	return password, true, nil
-}
-
-// reconcileRootPassword updates the root user's password when it differs from the given one,
-// letting an operator rotate it by restarting the manager with a new DragonflyRootPasswordEnvName.
-func reconcileRootPassword(db *gorm.DB, password string) error {
-	rootUser := managermodels.User{}
-	if err := db.First(&rootUser, managermodels.User{Name: RootUserName}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
-
-		return err
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(rootUser.EncryptedPassword), []byte(password)); err == nil {
-		return nil
-	}
-
-	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
-	if err != nil {
-		return err
-	}
-
-	if err := db.Model(&rootUser).Updates(managermodels.User{
-		EncryptedPassword: string(encryptedPasswordBytes),
-	}).Error; err != nil {
-		return err
-	}
-
-	logger.Infof("reset the root user's password from %s", DragonflyRootPasswordEnvName)
-	return nil
+	return password, nil
 }
 
 func NewEnforcer(gdb *gorm.DB) (*casbin.Enforcer, error) {
@@ -171,14 +141,14 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 		return err
 	}
 
-	password, explicit, err := rootPassword()
-	if err != nil {
-		return err
-	}
-
 	if rootUserCount <= 0 {
-		if !explicit {
-			logger.Warnf("seed the root user with the default password, set %s to override it", DragonflyRootPasswordEnvName)
+		password, err := initialRootPassword()
+		if err != nil {
+			return err
+		}
+
+		if password == DefaultRootPassword {
+			logger.Warnf("seed the root user with the default password, set %s to override it", DragonflyInitialRootPasswordEnvName)
 		}
 
 		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
@@ -199,17 +169,9 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 		if _, err := e.AddRoleForUser(fmt.Sprint(rootUser.ID), RootRole); err != nil {
 			return err
 		}
-
-		return nil
 	}
 
-	// Leave the password of an existing root user alone unless it is managed explicitly, so that
-	// a password changed from the console is not reverted on the next start.
-	if !explicit {
-		return nil
-	}
-
-	return reconcileRootPassword(db, password)
+	return nil
 }
 
 type Permission struct {

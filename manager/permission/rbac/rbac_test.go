@@ -24,83 +24,78 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRootPassword(t *testing.T) {
+func TestInitialRootPassword(t *testing.T) {
 	tests := []struct {
 		name   string
 		env    string
 		set    bool
-		expect func(t *testing.T, password string, explicit bool, err error)
+		expect func(t *testing.T, password string, err error)
 	}{
 		{
 			name: "environment variable is not set",
 			set:  false,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(DefaultRootPassword, password)
-				assert.False(explicit)
 			},
 		},
 		{
 			name: "environment variable is empty",
 			env:  "",
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(DefaultRootPassword, password)
-				assert.False(explicit)
 			},
 		},
 		{
 			name: "environment variable is set",
 			env:  "dragonfly-root",
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal("dragonfly-root", password)
-				assert.True(explicit)
 			},
 		},
 		{
 			name: "environment variable is too short",
 			env:  strings.Repeat("a", MinRootPasswordLength-1),
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "DRAGONFLY_ROOT_PASSWORD must be between 8 and 20 characters")
+				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
 			},
 		},
 		{
 			name: "environment variable is too long",
 			env:  strings.Repeat("a", MaxRootPasswordLength+1),
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "DRAGONFLY_ROOT_PASSWORD must be between 8 and 20 characters")
+				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
 			},
 		},
 		{
 			name: "environment variable is of the minimum length",
 			env:  strings.Repeat("a", MinRootPasswordLength),
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Len(password, MinRootPasswordLength)
-				assert.True(explicit)
 			},
 		},
 		{
 			name: "environment variable is of the maximum length",
 			env:  strings.Repeat("a", MaxRootPasswordLength),
 			set:  true,
-			expect: func(t *testing.T, password string, explicit bool, err error) {
+			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Len(password, MaxRootPasswordLength)
-				assert.True(explicit)
 			},
 		},
 	}
@@ -108,13 +103,13 @@ func TestRootPassword(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.set {
-				t.Setenv(DragonflyRootPasswordEnvName, tc.env)
+				t.Setenv(DragonflyInitialRootPasswordEnvName, tc.env)
 			} else {
-				os.Unsetenv(DragonflyRootPasswordEnvName)
+				os.Unsetenv(DragonflyInitialRootPasswordEnvName)
 			}
 
-			password, explicit, err := rootPassword()
-			tc.expect(t, password, explicit, err)
+			password, err := initialRootPassword()
+			tc.expect(t, password, err)
 		})
 	}
 }
