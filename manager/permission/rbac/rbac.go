@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/casbin/casbin/v2"
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	managermodels "d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/pkg/strings"
 )
@@ -61,9 +63,45 @@ const (
 	ReadAction = "read"
 )
 
+const (
+	// RootUserName is the name of the built-in root user.
+	RootUserName = "root"
+
+	// DragonflyInitialRootPasswordEnvName is the environment variable name of the root
+	// user's initial password. It is only used when seeding the root user for the first
+	// time; the password is managed in the database afterwards.
+	DragonflyInitialRootPasswordEnvName = "DRAGONFLY_INITIAL_ROOT_PASSWORD"
+
+	// DefaultRootPassword is the initial password of the root user when
+	// DragonflyInitialRootPasswordEnvName is not set.
+	DefaultRootPassword = "dragonfly"
+)
+
+// MinRootPasswordLength and MaxRootPasswordLength match the password binding of
+// types.SignInRequest, so that the seeded password can always be used to sign in.
+const (
+	MinRootPasswordLength = 8
+	MaxRootPasswordLength = 20
+)
+
 var (
 	apiGroupRegexp = regexp.MustCompile(`^/api/v[0-9]+/([-_a-zA-Z]*)[/.*]*`)
 )
+
+// initialRootPassword returns the password to seed the root user with, which is
+// DragonflyInitialRootPasswordEnvName if set and DefaultRootPassword otherwise.
+func initialRootPassword() (string, error) {
+	password := os.Getenv(DragonflyInitialRootPasswordEnvName)
+	if password == "" {
+		return DefaultRootPassword, nil
+	}
+
+	if len(password) < MinRootPasswordLength || len(password) > MaxRootPasswordLength {
+		return "", fmt.Errorf("%s must be between %d and %d characters", DragonflyInitialRootPasswordEnvName, MinRootPasswordLength, MaxRootPasswordLength)
+	}
+
+	return password, nil
+}
 
 func NewEnforcer(gdb *gorm.DB) (*casbin.Enforcer, error) {
 	adapter, err := gormadapter.NewAdapterByDBWithCustomTable(gdb, &managermodels.CasbinRule{})
@@ -104,14 +142,23 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 	}
 
 	if rootUserCount <= 0 {
-		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte("dragonfly"), bcrypt.MinCost)
+		password, err := initialRootPassword()
+		if err != nil {
+			return err
+		}
+
+		if password == DefaultRootPassword {
+			logger.Warnf("seed the root user with the default password, set %s to override it", DragonflyInitialRootPasswordEnvName)
+		}
+
+		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 		if err != nil {
 			return err
 		}
 
 		rootUser := managermodels.User{
 			EncryptedPassword: string(encryptedPasswordBytes),
-			Name:              "root",
+			Name:              RootUserName,
 			State:             managermodels.UserStateEnabled,
 		}
 

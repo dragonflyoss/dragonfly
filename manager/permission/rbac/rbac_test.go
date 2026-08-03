@@ -17,10 +17,102 @@
 package rbac
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestInitialRootPassword(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    string
+		set    bool
+		expect func(t *testing.T, password string, err error)
+	}{
+		{
+			name: "environment variable is not set",
+			set:  false,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(DefaultRootPassword, password)
+			},
+		},
+		{
+			name: "environment variable is empty",
+			env:  "",
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(DefaultRootPassword, password)
+			},
+		},
+		{
+			name: "environment variable is set",
+			env:  "dragonfly-root",
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("dragonfly-root", password)
+			},
+		},
+		{
+			name: "environment variable is too short",
+			env:  strings.Repeat("a", MinRootPasswordLength-1),
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
+			},
+		},
+		{
+			name: "environment variable is too long",
+			env:  strings.Repeat("a", MaxRootPasswordLength+1),
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
+			},
+		},
+		{
+			name: "environment variable is of the minimum length",
+			env:  strings.Repeat("a", MinRootPasswordLength),
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(password, MinRootPasswordLength)
+			},
+		},
+		{
+			name: "environment variable is of the maximum length",
+			env:  strings.Repeat("a", MaxRootPasswordLength),
+			set:  true,
+			expect: func(t *testing.T, password string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(password, MaxRootPasswordLength)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.set {
+				t.Setenv(DragonflyInitialRootPasswordEnvName, tc.env)
+			} else {
+				os.Unsetenv(DragonflyInitialRootPasswordEnvName)
+			}
+
+			password, err := initialRootPassword()
+			tc.expect(t, password, err)
+		})
+	}
+}
 
 func TestGetApiGroupName(t *testing.T) {
 	tests := []struct {
