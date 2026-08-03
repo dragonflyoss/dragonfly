@@ -34,4 +34,12 @@ func TestFilterQuery(t *testing.T) {
 	url, err = FilterQueryParams(":error_url", []string{"x", "m"})
 	assert.NotNil(t, err)
 	assert.Equal(t, "", url)
+
+	url, err = FilterQueryParams("http://www.xx.yy/path?u=f&n=%zz", []string{"x", "m"})
+	assert.NotNil(t, err)
+	assert.Equal(t, "", url)
+
+	url, err = FilterQueryParams("http://www.xx.yy/path?u=f;n=z", []string{"x", "m"})
+	assert.NotNil(t, err)
+	assert.Equal(t, "", url)
 }

@@ -122,13 +122,11 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 
 	filteredQueryParams := ParseFilteredQueryParams(meta.Filter)
 
-	var (
-		u   string
-		err error
-	)
-	u, err = neturl.FilterQueryParams(url, filteredQueryParams)
-	if err != nil {
-		u = ""
+	// Keep the raw url when it can not be filtered, otherwise every url that
+	// fails to parse collapses onto the same task id.
+	u := url
+	if filteredURL, err := neturl.FilterQueryParams(url, filteredQueryParams); err == nil {
+		u = filteredURL
 	}
 
 	data := []string{u}
@@ -163,9 +161,10 @@ func FormatFilteredQueryParams(params []string) string {
 
 // TaskIDV2ByURLBased generates v2 version of task id by url based.
 func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string, revision string) string {
-	url, err := neturl.FilterQueryParams(url, filteredQueryParams)
-	if err != nil {
-		url = ""
+	// Keep the raw url when it can not be filtered, otherwise every url that
+	// fails to parse collapses onto the same task id.
+	if filteredURL, err := neturl.FilterQueryParams(url, filteredQueryParams); err == nil {
+		url = filteredURL
 	}
 
 	params := []string{url, tag, application, revision}
