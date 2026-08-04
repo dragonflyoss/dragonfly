@@ -77,7 +77,7 @@ func TestPEMToCertPool(t *testing.T) {
 				return
 			}
 			if tt.checkPool {
-				if got == nil || len(got.Subjects()) != len(tt.expected.Subjects()) {
+				if got == nil || !got.Equal(tt.expected) {
 					t.Errorf("PEMToCertPool() = %v, expected %v", got, tt.expected)
 				}
 			} else {
@@ -140,7 +140,7 @@ func TestDERToCertPool(t *testing.T) {
 				return
 			}
 			if tt.checkPool {
-				if got == nil || len(got.Subjects()) != len(tt.expected.Subjects()) {
+				if got == nil || !got.Equal(tt.expected) {
 					t.Errorf("DERToCertPool() = %v, expected %v", got, tt.expected)
 				}
 			} else {

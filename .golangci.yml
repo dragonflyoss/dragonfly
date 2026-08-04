@@ -20,10 +20,6 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
-    rules:
-      - linters:
-          - staticcheck
-        text: 'SA1019:'
     paths:
       - third_party$
       - builtin$
