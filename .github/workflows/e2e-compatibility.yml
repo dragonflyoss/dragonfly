@@ -181,6 +181,11 @@ jobs:
           files: ./coverage.txt
           flags: e2etests
 
+      - name: Export logs
+        if: always()
+        run: |
+          sudo chown -R $USER:$USER /tmp/artifact
+
       - name: Upload Logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
