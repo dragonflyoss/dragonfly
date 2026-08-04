@@ -17,23 +17,10 @@
 package idgen
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/google/uuid"
 )
 
-// PeerIDV1 generates v1 version of peer id.
-func PeerIDV1(ip string) string {
-	return fmt.Sprintf("%s-%d-%s", ip, os.Getpid(), uuid.New())
-}
-
-// SeedPeerIDV1 generates v1 version of seed peer id.
-func SeedPeerIDV1(ip string) string {
-	return fmt.Sprintf("%s_%s", PeerIDV1(ip), "Seed")
-}
-
-// PeerIDV2 generates v2 version of peer id.
-func PeerIDV2() string {
+// PeerID generates peer id.
+func PeerID() string {
 	return uuid.NewString()
 }

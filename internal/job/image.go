@@ -30,7 +30,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/platforms"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/ocischema"
@@ -341,7 +341,7 @@ func filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs
 func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *ManifestRequest, header http.Header, image *preheatImage) ([]*PreheatRequest, error) {
 	var certificateChain [][]byte
 	if req.RootCAs != nil {
-		certificateChain = req.RootCAs.Subjects()
+		certificateChain = req.RootCAs.Subjects() //nolint:staticcheck
 	}
 
 	var layerURLs []string

@@ -104,18 +104,6 @@ const (
 // TaskIDV1 generates v1 version of task id.
 // filter is separated by & character.
 func TaskIDV1(url string, meta *commonv1.UrlMeta) string {
-	return taskIDV1(url, meta, false)
-}
-
-// ParentTaskIDV1 generates v1 version of parent task id, but without range.
-// this func is used to check the parent tasks for ranged requests
-func ParentTaskIDV1(url string, meta *commonv1.UrlMeta) string {
-	return taskIDV1(url, meta, true)
-}
-
-// taskIDV1 generates v1 version of task id.
-// filter is separated by & character.
-func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 	if meta == nil {
 		return pkgdigest.SHA256FromStrings(url)
 	}
@@ -136,7 +124,7 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 		data = append(data, meta.Digest)
 	}
 
-	if !ignoreRange && meta.Range != "" {
+	if meta.Range != "" {
 		data = append(data, meta.Range)
 	}
 

@@ -43,8 +43,7 @@ import (
 
 // GetV1ByAddr returns v1 version of the manager client by address.
 func GetV1ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V1, error) {
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		target,
 		append([]grpc.DialOption{
 			grpc.WithIdleTimeout(0),

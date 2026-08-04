@@ -40,8 +40,7 @@ const (
 
 // GetClient returns health client.
 func GetClient(ctx context.Context, target string, opts ...grpc.DialOption) (Client, error) {
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		target,
 		append([]grpc.DialOption{
 			grpc.WithIdleTimeout(0),

@@ -174,12 +174,12 @@ var (
 	mockTaskApplication                = "foo"
 	mockTaskFilteredQueryParams        = []string{"bar"}
 	mockTaskHeader                     = map[string]string{"content-length": "100"}
-	mockHostID                         = idgen.HostIDV2("127.0.0.1", "foo", false)
-	mockSeedHostID                     = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostID                         = idgen.HostID("127.0.0.1", "foo", false)
+	mockSeedHostID                     = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation                   = "baz"
 	mockHostIDC                        = "bas"
-	mockPeerID                         = idgen.PeerIDV2()
-	mockSeedPeerID                     = idgen.PeerIDV2()
+	mockPeerID                         = idgen.PeerID()
+	mockSeedPeerID                     = idgen.PeerID()
 	mockPiece                          = standard.Piece{
 		Number:      1,
 		ParentID:    "foo",
@@ -470,7 +470,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			name: "schedule succeeded with partially added edges",
 			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				task := peer.Task
-				candidateParent := standard.NewPeer(idgen.PeerIDV2(), task, seedPeer.Host)
+				candidateParent := standard.NewPeer(idgen.PeerID(), task, seedPeer.Host)
 				task.StorePeer(peer)
 				task.StorePeer(seedPeer)
 				task.StorePeer(candidateParent)
@@ -820,7 +820,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			name: "schedule succeeded with partially added edges",
 			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				task := peer.Task
-				candidateParent := standard.NewPeer(idgen.PeerIDV2(), task, seedPeer.Host)
+				candidateParent := standard.NewPeer(idgen.PeerID(), task, seedPeer.Host)
 				task.StorePeer(peer)
 				task.StorePeer(seedPeer)
 				task.StorePeer(candidateParent)
@@ -1166,11 +1166,11 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := range 11 {
+			for range 11 {
 				mockHost := standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					idgen.HostID("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
+				peer := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
 
@@ -1426,11 +1426,11 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := range 11 {
+			for range 11 {
 				mockHost := standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					idgen.HostID("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
+				peer := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
 
@@ -1569,7 +1569,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
-			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost, standard.WithRange(nethttp.Range{
+			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerID(), mockTask, mockHost, standard.WithRange(nethttp.Range{
 				Start:  1,
 				Length: 10,
 			}))}
@@ -1620,8 +1620,8 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
-			parent := standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost)
-			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost)}
+			parent := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
+			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerID(), mockTask, mockHost)}
 
 			tc.expect(t, constructSuccessPeerPacket(peer, parent, candidateParents), parent, candidateParents)
 		})

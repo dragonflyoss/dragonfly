@@ -19,11 +19,10 @@
 package dfpath
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"sync"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 // Dfpath is the interface used for init project path.
@@ -42,7 +41,7 @@ type dfpath struct {
 var cache struct {
 	sync.Once
 	d   *dfpath
-	err *multierror.Error
+	err error
 }
 
 // Option is a functional option for configuring the dfpath.
@@ -76,18 +75,18 @@ func New(options ...Option) (Dfpath, error) {
 
 		// Create log directory.
 		if err := os.MkdirAll(d.logDir, fs.FileMode(0700)); err != nil {
-			cache.err = multierror.Append(cache.err, err)
+			cache.err = errors.Join(cache.err, err)
 		}
 
 		// Create plugin directory.
 		if err := os.MkdirAll(d.pluginDir, fs.FileMode(0700)); err != nil {
-			cache.err = multierror.Append(cache.err, err)
+			cache.err = errors.Join(cache.err, err)
 		}
 
 		cache.d = d
 	})
 
-	if cache.err.ErrorOrNil() != nil {
+	if cache.err != nil {
 		return nil, cache.err
 	}
 

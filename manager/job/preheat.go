@@ -129,7 +129,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 
 		var certificateChain [][]byte
 		if p.rootCAs != nil {
-			certificateChain = p.rootCAs.Subjects()
+			certificateChain = p.rootCAs.Subjects() //nolint:staticcheck
 		}
 
 		files = append(files, &internaljob.PreheatRequest{

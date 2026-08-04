@@ -20,13 +20,8 @@ import (
 	"fmt"
 )
 
-// HostIDV1 generates v1 version of host id.
-func HostIDV1(hostname string, port int32) string {
-	return fmt.Sprintf("%s-%d", hostname, port)
-}
-
-// HostIDV2 generates v2 version of host id.
-func HostIDV2(ip, hostname string, isSeedPeer bool) string {
+// HostID generates host id.
+func HostID(ip, hostname string, isSeedPeer bool) string {
 	if isSeedPeer {
 		return fmt.Sprintf("%s-%s-seed", ip, hostname)
 	}

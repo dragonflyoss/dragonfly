@@ -51,8 +51,7 @@ const (
 )
 
 func GetClientByAddr(ctx context.Context, netAddr dfnet.NetAddr, opts ...grpc.DialOption) (Client, error) {
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		netAddr.Addr,
 		append([]grpc.DialOption{
 			grpc.WithIdleTimeout(0),

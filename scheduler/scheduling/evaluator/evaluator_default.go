@@ -17,7 +17,8 @@
 package evaluator
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"d7y.io/dragonfly/v2/pkg/types"
@@ -91,10 +92,10 @@ func sortParents[T any](parents []T, score func(T) float64) []T {
 		scoredParents[i] = scoredParent[T]{parent: parent, score: score(parent)}
 	}
 
-	sort.Slice(
+	slices.SortFunc(
 		scoredParents,
-		func(i, j int) bool {
-			return scoredParents[i].score > scoredParents[j].score
+		func(a, b scoredParent[T]) int {
+			return cmp.Compare(b.score, a.score)
 		},
 	)
 

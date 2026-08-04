@@ -99,7 +99,7 @@ func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.Transpor
 	resource.peerManager = peerManager
 
 	// Initialize peer client pool.
-	resource.peerClientPool = dfdaemonclient.GetV2Pool()
+	resource.peerClientPool = dfdaemonclient.GetPool()
 
 	// Initialize seed peer interface.
 	dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}

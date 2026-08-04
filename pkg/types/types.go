@@ -196,24 +196,6 @@ func PriorityV2ToV1(priority commonv2.Priority) commonv1.Priority {
 	return commonv1.Priority_LEVEL0
 }
 
-// SizeScopeV1ToV2 converts size scope from v1 to v2.
-func SizeScopeV1ToV2(sizeScope commonv1.SizeScope) commonv2.SizeScope {
-	switch sizeScope {
-	case commonv1.SizeScope_NORMAL:
-		return commonv2.SizeScope_NORMAL
-	case commonv1.SizeScope_SMALL:
-		return commonv2.SizeScope_SMALL
-	case commonv1.SizeScope_TINY:
-		return commonv2.SizeScope_TINY
-	case commonv1.SizeScope_EMPTY:
-		return commonv2.SizeScope_EMPTY
-	case commonv1.SizeScope_UNKNOW:
-		return commonv2.SizeScope_UNKNOW
-	}
-
-	return commonv2.SizeScope_UNKNOW
-}
-
 // SizeScopeV2ToV1 converts size scope from v2 to v1.
 func SizeScopeV2ToV1(sizeScope commonv2.SizeScope) commonv1.SizeScope {
 	switch sizeScope {

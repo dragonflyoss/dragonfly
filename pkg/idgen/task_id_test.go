@@ -26,11 +26,10 @@ import (
 
 func TestTaskIDV1(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
-		meta        *commonv1.UrlMeta
-		ignoreRange bool
-		expect      func(t *testing.T, d any)
+		name   string
+		url    string
+		meta   *commonv1.UrlMeta
+		expect func(t *testing.T, d any)
 	}{
 		{
 			name: "generate taskID with url",
@@ -52,20 +51,6 @@ func TestTaskIDV1(t *testing.T) {
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
 				assert.Equal(d, "aeee0e0a2a0c75130582641353c539aaf9011a0088b31347f7588e70e449a3e0")
-			},
-		},
-		{
-			name: "generate taskID with meta",
-			url:  "https://example.com",
-			meta: &commonv1.UrlMeta{
-				Range:  "foo",
-				Digest: "bar",
-				Tag:    "",
-			},
-			ignoreRange: true,
-			expect: func(t *testing.T, d any) {
-				assert := assert.New(t)
-				assert.Equal(d, "63dee2822037636b0109876b58e95692233840753a882afa69b9b5ee82a6c57d")
 			},
 		},
 		{
@@ -95,13 +80,7 @@ func TestTaskIDV1(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var data string
-			if tc.ignoreRange {
-				data = ParentTaskIDV1(tc.url, tc.meta)
-			} else {
-				data = TaskIDV1(tc.url, tc.meta)
-			}
-			tc.expect(t, data)
+			tc.expect(t, TaskIDV1(tc.url, tc.meta))
 		})
 	}
 }

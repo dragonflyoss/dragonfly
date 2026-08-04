@@ -456,9 +456,9 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
 					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
-					hostID := idgen.HostIDV2(ip, hostname, true)
+					hostID := idgen.HostID(ip, hostname, true)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
-					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
 					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
@@ -681,9 +681,9 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
 					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
-					hostID := idgen.HostIDV2(ip, hostname, false)
+					hostID := idgen.HostID(ip, hostname, false)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
-					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
 					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)

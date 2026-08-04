@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//go:generate mockgen -destination mocks/client_v2_mock.go -source client_v2.go -package mocks
+//go:generate mockgen -destination mocks/client_mock.go -source client.go -package mocks
 
 package client
 
@@ -40,7 +40,7 @@ import (
 	pkgbalancer "d7y.io/dragonfly/v2/pkg/balancer"
 )
 
-// Pool is the interface for pooling v2 version of the grpc client.
+// Pool is the interface for pooling the dfdaemon grpc client.
 type Pool interface {
 	// Serve starts the manager.
 	Serve()
@@ -49,10 +49,10 @@ type Pool interface {
 	Stop()
 
 	// Get returns the client by address.
-	Get(target string, opts ...grpc.DialOption) (V2, error)
+	Get(target string, opts ...grpc.DialOption) (Client, error)
 }
 
-// pool is the pool for managing v2 version of the dfdaemon client.
+// pool is the pool for managing the dfdaemon clients.
 type pool struct {
 	// pool is a map of client connections for reusing.
 	*sync.Map
@@ -64,8 +64,8 @@ type pool struct {
 	done chan struct{}
 }
 
-// GetV2Pool creates a new pool instance.
-func GetV2Pool() Pool {
+// GetPool creates a new pool instance.
+func GetPool() Pool {
 	return &pool{
 		Map:  &sync.Map{},
 		sf:   &singleflight.Group{},
@@ -93,27 +93,27 @@ func (p *pool) Stop() {
 	close(p.done)
 }
 
-// Get returns a v2 version of the dfdaemon client by address.
-func (p *pool) Get(target string, opts ...grpc.DialOption) (V2, error) {
+// Get returns the dfdaemon client by address.
+func (p *pool) Get(target string, opts ...grpc.DialOption) (Client, error) {
 	if client, ok := p.Load(target); ok {
-		return client.(V2), nil
+		return client.(Client), nil
 	}
 
-	client, err, _ := p.sf.Do(target, func() (any, error) { return GetV2ByAddr(target, opts...) })
+	client, err, _ := p.sf.Do(target, func() (any, error) { return GetClientByAddr(target, opts...) })
 	if err != nil {
 		return nil, err
 	}
 
 	p.Store(target, client)
-	return client.(V2), nil
+	return client.(Client), nil
 }
 
 // runGC cleans up unhealthy connections.
 func (p *pool) runGC() {
 	p.Range(func(k, v any) bool {
 		// Cleanup the not connecting and ready connections and remove them from the pool.
-		if state := v.(*v2).GetState(); state != connectivity.Connecting && state != connectivity.Ready {
-			v.(*v2).Close()
+		if state := v.(*client).GetState(); state != connectivity.Connecting && state != connectivity.Ready {
+			v.(*client).Close()
 			p.Delete(k)
 			return true
 		}
@@ -122,8 +122,8 @@ func (p *pool) runGC() {
 	})
 }
 
-// V2 is the interface for v2 version of the grpc client.
-type V2 interface {
+// Client is the interface for the dfdaemon grpc client.
+type Client interface {
 	// SyncPieces syncs pieces from the other peers.
 	SyncPieces(context.Context, *dfdaemonv2.SyncPiecesRequest, ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_SyncPiecesClient, error)
 
@@ -170,8 +170,8 @@ type V2 interface {
 	Close() error
 }
 
-// GetV2ByAddr returns v2 version of the dfdaemon client by address.
-func GetV2ByAddr(target string, opts ...grpc.DialOption) (V2, error) {
+// GetClientByAddr returns the dfdaemon client by address.
+func GetClientByAddr(target string, opts ...grpc.DialOption) (Client, error) {
 	conn, err := grpc.NewClient(
 		target,
 		append([]grpc.DialOption{
@@ -199,21 +199,21 @@ func GetV2ByAddr(target string, opts ...grpc.DialOption) (V2, error) {
 		return nil, err
 	}
 
-	return &v2{
+	return &client{
 		DfdaemonUploadClient: dfdaemonv2.NewDfdaemonUploadClient(conn),
 		ClientConn:           conn,
 	}, nil
 }
 
-// v2 provides v2 version of the dfdaemon grpc function.
-type v2 struct {
+// client provides the dfdaemon grpc function.
+type client struct {
 	dfdaemonv2.DfdaemonUploadClient
 	*grpc.ClientConn
 	*pkgbalancer.ConsistentHashingPickerBuilder
 }
 
 // SyncPieces syncs pieces from the other peers.
-func (v *v2) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_SyncPiecesClient, error) {
+func (v *client) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_SyncPiecesClient, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -225,7 +225,7 @@ func (v *v2) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, 
 }
 
 // DownloadTask downloads task from p2p network.
-func (v *v2) DownloadTask(ctx context.Context, taskID string, req *dfdaemonv2.DownloadTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadTaskClient, error) {
+func (v *client) DownloadTask(ctx context.Context, taskID string, req *dfdaemonv2.DownloadTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadTaskClient, error) {
 	return v.DfdaemonUploadClient.DownloadTask(
 		context.WithValue(ctx, pkgbalancer.ContextKey, taskID),
 		req,
@@ -234,7 +234,7 @@ func (v *v2) DownloadTask(ctx context.Context, taskID string, req *dfdaemonv2.Do
 }
 
 // StatTask stats task information.
-func (v *v2) StatTask(ctx context.Context, req *dfdaemonv2.StatTaskRequest, opts ...grpc.CallOption) (*commonv2.Task, error) {
+func (v *client) StatTask(ctx context.Context, req *dfdaemonv2.StatTaskRequest, opts ...grpc.CallOption) (*commonv2.Task, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -242,7 +242,7 @@ func (v *v2) StatTask(ctx context.Context, req *dfdaemonv2.StatTaskRequest, opts
 }
 
 // StatLocalTask stats local task information.
-func (v *v2) StatLocalTask(ctx context.Context, req *dfdaemonv2.StatLocalTaskRequest, opts ...grpc.CallOption) (*dfdaemonv2.StatLocalTaskResponse, error) {
+func (v *client) StatLocalTask(ctx context.Context, req *dfdaemonv2.StatLocalTaskRequest, opts ...grpc.CallOption) (*dfdaemonv2.StatLocalTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -250,7 +250,7 @@ func (v *v2) StatLocalTask(ctx context.Context, req *dfdaemonv2.StatLocalTaskReq
 }
 
 // DeleteTask deletes task from p2p network.
-func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, opts ...grpc.CallOption) error {
+func (v *client) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -259,12 +259,12 @@ func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, 
 }
 
 // DownloadPersistentTask downloads persistent task from p2p network.
-func (v *v2) DownloadPersistentTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentTaskClient, error) {
+func (v *client) DownloadPersistentTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentTaskClient, error) {
 	return v.DfdaemonUploadClient.DownloadPersistentTask(ctx, req, opts...)
 }
 
 // UpdatePersistentTask updates persistent task information.
-func (v *v2) UpdatePersistentTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentTaskRequest, opts ...grpc.CallOption) error {
+func (v *client) UpdatePersistentTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -273,7 +273,7 @@ func (v *v2) UpdatePersistentTask(ctx context.Context, req *dfdaemonv2.UpdatePer
 }
 
 // StatPersistentTask stats persistent task information.
-func (v *v2) StatPersistentTask(ctx context.Context, req *dfdaemonv2.StatPersistentTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentTask, error) {
+func (v *client) StatPersistentTask(ctx context.Context, req *dfdaemonv2.StatPersistentTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentTask, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -281,7 +281,7 @@ func (v *v2) StatPersistentTask(ctx context.Context, req *dfdaemonv2.StatPersist
 }
 
 // DeletePersistentTask deletes persistent task from p2p network.
-func (v *v2) DeletePersistentTask(ctx context.Context, req *dfdaemonv2.DeletePersistentTaskRequest, opts ...grpc.CallOption) error {
+func (v *client) DeletePersistentTask(ctx context.Context, req *dfdaemonv2.DeletePersistentTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -290,12 +290,12 @@ func (v *v2) DeletePersistentTask(ctx context.Context, req *dfdaemonv2.DeletePer
 }
 
 // DownloadPersistentCacheTask downloads persistent cache task from p2p network.
-func (v *v2) DownloadPersistentCacheTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error) {
+func (v *client) DownloadPersistentCacheTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error) {
 	return v.DfdaemonUploadClient.DownloadPersistentCacheTask(ctx, req, opts...)
 }
 
 // UpdatePersistentCacheTask updates persistent cache task information.
-func (v *v2) UpdatePersistentCacheTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
+func (v *client) UpdatePersistentCacheTask(ctx context.Context, req *dfdaemonv2.UpdatePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -304,7 +304,7 @@ func (v *v2) UpdatePersistentCacheTask(ctx context.Context, req *dfdaemonv2.Upda
 }
 
 // StatPersistentCacheTask stats persistent cache task information.
-func (v *v2) StatPersistentCacheTask(ctx context.Context, req *dfdaemonv2.StatPersistentCacheTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentCacheTask, error) {
+func (v *client) StatPersistentCacheTask(ctx context.Context, req *dfdaemonv2.StatPersistentCacheTaskRequest, opts ...grpc.CallOption) (*commonv2.PersistentCacheTask, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -312,7 +312,7 @@ func (v *v2) StatPersistentCacheTask(ctx context.Context, req *dfdaemonv2.StatPe
 }
 
 // DeletePersistentCacheTask deletes persistent cache task from p2p network.
-func (v *v2) DeletePersistentCacheTask(ctx context.Context, req *dfdaemonv2.DeletePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
+func (v *client) DeletePersistentCacheTask(ctx context.Context, req *dfdaemonv2.DeletePersistentCacheTaskRequest, opts ...grpc.CallOption) error {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
@@ -321,7 +321,7 @@ func (v *v2) DeletePersistentCacheTask(ctx context.Context, req *dfdaemonv2.Dele
 }
 
 // ListTaskEntries lists task entries from p2p network.
-func (v *v2) ListTaskEntries(ctx context.Context, req *dfdaemonv2.ListTaskEntriesRequest, opts ...grpc.CallOption) (*dfdaemonv2.ListTaskEntriesResponse, error) {
+func (v *client) ListTaskEntries(ctx context.Context, req *dfdaemonv2.ListTaskEntriesRequest, opts ...grpc.CallOption) (*dfdaemonv2.ListTaskEntriesResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 

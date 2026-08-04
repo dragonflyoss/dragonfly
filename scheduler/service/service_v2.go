@@ -4705,7 +4705,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 			log.Infof("get length of peers: %d", len(task.Peers))
 
 			for _, peer := range task.Peers {
-				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				hostID := idgen.HostID(peer.IP, peer.Hostname, false)
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerImage{
@@ -4962,7 +4962,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 			log.Infof("get length of peers: %d", len(task.Peers))
 
 			for _, peer := range task.Peers {
-				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				hostID := idgen.HostID(peer.IP, peer.Hostname, false)
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerFile{

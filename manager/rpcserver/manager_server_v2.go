@@ -953,7 +953,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 		// Clean legacy scheduler cache.
 		if err := s.cache.Delete(
-			context.TODO(),
+			stream.Context(),
 			pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
@@ -961,7 +961,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 		// Clean scheduler cache.
 		if err := s.cache.Delete(
-			context.TODO(),
+			stream.Context(),
 			pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
@@ -982,7 +982,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 		}
 
 		if err := s.cache.Delete(
-			context.TODO(),
+			stream.Context(),
 			pkgredis.MakeSeedPeerKeyInManager(clusterID, hostname, ip),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
@@ -991,6 +991,10 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 	for {
 		if _, err := stream.Recv(); err != nil {
+			// The stream context is canceled once Recv fails, so detach cancellation
+			// for the cleanup below while keeping values for tracing.
+			ctx := context.WithoutCancel(stream.Context())
+
 			// Inactive scheduler.
 			if sourceType == managerv2.SourceType_SCHEDULER_SOURCE {
 				scheduler := models.Scheduler{}
@@ -1006,7 +1010,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 				// Clean legacy scheduler cache.
 				if err := s.cache.Delete(
-					context.TODO(),
+					ctx,
 					pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())
@@ -1014,7 +1018,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 
 				// Clean scheduler cache.
 				if err := s.cache.Delete(
-					context.TODO(),
+					ctx,
 					pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(uint(clusterID)),
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())
@@ -1035,7 +1039,7 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 				}
 
 				if err := s.cache.Delete(
-					context.TODO(),
+					ctx,
 					pkgredis.MakeSeedPeerKeyInManager(clusterID, hostname, ip),
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())

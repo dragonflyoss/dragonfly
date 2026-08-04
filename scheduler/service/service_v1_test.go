@@ -90,12 +90,12 @@ var (
 	mockTaskApplication                = "foo"
 	mockTaskFilteredQueryParams        = []string{"bar"}
 	mockTaskHeader                     = map[string]string{"Content-Length": "100", "Range": "bytes=0-99"}
-	mockHostID                         = idgen.HostIDV2("127.0.0.1", "foo", false)
-	mockSeedHostID                     = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostID                         = idgen.HostID("127.0.0.1", "foo", false)
+	mockSeedHostID                     = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation                   = "bas"
 	mockHostIDC                        = "baz"
-	mockPeerID                         = idgen.PeerIDV2()
-	mockSeedPeerID                     = idgen.PeerIDV2()
+	mockPeerID                         = idgen.PeerID()
+	mockSeedPeerID                     = idgen.PeerID()
 	mockPeerRange                      = nethttp.Range{
 		Start:  0,
 		Length: 10,
@@ -2154,7 +2154,7 @@ func TestServiceV1_LeaveHost(t *testing.T) {
 
 			tc.mock(host, mockPeer, peerManager, hostManager, scheduling.EXPECT(), res.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
 			tc.expect(t, mockPeer, svc.LeaveHost(context.Background(), &schedulerv1.LeaveHostRequest{
-				Id: idgen.HostIDV2(host.IP, host.Hostname, true),
+				Id: idgen.HostID(host.IP, host.Hostname, true),
 			}))
 		})
 	}
