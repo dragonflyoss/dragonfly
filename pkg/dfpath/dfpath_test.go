@@ -20,7 +20,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +43,7 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
 				assert.Equal(d.LogDir(), DefaultLogDir)
@@ -57,7 +56,7 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
 				assert.Equal(d.LogDir(), "foo")
@@ -70,7 +69,7 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
 				assert.Equal(d.LogDir(), DefaultLogDir)

@@ -22,13 +22,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
+	"net/netip"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/yl2chen/cidranger"
 	"go.uber.org/zap"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
@@ -162,33 +161,27 @@ func Evaluate(ip, hostname string, conditions map[string]string, scopes Scopes, 
 
 // calculateCIDRAffinityScore 0.0~1.0 larger and better.
 func calculateCIDRAffinityScore(ip string, cidrs []string, log *zap.SugaredLogger) float64 {
-	// Construct CIDR ranger.
-	ranger := cidranger.NewPCTrieRanger()
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		log.Error(err)
+		return minScore
+	}
+	addr = addr.Unmap()
+
+	// Determine whether the IP is contained in one of the CIDRs.
 	for _, cidr := range cidrs {
-		_, network, err := net.ParseCIDR(cidr)
+		prefix, err := netip.ParsePrefix(cidr)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 
-		if err := ranger.Insert(cidranger.NewBasicRangerEntry(*network)); err != nil {
-			log.Error(err)
-			continue
+		if prefix.Contains(addr) {
+			return maxScore
 		}
 	}
 
-	// Determine whether an IP is contained in the constructed networks ranger.
-	contains, err := ranger.Contains(net.ParseIP(ip))
-	if err != nil {
-		log.Error(err)
-		return minScore
-	}
-
-	if !contains {
-		return minScore
-	}
-
-	return maxScore
+	return minScore
 }
 
 // calculateHostnameAffinityScore 0.0~1.0 larger and better.
