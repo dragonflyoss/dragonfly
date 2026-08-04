@@ -22,10 +22,18 @@ import (
 	"os"
 	"strings"
 
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/yaml.v3"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+)
+
+const (
+	AttributeSeedPeerHostID   = attribute.Key("d7y.scheduler.seed_peer.host_id")
+	AttributeSeedPeerHostname = attribute.Key("d7y.scheduler.seed_peer.hostname")
+	AttributeSeedPeerIP       = attribute.Key("d7y.scheduler.seed_peer.ip")
+	AttributeSeedPeerPort     = attribute.Key("d7y.scheduler.seed_peer.port")
 )
 
 // PEMContent supports load PEM format from file or just inline PEM format content

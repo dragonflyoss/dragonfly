@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"stathat.com/c/consistent"
@@ -129,7 +130,16 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 	}
 
 	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
-	logger.Infof("selected seed peer %s for task %s", addr, taskID)
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		span.SetAttributes(
+			attribute.String("d7y.scheduler.seed_peer.host_id", selected.ID),
+			attribute.String("d7y.scheduler.seed_peer.hostname", selected.Hostname),
+			attribute.String("d7y.scheduler.seed_peer.ip", selected.IP),
+			attribute.Int("d7y.scheduler.seed_peer.port", int(selected.Port)),
+		)
+	}
+	logger.WithSeedPeer(selected.ID, selected.Hostname, selected.IP, int(selected.Port)).
+		Infof("selected seed peer %s for task %s", addr, taskID)
 
 	client, err := s.clientPool.Get(addr, s.dialOptions...)
 	if err != nil {
@@ -179,7 +189,16 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 	}
 
 	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
-	logger.Infof("selected seed peer %s for task %s", addr, task.ID)
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		span.SetAttributes(
+			attribute.String("d7y.scheduler.seed_peer.host_id", selected.ID),
+			attribute.String("d7y.scheduler.seed_peer.hostname", selected.Hostname),
+			attribute.String("d7y.scheduler.seed_peer.ip", selected.IP),
+			attribute.Int("d7y.scheduler.seed_peer.port", int(selected.Port)),
+		)
+	}
+	logger.WithSeedPeer(selected.ID, selected.Hostname, selected.IP, int(selected.Port)).
+		Infof("selected seed peer %s for task %s", addr, task.ID)
 
 	// TODO(chlins): reuse the client if we encounter the performance issue in future.
 	client, err := cndsystemclient.GetClientByAddr(ctx, dfnet.NetAddr{Type: dfnet.TCP, Addr: addr}, s.dialOptions...)
@@ -300,7 +319,17 @@ func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 		return nil, fmt.Errorf("failed to load host: %s", addr)
 	}
 
-	return host.(*Host), nil
+	selected := host.(*Host)
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		span.SetAttributes(
+			attribute.String("d7y.scheduler.seed_peer.selected.host_id", selected.ID),
+			attribute.String("d7y.scheduler.seed_peer.selected.hostname", selected.Hostname),
+			attribute.String("d7y.scheduler.seed_peer.selected.ip", selected.IP),
+			attribute.Int("d7y.scheduler.seed_peer.selected.port", int(selected.Port)),
+		)
+	}
+
+	return selected, nil
 }
 
 // HasAvailable returns whether there is any available seed peer.

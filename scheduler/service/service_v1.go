@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/go-http-utils/headers"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/status"
 
@@ -731,6 +732,11 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 	}
 	peer.Log.Infof("peer priority is %d", priority)
 
+	// Set priority as a span attribute for traceability.
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		span.SetAttributes(attribute.String("d7y.scheduler.seed_peer.priority", priority.String()))
+	}
+
 	switch priority {
 	case commonv1.Priority_LEVEL6, commonv1.Priority_LEVEL0:
 		if v.resource.SeedPeer().HasAvailable() && !task.IsSeedPeerFailed() {
@@ -768,7 +774,9 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 
 // triggerSeedPeerTask starts to trigger seed peer task.
 func (v *V1) triggerSeedPeerTask(ctx context.Context, rg *http.Range, task *resource.Task) {
-	ctx, cancel := context.WithTimeout(trace.ContextWithSpan(context.Background(), trace.SpanFromContext(ctx)), v.config.SeedPeer.TaskDownloadTimeout)
+	// Use a detached context to preserve trace propagation while allowing
+	// the seed peer download to complete independently.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), v.config.SeedPeer.TaskDownloadTimeout)
 	defer cancel()
 
 	task.Log.Info("trigger seed peer")

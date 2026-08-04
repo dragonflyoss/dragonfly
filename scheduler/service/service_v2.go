@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1901,19 +1903,30 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 	// refer to https://github.com/dragonflyoss/api/blob/main/pkg/apis/common/v2/common.proto#L74.
 	priority := peer.CalculatePriority(v.dynconfig)
 	peer.Log.Infof("peer priority is %s", priority.String())
+
+	// Set priority as a span attribute for traceability.
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		span.SetAttributes(attribute.String("d7y.scheduler.seed_peer.priority", priority.String()))
+	}
+
+	// Use a detached context that preserves trace propagation but is not cancelled
+	// when the parent context is cancelled, so the seed peer download can complete
+	// independently as a fire-and-forget operation.
+	traceCtx := context.WithoutCancel(ctx)
+
 	switch priority {
 	case commonv2.Priority_LEVEL6, commonv2.Priority_LEVEL0:
 		// Super peer is first triggered to download back-to-source.
 		if !peer.Task.IsSeedPeerFailed() {
-			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
+			go func(traceCtx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
-				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
+				if err := v.resource.SeedPeer().TriggerDownloadTask(traceCtx, taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
 					peer.Log.Errorf("%s seed peer triggers download task failed %s", hostType.Name(), err.Error())
 					return
 				}
 
 				peer.Log.Infof("%s seed peer triggers download task success", hostType.Name())
-			}(ctx, taskID, download, types.HostTypeSuperSeed)
+			}(traceCtx, taskID, download, types.HostTypeSuperSeed)
 
 			break
 		}
@@ -1922,15 +1935,15 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 	case commonv2.Priority_LEVEL5:
 		// Super peer is first triggered to download back-to-source.
 		if !peer.Task.IsSeedPeerFailed() {
-			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
+			go func(traceCtx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
-				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
+				if err := v.resource.SeedPeer().TriggerDownloadTask(traceCtx, taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
 					peer.Log.Errorf("%s seed peer triggers download task failed %s", hostType.Name(), err.Error())
 					return
 				}
 
 				peer.Log.Infof("%s seed peer triggers download task success", hostType.Name())
-			}(ctx, taskID, download, types.HostTypeSuperSeed)
+			}(traceCtx, taskID, download, types.HostTypeSuperSeed)
 
 			break
 		}
@@ -1939,15 +1952,15 @@ func (v *V2) downloadTaskBySeedPeer(ctx context.Context, taskID string, download
 	case commonv2.Priority_LEVEL4:
 		// Super peer is first triggered to download back-to-source.
 		if !peer.Task.IsSeedPeerFailed() {
-			go func(ctx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
+			go func(traceCtx context.Context, taskID string, download *commonv2.Download, hostType types.HostType) {
 				peer.Log.Infof("%s seed peer triggers download task", hostType.Name())
-				if err := v.resource.SeedPeer().TriggerDownloadTask(context.Background(), taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
+				if err := v.resource.SeedPeer().TriggerDownloadTask(traceCtx, taskID, &dfdaemonv2.DownloadTaskRequest{Download: download}); err != nil {
 					peer.Log.Errorf("%s seed peer triggers download task failed %s", hostType.Name(), err.Error())
 					return
 				}
 
 				peer.Log.Infof("%s seed peer triggers download task success", hostType.Name())
-			}(ctx, taskID, download, types.HostTypeSuperSeed)
+			}(traceCtx, taskID, download, types.HostTypeSuperSeed)
 
 			break
 		}

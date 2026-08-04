@@ -28,6 +28,8 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -212,10 +214,24 @@ type v2 struct {
 	*pkgbalancer.ConsistentHashingPickerBuilder
 }
 
+// setPeerTargetAttributes sets OpenTelemetry span attributes for the target peer address.
+func (v *v2) setPeerTargetAttributes(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	if !span.IsRecording() {
+		return
+	}
+
+	span.SetAttributes(
+		attribute.String("d7y.dfdaemon.target", v.Target()),
+	)
+}
+
 // SyncPieces syncs pieces from the other peers.
 func (v *v2) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_SyncPiecesClient, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
+
+	v.setPeerTargetAttributes(ctx)
 
 	return v.DfdaemonUploadClient.SyncPieces(
 		context.WithValue(ctx, pkgbalancer.ContextKey, req.TaskId),
@@ -226,6 +242,8 @@ func (v *v2) SyncPieces(ctx context.Context, req *dfdaemonv2.SyncPiecesRequest, 
 
 // DownloadTask downloads task from p2p network.
 func (v *v2) DownloadTask(ctx context.Context, taskID string, req *dfdaemonv2.DownloadTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadTaskClient, error) {
+	v.setPeerTargetAttributes(ctx)
+
 	return v.DfdaemonUploadClient.DownloadTask(
 		context.WithValue(ctx, pkgbalancer.ContextKey, taskID),
 		req,
@@ -260,6 +278,8 @@ func (v *v2) DeleteTask(ctx context.Context, req *dfdaemonv2.DeleteTaskRequest, 
 
 // DownloadPersistentTask downloads persistent task from p2p network.
 func (v *v2) DownloadPersistentTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentTaskClient, error) {
+	v.setPeerTargetAttributes(ctx)
+
 	return v.DfdaemonUploadClient.DownloadPersistentTask(ctx, req, opts...)
 }
 
@@ -291,6 +311,8 @@ func (v *v2) DeletePersistentTask(ctx context.Context, req *dfdaemonv2.DeletePer
 
 // DownloadPersistentCacheTask downloads persistent cache task from p2p network.
 func (v *v2) DownloadPersistentCacheTask(ctx context.Context, req *dfdaemonv2.DownloadPersistentCacheTaskRequest, opts ...grpc.CallOption) (dfdaemonv2.DfdaemonUpload_DownloadPersistentCacheTaskClient, error) {
+	v.setPeerTargetAttributes(ctx)
+
 	return v.DfdaemonUploadClient.DownloadPersistentCacheTask(ctx, req, opts...)
 }
 
