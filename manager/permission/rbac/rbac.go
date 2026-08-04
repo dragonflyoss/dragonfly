@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -32,7 +33,6 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	managermodels "d7y.io/dragonfly/v2/manager/models"
-	"d7y.io/dragonfly/v2/pkg/strings"
 )
 
 // Syntax for models see https://casbin.org/docs/en/syntax-for-models
@@ -202,7 +202,7 @@ func GetAPIGroupNames(g *gin.Engine) []string {
 			continue
 		}
 
-		if !strings.Contains(apiGroupNames, name) {
+		if !slices.Contains(apiGroupNames, name) {
 			apiGroupNames = append(apiGroupNames, name)
 		}
 	}
