@@ -25,8 +25,14 @@ import (
 // ExponentialDelayWithJitter is an exponential backoff strategy with jitter for retries. It calculates delay based on the attempt number,
 // adds jitter, and sleeps for that duration, capped at maxDelay.
 func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, maxDelay time.Duration) error {
-	delay := baseDelay * time.Duration(1<<attempt)
-	delay = min(delay, maxDelay)
+	// Guard the shift: for a large attempt, baseDelay<<attempt overflows int64 into
+	// a negative delay, which would fire time.After immediately and silently disable
+	// the backoff. Clamp to maxDelay instead. baseDelay <= maxDelay>>attempt
+	// guarantees baseDelay<<attempt <= maxDelay without overflow.
+	delay := maxDelay
+	if attempt < 63 && baseDelay <= maxDelay>>attempt {
+		delay = baseDelay << attempt
+	}
 
 	if delay > 0 {
 		jitter := time.Duration(rand.Int63n(int64(delay)))

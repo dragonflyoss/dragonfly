@@ -28,13 +28,15 @@ type Vertex[T comparable] struct {
 	Children set.Set[*Vertex[T]]
 }
 
-// New returns a new Vertex instance.
+// New returns a new Vertex instance. Parents and Children must be thread-safe
+// sets: vertex pointers escape the DAG's lock via GetVertex/GetVertices/Range,
+// so callers may access these sets concurrently.
 func NewVertex[T comparable](id string, value T) *Vertex[T] {
 	return &Vertex[T]{
 		ID:       id,
 		Value:    value,
-		Parents:  set.New[*Vertex[T]](),
-		Children: set.New[*Vertex[T]](),
+		Parents:  set.NewSafeSet[*Vertex[T]](),
+		Children: set.NewSafeSet[*Vertex[T]](),
 	}
 }
 

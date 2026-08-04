@@ -80,6 +80,22 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 			expectedMax: 3000 * time.Millisecond,
 		},
 		{
+			name:        "shift overflow attempt clamped at maxDelay",
+			attempt:     63,
+			baseDelay:   50 * time.Millisecond,
+			maxDelay:    200 * time.Millisecond,
+			expectedMin: 90 * time.Millisecond,
+			expectedMax: 400 * time.Millisecond,
+		},
+		{
+			name:        "multiplication overflow attempt clamped at maxDelay",
+			attempt:     40,
+			baseDelay:   100 * time.Millisecond,
+			maxDelay:    200 * time.Millisecond,
+			expectedMin: 90 * time.Millisecond,
+			expectedMax: 400 * time.Millisecond,
+		},
+		{
 			name:        "zero baseDelay with jitter",
 			attempt:     5,
 			baseDelay:   0,
