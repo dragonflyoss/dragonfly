@@ -1303,8 +1303,8 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if err != nil {
 		return err
 	}
-	host.ConcurrentRegisterCount.Inc()
-	defer host.ConcurrentRegisterCount.Dec()
+	host.ConcurrentRegisterCount.Add(1)
+	defer host.ConcurrentRegisterCount.Add(-1)
 
 	// Collect RegisterPeerCount metrics.
 	priority := peer.CalculatePriority(v.dynconfig)
@@ -1807,7 +1807,7 @@ func (v *V2) handleDownloadPieceFailedRequest(_ context.Context, peerID string, 
 		peer.UpdatedAt.Store(time.Now())
 		peer.BlockParents.Add(req.GetParentId())
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Handle task with piece temporary failed request.
@@ -2680,7 +2680,7 @@ func (v *V2) handleDownloadPersistentPieceFailedRequest(ctx context.Context, pee
 
 		peer.BlockParents = blocklist.Values()
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Update metadata of the persistent peer.
@@ -3896,7 +3896,7 @@ func (v *V2) handleDownloadPersistentCachePieceFailedRequest(ctx context.Context
 
 		peer.BlockParents = blocklist.Values()
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Update metadata of the persistent cache peer.

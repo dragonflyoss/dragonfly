@@ -1108,7 +1108,7 @@ func (v *V1) handlePieceFailure(ctx context.Context, peer *resource.Peer, piece 
 	}
 
 	// host upload failed and UploadErrorCount needs to be increased.
-	parent.Host.UploadFailedCount.Inc()
+	parent.Host.UploadFailedCount.Add(1)
 
 	// It’s not a case of back-to-source downloading failed,
 	// to help peer to reschedule the parent node.

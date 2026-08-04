@@ -16,7 +16,7 @@
 
 package math
 
-import "go.uber.org/atomic"
+import "sync/atomic"
 
 func SafeSubAtomicUint64(counter *atomic.Uint64, delta uint64) {
 	for {
