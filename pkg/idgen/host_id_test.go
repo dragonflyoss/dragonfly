@@ -22,50 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHostIDV1(t *testing.T) {
-	tests := []struct {
-		name     string
-		hostname string
-		port     int32
-		expect   func(t *testing.T, d string)
-	}{
-		{
-			name:     "generate HostID",
-			hostname: "foo",
-			port:     8000,
-			expect: func(t *testing.T, d string) {
-				assert := assert.New(t)
-				assert.Equal(d, "foo-8000")
-			},
-		},
-		{
-			name:     "generate HostID with empty host",
-			hostname: "",
-			port:     8000,
-			expect: func(t *testing.T, d string) {
-				assert := assert.New(t)
-				assert.Equal(d, "-8000")
-			},
-		},
-		{
-			name:     "generate HostID with zero port",
-			hostname: "foo",
-			port:     0,
-			expect: func(t *testing.T, d string) {
-				assert := assert.New(t)
-				assert.Equal(d, "foo-0")
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, HostIDV1(tc.hostname, tc.port))
-		})
-	}
-}
-
-func TestHostIDV2(t *testing.T) {
+func TestHostID(t *testing.T) {
 	tests := []struct {
 		name       string
 		ip         string
@@ -117,7 +74,7 @@ func TestHostIDV2(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, HostIDV2(tc.ip, tc.hostname, tc.isSeedPeer))
+			tc.expect(t, HostID(tc.ip, tc.hostname, tc.isSeedPeer))
 		})
 	}
 }

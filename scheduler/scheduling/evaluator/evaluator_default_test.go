@@ -145,11 +145,11 @@ var (
 	mockTaskApplication                = "foo"
 	mockTaskFilteredQueryParams        = []string{"bar"}
 	mockTaskHeader                     = map[string]string{"content-length": "100"}
-	mockHostID                         = idgen.HostIDV2("127.0.0.1", "foo", false)
-	mockSeedHostID                     = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostID                         = idgen.HostID("127.0.0.1", "foo", false)
+	mockSeedHostID                     = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation                   = "bas"
 	mockHostIDC                        = "baz"
-	mockPeerID                         = idgen.PeerIDV2()
+	mockPeerID                         = idgen.PeerID()
 )
 
 func TestEvaluatorDefault_newEvaluatorDefault(t *testing.T) {
@@ -271,14 +271,14 @@ func TestEvaluatorDefault_EvaluateParents(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 			parents := []*standard.Peer{
-				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", "host1", false), "127.0.0.1", "default-pod-1", "host1",
+				standard.NewPeer(idgen.PeerID(), mockTask, standard.NewHost(
+					idgen.HostID("127.0.0.1", "host1", false), "127.0.0.1", "default-pod-1", "host1",
 					8003, 8001, 8004, types.HostTypeNormal)),
-				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.2", "host2", false), "127.0.0.2", "default-pod-2", "host2",
+				standard.NewPeer(idgen.PeerID(), mockTask, standard.NewHost(
+					idgen.HostID("127.0.0.2", "host2", false), "127.0.0.2", "default-pod-2", "host2",
 					8003, 8001, 8004, types.HostTypeNormal)),
-				standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
-					idgen.HostIDV2("127.0.0.3", "host3", false), "127.0.0.3", "default-pod-3", "host3",
+				standard.NewPeer(idgen.PeerID(), mockTask, standard.NewHost(
+					idgen.HostID("127.0.0.3", "host3", false), "127.0.0.3", "default-pod-3", "host3",
 					8003, 8001, 8004, types.HostTypeNormal)),
 			}
 
@@ -385,7 +385,7 @@ func TestEvaluatorDefault_evaluateParents(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
-			parent := standard.NewPeer(idgen.PeerIDV2(), mockTask, standard.NewHost(
+			parent := standard.NewPeer(idgen.PeerID(), mockTask, standard.NewHost(
 				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type))
 

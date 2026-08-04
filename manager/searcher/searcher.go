@@ -19,12 +19,13 @@
 package searcher
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"net/netip"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -114,21 +115,22 @@ func (s *searcher) FindSchedulerClusters(ctx context.Context, schedulerClusters 
 		return nil, fmt.Errorf("conditions %#v does not match any scheduler cluster", conditions)
 	}
 
-	sort.Slice(
+	slices.SortFunc(
 		clusters,
-		func(i, j int) bool {
-			var si, sj Scopes
-			if err := mapstructure.Decode(clusters[i].Scopes, &si); err != nil {
-				log.Errorf("cluster %s decode scopes failed: %v", clusters[i].Name, err)
-				return false
+		func(a, b models.SchedulerCluster) int {
+			var sa, sb Scopes
+			if err := mapstructure.Decode(a.Scopes, &sa); err != nil {
+				log.Errorf("cluster %s decode scopes failed: %v", a.Name, err)
+				return 0
 			}
 
-			if err := mapstructure.Decode(clusters[j].Scopes, &sj); err != nil {
-				log.Errorf("cluster %s decode scopes failed: %v", clusters[i].Name, err)
-				return false
+			if err := mapstructure.Decode(b.Scopes, &sb); err != nil {
+				log.Errorf("cluster %s decode scopes failed: %v", b.Name, err)
+				return 0
 			}
 
-			return Evaluate(ip, hostname, conditions, si, clusters[i], log) > Evaluate(ip, hostname, conditions, sj, clusters[j], log)
+			// Sort by score from highest to lowest.
+			return cmp.Compare(Evaluate(ip, hostname, conditions, sb, b, log), Evaluate(ip, hostname, conditions, sa, a, log))
 		},
 	)
 
@@ -222,8 +224,7 @@ func calculateIDCAffinityScore(dst, src string) float64 {
 	// Dst has only one element, src has multiple elements separated by "|".
 	// When dst element matches one of the multiple elements of src,
 	// it gets the max score of idc.
-	srcElements := strings.Split(src, types.AffinitySeparator)
-	for _, srcElement := range srcElements {
+	for srcElement := range strings.SplitSeq(src, types.AffinitySeparator) {
 		if strings.EqualFold(dst, srcElement) {
 			return maxScore
 		}

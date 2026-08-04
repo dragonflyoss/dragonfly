@@ -147,24 +147,6 @@ func TestPriorityV2ToV1(t *testing.T) {
 	assert.Equal(commonv1.Priority_LEVEL0, PriorityV2ToV1(commonv2.Priority(100)))
 }
 
-func TestSizeScopeV1ToV2(t *testing.T) {
-	assert := assert.New(t)
-	tests := []struct {
-		v1 commonv1.SizeScope
-		v2 commonv2.SizeScope
-	}{
-		{commonv1.SizeScope_NORMAL, commonv2.SizeScope_NORMAL},
-		{commonv1.SizeScope_SMALL, commonv2.SizeScope_SMALL},
-		{commonv1.SizeScope_TINY, commonv2.SizeScope_TINY},
-		{commonv1.SizeScope_EMPTY, commonv2.SizeScope_EMPTY},
-		{commonv1.SizeScope_UNKNOW, commonv2.SizeScope_UNKNOW},
-	}
-	for _, tt := range tests {
-		assert.Equal(tt.v2, SizeScopeV1ToV2(tt.v1))
-	}
-	assert.Equal(commonv2.SizeScope_UNKNOW, SizeScopeV1ToV2(commonv1.SizeScope(100)))
-}
-
 func TestSizeScopeV2ToV1(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {

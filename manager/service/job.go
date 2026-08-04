@@ -501,7 +501,7 @@ func (s *service) extractPeersFromJobs(jobs []*models.Job) ([]types.Peer, error)
 						continue
 					}
 
-					hostID := idgen.HostIDV2(ip, hostname, false)
+					hostID := idgen.HostID(ip, hostname, false)
 					p, found := m[hostID]
 					if !found {
 						m[hostID] = &types.Peer{

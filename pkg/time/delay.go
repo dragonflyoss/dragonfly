@@ -19,7 +19,7 @@ package time
 import (
 	"context"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 )
 
@@ -35,7 +35,7 @@ func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, ma
 	}
 
 	if delay > 0 {
-		jitter := time.Duration(rand.Int63n(int64(delay)))
+		jitter := time.Duration(rand.Int64N(int64(delay)))
 		delay = delay/2 + jitter // delay is now between [delay/2, delay]
 	}
 
@@ -55,7 +55,7 @@ func RandomDelayWithJitter(baseDelay time.Duration) {
 		return
 	}
 
-	jitter := time.Duration(rand.Int63n(int64(baseDelay) / 2))
+	jitter := time.Duration(rand.Int64N(int64(baseDelay) / 2))
 	delay := baseDelay*3/4 + jitter
 	time.Sleep(delay)
 }
