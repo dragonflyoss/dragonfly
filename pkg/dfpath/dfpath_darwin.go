@@ -19,14 +19,26 @@
 package dfpath
 
 import (
+	"os"
 	"path/filepath"
 
-	"d7y.io/dragonfly/v2/pkg/os/user"
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
 var (
-	DefaultWorkHome  = filepath.Join(user.HomeDir(), ".dragonfly")
+	DefaultWorkHome  = filepath.Join(homeDir(), ".dragonfly")
 	DefaultConfigDir = filepath.Join(DefaultWorkHome, "config")
 	DefaultLogDir    = filepath.Join(DefaultWorkHome, "logs")
 	DefaultPluginDir = filepath.Join(DefaultWorkHome, "plugins")
 )
+
+// homeDir returns the current user's home directory.
+func homeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Warnf("Failed to get user home directory: %s. Use / as HomeDir", err.Error())
+		return "/"
+	}
+
+	return home
+}

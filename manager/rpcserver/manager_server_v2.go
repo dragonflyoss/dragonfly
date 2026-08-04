@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 	"time"
 
 	cachev9 "github.com/go-redis/cache/v9"
@@ -42,7 +43,6 @@ import (
 	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/types"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
-	"d7y.io/dragonfly/v2/pkg/slices"
 )
 
 // managerServerV2 is v2 version of the manager grpc server.

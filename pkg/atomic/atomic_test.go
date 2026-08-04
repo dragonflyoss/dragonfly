@@ -1,5 +1,5 @@
 /*
- *     Copyright 2022 The Dragonfly Authors
+ *     Copyright 2026 The Dragonfly Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,39 @@
  * limitations under the License.
  */
 
-package strings
+package atomic
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestContains(t *testing.T) {
-	assert.True(t, Contains([]string{"a", "B"}, "B"))
-	assert.False(t, Contains([]string{"a", "B"}, "b"))
+func TestTime(t *testing.T) {
+	assert := assert.New(t)
+
+	var zero Time
+	assert.Equal(time.Time{}, zero.Load())
+
+	now := time.Now()
+	at := NewTime(now)
+	assert.Equal(now, at.Load())
+
+	next := now.Add(time.Hour)
+	at.Store(next)
+	assert.Equal(next, at.Load())
 }
 
-func TestConcat(t *testing.T) {
-	assert.EqualValues(t, Concat([]string{"a", "B"}, []string{"c", "D"}), []string{"a", "B", "c", "D"})
-	assert.EqualValues(t, Concat([]string{"a", "B"}, []string{}), []string{"a", "B"})
-	assert.EqualValues(t, Concat([]string{}, []string{"c", "D"}), []string{"c", "D"})
-	assert.EqualValues(t, Concat([]string{}, []string{}), []string(nil))
+func TestDuration(t *testing.T) {
+	assert := assert.New(t)
+
+	var zero Duration
+	assert.Equal(time.Duration(0), zero.Load())
+
+	d := NewDuration(time.Second)
+	assert.Equal(time.Second, d.Load())
+
+	d.Store(time.Minute)
+	assert.Equal(time.Minute, d.Load())
 }

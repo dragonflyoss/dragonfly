@@ -26,7 +26,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,6 +40,7 @@ import (
 	schedulerv2mocks "d7y.io/api/v2/pkg/apis/scheduler/v2/mocks"
 
 	"d7y.io/dragonfly/v2/manager/types"
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
@@ -82,8 +82,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockRawSeedHost = standard.Host{
@@ -104,8 +104,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockCPU = standard.CPU{

@@ -21,10 +21,10 @@ package dynconfig
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
-	"go.uber.org/atomic"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/cache"
@@ -52,7 +52,7 @@ type dynconfig[T any] struct {
 func New[T any](client Client, expire time.Duration) (Dynconfig[T], error) {
 	d := &dynconfig[T]{
 		cache:  cache.New(expire, cache.NoCleanup),
-		data:   atomic.NewPointer[T](nil),
+		data:   &atomic.Pointer[T]{},
 		expire: expire,
 		client: client,
 		mu:     &sync.Mutex{},

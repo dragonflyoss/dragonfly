@@ -1,5 +1,5 @@
 /*
- *     Copyright 2022 The Dragonfly Authors
+ *     Copyright 2026 The Dragonfly Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,28 @@
  * limitations under the License.
  */
 
-package strings
+package auth
 
 import (
-	"slices"
+	"encoding/base64"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
-// Contains reports whether the string contains the element.
-func Contains(slice []string, ele string) bool {
-	return slices.Contains(slice, ele)
-}
+func TestGeneratePersonalAccessToken(t *testing.T) {
+	assert := assert.New(t)
 
-// Concat concatenates multiple string slices.
-func Concat(slices ...[]string) []string {
-	var result []string
-	for _, slice := range slices {
-		result = append(result, slice...)
-	}
-	return result
+	token := GeneratePersonalAccessToken()
+	assert.NotEmpty(token)
+
+	// Token must be url-safe base64 wrapping a valid UUID.
+	raw, err := base64.RawURLEncoding.DecodeString(token)
+	assert.NoError(err)
+	_, err = uuid.Parse(string(raw))
+	assert.NoError(err)
+
+	// Tokens must be unique.
+	assert.NotEqual(token, GeneratePersonalAccessToken())
 }

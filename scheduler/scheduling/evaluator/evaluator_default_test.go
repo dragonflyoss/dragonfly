@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/types"
@@ -51,8 +51,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockRawSeedHost = standard.Host{
@@ -73,8 +73,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockCPU = standard.CPU{

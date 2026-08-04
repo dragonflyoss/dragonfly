@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -38,7 +39,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
-	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/structure"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 )
@@ -701,7 +701,7 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 				}
 
 				// Scan the schedulers to find the first scheduler that supports feature.
-				if slices.Contains(scheduler.Features, features...) {
+				if containsAllFeatures(scheduler.Features, features) {
 					candidateSchedulers = append(candidateSchedulers, scheduler)
 					break
 				}
@@ -731,7 +731,7 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 				}
 
 				// Scan the schedulers to find the first scheduler that supports feature.
-				if slices.Contains(scheduler.Features, features...) {
+				if containsAllFeatures(scheduler.Features, features) {
 					candidateSchedulers = append(candidateSchedulers, scheduler)
 					break
 				}
@@ -744,6 +744,16 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 	}
 
 	return candidateSchedulers, nil
+}
+
+func containsAllFeatures(schedulerFeatures, features []string) bool {
+	for _, feature := range features {
+		if !slices.Contains(schedulerFeatures, feature) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUID string, delay, maxDelay time.Duration, attempts uint) {

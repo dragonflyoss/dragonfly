@@ -19,8 +19,8 @@ package logger
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
