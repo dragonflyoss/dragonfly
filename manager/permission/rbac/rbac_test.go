@@ -17,11 +17,22 @@
 package rbac
 
 import (
+	"fmt"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/casbin/casbin/v2"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
+
+	managermodels "d7y.io/dragonfly/v2/manager/models"
 )
 
 func TestInitialRootPassword(t *testing.T) {
@@ -194,5 +205,61 @@ func TestHTTPMethodToAction(t *testing.T) {
 		if action != tt.expectedAction {
 			t.Errorf("HttpMethodToAction(%v) = %v, want %v", tt.method, action, tt.expectedAction)
 		}
+	}
+}
+
+func TestInitRBAC(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "rbac.db")), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+		Logger:         gormlogger.Discard,
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}))
+
+	router := gin.New()
+	router.GET("/api/v1/users", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	router.POST("/api/v1/clusters", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	enforcers := make([]*casbin.Enforcer, 2)
+	for i := range enforcers {
+		enforcer, err := NewEnforcer(db)
+		assert.NoError(t, err)
+		enforcers[i] = enforcer
+	}
+
+	for _, enforcer := range enforcers {
+		assert.NoError(t, InitRBAC(enforcer, router, db))
+	}
+
+	var rootUser managermodels.User
+	assert.NoError(t, db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error)
+
+	tests := []struct {
+		name     string
+		enforcer *casbin.Enforcer
+	}{
+		{
+			name:     "enforcer that seeded the root user",
+			enforcer: enforcers[0],
+		},
+		{
+			name:     "enforcer built before the root user was seeded",
+			enforcer: enforcers[1],
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			ok, err := tc.enforcer.Enforce(fmt.Sprint(rootUser.ID), "clusters", AllAction)
+			assert.NoError(err)
+			assert.True(ok)
+		})
 	}
 }
