@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -208,62 +208,58 @@ func TestHTTPMethodToAction(t *testing.T) {
 	}
 }
 
-// newTestDB returns a sqlite database with the tables InitRBAC touches.
-func newTestDB(t *testing.T) *gorm.DB {
-	t.Helper()
-
-	// SingularTable matches the production configuration, so that the table the
-	// casbin gorm adapter uses is the one migrated here.
+func TestInitRBAC(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "rbac.db")), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
 		Logger:         gormlogger.Discard,
 	})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}))
+	assert.NoError(t, err)
+	assert.NoError(t, db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}))
 
-	return db
-}
+	router := gin.New()
+	router.GET("/api/v1/users", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
 
-// newTestRouter returns a router whose paths match apiGroupRegexp, so that
-// GetPermissions derives the users and clusters objects from it.
-func newTestRouter(t *testing.T) *gin.Engine {
-	t.Helper()
+	router.POST("/api/v1/clusters", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
 
-	gin.SetMode(gin.TestMode)
-	g := gin.New()
-	g.GET("/api/v1/users", func(c *gin.Context) { c.Status(http.StatusOK) })
-	g.POST("/api/v1/clusters", func(c *gin.Context) { c.Status(http.StatusOK) })
+	enforcers := make([]*casbin.Enforcer, 2)
+	for i := range enforcers {
+		enforcer, err := NewEnforcer(db)
+		assert.NoError(t, err)
+		enforcers[i] = enforcer
+	}
 
-	return g
-}
-
-// TestInitRBACConcurrentReplicas covers replicas that build their enforcer before
-// another replica seeds the root user. Every enforcer must hold the root grant,
-// not only the one that did the seeding.
-func TestInitRBACConcurrentReplicas(t *testing.T) {
-	assert := assert.New(t)
-	db := newTestDB(t)
-	router := newTestRouter(t)
-
-	// Both replicas load an empty casbin_rule before either seeds the root user.
-	enforcerA, err := NewEnforcer(db)
-	require.NoError(t, err)
-	enforcerB, err := NewEnforcer(db)
-	require.NoError(t, err)
-
-	// Replica A seeds the root user, replica B finds it already there.
-	require.NoError(t, InitRBAC(enforcerA, router, db))
-	require.NoError(t, InitRBAC(enforcerB, router, db))
+	for _, enforcer := range enforcers {
+		assert.NoError(t, InitRBAC(enforcer, router, db))
+	}
 
 	var rootUser managermodels.User
-	require.NoError(t, db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error)
-	sub := fmt.Sprint(rootUser.ID)
+	assert.NoError(t, db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error)
 
-	okA, err := enforcerA.Enforce(sub, "clusters", AllAction)
-	require.NoError(t, err)
-	assert.True(okA, "enforcer of the replica that seeded the root user denies root")
+	tests := []struct {
+		name     string
+		enforcer *casbin.Enforcer
+	}{
+		{
+			name:     "enforcer that seeded the root user",
+			enforcer: enforcers[0],
+		},
+		{
+			name:     "enforcer built before the root user was seeded",
+			enforcer: enforcers[1],
+		},
+	}
 
-	okB, err := enforcerB.Enforce(sub, "clusters", AllAction)
-	require.NoError(t, err)
-	assert.True(okB, "enforcer of the replica that did not seed the root user denies root")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			ok, err := tc.enforcer.Enforce(fmt.Sprint(rootUser.ID), "clusters", AllAction)
+			assert.NoError(err)
+			assert.True(ok)
+		})
+	}
 }
