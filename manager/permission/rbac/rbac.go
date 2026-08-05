@@ -165,10 +165,23 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 		if err := db.Create(&rootUser).Error; err != nil {
 			return err
 		}
+	}
 
-		if _, err := e.AddRoleForUser(fmt.Sprint(rootUser.ID), RootRole); err != nil {
-			return err
+	// Grant the root role on every startup, not only when the root user is
+	// seeded. An enforcer loads the policy once at construction, so an instance
+	// that started before another one seeded the root user would otherwise never
+	// hold the grant and would deny every request from root.
+	var rootUser managermodels.User
+	if err := db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
 		}
+
+		return err
+	}
+
+	if _, err := e.AddRoleForUser(fmt.Sprint(rootUser.ID), RootRole); err != nil {
+		return err
 	}
 
 	return nil

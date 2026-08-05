@@ -17,11 +17,22 @@
 package rbac
 
 import (
+	"fmt"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
+
+	managermodels "d7y.io/dragonfly/v2/manager/models"
 )
 
 func TestInitialRootPassword(t *testing.T) {
@@ -195,4 +206,64 @@ func TestHTTPMethodToAction(t *testing.T) {
 			t.Errorf("HttpMethodToAction(%v) = %v, want %v", tt.method, action, tt.expectedAction)
 		}
 	}
+}
+
+// newTestDB returns a sqlite database with the tables InitRBAC touches.
+func newTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	// SingularTable matches the production configuration, so that the table the
+	// casbin gorm adapter uses is the one migrated here.
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "rbac.db")), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+		Logger:         gormlogger.Discard,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}))
+
+	return db
+}
+
+// newTestRouter returns a router whose paths match apiGroupRegexp, so that
+// GetPermissions derives the users and clusters objects from it.
+func newTestRouter(t *testing.T) *gin.Engine {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+	g := gin.New()
+	g.GET("/api/v1/users", func(c *gin.Context) { c.Status(http.StatusOK) })
+	g.POST("/api/v1/clusters", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	return g
+}
+
+// TestInitRBACConcurrentReplicas covers replicas that build their enforcer before
+// another replica seeds the root user. Every enforcer must hold the root grant,
+// not only the one that did the seeding.
+func TestInitRBACConcurrentReplicas(t *testing.T) {
+	assert := assert.New(t)
+	db := newTestDB(t)
+	router := newTestRouter(t)
+
+	// Both replicas load an empty casbin_rule before either seeds the root user.
+	enforcerA, err := NewEnforcer(db)
+	require.NoError(t, err)
+	enforcerB, err := NewEnforcer(db)
+	require.NoError(t, err)
+
+	// Replica A seeds the root user, replica B finds it already there.
+	require.NoError(t, InitRBAC(enforcerA, router, db))
+	require.NoError(t, InitRBAC(enforcerB, router, db))
+
+	var rootUser managermodels.User
+	require.NoError(t, db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error)
+	sub := fmt.Sprint(rootUser.ID)
+
+	okA, err := enforcerA.Enforce(sub, "clusters", AllAction)
+	require.NoError(t, err)
+	assert.True(okA, "enforcer of the replica that seeded the root user denies root")
+
+	okB, err := enforcerB.Enforce(sub, "clusters", AllAction)
+	require.NoError(t, err)
+	assert.True(okB, "enforcer of the replica that did not seed the root user denies root")
 }
