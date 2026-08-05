@@ -76,6 +76,28 @@ func TestTaskIDV1(t *testing.T) {
 				assert.Equal(d, "2773851c628744fb7933003195db436ce397c1722920696c4274ff804d86920b")
 			},
 		},
+		{
+			name: "generate taskID with undecodable query param",
+			url:  "https://example.com?foo=%zz",
+			meta: &commonv1.UrlMeta{
+				Filter: "bar",
+			},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.NotEqual(d, TaskIDV1("https://example.com?foo=%yy", &commonv1.UrlMeta{Filter: "bar"}))
+			},
+		},
+		{
+			name: "generate taskID with unparsable url",
+			url:  "https://example.com:port/foo",
+			meta: &commonv1.UrlMeta{
+				Filter: "bar",
+			},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.NotEqual(d, TaskIDV1("https://example.com:port/bar", &commonv1.UrlMeta{Filter: "bar"}))
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -164,6 +186,24 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
 				assert.Equal(d, "b171331534b80e0bf91da38ebbfcdbf4d177898f4b9beac44f14733e3f004d4e")
+			},
+		},
+		{
+			name:    "generate taskID with undecodable query param",
+			url:     "https://example.com?foo=%zz",
+			filters: []string{"bar"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.NotEqual(d, TaskIDV2ByURLBased("https://example.com?foo=%yy", nil, "", "", []string{"bar"}, ""))
+			},
+		},
+		{
+			name:    "generate taskID with unparsable url",
+			url:     "https://example.com:port/foo",
+			filters: []string{"bar"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.NotEqual(d, TaskIDV2ByURLBased("https://example.com:port/bar", nil, "", "", []string{"bar"}, ""))
 			},
 		},
 	}

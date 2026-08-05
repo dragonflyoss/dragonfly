@@ -31,13 +31,21 @@ func FilterQueryParams(rawURL string, filteredQueryParams []string) (string, err
 		return "", err
 	}
 
+	// u.Query() swallows the parse error and returns only the params it could
+	// decode, which would silently drop the undecodable ones from the returned
+	// url. Parse the raw query directly so the error reaches the caller.
+	query, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return "", err
+	}
+
 	hidden := make(map[string]struct{})
 	for _, filter := range filteredQueryParams {
 		hidden[filter] = struct{}{}
 	}
 
 	var values = make(url.Values)
-	for k, v := range u.Query() {
+	for k, v := range query {
 		if _, ok := hidden[k]; !ok {
 			values[k] = v
 		}
