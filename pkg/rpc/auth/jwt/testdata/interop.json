@@ -1,0 +1,11 @@
+{
+  "_comment": "TEST ONLY. This deterministic key must never be used in a deployment.",
+  "secretBase64": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+  "keyID": "test-key",
+  "issuer": "dragonfly-internal",
+  "audience": "urn:dragonfly:grpc:scheduler",
+  "issuedAt": 1786435200,
+  "expiresAt": 1786435800,
+  "goToken": "eyJhbGciOiJIUzI1NiIsImtpZCI6InRlc3Qta2V5IiwidHlwIjoiZHJhZ29uZmx5LWdycGMrand0In0.eyJpc3MiOiJkcmFnb25mbHktaW50ZXJuYWwiLCJhdWQiOiJ1cm46ZHJhZ29uZmx5OmdycGM6c2NoZWR1bGVyIiwiaWF0IjoxNzg2NDM1MjAwLCJleHAiOjE3ODY0MzU4MDB9.-BwX7Ur59WOu00J90_FUGr7wFQ7FqKmmYbd8OVNf8s4",
+  "rustToken": "eyJ0eXAiOiJkcmFnb25mbHktZ3JwYytqd3QiLCJhbGciOiJIUzI1NiIsImtpZCI6InRlc3Qta2V5In0.eyJpc3MiOiJkcmFnb25mbHktaW50ZXJuYWwiLCJhdWQiOiJ1cm46ZHJhZ29uZmx5OmdycGM6c2NoZWR1bGVyIiwiaWF0IjoxNzg2NDM1MjAwLCJleHAiOjE3ODY0MzU4MDB9.GPft73L1Y8aPMedYlf_drg_vHGzwirKIzfn3lxH8ZeY"
+}

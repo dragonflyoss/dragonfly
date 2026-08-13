@@ -46,6 +46,7 @@ import (
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 )
 
 const (
@@ -113,6 +114,11 @@ type Server struct {
 // New creates a new manager server.
 func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	s := &Server{config: cfg}
+	authenticator, err := grpcauth.New(cfg.GRPCAuth)
+	if err != nil {
+		return nil, err
+	}
+	logger.Infof("initialized gRPC authentication with mode %s", authenticator.Mode())
 
 	// Initialize database.
 	db, err := database.New(cfg)
@@ -189,7 +195,7 @@ func New(cfg *config.Config, d dfpath.Dfpath) (*Server, error) {
 	}
 
 	// Initialize GRPC server.
-	_, grpcServer, err := rpcserver.New(cfg, db, cache, searcher, options...)
+	_, grpcServer, err := rpcserver.NewWithAuthentication(cfg, authenticator, db, cache, searcher, options...)
 	if err != nil {
 		return nil, err
 	}

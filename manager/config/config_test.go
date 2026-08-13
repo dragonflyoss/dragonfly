@@ -24,6 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 )
 
 var (
@@ -125,6 +127,22 @@ func TestConfig_Load(t *testing.T) {
 				Key:        "bar",
 				Timeout:    30 * time.Second,
 				MaxRefresh: 1 * time.Minute,
+			},
+		},
+		GRPCAuth: grpcauth.Config{
+			Mode:                     grpcauth.ModeRequired,
+			RequireTransportSecurity: true,
+			JWT: grpcauth.JWTConfig{
+				Issuer:        "dragonfly-test",
+				TokenTTL:      10 * time.Minute,
+				MaxTokenTTL:   15 * time.Minute,
+				ClockSkew:     30 * time.Second,
+				RefreshBefore: time.Minute,
+				ActiveKeyID:   "test-key",
+				Keys: []grpcauth.KeyConfig{{
+					ID:         "test-key",
+					SecretFile: "/etc/dragonfly/secrets/grpc-jwt/test-key",
+				}},
 			},
 		},
 		Database: DatabaseConfig{
@@ -260,6 +278,16 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.EqualError(err, "server requires parameter name")
+			},
+		},
+		{
+			name:   "grpc auth rejects unsupported mode",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.GRPCAuth.Mode = "unknown"
+			},
+			expect: func(t *testing.T, err error) {
+				assert.EqualError(t, err, `grpc auth has unsupported mode "unknown"`)
 			},
 		},
 		{

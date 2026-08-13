@@ -19,6 +19,7 @@ package rpcserver
 import (
 	"google.golang.org/grpc"
 
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -39,9 +40,27 @@ func New(
 	dynconfig config.DynconfigInterface,
 	opts ...grpc.ServerOption,
 ) *grpc.Server {
-	return server.New(
+	return NewWithAuthentication(cfg, nil, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig, opts...)
+}
+
+// NewWithAuthentication returns a new scheduler server with inter-component
+// JWT authentication.
+func NewWithAuthentication(
+	cfg *config.Config,
+	authenticator *grpcauth.Authenticator,
+	resource standard.Resource,
+	persistentResource persistent.Resource,
+	persistentCacheResource persistentcache.Resource,
+	scheduling scheduling.Scheduling,
+	job job.Job,
+	dynconfig config.DynconfigInterface,
+	opts ...grpc.ServerOption,
+) *grpc.Server {
+	return server.NewWithAuthentication(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
-		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
+		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig,
+			grpc.WithPerRPCCredentials(authenticator.PerRPCCredentials(grpcauth.AudienceDfdaemon))),
 		cfg.Server.RequestRateLimit,
+		authenticator,
 		opts...)
 }
