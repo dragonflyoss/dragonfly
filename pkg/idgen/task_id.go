@@ -17,6 +17,8 @@
 package idgen
 
 import (
+	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -101,6 +103,14 @@ const (
 	FilteredQueryParamsSeparator = "&"
 )
 
+// blobURLRegexp matches OCI blob URLs, e.g. http(s)://<registry>/v2/<repository>/blobs/<digest>.
+var blobURLRegexp = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/blobs/([^?]+)(?:\?.*)?$`)
+
+// IsBlobURL reports whether the url is an OCI blob URL.
+func IsBlobURL(url string) bool {
+	return blobURLRegexp.MatchString(url)
+}
+
 // TaskIDV1 generates v1 version of task id.
 // filter is separated by & character.
 func TaskIDV1(url string, meta *commonv1.UrlMeta) string {
@@ -168,6 +178,27 @@ func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string
 // TaskIDV2ByContent generates v2 version of task id by content.
 func TaskIDV2ByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
+}
+
+// TaskIDV2ByBlobDigest generates v2 version of task id by the digest
+// extracted from the OCI blob url.
+func TaskIDV2ByBlobDigest(url string) (string, error) {
+	matches := blobURLRegexp.FindStringSubmatch(url)
+	if matches == nil {
+		return "", fmt.Errorf("invalid blob url: %s", url)
+	}
+
+	d, err := pkgdigest.Parse(matches[4])
+	if err != nil {
+		return "", err
+	}
+
+	switch d.Algorithm {
+	case pkgdigest.AlgorithmCRC32, pkgdigest.AlgorithmSHA256, pkgdigest.AlgorithmSHA512:
+		return d.Encoded, nil
+	default:
+		return "", fmt.Errorf("unsupported digest algorithm: %s", d.Algorithm)
+	}
 }
 
 // PersistentCacheTaskIDByContent generates persistent cache task id by content.
