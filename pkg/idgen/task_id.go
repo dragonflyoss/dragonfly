@@ -30,9 +30,6 @@ import (
 	neturl "d7y.io/dragonfly/v2/pkg/net/url"
 )
 
-// blobURLRegexp matches OCI blob URLs, e.g. http(s)://<registry>/v2/<repository>/blobs/<digest>.
-var blobURLRegexp = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/blobs/([^?]+)(?:\?.*)?$`)
-
 // DefaultFilteredQueryParams is the default filtered query params to generate the task id.
 var DefaultFilteredQueryParams []string = slices.Concat(
 	S3FilteredQueryParams,
@@ -106,6 +103,14 @@ const (
 	FilteredQueryParamsSeparator = "&"
 )
 
+// blobURLRegexp matches OCI blob URLs, e.g. http(s)://<registry>/v2/<repository>/blobs/<digest>.
+var blobURLRegexp = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/blobs/([^?]+)(?:\?.*)?$`)
+
+// IsBlobURL reports whether the url is an OCI blob URL.
+func IsBlobURL(url string) bool {
+	return blobURLRegexp.MatchString(url)
+}
+
 // TaskIDV1 generates v1 version of task id.
 // filter is separated by & character.
 func TaskIDV1(url string, meta *commonv1.UrlMeta) string {
@@ -173,11 +178,6 @@ func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string
 // TaskIDV2ByContent generates v2 version of task id by content.
 func TaskIDV2ByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
-}
-
-// IsBlobURL reports whether the url is an OCI blob URL.
-func IsBlobURL(url string) bool {
-	return blobURLRegexp.MatchString(url)
 }
 
 // TaskIDV2ByBlobDigest generates v2 version of task id by the digest
