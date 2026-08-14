@@ -235,7 +235,7 @@ func (v *V1) ReportPieceResult(stream schedulerv1.Scheduler_ReportPieceResultSer
 
 		// Handle piece download successfully.
 		if piece.Success {
-			peer.Log.Infof("receive success piece: %#v %#v", piece, piece.PieceInfo)
+			peer.Log.Debugf("receive success piece: %#v %#v", piece, piece.PieceInfo)
 			v.handlePieceSuccess(ctx, peer, piece)
 
 			// Collect host traffic metrics.
