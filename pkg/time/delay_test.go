@@ -137,13 +137,10 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 
 			for i := range iterations {
 				start := time.Now()
-				if err := ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay); err != nil {
-					t.Fatalf("ExponentialDelayWithJitter returned error: %v", err)
-				}
-
-				duration := time.Since(start)
+				ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay)
 
 				// Allow some failures due to system scheduling
+				duration := time.Since(start)
 				if duration >= tt.expectedMin && duration <= tt.expectedMax {
 					successCount++
 				} else {

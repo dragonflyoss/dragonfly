@@ -1370,12 +1370,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	//     the concurrency of back-to-source tasks for seed peers. Therefore, there is no risk of a
 	//     thundering herd against the source, and the delay is unnecessary.
 	if peer.Host.Type != types.HostTypeSuperSeed {
-		if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
-			// Collect RegisterPeerFailureCount metrics.
-			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-				peer.Host.Type.Name()).Inc()
-			return status.Error(codes.Internal, err.Error())
-		}
+		pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer)
 	}
 
 	blocklist := set.NewSafeSet[string]()

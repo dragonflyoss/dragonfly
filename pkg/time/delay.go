@@ -25,7 +25,7 @@ import (
 
 // ExponentialDelayWithJitter is an exponential backoff strategy with jitter for retries. It calculates delay based on the attempt number,
 // adds jitter, and sleeps for that duration, capped at maxDelay.
-func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, maxDelay time.Duration) error {
+func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, maxDelay time.Duration) {
 	var delay time.Duration
 	if baseDelay > 0 {
 		delay = maxDelay
@@ -41,9 +41,7 @@ func ExponentialDelayWithJitter(ctx context.Context, attempt uint, baseDelay, ma
 
 	select {
 	case <-time.After(delay):
-		return nil
 	case <-ctx.Done():
-		return ctx.Err()
 	}
 }
 
