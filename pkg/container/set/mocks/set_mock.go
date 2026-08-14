@@ -109,6 +109,18 @@ func (mr *MockSetMockRecorder[T]) Len() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Len", reflect.TypeOf((*MockSet[T])(nil).Len))
 }
 
+// Range mocks base method.
+func (m *MockSet[T]) Range(fn func(T) bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Range", fn)
+}
+
+// Range indicates an expected call of Range.
+func (mr *MockSetMockRecorder[T]) Range(fn any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Range", reflect.TypeOf((*MockSet[T])(nil).Range), fn)
+}
+
 // Values mocks base method.
 func (m *MockSet[T]) Values() []T {
 	m.ctrl.T.Helper()

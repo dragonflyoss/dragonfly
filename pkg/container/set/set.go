@@ -20,6 +20,12 @@ package set
 
 type Set[T comparable] interface {
 	Values() []T
+
+	// Range calls fn for each value in the set without copying values.
+	// If fn returns false, range stops the iteration. fn must not add to
+	// or delete from the set during the iteration.
+	Range(fn func(T) bool)
+
 	Add(T) bool
 	Delete(T)
 	Contains(...T) bool
@@ -44,6 +50,17 @@ func (s *set[T]) Values() []T {
 	}
 
 	return result
+}
+
+// Range calls fn for each value in the set without copying values.
+// If fn returns false, range stops the iteration. fn must not add to
+// or delete from the set during the iteration.
+func (s *set[T]) Range(fn func(T) bool) {
+	for k := range *s {
+		if !fn(k) {
+			return
+		}
+	}
 }
 
 func (s *set[T]) Add(v T) bool {

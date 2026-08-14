@@ -317,6 +317,98 @@ func TestSafeSetValues_Concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+func TestSafeSetRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, s SafeSet[string])
+	}{
+		{
+			name: "range values",
+			expect: func(t *testing.T, s SafeSet[string]) {
+				assert := assert.New(t)
+				s.Add("foo")
+				s.Add("bar")
+
+				var values []string
+				s.Range(func(v string) bool {
+					values = append(values, v)
+					return true
+				})
+				assert.Contains(values, "foo")
+				assert.Contains(values, "bar")
+				assert.Equal(len(values), 2)
+			},
+		},
+		{
+			name: "range empty set",
+			expect: func(t *testing.T, s SafeSet[string]) {
+				assert := assert.New(t)
+				var count int
+				s.Range(func(v string) bool {
+					count++
+					return true
+				})
+				assert.Equal(count, 0)
+			},
+		},
+		{
+			name: "range stops when fn returns false",
+			expect: func(t *testing.T, s SafeSet[string]) {
+				assert := assert.New(t)
+				s.Add("foo")
+				s.Add("bar")
+
+				var count int
+				s.Range(func(v string) bool {
+					count++
+					return false
+				})
+				assert.Equal(count, 1)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewSafeSet[string]()
+			tc.expect(t, s)
+		})
+	}
+}
+
+func TestSafeSetRange_Concurrent(t *testing.T) {
+	runtime.GOMAXPROCS(2)
+
+	s := NewSafeSet[int]()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		var elems int
+		s.Range(func(int) bool {
+			elems++
+			return true
+		})
+		for range N {
+			var newElems int
+			s.Range(func(int) bool {
+				newElems++
+				return true
+			})
+			if newElems < elems {
+				t.Errorf("Range shrunk from %v to %v", elems, newElems)
+			}
+			elems = newElems
+		}
+		wg.Done()
+	}()
+
+	for i := range N {
+		s.Add(i)
+	}
+	wg.Wait()
+}
+
 func TestSafeSetClear(t *testing.T) {
 	tests := []struct {
 		name   string

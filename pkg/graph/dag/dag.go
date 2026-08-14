@@ -22,8 +22,6 @@ import (
 	"errors"
 	"maps"
 	"sync"
-
-	"d7y.io/dragonfly/v2/pkg/container/set"
 )
 
 var (
@@ -135,13 +133,15 @@ func (d *dag[T]) DeleteVertex(id string) {
 		return
 	}
 
-	for _, parent := range vertex.Parents.Values() {
+	vertex.Parents.Range(func(parent *Vertex[T]) bool {
 		parent.Children.Delete(vertex)
-	}
+		return true
+	})
 
-	for _, child := range vertex.Children.Values() {
+	vertex.Children.Range(func(child *Vertex[T]) bool {
 		child.Parents.Delete(vertex)
-	}
+		return true
+	})
 
 	delete(d.vertices, id)
 }
@@ -232,10 +232,8 @@ func (d *dag[T]) AddEdge(fromVertexID, toVertexID string) error {
 		return err
 	}
 
-	for _, child := range fromVertex.Children.Values() {
-		if child.ID == toVertexID {
-			return ErrCycleBetweenVertices
-		}
+	if fromVertex.Children.Contains(toVertex) {
+		return ErrCycleBetweenVertices
 	}
 
 	if d.depthFirstSearch(toVertexID, fromVertexID) {
@@ -329,14 +327,13 @@ func (d *dag[T]) CanAddEdge(fromVertexID, toVertexID string) bool {
 		return false
 	}
 
-	if _, err := d.getVertex(toVertexID); err != nil {
+	toVertex, err := d.getVertex(toVertexID)
+	if err != nil {
 		return false
 	}
 
-	for _, child := range fromVertex.Children.Values() {
-		if child.ID == toVertexID {
-			return false
-		}
+	if fromVertex.Children.Contains(toVertex) {
+		return false
 	}
 
 	if d.depthFirstSearch(toVertexID, fromVertexID) {
@@ -397,11 +394,12 @@ func (d *dag[T]) DeleteVertexInEdges(id string) error {
 		return err
 	}
 
-	for _, parent := range vertex.Parents.Values() {
+	vertex.Parents.Range(func(parent *Vertex[T]) bool {
 		parent.Children.Delete(vertex)
-	}
+		return true
+	})
 
-	vertex.Parents = set.NewSafeSet[*Vertex[T]]()
+	vertex.Parents.Clear()
 	return nil
 }
 
@@ -415,11 +413,12 @@ func (d *dag[T]) DeleteVertexOutEdges(id string) error {
 		return err
 	}
 
-	for _, child := range vertex.Children.Values() {
+	vertex.Children.Range(func(child *Vertex[T]) bool {
 		child.Parents.Delete(vertex)
-	}
+		return true
+	})
 
-	vertex.Children = set.NewSafeSet[*Vertex[T]]()
+	vertex.Children.Clear()
 	return nil
 }
 
@@ -469,15 +468,18 @@ func (d *dag[T]) search(vertexID string, successors map[string]struct{}) {
 	}
 
 	stack := []*Vertex[T]{vertex}
+	visit := func(child *Vertex[T]) bool {
+		if _, ok := successors[child.ID]; !ok {
+			successors[child.ID] = struct{}{}
+			stack = append(stack, child)
+		}
+
+		return true
+	}
+
 	for len(stack) > 0 {
 		vertex = stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-
-		for _, child := range vertex.Children.Values() {
-			if _, ok := successors[child.ID]; !ok {
-				successors[child.ID] = struct{}{}
-				stack = append(stack, child)
-			}
-		}
+		vertex.Children.Range(visit)
 	}
 }

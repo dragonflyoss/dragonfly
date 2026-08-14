@@ -195,6 +195,65 @@ func TestSetValues(t *testing.T) {
 	}
 }
 
+func TestSetRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, s Set[string])
+	}{
+		{
+			name: "range values",
+			expect: func(t *testing.T, s Set[string]) {
+				assert := assert.New(t)
+				s.Add("foo")
+				s.Add("bar")
+
+				var values []string
+				s.Range(func(v string) bool {
+					values = append(values, v)
+					return true
+				})
+				assert.Contains(values, "foo")
+				assert.Contains(values, "bar")
+				assert.Equal(len(values), 2)
+			},
+		},
+		{
+			name: "range empty set",
+			expect: func(t *testing.T, s Set[string]) {
+				assert := assert.New(t)
+				var count int
+				s.Range(func(v string) bool {
+					count++
+					return true
+				})
+				assert.Equal(count, 0)
+			},
+		},
+		{
+			name: "range stops when fn returns false",
+			expect: func(t *testing.T, s Set[string]) {
+				assert := assert.New(t)
+				s.Add("foo")
+				s.Add("bar")
+
+				var count int
+				s.Range(func(v string) bool {
+					count++
+					return false
+				})
+				assert.Equal(count, 1)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := New[string]()
+			tc.expect(t, s)
+		})
+	}
+}
+
 func TestSetClear(t *testing.T) {
 	tests := []struct {
 		name   string

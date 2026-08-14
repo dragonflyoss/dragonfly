@@ -24,6 +24,13 @@ import (
 
 type SafeSet[T comparable] interface {
 	Values() []T
+
+	// Range calls fn for each value in the set without copying values.
+	// If fn returns false, range stops the iteration. Range holds the
+	// set's read lock during the iteration, so fn must not add to or
+	// delete from the set.
+	Range(fn func(T) bool)
+
 	Add(T) bool
 	Delete(T)
 	Contains(...T) bool
@@ -57,6 +64,21 @@ func (s *safeSet[T]) Values() []T {
 	}
 
 	return result
+}
+
+// Range calls fn for each value in the set without copying values.
+// If fn returns false, range stops the iteration. Range holds the
+// set's read lock during the iteration, so fn must not add to or
+// delete from the set.
+func (s *safeSet[T]) Range(fn func(T) bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for k := range s.data {
+		if !fn(k) {
+			return
+		}
+	}
 }
 
 func (s *safeSet[T]) Add(v T) bool {
