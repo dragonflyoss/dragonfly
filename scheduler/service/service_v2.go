@@ -1370,12 +1370,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	//     the concurrency of back-to-source tasks for seed peers. Therefore, there is no risk of a
 	//     thundering herd against the source, and the delay is unnecessary.
 	if peer.Host.Type != types.HostTypeSuperSeed {
-		if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
-			// Collect RegisterPeerFailureCount metrics.
-			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-				peer.Host.Type.Name()).Inc()
-			return status.Error(codes.Internal, err.Error())
-		}
+		pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer)
 	}
 
 	blocklist := set.NewSafeSet[string]()
@@ -1479,7 +1474,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 
 		// Record the start time.
 		start := time.Now()
-		if err := v.scheduling.ScheduleCandidateParents(context.Background(), peer, peer.BlockParents); err != nil {
+		if err := v.scheduling.ScheduleCandidateParents(ctx, peer, peer.BlockParents); err != nil {
 			// Collect RegisterPeerFailureCount metrics.
 			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 				peer.Host.Type.Name()).Inc()
@@ -1548,7 +1543,7 @@ func (v *V2) handleDownloadPeerBackToSourceStartedRequest(ctx context.Context, p
 }
 
 // handleReschedulePeerRequest handles ReschedulePeerRequest of AnnouncePeerRequest.
-func (v *V2) handleReschedulePeerRequest(_ context.Context, peerID string, candidateParents []*commonv2.Peer) error {
+func (v *V2) handleReschedulePeerRequest(ctx context.Context, peerID string, candidateParents []*commonv2.Peer) error {
 	peer, loaded := v.resource.PeerManager().Load(peerID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
@@ -1561,7 +1556,7 @@ func (v *V2) handleReschedulePeerRequest(_ context.Context, peerID string, candi
 
 	// Record the start time.
 	start := time.Now()
-	if err := v.scheduling.ScheduleCandidateParents(context.Background(), peer, peer.BlockParents); err != nil {
+	if err := v.scheduling.ScheduleCandidateParents(ctx, peer, peer.BlockParents); err != nil {
 		return status.Error(codes.FailedPrecondition, err.Error())
 	}
 

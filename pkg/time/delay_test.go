@@ -137,13 +137,10 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 
 			for i := range iterations {
 				start := time.Now()
-				if err := ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay); err != nil {
-					t.Fatalf("ExponentialDelayWithJitter returned error: %v", err)
-				}
-
-				duration := time.Since(start)
+				ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay)
 
 				// Allow some failures due to system scheduling
+				duration := time.Since(start)
 				if duration >= tt.expectedMin && duration <= tt.expectedMax {
 					successCount++
 				} else {
@@ -194,7 +191,7 @@ func TestRandomDelayWithJitter(t *testing.T) {
 
 			for i := range iterations {
 				start := time.Now()
-				RandomDelayWithJitter(tt.baseDelay)
+				RandomDelayWithJitter(context.Background(), tt.baseDelay)
 				duration := time.Since(start)
 
 				// Allow some failures due to system scheduling
@@ -210,5 +207,16 @@ func TestRandomDelayWithJitter(t *testing.T) {
 				t.Errorf("Too many iterations out of range: %d/%d successful", successCount, iterations)
 			}
 		})
+	}
+}
+
+func TestRandomDelayWithJitter_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	RandomDelayWithJitter(ctx, time.Minute)
+	if duration := time.Since(start); duration > time.Second {
+		t.Errorf("RandomDelayWithJitter did not return early on canceled context: took %v", duration)
 	}
 }
