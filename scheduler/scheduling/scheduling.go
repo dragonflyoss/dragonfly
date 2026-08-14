@@ -190,7 +190,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
@@ -205,7 +205,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
@@ -341,7 +341,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Error(err)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
@@ -352,7 +352,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
@@ -367,7 +367,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
