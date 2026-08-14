@@ -20,31 +20,15 @@ package job
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	"net/http"
 	"time"
 
-	"github.com/containerd/platforms"
-	"github.com/docker/distribution"
 	"go.opentelemetry.io/otel/trace"
 
 	"d7y.io/dragonfly/v2/manager/config"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 	pkgoci "d7y.io/dragonfly/v2/pkg/oci"
 )
-
-// defaultRegistryTimeout is the default timeout for registry requests.
-const defaultRegistryTimeout = 1 * time.Minute
-
-// defaultHTTPTransport is the default http transport.
-var defaultHTTPTransport = &http.Transport{
-	MaxIdleConns:        400,
-	MaxIdleConnsPerHost: 20,
-	MaxConnsPerHost:     50,
-	IdleConnTimeout:     120 * time.Second,
-}
 
 type ManifestRequest struct {
 	// URL is the image manifest url for preheating.
@@ -147,83 +131,28 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 		return nil, err
 	}
 
-	// Harbor uses the V1 preheat request and will carry the auth info in the headers.
-	options := []pkgoci.Option{}
+	// Resolve the blob urls and the authorization token. Harbor uses the V1
+	// preheat request and carries the auth info in the headers, which is used
+	// as the issued token by the resolver.
 	header := nethttp.MapToHeader(req.Headers)
-	if token := header.Get("Authorization"); len(token) > 0 {
-		options = append(options, pkgoci.WithIssuedToken(token))
-		header.Set("Authorization", token)
-	}
-
-	httpClient := &http.Client{
-		Timeout: defaultRegistryTimeout,
-		Transport: &http.Transport{
-			DialContext:         nethttp.NewSafeDialer().DialContext,
-			TLSClientConfig:     &tls.Config{RootCAs: req.RootCAs, InsecureSkipVerify: req.InsecureSkipVerify},
-			MaxIdleConns:        defaultHTTPTransport.MaxIdleConns,
-			MaxIdleConnsPerHost: defaultHTTPTransport.MaxIdleConnsPerHost,
-			MaxConnsPerHost:     defaultHTTPTransport.MaxConnsPerHost,
-			IdleConnTimeout:     defaultHTTPTransport.IdleConnTimeout,
-		},
-	}
-
-	// Init docker auth client.
-	client, err := pkgoci.NewAuthClient(ref, httpClient, req.Username, req.Password, options...)
+	blobURLs, token, err := pkgoci.Resolve(ctx, ref,
+		pkgoci.WithAuth(req.Username, req.Password),
+		pkgoci.WithPlatform(req.Platform),
+		pkgoci.WithHeader(header.Clone()),
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	// Get platform.
-	platform := platforms.DefaultSpec()
-	if req.Platform != "" {
-		platform, err = platforms.Parse(req.Platform)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Resolve manifests for the image.
-	manifests, err := client.ResolveManifests(ctx, ref, header.Clone(), platform)
-	if err != nil {
-		return nil, err
-	}
-
-	// No matching manifest for platform in the manifest list entries
-	if len(manifests) == 0 {
-		return nil, fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
 	}
 
 	// Set authorization header
-	header.Set("Authorization", client.AuthToken())
-
-	// Build preheat requests for container image layers from the provided manifests.
-	preheatRequest, err := buildPreheatRequestFromManifests(manifests, req, header.Clone(), ref)
-	if err != nil {
-		return nil, err
-	}
-
-	return preheatRequest, nil
-}
-
-// buildPreheatRequestFromManifests constructs preheat requests for container image layers from
-// the provided manifests. It extracts layer URLs from the manifests and builds a PreheatRequest
-// using the specified arguments, headers, and TLS settings.
-func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *ManifestRequest, header http.Header, ref *pkgoci.Reference) ([]*PreheatRequest, error) {
+	header.Set("Authorization", token)
 	var certificateChain [][]byte
 	if req.RootCAs != nil {
 		certificateChain = req.RootCAs.Subjects() //nolint:staticcheck
 	}
 
-	var layerURLs []string
-	for _, m := range manifests {
-		for _, v := range m.References() {
-			header.Set("Accept", v.MediaType)
-			layerURLs = append(layerURLs, ref.BlobURL(v.Digest.String()))
-		}
-	}
-
-	layers := &PreheatRequest{
-		URLs:                layerURLs,
+	return []*PreheatRequest{{
+		URLs:                blobURLs,
 		PieceLength:         req.PieceLength,
 		Tag:                 req.Tag,
 		Application:         req.Application,
@@ -238,7 +167,5 @@ func buildPreheatRequestFromManifests(manifests []distribution.Manifest, req *Ma
 		CertificateChain:    certificateChain,
 		InsecureSkipVerify:  req.InsecureSkipVerify,
 		Timeout:             req.Timeout,
-	}
-
-	return []*PreheatRequest{layers}, nil
+	}}, nil
 }

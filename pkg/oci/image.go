@@ -18,31 +18,59 @@ package oci
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/containerd/platforms"
 	"github.com/distribution/reference"
+
+	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 )
 
 // defaultRegistryTimeout is the default timeout for registry requests.
 const defaultRegistryTimeout = 1 * time.Minute
 
-// defaultHost maps the docker.io domain to its actual registry host,
-// following containerd's remotes/docker resolver.
-func defaultHost(domain string) string {
-	if domain == "docker.io" {
-		return "registry-1.docker.io"
+// defaultHTTPClient returns the default http client for registry requests.
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: defaultRegistryTimeout,
+		Transport: &http.Transport{
+			DialContext:         nethttp.NewSafeDialer().DialContext,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			MaxIdleConns:        400,
+			MaxIdleConnsPerHost: 20,
+			MaxConnsPerHost:     50,
+			IdleConnTimeout:     120 * time.Second,
+		},
 	}
+}
 
-	return domain
+// parseOptions holds the configurable settings for ParseImage.
+type parseOptions struct {
+	plainHTTP bool
+}
+
+// ParseOption configures ParseImage.
+type ParseOption func(o *parseOptions)
+
+// WithPlainHTTP uses the http scheme instead of https for the registry.
+func WithPlainHTTP(plainHTTP bool) ParseOption {
+	return func(o *parseOptions) {
+		o.plainHTTP = plainHTTP
+	}
 }
 
 // ParseImage parses an image reference (e.g., "docker.io/library/nginx:latest")
 // into a registry reference. The reference is normalized with docker
 // conventions, so "nginx:latest" resolves to "docker.io/library/nginx:latest".
-func ParseImage(image string) (*Reference, error) {
+func ParseImage(image string, opts ...ParseOption) (*Reference, error) {
+	options := &parseOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	named, err := reference.ParseNormalizedNamed(image)
 	if err != nil {
 		return nil, fmt.Errorf("invalid image reference: %w", err)
@@ -59,28 +87,40 @@ func ParseImage(image string) (*Reference, error) {
 		return nil, fmt.Errorf("invalid image reference: %s", image)
 	}
 
+	registry := reference.Domain(named)
+	if registry == "docker.io" {
+		registry = "registry-1.docker.io"
+	}
+
+	scheme := "https"
+	if options.plainHTTP {
+		scheme = "http"
+	}
+
 	return &Reference{
-		Scheme:     "https",
-		Registry:   defaultHost(reference.Domain(named)),
+		Scheme:     scheme,
+		Registry:   registry,
 		Repository: reference.Path(named),
 		Reference:  tag,
 	}, nil
 }
 
-// resolveImageOptions holds the configurable settings for ResolveImage.
-type resolveImageOptions struct {
-	username string
-	password string
-	platform string
+// resolveOptions holds the configurable settings for Resolve.
+type resolveOptions struct {
+	username   string
+	password   string
+	platform   string
+	header     http.Header
+	httpClient *http.Client
 }
 
-// ResolveImageOption configures ResolveImage.
-type ResolveImageOption func(o *resolveImageOptions)
+// ResolveOption configures Resolve.
+type ResolveOption func(o *resolveOptions)
 
 // WithAuth sets the username and password for registry authentication,
 // anonymous access is used when they are empty.
-func WithAuth(username, password string) ResolveImageOption {
-	return func(o *resolveImageOptions) {
+func WithAuth(username, password string) ResolveOption {
+	return func(o *resolveOptions) {
 		o.username = username
 		o.password = password
 	}
@@ -88,45 +128,61 @@ func WithAuth(username, password string) ResolveImageOption {
 
 // WithPlatform sets the target platform in the format "os/arch"
 // (e.g., "linux/amd64"), the current platform is used when it is empty.
-func WithPlatform(platform string) ResolveImageOption {
-	return func(o *resolveImageOptions) {
+func WithPlatform(platform string) ResolveOption {
+	return func(o *resolveOptions) {
 		o.platform = platform
 	}
 }
 
-// ResolveImage resolves the image manifest (including multi-platform image
-// indexes) from the registry and returns the blob urls (config and layers)
-// along with the authorization token for downloading them.
-func ResolveImage(ctx context.Context, image string, opts ...ResolveImageOption) (blobURLs []string, token string, err error) {
-	o := &resolveImageOptions{}
-	for _, opt := range opts {
-		opt(o)
+// WithHeader sets the headers forwarded to the manifest requests. An
+// Authorization header is used as the issued token to access the v2 API
+// directly, without going through v2 authentication.
+func WithHeader(header http.Header) ResolveOption {
+	return func(o *resolveOptions) {
+		o.header = header
 	}
+}
 
-	ref, err := ParseImage(image)
-	if err != nil {
-		return nil, "", err
+// WithHTTPClient sets the http client for registry requests, used to customize
+// TLS and dialing behavior.
+func WithHTTPClient(client *http.Client) ResolveOption {
+	return func(o *resolveOptions) {
+		o.httpClient = client
+	}
+}
+
+// Resolve resolves the manifest of the reference (including multi-platform
+// image indexes) from the registry and returns the blob urls (config and
+// layers) along with the authorization token for downloading them.
+func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobURLs []string, token string, err error) {
+	options := &resolveOptions{header: make(http.Header)}
+	for _, opt := range opts {
+		opt(options)
 	}
 
 	platform := platforms.DefaultSpec()
-	if o.platform != "" {
-		platform, err = platforms.Parse(o.platform)
+	if options.platform != "" {
+		platform, err = platforms.Parse(options.platform)
 		if err != nil {
-			return nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", o.platform, err)
+			return nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", options.platform, err)
 		}
 	}
 
-	httpClient := &http.Client{
-		Timeout:   defaultRegistryTimeout,
-		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+	if options.httpClient == nil {
+		options.httpClient = defaultHTTPClient()
 	}
 
-	client, err := NewAuthClient(ref, httpClient, o.username, o.password)
+	var authOpts []Option
+	if issuedToken := options.header.Get("Authorization"); issuedToken != "" {
+		authOpts = append(authOpts, WithIssuedToken(issuedToken))
+	}
+
+	client, err := NewAuthClient(ref, options.httpClient, options.username, options.password, authOpts...)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
 	}
 
-	manifests, err := client.ResolveManifests(ctx, ref, make(http.Header), platform)
+	manifests, err := client.ResolveManifests(ctx, ref, options.header.Clone(), platform)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to pull image manifest: %w", err)
 	}

@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"testing"
 
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,6 +31,7 @@ func TestParseImage(t *testing.T) {
 	tests := []struct {
 		name   string
 		image  string
+		opts   []ParseOption
 		expect func(t *testing.T, ref *Reference, err error)
 	}{
 		{
@@ -80,6 +80,16 @@ func TestParseImage(t *testing.T) {
 			},
 		},
 		{
+			name:  "image reference with plain http",
+			image: "localhost:5000/myrepo:v1.0.0",
+			opts:  []ParseOption{WithPlainHTTP(true)},
+			expect: func(t *testing.T, ref *Reference, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("http", ref.Scheme)
+			},
+		},
+		{
 			name:  "invalid image reference",
 			image: "invalid image reference!!",
 			expect: func(t *testing.T, ref *Reference, err error) {
@@ -92,13 +102,13 @@ func TestParseImage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ref, err := ParseImage(tc.image)
+			ref, err := ParseImage(tc.image, tc.opts...)
 			tc.expect(t, ref, err)
 		})
 	}
 }
 
-func TestResolveImage(t *testing.T) {
+func TestResolve(t *testing.T) {
 	assert := assert.New(t)
 
 	// Mock registry: bearer challenge on /v2/, token endpoint and a schema2
@@ -151,49 +161,41 @@ func TestResolveImage(t *testing.T) {
 	serverURL, err := url.Parse(server.URL)
 	assert.NoError(err)
 
-	// ParseImage always uses the https scheme, so resolve against the mock
-	// registry by building the reference directly.
-	ref := &Reference{
-		Scheme:     "http",
-		Registry:   serverURL.Host,
-		Repository: "library/nginx",
-		Reference:  "latest",
-	}
-
-	httpClient := &http.Client{Transport: http.DefaultTransport}
-	client, err := NewAuthClient(ref, httpClient, "", "")
+	// The mock registry only serves http, so parse the image with plain http.
+	ref, err := ParseImage(serverURL.Host+"/library/nginx:latest", WithPlainHTTP(true))
 	assert.NoError(err)
 
-	manifests, err := client.ResolveManifests(context.Background(), ref, make(http.Header), specs.Platform{OS: "linux", Architecture: "amd64"})
+	blobURLs, token, err := Resolve(context.Background(), ref, WithHTTPClient(&http.Client{Transport: http.DefaultTransport}))
 	assert.NoError(err)
-	assert.Len(manifests, 1)
-
-	var blobURLs []string
-	for _, m := range manifests {
-		for _, desc := range m.References() {
-			blobURLs = append(blobURLs, ref.BlobURL(desc.Digest.String()))
-		}
-	}
 
 	assert.Equal([]string{
 		fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
 		fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
 	}, blobURLs)
-	assert.Equal("Bearer test-token", client.AuthToken())
+	assert.Equal("Bearer test-token", token)
+
+	// An Authorization header short-circuits v2 authentication and is used as
+	// the issued token directly.
+	header := make(http.Header)
+	header.Set("Authorization", "Bearer test-token")
+
+	blobURLs, token, err = Resolve(context.Background(), ref,
+		WithHTTPClient(&http.Client{Transport: http.DefaultTransport}),
+		WithHeader(header),
+	)
+	assert.NoError(err)
+	assert.Len(blobURLs, 2)
+	assert.Equal("Bearer test-token", token)
 }
 
-func TestResolveImageInvalidReference(t *testing.T) {
+func TestResolveInvalidPlatform(t *testing.T) {
 	assert := assert.New(t)
 
-	_, _, err := ResolveImage(context.Background(), "invalid image reference!!")
-	assert.Error(err)
-	assert.ErrorContains(err, "invalid image reference")
-}
+	ref, err := ParseImage("127.0.0.1:1/library/nginx:latest")
+	assert.NoError(err)
 
-func TestResolveImageInvalidPlatform(t *testing.T) {
-	assert := assert.New(t)
-
-	_, _, err := ResolveImage(context.Background(), "127.0.0.1:1/library/nginx:latest", WithPlatform("linux-amd64"))
+	// The platform is validated before any network access.
+	_, _, err = Resolve(context.Background(), ref, WithPlatform("linux-amd64"))
 	assert.Error(err)
 	assert.ErrorContains(err, "invalid platform format")
 }
