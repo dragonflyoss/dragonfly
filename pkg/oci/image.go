@@ -32,8 +32,8 @@ import (
 // defaultRegistryTimeout is the default timeout for registry requests.
 const defaultRegistryTimeout = 1 * time.Minute
 
-// defaultHTTPClient returns the default http client for registry requests.
-func defaultHTTPClient() *http.Client {
+// DefaultHTTPClient returns the default http client for registry requests.
+func DefaultHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: defaultRegistryTimeout,
 		Transport: &http.Transport{
@@ -169,7 +169,7 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobUR
 	}
 
 	if options.httpClient == nil {
-		options.httpClient = defaultHTTPClient()
+		options.httpClient = DefaultHTTPClient()
 	}
 
 	var authOpts []Option
