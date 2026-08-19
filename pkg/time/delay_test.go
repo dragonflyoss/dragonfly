@@ -181,6 +181,12 @@ func TestRandomDelayWithJitter(t *testing.T) {
 			expectedMin: 0,
 			expectedMax: 100 * time.Millisecond,
 		},
+		{
+			name:        "one nanosecond base delay",
+			baseDelay:   time.Nanosecond,
+			expectedMin: 0,
+			expectedMax: 100 * time.Millisecond,
+		},
 	}
 
 	for _, tt := range tests {
