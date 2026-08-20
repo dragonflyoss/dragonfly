@@ -54,8 +54,11 @@ func RandomDelayWithJitter(ctx context.Context, baseDelay time.Duration) {
 		return
 	}
 
-	jitter := time.Duration(rand.Int64N(int64(baseDelay) / 2))
-	delay := baseDelay*3/4 + jitter
+	delay := baseDelay
+	if jitterRange := int64(baseDelay) / 2; jitterRange > 0 {
+		jitter := time.Duration(rand.Int64N(jitterRange))
+		delay = baseDelay*3/4 + jitter // delay is now between [baseDelay*3/4, baseDelay*5/4)
+	}
 
 	select {
 	case <-time.After(delay):
