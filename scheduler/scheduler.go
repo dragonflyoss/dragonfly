@@ -35,6 +35,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/gc"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/scheduler/announcer"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -92,6 +93,11 @@ type Server struct {
 // New creates a new scheduler server.
 func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath string) (*Server, error) {
 	s := &Server{config: cfg}
+	authenticator, err := grpcauth.New(cfg.GRPCAuth)
+	if err != nil {
+		return nil, err
+	}
+	logger.Infof("initialized gRPC authentication with mode %s", authenticator.Mode())
 
 	// Initialize redis client if redis is enabled.
 	rdb, err := newRedisClient(cfg)
@@ -103,7 +109,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 	// configured. If it is nil, the scheduler runs without a manager and
 	// the announcer is disabled.
 	if cfg.Manager.Addr != nil {
-		managerClient, err := newManagerClient(ctx, cfg)
+		managerClient, err := newManagerClient(ctx, cfg, authenticator)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +145,8 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 	}
 
 	// Initialize resource.
-	resource, err := standard.New(cfg, s.gc, seedPeerClientTransportCredentials)
+	resource, err := standard.New(cfg, s.gc, seedPeerClientTransportCredentials,
+		grpc.WithPerRPCCredentials(authenticator.PerRPCCredentials(grpcauth.AudienceDfdaemon)))
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +175,8 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 	if cfg.Job.Enable && rdb != nil {
 		s.job, err = job.New(cfg, resource,
 			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-			grpc.WithTransportCredentials(seedPeerClientTransportCredentials))
+			grpc.WithTransportCredentials(seedPeerClientTransportCredentials),
+			grpc.WithPerRPCCredentials(authenticator.PerRPCCredentials(grpcauth.AudienceDfdaemon)))
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +193,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 			return nil, err
 		}
 	}
-	s.grpcServer = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
+	s.grpcServer = rpcserver.NewWithAuthentication(cfg, authenticator, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
 
 	// Initialize metrics server if metrics is enabled.
 	if cfg.Metrics.Enable {
@@ -306,7 +314,7 @@ func (s *Server) Stop() {
 }
 
 // newManagerClient returns a new manager client.
-func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2, error) {
+func newManagerClient(ctx context.Context, cfg *config.Config, authenticator *grpcauth.Authenticator) (managerclient.V2, error) {
 	clientTransportCredentials, err := newClientTransportCredentials(cfg.Manager.TLS)
 	if err != nil {
 		return nil, err
@@ -314,7 +322,8 @@ func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2
 
 	return managerclient.GetV2ByAddr(ctx, *cfg.Manager.Addr,
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-		grpc.WithTransportCredentials(clientTransportCredentials))
+		grpc.WithTransportCredentials(clientTransportCredentials),
+		grpc.WithPerRPCCredentials(authenticator.PerRPCCredentials(grpcauth.AudienceManager)))
 }
 
 // newRedisClient returns a new redis client. If redis is not enabled, it

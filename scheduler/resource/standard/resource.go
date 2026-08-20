@@ -74,7 +74,7 @@ type resource struct {
 }
 
 // New returns Resource interface.
-func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.TransportCredentials) (Resource, error) {
+func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.TransportCredentials, options ...grpc.DialOption) (Resource, error) {
 	resource := &resource{config: cfg}
 
 	// Initialize host manager interface.
@@ -102,7 +102,7 @@ func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.Transpor
 	resource.peerClientPool = dfdaemonclient.GetPool()
 
 	// Initialize seed peer interface.
-	dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
+	dialOptions := append([]grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}, options...)
 	resource.seedPeer = newSeedPeer(peerManager, hostManager, resource.peerClientPool, dialOptions...)
 
 	return resource, nil

@@ -39,6 +39,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 )
 
 const (
@@ -54,6 +55,12 @@ const (
 
 // New returns grpc server instance and register service on grpc server.
 func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, opts ...grpc.ServerOption) *grpc.Server {
+	return NewWithAuthentication(managerServerV1, managerServerV2, requestRateLimit, nil, opts...)
+}
+
+// NewWithAuthentication returns a gRPC server with inter-component JWT
+// authentication.
+func NewWithAuthentication(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, authenticator *grpcauth.Authenticator, opts ...grpc.ServerOption) *grpc.Server {
 	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
@@ -70,6 +77,7 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_ratelimit.UnaryServerInterceptor(limiter),
+			authenticator.UnaryServerInterceptor(grpcauth.AudienceManager),
 			grpc_prometheus.UnaryServerInterceptor,
 			grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
 			grpc_validator.UnaryServerInterceptor(),
@@ -77,6 +85,7 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_ratelimit.StreamServerInterceptor(limiter),
+			authenticator.StreamServerInterceptor(grpcauth.AudienceManager),
 			grpc_prometheus.StreamServerInterceptor,
 			grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
 			grpc_validator.StreamServerInterceptor(),
