@@ -23,6 +23,10 @@ builds:
     goarch:
       - amd64
       - arm64
+      - riscv64
+    ignore:
+      - goos: darwin
+        goarch: riscv64
     ldflags:
       - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
       - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
@@ -43,6 +47,10 @@ builds:
     goarch:
       - amd64
       - arm64
+      - riscv64
+    ignore:
+      - goos: darwin
+        goarch: riscv64
     ldflags:
       - -X d7y.io/dragonfly/v2/version.Major={{ .Major }}
       - -X d7y.io/dragonfly/v2/version.Minor={{ .Minor }}
