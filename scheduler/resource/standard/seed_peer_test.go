@@ -19,6 +19,7 @@ package standard
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,81 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
 			tc.expect(t, newSeedPeer(peerManager, hostManager, clientPool))
+		})
+	}
+}
+
+func TestSeedPeer_refresh(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T)
+	}{
+		{
+			name: "clears cached seed peers when host manager is empty",
+			expect: func(t *testing.T) {
+				// Given a seed peer cache containing a host that is no longer in HostManager.
+				ctl := gomock.NewController(t)
+				hostManager := NewMockHostManager(ctl)
+				peerManager := NewMockPeerManager(ctl)
+				clientPool := dfdaemonclientmocks.NewMockPool(ctl)
+				hostManager.EXPECT().LoadAllSeeds().Return([]*Host{})
+
+				seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+				const staleAddress = "127.0.0.1:4000"
+				seedPeer.hosts.Store(staleAddress, &Host{})
+				seedPeer.hashring.Add(staleAddress)
+
+				// When the seed peer cache is refreshed from the empty HostManager.
+				seedPeer.refresh(context.Background())
+
+				// Then the stale seed peer is no longer available or selectable.
+				seedPeer.snapshotMutex.RLock()
+				hosts := seedPeer.hosts
+				seedPeer.snapshotMutex.RUnlock()
+				_, found := hosts.Load(staleAddress)
+				assert.False(t, found)
+				assert.False(t, seedPeer.HasAvailable())
+				_, err := seedPeer.Select(context.Background(), mockTaskID)
+				assert.EqualError(t, err, "no seed peer available")
+			},
+		},
+		{
+			name: "is safe during concurrent selection",
+			expect: func(t *testing.T) {
+				// Given a seed peer cache that repeatedly refreshes to an empty snapshot.
+				ctl := gomock.NewController(t)
+				hostManager := NewMockHostManager(ctl)
+				peerManager := NewMockPeerManager(ctl)
+				clientPool := dfdaemonclientmocks.NewMockPool(ctl)
+				hostManager.EXPECT().LoadAllSeeds().Return([]*Host{}).AnyTimes()
+				seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+
+				// When refresh and selection run concurrently.
+				var waitGroup sync.WaitGroup
+				waitGroup.Add(2)
+				go func() {
+					defer waitGroup.Done()
+					for range 100 {
+						seedPeer.refresh(context.Background())
+					}
+				}()
+				go func() {
+					defer waitGroup.Done()
+					for range 100 {
+						seedPeer.HasAvailable()
+						_, _ = seedPeer.Select(context.Background(), mockTaskID)
+					}
+				}()
+
+				// Then all concurrent operations complete without a data race.
+				waitGroup.Wait()
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t)
 		})
 	}
 }

@@ -100,6 +100,8 @@ type seedPeer struct {
 	// hashring is the hashring constructed from seed peers.
 	hashring *consistent.Consistent
 
+	snapshotMutex sync.RWMutex
+
 	// done is the channel to stop the seed peer service.
 	done chan struct{}
 }
@@ -286,16 +288,21 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 // Select selects a seed peer by the task id.
 func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 	// The synchronization of the hash ring is handled by the refreshSeedPeers periodically and asynchronously.
-	if len(s.hashring.Members()) == 0 {
+	s.snapshotMutex.RLock()
+	hosts := s.hosts
+	hashring := s.hashring
+	s.snapshotMutex.RUnlock()
+
+	if len(hashring.Members()) == 0 {
 		return nil, fmt.Errorf("no seed peer available")
 	}
 
-	addr, err := s.hashring.Get(taskID)
+	addr, err := hashring.Get(taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to select seed peer: %w", err)
 	}
 
-	host, ok := s.hosts.Load(addr)
+	host, ok := hosts.Load(addr)
 	if !ok {
 		return nil, fmt.Errorf("failed to load host: %s", addr)
 	}
@@ -305,7 +312,10 @@ func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 
 // HasAvailable returns whether there is any available seed peer.
 func (s *seedPeer) HasAvailable() bool {
-	return len(s.hashring.Members()) > 0
+	s.snapshotMutex.RLock()
+	hashring := s.hashring
+	s.snapshotMutex.RUnlock()
+	return len(hashring.Members()) > 0
 }
 
 // Initialize seed peer.
@@ -346,7 +356,6 @@ func (s *seedPeer) refresh(ctx context.Context) {
 	hosts := s.hostManager.LoadAllSeeds()
 	if len(hosts) == 0 {
 		logger.Warnf("no seed peer found in host manager")
-		return
 	}
 
 	healthyHosts := &sync.Map{}
@@ -359,15 +368,16 @@ func (s *seedPeer) refresh(ctx context.Context) {
 			healthyHosts.Store(addr, host)
 		}
 	}
-	s.hosts = healthyHosts
-
 	hashring := consistent.New()
-	s.hosts.Range(func(addr, _ any) bool {
+	healthyHosts.Range(func(addr, _ any) bool {
 		hashring.Add(addr.(string))
 		return true
 	})
 
+	s.snapshotMutex.Lock()
+	s.hosts = healthyHosts
 	s.hashring = hashring
+	s.snapshotMutex.Unlock()
 }
 
 // Serve serves the seed peer service.
