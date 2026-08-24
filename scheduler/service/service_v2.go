@@ -4612,6 +4612,10 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
 	log := logger.WithStatImage(req.Url)
 
+	if req.Scope == "" {
+		req.Scope = managertypes.AllPeersScope
+	}
+
 	if req.ConcurrentLayerCount == nil {
 		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
 		req.ConcurrentLayerCount = &concurrentLayerCount
@@ -4674,6 +4678,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	filteredQueryParams := req.FilteredQueryParams
 	timeout := req.GetTimeout().AsDuration()
 	concurrentPeerCount := *req.ConcurrentPeerCount
+	scope := req.GetScope()
 
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerImage{}
@@ -4687,6 +4692,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 				TaskID:              taskID,
 				Timeout:             timeout,
 				ConcurrentPeerCount: concurrentPeerCount,
+				Scope:               scope,
 			}
 
 			log := logger.WithStatImageAndTaskID(url, taskID)

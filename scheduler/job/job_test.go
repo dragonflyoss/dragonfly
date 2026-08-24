@@ -17,14 +17,67 @@
 package job
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	internaljob "d7y.io/dragonfly/v2/internal/job"
+	managertypes "d7y.io/dragonfly/v2/manager/types"
+	"d7y.io/dragonfly/v2/scheduler/config"
 	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
+
+func TestJob_GetTask(t *testing.T) {
+	tests := []struct {
+		name  string
+		scope string
+		mock  func(hostManager *resource.MockHostManager)
+	}{
+		{
+			name:  "get task from all seed peers with all_seed_peers scope",
+			scope: managertypes.AllSeedPeersScope,
+			mock: func(hostManager *resource.MockHostManager) {
+				hostManager.EXPECT().LoadAllSeeds().Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "get task from all peers with all_peers scope",
+			scope: managertypes.AllPeersScope,
+			mock: func(hostManager *resource.MockHostManager) {
+				hostManager.EXPECT().LoadAll().Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "get task from all peers with empty scope",
+			scope: "",
+			mock: func(hostManager *resource.MockHostManager) {
+				hostManager.EXPECT().LoadAll().Return(nil).Times(1)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+
+			res := resource.NewMockResource(ctl)
+			hostManager := resource.NewMockHostManager(ctl)
+			res.EXPECT().HostManager().Return(hostManager).Times(1)
+			tc.mock(hostManager)
+
+			j := &job{resource: res, config: &config.Config{}}
+			resp, err := j.GetTask(context.Background(), &internaljob.GetTaskRequest{TaskID: "foo", Scope: tc.scope}, logger.WithPeerID("test"))
+
+			assert := assert.New(t)
+			assert.NoError(err)
+			assert.Empty(resp.Peers)
+		})
+	}
+}
 
 func TestJob_selectPeers(t *testing.T) {
 	tests := []struct {

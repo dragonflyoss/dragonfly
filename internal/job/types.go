@@ -83,6 +83,7 @@ type GetTaskRequest struct {
 	GroupUUID           string        `json:"group_uuid" validate:"omitempty"`
 	TaskUUID            string        `json:"task_uuid" validate:"omitempty"`
 	ConcurrentPeerCount int64         `json:"concurrent_peer_count" validate:"omitempty"`
+	Scope               string        `json:"scope" validate:"omitempty"`
 }
 
 // GetTaskResponse defines the response parameters for getting task.
