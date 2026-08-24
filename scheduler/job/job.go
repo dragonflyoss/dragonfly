@@ -329,7 +329,6 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	var mu sync.Mutex
 	preheatResp := &internaljob.PreheatResponse{}
-
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
@@ -663,7 +662,6 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 		successTasks = sync.Map{}
 		failureTasks = sync.Map{}
 	)
-
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
@@ -916,11 +914,19 @@ func (j *job) getTask(ctx context.Context, data string) (string, error) {
 	return internaljob.MarshalResponse(resp)
 }
 
-// GetTask retrieves task information from all hosts in the cluster.
+// GetTask retrieves task information from peers in the cluster. If the scope is
+// all_seed_peers, only seed peers are queried, otherwise all peers are queried.
 func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log *logger.SugaredLoggerOnWith) (*internaljob.GetTaskResponse, error) {
-	hosts := j.resource.HostManager().LoadAll()
-	if len(hosts) == 0 {
-		log.Warn("[get-task] no hosts found")
+	var peers []*resource.Host
+	switch req.Scope {
+	case managertypes.AllSeedPeersScope:
+		peers = j.resource.HostManager().LoadAllSeeds()
+	default:
+		peers = j.resource.HostManager().LoadAll()
+	}
+
+	if len(peers) == 0 {
+		log.Warn("[get-task] no peers found")
 		return &internaljob.GetTaskResponse{
 			SchedulerClusterID: j.config.Manager.SchedulerClusterID,
 		}, nil
@@ -929,13 +935,23 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	var mu sync.Mutex
 	resp := &internaljob.GetTaskResponse{
 		SchedulerClusterID: j.config.Manager.SchedulerClusterID,
-		Peers:              make([]*internaljob.Peer, 0, len(hosts)),
+		Peers:              make([]*internaljob.Peer, 0, len(peers)),
 	}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentPeerCount))
-	for _, host := range hosts {
+	for _, peer := range peers {
+		var (
+			id        = peer.ID
+			hostname  = peer.Hostname
+			ip        = peer.IP
+			port      = peer.Port
+			hostType  = peer.Type.Name()
+			createdAt = peer.CreatedAt.Load()
+			updatedAt = peer.UpdatedAt.Load()
+		)
+
+		addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 		eg.Go(func() error {
-			addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
 			dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 			if err != nil {
 				log.Warnf("[get-task] get client from %s failed: %s", addr, err.Error())
@@ -954,16 +970,15 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 
 			mu.Lock()
 			resp.Peers = append(resp.Peers, &internaljob.Peer{
-				ID:         host.ID,
-				Hostname:   host.Hostname,
-				IP:         host.IP,
-				HostType:   host.Type.Name(),
-				CreatedAt:  host.CreatedAt.Load(),
-				UpdatedAt:  host.UpdatedAt.Load(),
+				ID:         id,
+				Hostname:   hostname,
+				IP:         ip,
+				HostType:   hostType,
+				CreatedAt:  createdAt,
+				UpdatedAt:  updatedAt,
 				IsFinished: localTask.GetFinishedAt() != nil,
 			})
 			mu.Unlock()
-
 			return nil
 		})
 	}

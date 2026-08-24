@@ -3952,6 +3952,57 @@ func TestServiceV2_StatImage(t *testing.T) {
 			},
 		},
 		{
+			name: "stat layer by seed peers with all_seed_peers scope",
+			req: &schedulerv2.StatImageRequest{
+				Url:   "https://example.com/v2/image/manifests/latest",
+				Scope: managertypes.AllSeedPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, managertypes.AllSeedPeersScope, getTaskRequest.Scope)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "seed-peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by peer with default scope",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, managertypes.AllPeersScope, getTaskRequest.Scope)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
 			name: "stat layer by peer failed",
 			req: &schedulerv2.StatImageRequest{
 				Url: "https://example.com/v2/image/manifests/latest",
