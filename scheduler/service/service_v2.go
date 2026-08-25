@@ -4681,6 +4681,16 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	scope := req.GetScope()
 	enableTaskIDBasedBlobDigest := req.GetEnableTaskIdBasedBlobDigest()
 
+	taskIDs := make(map[string]string, len(layers[0].URLs))
+	for _, url := range layers[0].URLs {
+		taskID, err := idgen.TaskIDV2(url, pieceLength, tag, application, filteredQueryParams, "", enableTaskIDBasedBlobDigest)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "failed to generate task id for layer %s: %s", url, err)
+		}
+
+		taskIDs[url] = taskID
+	}
+
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerImage{}
 	eg, ctx := errgroup.WithContext(ctx)
@@ -4688,12 +4698,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	for _, url := range layers[0].URLs {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
-			taskID, err := idgen.TaskIDV2(url, pieceLength, tag, application, filteredQueryParams, "", enableTaskIDBasedBlobDigest)
-			if err != nil {
-				log.Errorf("generate task id failed: %s", err.Error())
-				return nil
-			}
-
+			taskID := taskIDs[url]
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             timeout,

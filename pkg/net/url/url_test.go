@@ -31,6 +31,26 @@ func TestFilterQuery(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "http://www.xx.yy/path?u=f&x=y&m=z&x=s#size", url)
 
+	url, err = FilterQueryParams("https://example.com/file.txt?z=9&b=2&a=1", []string{"z"})
+	assert.Nil(t, err)
+	assert.Equal(t, "https://example.com/file.txt?a=1&b=2", url)
+
+	url, err = FilterQueryParams("https://example.com/file.txt?b=2&a=1&b=1", []string{"c"})
+	assert.Nil(t, err)
+	assert.Equal(t, "https://example.com/file.txt?a=1&b=2&b=1", url)
+
+	url, err = FilterQueryParams("https://example.com?foo=foo", []string{"foo"})
+	assert.Nil(t, err)
+	assert.Equal(t, "https://example.com", url)
+
+	url, err = FilterQueryParams("https://example.com/file.txt?k=a b&m=x*y&n=c~d", []string{"none"})
+	assert.Nil(t, err)
+	assert.Equal(t, "https://example.com/file.txt?k=a+b&m=x%2Ay&n=c~d", url)
+
+	url, err = FilterQueryParams("https://example.com/file.txt?a=1;x&b=2", []string{"none"})
+	assert.Nil(t, err)
+	assert.Equal(t, "https://example.com/file.txt?b=2", url)
+
 	url, err = FilterQueryParams(":error_url", []string{"x", "m"})
 	assert.NotNil(t, err)
 	assert.Equal(t, "", url)
