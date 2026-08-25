@@ -4679,6 +4679,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	timeout := req.GetTimeout().AsDuration()
 	concurrentPeerCount := *req.ConcurrentPeerCount
 	scope := req.GetScope()
+	enableTaskIDBasedBlobDigest := req.GetEnableTaskIdBasedBlobDigest()
 
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerImage{}
@@ -4687,7 +4688,12 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	for _, url := range layers[0].URLs {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, "")
+			taskID, err := idgen.TaskIDV2(url, pieceLength, tag, application, filteredQueryParams, "", enableTaskIDBasedBlobDigest)
+			if err != nil {
+				log.Errorf("generate task id failed: %s", err.Error())
+				return nil
+			}
+
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             timeout,
@@ -4782,8 +4788,13 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		taskID, err := idgen.TaskIDV2(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "failed to generate task id: %s", err)
+		}
+
 		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			TaskID:           taskID,
 			Url:              req.GetUrl(),
 			Timeout:          req.GetTimeout(),
 			Header:           req.GetHeader(),
@@ -4908,8 +4919,13 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		taskID, err := idgen.TaskIDV2(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "failed to generate task id: %s", err)
+		}
+
 		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			TaskID:           taskID,
 			Url:              req.GetUrl(),
 			Timeout:          req.GetTimeout(),
 			Header:           req.GetHeader(),
@@ -4945,7 +4961,12 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, url := range urls {
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "")
+			taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+			if err != nil {
+				log.Errorf("generate task id failed: %s", err.Error())
+				return nil
+			}
+
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             req.GetTimeout().AsDuration(),

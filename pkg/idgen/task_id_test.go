@@ -342,3 +342,70 @@ func TestTaskIDV2ByBlobDigest(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskIDV2(t *testing.T) {
+	tests := []struct {
+		name                        string
+		url                         string
+		content                     string
+		enableTaskIDBasedBlobDigest bool
+		expect                      func(t *testing.T, d string, err error)
+	}{
+		{
+			name:                        "generate taskID by content",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			content:                     "This is a content",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByContent("This is a content"))
+			},
+		},
+		{
+			name:                        "generate taskID by blob digest",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "generate taskID by url based when blob digest is disabled",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e", nil, "foo", "bar", nil, ""))
+			},
+		},
+		{
+			name:                        "generate taskID by url based for non blob url",
+			url:                         "https://example.com/file.txt",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("https://example.com/file.txt", nil, "foo", "bar", nil, ""))
+			},
+		},
+		{
+			name:                        "unsupported digest algorithm",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := TaskIDV2(tc.url, nil, "foo", "bar", nil, tc.content, tc.enableTaskIDBasedBlobDigest)
+			tc.expect(t, d, err)
+		})
+	}
+}

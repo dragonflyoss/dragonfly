@@ -62,10 +62,17 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 	defer span.End()
 
 	taskID := json.TaskID
-	if json.URL != "" {
-		taskID = idgen.TaskIDV2ByURLBased(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), "")
-	} else if json.ContentForCalculatingTaskID != nil {
-		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
+	if json.URL != "" || json.ContentForCalculatingTaskID != nil {
+		var content string
+		if json.ContentForCalculatingTaskID != nil {
+			content = *json.ContentForCalculatingTaskID
+		}
+
+		var err error
+		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	queues, err := getSchedulerQueues(schedulers)
@@ -131,10 +138,17 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 	defer span.End()
 
 	taskID := json.TaskID
-	if json.URL != "" {
-		taskID = idgen.TaskIDV2ByURLBased(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), "")
-	} else if json.ContentForCalculatingTaskID != nil {
-		taskID = idgen.TaskIDV2ByContent(*json.ContentForCalculatingTaskID)
+	if json.URL != "" || json.ContentForCalculatingTaskID != nil {
+		var content string
+		if json.ContentForCalculatingTaskID != nil {
+			content = *json.ContentForCalculatingTaskID
+		}
+
+		var err error
+		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	queues, err := getSchedulerQueues(schedulers)

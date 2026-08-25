@@ -267,7 +267,11 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 
 // preheatV1SingleSeedPeer preheats job by v1 grpc protocol.
 func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	taskID := idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "")
+	taskID, err := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "", false)
+	if err != nil {
+		return nil, err
+	}
+
 	urlMeta := &commonv1.UrlMeta{
 		Tag:         req.Tag,
 		Filter:      req.FilteredQueryParams,
@@ -359,7 +363,11 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 // preheatV2SingleSeedPeerByURL preheats job by v2 grpc protocol for single seed peer by URL.
 func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+	taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+	if err != nil {
+		return nil, err
+	}
+
 	advertiseIP := j.config.Server.AdvertiseIP.String()
 
 	selected, err := j.resource.SeedPeer().Select(ctx, taskID)
@@ -454,7 +462,11 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					if err != nil {
+						return err
+					}
+
 					hostID := idgen.HostID(ip, hostname, true)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
@@ -678,7 +690,11 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					if err != nil {
+						return err
+					}
+
 					hostID := idgen.HostID(ip, hostname, false)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
 					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
