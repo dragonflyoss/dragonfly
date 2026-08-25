@@ -166,6 +166,54 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 				assert.Equal(d, "b171331534b80e0bf91da38ebbfcdbf4d177898f4b9beac44f14733e3f004d4e")
 			},
 		},
+		{
+			name:        "generate taskID with sorted query params",
+			url:         "https://example.com/file.txt?z=9&b=2&a=1",
+			tag:         "foo",
+			application: "bar",
+			filters:     []string{"z"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "8b3f6e9b9b8fe20903bced565cfd1d0aaef354a4c17573f0c2c1979210443f9d")
+			},
+		},
+		{
+			name:    "generate taskID with same key query params keeping order",
+			url:     "https://example.com/file.txt?b=2&a=1&b=1",
+			filters: []string{"c"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "7c8801d0596be5e8f9449d5c4af23866c72fe5205119c0e5912981f3b16a37aa")
+			},
+		},
+		{
+			name:        "generate taskID with escaped query params",
+			url:         "https://example.com/file.txt?k=a b&m=x*y&n=c~d",
+			pieceLength: &pieceLength,
+			filters:     []string{"none"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "6196a6846023f6d3c1e4d30f6c86f3d4186e4c664a33e5692b0e04e49b26a9af")
+			},
+		},
+		{
+			name:    "generate taskID with all query params filtered",
+			url:     "https://example.com/file.txt?a=1&b=2",
+			tag:     "foo",
+			filters: []string{"a", "b"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "c8f4b41117329d54af920010394f6f607bac707e933ab2f18d372e3dd4c7fcb3")
+			},
+		},
+		{
+			name: "generate taskID with raw url when no filters",
+			url:  "https://example.com/file.txt?b=2&a=1",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "980ee327518ccc5a7c30703e1a2232e8ba9047b39431f940636c85b6146f8b9a")
+			},
+		},
 	}
 
 	for _, tc := range tests {

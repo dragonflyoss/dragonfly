@@ -4029,6 +4029,22 @@ func TestServiceV2_StatImage(t *testing.T) {
 			},
 		},
 		{
+			name: "stat layer by peer with invalid blob digest",
+			req: &schedulerv2.StatImageRequest{
+				Url:                         "https://example.com/v2/image/manifests/latest",
+				EnableTaskIdBasedBlobDigest: true,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c"}}}, nil).Times(1)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorContains(err, "failed to generate task id for layer https://example.com/v2/image/latest/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c")
+				assert.Equal(codes.InvalidArgument, status.Code(err))
+			},
+		},
+		{
 			name: "stat layer by peer failed",
 			req: &schedulerv2.StatImageRequest{
 				Url: "https://example.com/v2/image/manifests/latest",
