@@ -17,8 +17,9 @@
 package http
 
 import (
+	"slices"
+
 	"d7y.io/dragonfly/v2/pkg/idgen"
-	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
 )
 
 // S3FilteredQueryParams is the default filtered query params with s3 protocol to generate the task id.
@@ -78,7 +79,7 @@ var ContainerdQueryParams = []string{
 }
 
 // DefaultFilteredQueryParams is the default filtered query params to generate the task id.
-var DefaultFilteredQueryParams = pkgstrings.Concat(S3FilteredQueryParams, GCSFilteredQueryParams, OSSFilteredQueryParams, OBSFilteredQueryParams, COSFilteredQueryParams, ContainerdQueryParams)
+var DefaultFilteredQueryParams = slices.Concat(S3FilteredQueryParams, GCSFilteredQueryParams, OSSFilteredQueryParams, OBSFilteredQueryParams, COSFilteredQueryParams, ContainerdQueryParams)
 
 // RawDefaultFilteredQueryParams is the raw default filtered query params to generate the task id.
 var RawDefaultFilteredQueryParams = idgen.FormatFilteredQueryParams(DefaultFilteredQueryParams)

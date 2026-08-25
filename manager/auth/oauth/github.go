@@ -21,7 +21,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v89/github"
 	"golang.org/x/oauth2"
 	oauth2github "golang.org/x/oauth2/github"
 )
@@ -67,7 +67,10 @@ func (g *oauthGithub) GetUser(token *oauth2.Token) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	client := github.NewClient(g.Client(ctx, token))
+	client, err := github.NewClient(github.WithHTTPClient(g.Client(ctx, token)))
+	if err != nil {
+		return nil, err
+	}
 	user, _, err := client.Users.Get(ctx, "")
 	if err != nil {
 		return nil, err

@@ -17,7 +17,6 @@
 package middlewares
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -75,7 +74,7 @@ func Jwt(cfg config.JWTConfig, service service.Service) (*jwt.GinJWTMiddleware, 
 				return "", jwt.ErrMissingLoginValues
 			}
 
-			user, err := service.SignIn(context.TODO(), json)
+			user, err := service.SignIn(c.Request.Context(), json)
 			if err != nil {
 				return "", jwt.ErrFailedAuthentication
 			}

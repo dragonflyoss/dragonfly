@@ -40,8 +40,7 @@ import (
 
 // GetV2ByAddr returns v2 version of the scheduler client by address.
 func GetV2ByAddr(ctx context.Context, target string, opts ...grpc.DialOption) (V2, error) {
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		target,
 		append([]grpc.DialOption{
 			grpc.WithIdleTimeout(0),
@@ -189,7 +188,6 @@ func (v *v2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 	eg, _ := errgroup.WithContext(ctx)
 	for _, virtualTaskID := range circle {
-		virtualTaskID := virtualTaskID
 		eg.Go(func() error {
 			if _, err := v.SchedulerClient.AnnounceHost(
 				context.WithValue(ctx, pkgbalancer.ContextKey, virtualTaskID),
@@ -231,7 +229,6 @@ func (v *v2) DeleteHost(ctx context.Context, req *schedulerv2.DeleteHostRequest,
 
 	eg, _ := errgroup.WithContext(ctx)
 	for _, virtualTaskID := range circle {
-		virtualTaskID := virtualTaskID
 		eg.Go(func() error {
 			if _, err := v.SchedulerClient.DeleteHost(
 				context.WithValue(ctx, pkgbalancer.ContextKey, virtualTaskID),

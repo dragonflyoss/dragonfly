@@ -75,3 +75,16 @@ func formatPostgresDSN(cfg *config.PostgresConfig) string {
 		cfg.Timezone,
 	)
 }
+
+// setPostgresSequence advances the serial sequence of the given table's id
+// column so the next auto-generated row starts after the explicitly inserted value.
+func setPostgresSequence(db *gorm.DB, table string, value uint) error {
+	if db.Name() != "postgres" {
+		return nil
+	}
+
+	return db.Exec(
+		"SELECT setval(pg_get_serial_sequence(?, 'id'), ?, true)",
+		table, value,
+	).Error
+}

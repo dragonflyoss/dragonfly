@@ -267,7 +267,11 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 
 // preheatV1SingleSeedPeer preheats job by v1 grpc protocol.
 func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	taskID := idgen.TaskIDV2ByURLBased(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "")
+	taskID, err := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "", false)
+	if err != nil {
+		return nil, err
+	}
+
 	urlMeta := &commonv1.UrlMeta{
 		Tag:         req.Tag,
 		Filter:      req.FilteredQueryParams,
@@ -329,7 +333,6 @@ func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	var mu sync.Mutex
 	preheatResp := &internaljob.PreheatResponse{}
-
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
@@ -360,7 +363,11 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 // preheatV2SingleSeedPeerByURL preheats job by v2 grpc protocol for single seed peer by URL.
 func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-	taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
+	taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+	if err != nil {
+		return nil, err
+	}
+
 	advertiseIP := j.config.Server.AdvertiseIP.String()
 
 	selected, err := j.resource.SeedPeer().Select(ctx, taskID)
@@ -443,6 +450,8 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
 		eg.Go(func() error {
+			peg, _ := errgroup.WithContext(ctx)
+			peg.SetLimit(int(req.ConcurrentPeerCount))
 			for _, seedPeer := range seedPeers {
 				var (
 					hostname = seedPeer.Hostname
@@ -451,14 +460,16 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				)
 
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
-				peg, _ := errgroup.WithContext(ctx)
-				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
-					hostID := idgen.HostIDV2(ip, hostname, true)
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					if err != nil {
+						return err
+					}
+
+					hostID := idgen.HostID(ip, hostname, true)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
-					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
 					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
@@ -533,11 +544,11 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 						}
 					}
 				})
+			}
 
-				// Wait for all seed peers to download single task and print the errors.
-				if err := peg.Wait(); err != nil {
-					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				}
+			// Wait for all seed peers to download single task and print the errors.
+			if err := peg.Wait(); err != nil {
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 			}
 
 			return nil
@@ -633,6 +644,10 @@ func (j *job) selectSeedPeers(ips []string, count *uint32, percentage *uint32, l
 	if percentage != nil {
 		seedPeerCount := (len(seedPeers) * int(*percentage)) / 100
 
+		// Clamp to the number of available seed peers, a percentage over 100
+		// would otherwise make the slice bound exceed len(seedPeers) and panic.
+		seedPeerCount = min(seedPeerCount, len(seedPeers))
+
 		// Ensure at least one peer is selected if percentage > 0.
 		if seedPeerCount == 0 && *percentage > 0 {
 			seedPeerCount = 1
@@ -659,11 +674,12 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 		successTasks = sync.Map{}
 		failureTasks = sync.Map{}
 	)
-
 	eg, _ := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentTaskCount))
 	for _, url := range req.URLs {
 		eg.Go(func() error {
+			peg, _ := errgroup.WithContext(ctx)
+			peg.SetLimit(int(req.ConcurrentPeerCount))
 			for _, peer := range peers {
 				var (
 					hostname = peer.Hostname
@@ -672,14 +688,16 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				)
 
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
-				peg, _ := errgroup.WithContext(ctx)
-				peg.SetLimit(int(req.ConcurrentPeerCount))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "")
-					hostID := idgen.HostIDV2(ip, hostname, false)
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					if err != nil {
+						return err
+					}
+
+					hostID := idgen.HostID(ip, hostname, false)
 					compositeID := fmt.Sprintf("%s-%s", taskID, hostID)
-					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostIDV2(ip, hostname, true), hostname, ip)
+					log := logger.WithPreheatJobAndHost(req.GroupUUID, req.TaskUUID, taskID, url, idgen.HostID(ip, hostname, true), hostname, ip)
 					log.Info("[preheat]: preheat started")
 
 					dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
@@ -754,11 +772,11 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 						}
 					}
 				})
+			}
 
-				// Wait for all peers to download single task and print the errors.
-				if err := peg.Wait(); err != nil {
-					log.Errorf("[preheat]: preheat failed: %s", err.Error())
-				}
+			// Wait for all peers to download single task and print the errors.
+			if err := peg.Wait(); err != nil {
+				log.Errorf("[preheat]: preheat failed: %s", err.Error())
 			}
 
 			return nil
@@ -849,6 +867,10 @@ func (j *job) selectPeers(ips []string, count *uint32, percentage *uint32, log *
 	if percentage != nil {
 		peerCount := (len(peers) * int(*percentage)) / 100
 
+		// Clamp to the number of available peers, a percentage over 100 would
+		// otherwise make the slice bound exceed len(peers) and panic.
+		peerCount = min(peerCount, len(peers))
+
 		// Ensure at least one peer is selected if percentage > 0.
 		if peerCount == 0 && *percentage > 0 {
 			peerCount = 1
@@ -908,11 +930,19 @@ func (j *job) getTask(ctx context.Context, data string) (string, error) {
 	return internaljob.MarshalResponse(resp)
 }
 
-// GetTask retrieves task information from all hosts in the cluster.
+// GetTask retrieves task information from peers in the cluster. If the scope is
+// all_seed_peers, only seed peers are queried, otherwise all peers are queried.
 func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log *logger.SugaredLoggerOnWith) (*internaljob.GetTaskResponse, error) {
-	hosts := j.resource.HostManager().LoadAll()
-	if len(hosts) == 0 {
-		log.Warn("[get-task] no hosts found")
+	var peers []*resource.Host
+	switch req.Scope {
+	case managertypes.AllSeedPeersScope:
+		peers = j.resource.HostManager().LoadAllSeeds()
+	default:
+		peers = j.resource.HostManager().LoadAll()
+	}
+
+	if len(peers) == 0 {
+		log.Warn("[get-task] no peers found")
 		return &internaljob.GetTaskResponse{
 			SchedulerClusterID: j.config.Manager.SchedulerClusterID,
 		}, nil
@@ -921,13 +951,23 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 	var mu sync.Mutex
 	resp := &internaljob.GetTaskResponse{
 		SchedulerClusterID: j.config.Manager.SchedulerClusterID,
-		Peers:              make([]*internaljob.Peer, 0, len(hosts)),
+		Peers:              make([]*internaljob.Peer, 0, len(peers)),
 	}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.ConcurrentPeerCount))
-	for _, host := range hosts {
+	for _, peer := range peers {
+		var (
+			id        = peer.ID
+			hostname  = peer.Hostname
+			ip        = peer.IP
+			port      = peer.Port
+			hostType  = peer.Type.Name()
+			createdAt = peer.CreatedAt.Load()
+			updatedAt = peer.UpdatedAt.Load()
+		)
+
+		addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 		eg.Go(func() error {
-			addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
 			dfdaemonClient, err := j.resource.PeerClientPool().Get(addr, j.dialOptions...)
 			if err != nil {
 				log.Warnf("[get-task] get client from %s failed: %s", addr, err.Error())
@@ -946,16 +986,15 @@ func (j *job) GetTask(ctx context.Context, req *internaljob.GetTaskRequest, log 
 
 			mu.Lock()
 			resp.Peers = append(resp.Peers, &internaljob.Peer{
-				ID:         host.ID,
-				Hostname:   host.Hostname,
-				IP:         host.IP,
-				HostType:   host.Type.Name(),
-				CreatedAt:  host.CreatedAt.Load(),
-				UpdatedAt:  host.UpdatedAt.Load(),
+				ID:         id,
+				Hostname:   hostname,
+				IP:         ip,
+				HostType:   hostType,
+				CreatedAt:  createdAt,
+				UpdatedAt:  updatedAt,
 				IsFinished: localTask.GetFinishedAt() != nil,
 			})
 			mu.Unlock()
-
 			return nil
 		})
 	}

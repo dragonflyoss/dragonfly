@@ -19,13 +19,13 @@ package config
 import (
 	"errors"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
-	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -58,9 +58,6 @@ type Config struct {
 type ServerConfig struct {
 	// Server name.
 	Name string `yaml:"name" mapstructure:"name"`
-
-	// Server dynamic config cache directory.
-	CacheDir string `yaml:"cacheDir" mapstructure:"cacheDir"`
 
 	// Server log directory.
 	LogDir string `yaml:"logDir" mapstructure:"logDir"`

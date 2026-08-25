@@ -32,14 +32,8 @@ var (
 	ErrDataNotFound    = errors.New("data not found")
 	ErrEmptyValue      = errors.New("empty value")
 	ErrConvertFailed   = errors.New("convert failed")
-	ErrEndOfStream     = errors.New("end of stream")
 	ErrNoCandidateNode = errors.New("no candidate server node")
 )
-
-// IsEndOfStream returns true if the error is end of stream.
-func IsEndOfStream(err error) bool {
-	return err == ErrEndOfStream
-}
 
 type DfError struct {
 	Code    commonv1.Code
@@ -57,23 +51,6 @@ func New(code commonv1.Code, msg string) *DfError {
 	}
 }
 
-func Newf(code commonv1.Code, format string, a ...any) *DfError {
-	return &DfError{
-		Code:    code,
-		Message: fmt.Sprintf(format, a...),
-	}
-}
-
-func CheckError(err error, code commonv1.Code) bool {
-	if err == nil {
-		return false
-	}
-
-	e, ok := err.(*DfError)
-
-	return ok && e.Code == code
-}
-
 // ConvertGRPCErrorToDfError converts grpc error to DfError, if it exists.
 func ConvertGRPCErrorToDfError(err error) error {
 	for _, d := range status.Convert(err).Details() {
@@ -87,27 +64,6 @@ func ConvertGRPCErrorToDfError(err error) error {
 	}
 
 	return err
-}
-
-// IsGRPCDfError checks if the error is a GRPCDfError.
-func IsGRPCDfError(err error) (*DfError, bool) {
-	for _, d := range status.Convert(err).Details() {
-		switch internal := d.(type) {
-		case *commonv1.GrpcDfError:
-			return &DfError{
-				Code:    internal.Code,
-				Message: internal.Message,
-			}, true
-		}
-	}
-
-	var de *DfError
-	ok := errors.As(err, &de)
-	if ok {
-		return de, true
-	}
-
-	return nil, false
 }
 
 // ConvertDfErrorToGRPCError converts DfError to grpc error, if it is.

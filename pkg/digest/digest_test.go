@@ -101,6 +101,22 @@ func TestDigest_Parse(t *testing.T) {
 			},
 		},
 		{
+			name:  "non-hex sha256 encoded",
+			value: "sha256:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:  "non-hex md5 encoded",
+			value: "md5:5d41402abc4b2a76b9719d911017c59g",
+			expect: func(t *testing.T, d *Digest, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
 			name:  "invalid algorithm",
 			value: "foo:5d41402abc4b2a76b9719d911017c592",
 			expect: func(t *testing.T, d *Digest, err error) {

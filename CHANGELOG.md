@@ -1,6 +1,296 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Chore
+- update client and manager/console submodules
+
+### Fix
+- **scheduler:** treat missing seed peers in refresh as warning instead of error ([#4836](https://github.com/dragonflyoss/dragonfly/issues/4836))
+
+
+<a name="v2.4.4-rc.4"></a>
+## [v2.4.4-rc.4] - 2026-06-23
+### Chore
+- **deps:** bump github.com/containerd/containerd from 1.7.32 to 1.7.33 ([#4831](https://github.com/dragonflyoss/dragonfly/issues/4831))
+- **deps:** bump actions/checkout from 6.0.3 to 7.0.0 ([#4832](https://github.com/dragonflyoss/dragonfly/issues/4832))
+- **deps:** bump github.com/redis/go-redis/v9 from 9.20.1 to 9.21.0 ([#4834](https://github.com/dragonflyoss/dragonfly/issues/4834))
+- **deps:** upgrade retry-go to v5 ([#4830](https://github.com/dragonflyoss/dragonfly/issues/4830))
+- **deps:** bump go.mongodb.org/mongo-driver from 1.17.0 to 1.17.7 ([#4829](https://github.com/dragonflyoss/dragonfly/issues/4829))
+- **deps:** bump github.com/redis/go-redis/v9 from 9.19.0 to 9.20.1 ([#4820](https://github.com/dragonflyoss/dragonfly/issues/4820))
+- **deps:** bump golang.org/x/crypto from 0.52.0 to 0.53.0 ([#4821](https://github.com/dragonflyoss/dragonfly/issues/4821))
+- **deps:** bump github.com/onsi/gomega from 1.41.0 to 1.42.0 ([#4822](https://github.com/dragonflyoss/dragonfly/issues/4822))
+
+### Fix
+- **scheduler:** delete AnnouncePeer stream reference to prevent transport memory leak ([#4827](https://github.com/dragonflyoss/dragonfly/issues/4827))
+- **scheduler:** honor peer concurrency during preheat jobs ([#4817](https://github.com/dragonflyoss/dragonfly/issues/4817))
+- **scheduler:** skip exponential delay for super seed peers on register ([#4816](https://github.com/dragonflyoss/dragonfly/issues/4816))
+
+### Refactor
+- remove MustParseRange/ParseOneRange/ParseURLMetaRange helpers ([#4835](https://github.com/dragonflyoss/dragonfly/issues/4835))
+
+
+<a name="v2.4.4-rc.3"></a>
+## [v2.4.4-rc.3] - 2026-06-09
+### Build
+- upgrade alpine to 3.23.4 and golang builder to alpine3.23 ([#4776](https://github.com/dragonflyoss/dragonfly/issues/4776))
+
+### Chore
+- Upgrade go-docker minor version to patch CVE-2024-41110 ([#4801](https://github.com/dragonflyoss/dragonfly/issues/4801))
+- Upgrading from Alpine 3.21.5 to 3.21.7 to patch vulns ([#4762](https://github.com/dragonflyoss/dragonfly/issues/4762))
+- **deps:** bump d7y.io/api/v2 from 2.2.28 to 2.2.30 ([#4778](https://github.com/dragonflyoss/dragonfly/issues/4778))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.43.0 to 1.44.0 ([#4793](https://github.com/dragonflyoss/dragonfly/issues/4793))
+- **deps:** bump golang.org/x/sys from 0.45.0 to 0.46.0 ([#4812](https://github.com/dragonflyoss/dragonfly/issues/4812))
+- **deps:** bump golang.org/x/crypto from 0.50.0 to 0.52.0 ([#4781](https://github.com/dragonflyoss/dragonfly/issues/4781))
+- **deps:** bump github.com/go-playground/validator/v10 from 10.30.2 to 10.30.3 ([#4814](https://github.com/dragonflyoss/dragonfly/issues/4814))
+- **deps:** bump github/codeql-action from 4.36.1 to 4.36.2 ([#4810](https://github.com/dragonflyoss/dragonfly/issues/4810))
+- **deps:** bump github.com/quic-go/quic-go from 0.59.0 to 0.59.1 ([#4799](https://github.com/dragonflyoss/dragonfly/issues/4799))
+- **deps:** bump github/codeql-action from 4.35.5 to 4.36.0 ([#4782](https://github.com/dragonflyoss/dragonfly/issues/4782))
+- **deps:** bump github/codeql-action from 4.36.0 to 4.36.1 ([#4794](https://github.com/dragonflyoss/dragonfly/issues/4794))
+- **deps:** bump kentaro-m/auto-assign-action from 3f4d16b9e7887503a0fef2c3ccd80aa64cad8f31 to ec535837f27fe559c375eb1000f68aa155afc2d1 ([#4795](https://github.com/dragonflyoss/dragonfly/issues/4795))
+- **deps:** bump actions/checkout from 6.0.2 to 6.0.3 ([#4796](https://github.com/dragonflyoss/dragonfly/issues/4796))
+- **deps:** bump docker/setup-buildx-action from 4.0.0 to 4.1.0 ([#4797](https://github.com/dragonflyoss/dragonfly/issues/4797))
+- **deps:** bump docker/setup-qemu-action from 4.0.0 to 4.1.0 ([#4798](https://github.com/dragonflyoss/dragonfly/issues/4798))
+- **deps:** bump actions/stale from 10.2.0 to 10.3.0 ([#4783](https://github.com/dragonflyoss/dragonfly/issues/4783))
+- **deps:** bump kentaro-m/auto-assign-action from ec535837f27fe559c375eb1000f68aa155afc2d1 to 2fdd10134f759704abd4f54e8e9bf19d10b52d01 ([#4807](https://github.com/dragonflyoss/dragonfly/issues/4807))
+- **deps:** bump golang.org/x/sys from 0.44.0 to 0.45.0 ([#4780](https://github.com/dragonflyoss/dragonfly/issues/4780))
+- **deps:** bump codecov/codecov-action from 6.0.1 to 7.0.0 ([#4813](https://github.com/dragonflyoss/dragonfly/issues/4813))
+- **deps:** bump github.com/bits-and-blooms/bitset from 1.24.4 to 1.24.5 ([#4811](https://github.com/dragonflyoss/dragonfly/issues/4811))
+- **deps:** bump golangci/golangci-lint-action from 9.2.0 to 9.2.1 ([#4777](https://github.com/dragonflyoss/dragonfly/issues/4777))
+- **deps:** bump docker/build-push-action from 7.1.0 to 7.2.0 ([#4784](https://github.com/dragonflyoss/dragonfly/issues/4784))
+- **deps:** bump docker/login-action from 4.1.0 to 4.2.0 ([#4785](https://github.com/dragonflyoss/dragonfly/issues/4785))
+- **deps:** bump github.com/containerd/containerd from 1.7.31 to 1.7.32 ([#4775](https://github.com/dragonflyoss/dragonfly/issues/4775))
+- **deps:** bump github.com/onsi/gomega from 1.39.1 to 1.41.0 ([#4772](https://github.com/dragonflyoss/dragonfly/issues/4772))
+- **deps:** bump goreleaser/goreleaser-action from 7.2.1 to 7.2.2 ([#4771](https://github.com/dragonflyoss/dragonfly/issues/4771))
+- **deps:** bump codecov/codecov-action from 6.0.0 to 6.0.1 ([#4770](https://github.com/dragonflyoss/dragonfly/issues/4770))
+- **deps:** bump github/codeql-action from 4.35.4 to 4.35.5 ([#4768](https://github.com/dragonflyoss/dragonfly/issues/4768))
+- **deps:** bump google.golang.org/api from 0.276.0 to 0.279.0 ([#4766](https://github.com/dragonflyoss/dragonfly/issues/4766))
+- **deps:** bump kentaro-m/auto-assign-action from cc0141d9009b0904e6d9988d0f1a51d64cd3d008 to 3f4d16b9e7887503a0fef2c3ccd80aa64cad8f31 ([#4765](https://github.com/dragonflyoss/dragonfly/issues/4765))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin from 0.68.0 to 0.69.0 ([#4809](https://github.com/dragonflyoss/dragonfly/issues/4809))
+- **deps:** bump golang.org/x/sys from 0.43.0 to 0.44.0 ([#4754](https://github.com/dragonflyoss/dragonfly/issues/4754))
+- **deps:** bump github/codeql-action from 4.35.2 to 4.35.4 ([#4755](https://github.com/dragonflyoss/dragonfly/issues/4755))
+- **deps:** bump github.com/redis/go-redis/v9 from 9.18.0 to 9.19.0 ([#4758](https://github.com/dragonflyoss/dragonfly/issues/4758))
+- **deps:** bump kentaro-m/auto-assign-action from 4752280082a529498fe22a149e6c9814d87966ec to cc0141d9009b0904e6d9988d0f1a51d64cd3d008 ([#4759](https://github.com/dragonflyoss/dragonfly/issues/4759))
+
+### Ci
+- upgrade KIND_VERSION from v0.12.0 to v0.32.0 in e2e workflows ([#4806](https://github.com/dragonflyoss/dragonfly/issues/4806))
+- **docker:** remove freebsd/amd64 from build platforms ([#4786](https://github.com/dragonflyoss/dragonfly/issues/4786))
+
+### Fix
+- correct typos in scheduler log messages and preheat response fields ([#4788](https://github.com/dragonflyoss/dragonfly/issues/4788))
+- **job:** fix data race on slice appends in preheatV2SingleSeedPeer ([#4774](https://github.com/dragonflyoss/dragonfly/issues/4774))
+- **preheat:** add objectStorage and hdfs params for manager preheat job ([#4764](https://github.com/dragonflyoss/dragonfly/issues/4764))
+
+
+<a name="v2.4.4-rc.2"></a>
+## [v2.4.4-rc.2] - 2026-05-07
+### Chore
+- **deps:** bump kentaro-m/auto-assign-action from 646e8b333af1f2578621db2ad3a1373665e53201 to 4752280082a529498fe22a149e6c9814d87966ec ([#4739](https://github.com/dragonflyoss/dragonfly/issues/4739))
+- **deps:** bump github.com/onsi/ginkgo/v2 from 2.28.0 to 2.28.2 ([#4740](https://github.com/dragonflyoss/dragonfly/issues/4740))
+- **deps:** bump aquasecurity/trivy-action from 0.35.0 to 0.36.0 ([#4741](https://github.com/dragonflyoss/dragonfly/issues/4741))
+- **deps:** bump goreleaser/goreleaser-action from 7.1.0 to 7.2.1 ([#4742](https://github.com/dragonflyoss/dragonfly/issues/4742))
+- **deps:** bump github.com/jackc/pgx/v5 from 5.9.0 to 5.9.2 ([#4732](https://github.com/dragonflyoss/dragonfly/issues/4732))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin from 0.67.0 to 0.68.0 ([#4730](https://github.com/dragonflyoss/dragonfly/issues/4730))
+- **deps:** bump kentaro-m/auto-assign-action from 2540405c417e3376a45f5fc809acd86fe2dfeec5 to 646e8b333af1f2578621db2ad3a1373665e53201 ([#4731](https://github.com/dragonflyoss/dragonfly/issues/4731))
+- **deps:** bump google.golang.org/api from 0.269.0 to 0.276.0 ([#4729](https://github.com/dragonflyoss/dragonfly/issues/4729))
+- **deps:** bump goreleaser/goreleaser-action from 7.0.0 to 7.1.0 ([#4728](https://github.com/dragonflyoss/dragonfly/issues/4728))
+- **deps:** bump github/codeql-action from 4.35.1 to 4.35.2 ([#4727](https://github.com/dragonflyoss/dragonfly/issues/4727))
+- **deps:** bump github.com/containerd/containerd from 1.7.13 to 1.7.31 ([#4726](https://github.com/dragonflyoss/dragonfly/issues/4726))
+- **deps:** bump github.com/docker/go-connections from 0.6.0 to 0.7.0 ([#4725](https://github.com/dragonflyoss/dragonfly/issues/4725))
+- **deps:** bump github.com/jackc/pgx/v5 from 5.5.4 to 5.9.0 ([#4724](https://github.com/dragonflyoss/dragonfly/issues/4724))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.67.0 to 0.68.0 ([#4713](https://github.com/dragonflyoss/dragonfly/issues/4713))
+- **deps:** bump golang.org/x/crypto from 0.49.0 to 0.50.0 ([#4714](https://github.com/dragonflyoss/dragonfly/issues/4714))
+- **deps:** bump actions/cache from 5.0.3 to 5.0.5 ([#4715](https://github.com/dragonflyoss/dragonfly/issues/4715))
+- **deps:** bump golang.org/x/sys from 0.42.0 to 0.43.0 ([#4716](https://github.com/dragonflyoss/dragonfly/issues/4716))
+- **deps:** bump actionsdesk/lfs-warning from 3.2 to 3.3 ([#4717](https://github.com/dragonflyoss/dragonfly/issues/4717))
+- **deps:** bump d7y.io/api/v2 from 2.2.25 to 2.2.28 ([#4718](https://github.com/dragonflyoss/dragonfly/issues/4718))
+- **deps:** bump actions/upload-artifact from 7.0.0 to 7.0.1 ([#4719](https://github.com/dragonflyoss/dragonfly/issues/4719))
+- **deps:** bump kentaro-m/auto-assign-action from 7d91347892b849bdd20a3d67c7564caa4ff21e35 to 2540405c417e3376a45f5fc809acd86fe2dfeec5 ([#4721](https://github.com/dragonflyoss/dragonfly/issues/4721))
+- **deps:** bump docker/build-push-action from 7.0.0 to 7.1.0 ([#4722](https://github.com/dragonflyoss/dragonfly/issues/4722))
+
+### Feat
+- **manager:** add ExternalRedis TLS support (closes [#4734](https://github.com/dragonflyoss/dragonfly/issues/4734)) ([#4738](https://github.com/dragonflyoss/dragonfly/issues/4738))
+
+### Fix
+- Upgrading grpc_health_probe to 0.4.48 to patch CVE-2025-68121 ([#4745](https://github.com/dragonflyoss/dragonfly/issues/4745))
+
+
+<a name="v2.4.4-rc.1"></a>
+## [v2.4.4-rc.1] - 2026-04-13
+### Fix
+- call ListTaskEntries only for directory URLs in PreheatFile/StaFile ([#4712](https://github.com/dragonflyoss/dragonfly/issues/4712))
+
+
+<a name="v2.4.4-rc.0"></a>
+## [v2.4.4-rc.0] - 2026-04-10
+### Chore
+- update client and manager/console submodules ([#4711](https://github.com/dragonflyoss/dragonfly/issues/4711))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.42.0 to 1.43.0 ([#4707](https://github.com/dragonflyoss/dragonfly/issues/4707))
+- **deps:** bump kentaro-m/auto-assign-action from 79356e58e31446bdb2b16fbd862d671afa66a0a5 to 7d91347892b849bdd20a3d67c7564caa4ff21e35 ([#4706](https://github.com/dragonflyoss/dragonfly/issues/4706))
+- **deps:** bump github.com/go-playground/validator/v10 from 10.30.1 to 10.30.2 ([#4704](https://github.com/dragonflyoss/dragonfly/issues/4704))
+- **deps:** bump docker/login-action from 4.0.0 to 4.1.0 ([#4705](https://github.com/dragonflyoss/dragonfly/issues/4705))
+- **deps:** bump codecov/codecov-action from 5.5.2 to 6.0.0 ([#4703](https://github.com/dragonflyoss/dragonfly/issues/4703))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.42.0 to 1.43.0 ([#4699](https://github.com/dragonflyoss/dragonfly/issues/4699))
+
+### Refactor
+- **job:** rename `blobsURL` to `blobURL` for grammatical accuracy ([#4708](https://github.com/dragonflyoss/dragonfly/issues/4708))
+
+
+<a name="v2.4.4-beta.0"></a>
+## [v2.4.4-beta.0] - 2026-03-31
+### Chore
+- add dragonfly-maintainers as codeowners alongside approvers ([#4684](https://github.com/dragonflyoss/dragonfly/issues/4684))
+- update CODEOWNERS team names to dragonfly-approvers/maintainers ([#4672](https://github.com/dragonflyoss/dragonfly/issues/4672))
+- **client:** update client submodule to e9ff9699 ([#4669](https://github.com/dragonflyoss/dragonfly/issues/4669))
+- **deps:** bump github.com/montanaflynn/stats from 0.7.1 to 0.9.0 ([#4694](https://github.com/dragonflyoss/dragonfly/issues/4694))
+- **deps:** bump google.golang.org/grpc from 1.79.2 to 1.79.3 ([#4670](https://github.com/dragonflyoss/dragonfly/issues/4670))
+- **deps:** bump actions/setup-go from 6.3.0 to 6.4.0 ([#4696](https://github.com/dragonflyoss/dragonfly/issues/4696))
+- **deps:** bump sigstore/cosign-installer from 4.1.0 to 4.1.1 ([#4697](https://github.com/dragonflyoss/dragonfly/issues/4697))
+- **deps:** bump azure/setup-helm from 4.3.1 to 5.0.0 ([#4695](https://github.com/dragonflyoss/dragonfly/issues/4695))
+- **deps:** bump github/codeql-action from 4.32.5 to 4.35.1 ([#4693](https://github.com/dragonflyoss/dragonfly/issues/4693))
+- **deps:** bump github.com/gin-contrib/zap from 1.1.5 to 1.1.7 ([#4692](https://github.com/dragonflyoss/dragonfly/issues/4692))
+- **deps:** bump kentaro-m/auto-assign-action from c8db276c3a2c3609c66ffe9f371cf1ebe80bc1b1 to 79356e58e31446bdb2b16fbd862d671afa66a0a5 ([#4690](https://github.com/dragonflyoss/dragonfly/issues/4690))
+- **deps:** bump github.com/gin-contrib/gzip from 1.2.3 to 1.2.6 ([#4691](https://github.com/dragonflyoss/dragonfly/issues/4691))
+- **deps:** bump docker/build-push-action from 6.19.2 to 7.0.0 ([#4664](https://github.com/dragonflyoss/dragonfly/issues/4664))
+- **deps:** bump d7y.io/api/v2 from 2.2.24 to 2.2.25 ([#4663](https://github.com/dragonflyoss/dragonfly/issues/4663))
+- **deps:** bump sigstore/cosign-installer from 3.10.0 to 4.1.0 ([#4662](https://github.com/dragonflyoss/dragonfly/issues/4662))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin from 0.61.0 to 0.67.0 ([#4661](https://github.com/dragonflyoss/dragonfly/issues/4661))
+- **deps:** bump anchore/sbom-action from 0.22.2 to 0.23.1 ([#4660](https://github.com/dragonflyoss/dragonfly/issues/4660))
+- **deps:** bump aquasecurity/trivy-action from 0.32.0 to 0.35.0 ([#4658](https://github.com/dragonflyoss/dragonfly/issues/4658))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.40.0 to 1.42.0 ([#4656](https://github.com/dragonflyoss/dragonfly/issues/4656))
+
+### Ci
+- add Docker credentials env vars and skip test if not set ([#4687](https://github.com/dragonflyoss/dragonfly/issues/4687))
+
+### Feat
+- **database:** support polardb ([#4655](https://github.com/dragonflyoss/dragonfly/issues/4655))
+
+### Fix
+- align Lua script args order for peer ttl and concurrent_piece_count ([#4674](https://github.com/dragonflyoss/dragonfly/issues/4674))
+
+
+<a name="v2.4.3"></a>
+## [v2.4.3] - 2026-03-11
+### Chore
+- **deps:** Bump d7y.io/api to v2.2.24 ([#4653](https://github.com/dragonflyoss/dragonfly/issues/4653))
+- **deps:** bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.63.0 to 0.67.0 ([#4646](https://github.com/dragonflyoss/dragonfly/issues/4646))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.40.0 to 1.42.0 ([#4643](https://github.com/dragonflyoss/dragonfly/issues/4643))
+- **deps:** bump actions/setup-go from 6.2.0 to 6.3.0 ([#4644](https://github.com/dragonflyoss/dragonfly/issues/4644))
+- **deps:** bump docker/login-action from 3.7.0 to 4.0.0 ([#4645](https://github.com/dragonflyoss/dragonfly/issues/4645))
+- **deps:** bump golang.org/x/oauth2 from 0.35.0 to 0.36.0 ([#4647](https://github.com/dragonflyoss/dragonfly/issues/4647))
+- **deps:** bump docker/setup-buildx-action from 3.12.0 to 4.0.0 ([#4648](https://github.com/dragonflyoss/dragonfly/issues/4648))
+- **deps:** bump golang.org/x/sys from 0.41.0 to 0.42.0 ([#4649](https://github.com/dragonflyoss/dragonfly/issues/4649))
+- **deps:** bump actions/stale from 9.1.0 to 10.2.0 ([#4650](https://github.com/dragonflyoss/dragonfly/issues/4650))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace from 1.40.0 to 1.42.0 ([#4651](https://github.com/dragonflyoss/dragonfly/issues/4651))
+- **deps:** bump docker/setup-qemu-action from 3.7.0 to 4.0.0 ([#4652](https://github.com/dragonflyoss/dragonfly/issues/4652))
+
+
+<a name="v2.4.2"></a>
+## [v2.4.2] - 2026-03-09
+### Build
+- **ci:** add Node.js setup to release workflow ([#4640](https://github.com/dragonflyoss/dragonfly/issues/4640))
+
+### Chore
+- **client:** update client subproject commit reference ([#4638](https://github.com/dragonflyoss/dragonfly/issues/4638))
+- **deps:** bump d7y.io/api/v2 from 2.2.14 to 2.2.19 ([#4614](https://github.com/dragonflyoss/dragonfly/issues/4614))
+- **deps:** bump filippo.io/edwards25519 from 1.1.0 to 1.1.1 ([#4623](https://github.com/dragonflyoss/dragonfly/issues/4623))
+- **deps:** bump goreleaser/goreleaser-action from 6.4.0 to 7.0.0 ([#4624](https://github.com/dragonflyoss/dragonfly/issues/4624))
+- **deps:** bump helm/kind-action from 1.13.0 to 1.14.0 ([#4626](https://github.com/dragonflyoss/dragonfly/issues/4626))
+- **deps:** bump google.golang.org/api from 0.262.0 to 0.269.0 ([#4629](https://github.com/dragonflyoss/dragonfly/issues/4629))
+- **deps:** bump github/codeql-action from 4.32.2 to 4.32.5 ([#4630](https://github.com/dragonflyoss/dragonfly/issues/4630))
+- **deps:** bump actions/upload-artifact from 6.0.0 to 7.0.0 ([#4633](https://github.com/dragonflyoss/dragonfly/issues/4633))
+- **deps:** bump github.com/redis/go-redis/v9 from 9.17.3 to 9.18.0 ([#4619](https://github.com/dragonflyoss/dragonfly/issues/4619))
+- **deps:** bump golang.org/x/oauth2 from 0.34.0 to 0.35.0 ([#4618](https://github.com/dragonflyoss/dragonfly/issues/4618))
+- **deps:** bump docker/build-push-action from 6.18.0 to 6.19.2 ([#4617](https://github.com/dragonflyoss/dragonfly/issues/4617))
+- **deps:** bump golang.org/x/crypto from 0.47.0 to 0.48.0 ([#4615](https://github.com/dragonflyoss/dragonfly/issues/4615))
+- **deps:** bump anchore/sbom-action from 0.22.1 to 0.22.2 ([#4606](https://github.com/dragonflyoss/dragonfly/issues/4606))
+- **deps:** bump golang.org/x/sys from 0.40.0 to 0.41.0 ([#4608](https://github.com/dragonflyoss/dragonfly/issues/4608))
+- **deps:** bump github/codeql-action from 4.32.1 to 4.32.2 ([#4609](https://github.com/dragonflyoss/dragonfly/issues/4609))
+- **deps:** bump github.com/onsi/gomega from 1.39.0 to 1.39.1 ([#4610](https://github.com/dragonflyoss/dragonfly/issues/4610))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.37.0 to 1.40.0 ([#4595](https://github.com/dragonflyoss/dragonfly/issues/4595))
+- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.37.0 to 1.40.0 ([#4592](https://github.com/dragonflyoss/dragonfly/issues/4592))
+- **deps:** bump go.opentelemetry.io/otel/sdk from 1.39.0 to 1.40.0 ([#4593](https://github.com/dragonflyoss/dragonfly/issues/4593))
+- **deps:** bump actions/cache from 5.0.2 to 5.0.3 ([#4594](https://github.com/dragonflyoss/dragonfly/issues/4594))
+- **deps:** bump docker/login-action from 3.6.0 to 3.7.0 ([#4596](https://github.com/dragonflyoss/dragonfly/issues/4596))
+- **deps:** bump go.opentelemetry.io/otel from 1.39.0 to 1.40.0 ([#4597](https://github.com/dragonflyoss/dragonfly/issues/4597))
+- **deps:** bump github/codeql-action from 4.31.11 to 4.32.1 ([#4598](https://github.com/dragonflyoss/dragonfly/issues/4598))
+- **deps:** bump anchore/sbom-action from 0.22.0 to 0.22.1 ([#4599](https://github.com/dragonflyoss/dragonfly/issues/4599))
+- **deps:** bump github/codeql-action from 4.31.10 to 4.31.11 ([#4586](https://github.com/dragonflyoss/dragonfly/issues/4586))
+- **deps:** bump github.com/redis/go-redis/v9 from 9.17.2 to 9.17.3 ([#4585](https://github.com/dragonflyoss/dragonfly/issues/4585))
+- **deps:** bump actions/checkout from 6.0.1 to 6.0.2 ([#4584](https://github.com/dragonflyoss/dragonfly/issues/4584))
+- **deps:** bump kentaro-m/auto-assign-action from 18e62580c51802a607cac53db7cb07ddacb24731 to c8db276c3a2c3609c66ffe9f371cf1ebe80bc1b1 ([#4582](https://github.com/dragonflyoss/dragonfly/issues/4582))
+- **deps:** bump anchore/sbom-action from 0.21.1 to 0.22.0 ([#4581](https://github.com/dragonflyoss/dragonfly/issues/4581))
+- **deps:** bump google.golang.org/api from 0.260.0 to 0.262.0 ([#4580](https://github.com/dragonflyoss/dragonfly/issues/4580))
+
+### Docs
+- expand copilot-instructions.md with accurate project context from codebase ([#4641](https://github.com/dragonflyoss/dragonfly/issues/4641))
+
+### Feat
+- **api:** upgrade d7y.io/api to v2.2.14 and add scheduler cluster de… ([#4589](https://github.com/dragonflyoss/dragonfly/issues/4589))
+- **config:** add request rate limit for gRPC server ([#4579](https://github.com/dragonflyoss/dragonfly/issues/4579))
+- **manager:** add seed client configuration support ([#4577](https://github.com/dragonflyoss/dragonfly/issues/4577))
+- **rpcserver:** add scheduler configuration marshalling ([#4635](https://github.com/dragonflyoss/dragonfly/issues/4635))
+
+### Fix
+- improve OpenSSF Scorecard score ([#4576](https://github.com/dragonflyoss/dragonfly/issues/4576))
+
+### Refactor
+- **config:** rename rateLimit to bandwidthLimit ([#4578](https://github.com/dragonflyoss/dragonfly/issues/4578))
+- **seedPeer:** remove Enable flag and simplify checks ([#4636](https://github.com/dragonflyoss/dragonfly/issues/4636))
+- **types:** change priorities from string to int32 ([#4612](https://github.com/dragonflyoss/dragonfly/issues/4612))
+
+
+<a name="v2.4.1"></a>
+## [v2.4.1] - 2026-01-23
+### Feat
+- **router:** remove deprecated preheat API endpoints ([#4574](https://github.com/dragonflyoss/dragonfly/issues/4574))
+
+### Fix
+- **security:** Dragonfly manager job API unauthenticated access  ([#4575](https://github.com/dragonflyoss/dragonfly/issues/4575))
+
+
+<a name="v2.4.1-rc.1"></a>
+## [v2.4.1-rc.1] - 2026-01-22
+### Feat
+- **router:** remove deprecated preheat API endpoints
+
+### Fix
+- **security:** Dragonfly manager job API unauthenticated access
+
+
+<a name="v2.4.1-rc.0"></a>
+## [v2.4.1-rc.0] - 2026-01-22
+### Ci
+- **workflows:** add ipv6 e2e testing ([#4572](https://github.com/dragonflyoss/dragonfly/issues/4572))
+
+### Feat
+- **router:** remove deprecated preheat API endpoints ([#4574](https://github.com/dragonflyoss/dragonfly/issues/4574))
+
+
+<a name="v2.4.1-beta.1"></a>
+## [v2.4.1-beta.1] - 2026-01-20
+
+<a name="v2.4.1-beta.0"></a>
+## [v2.4.1-beta.0] - 2026-01-20
+### Chore
+- **deps:** bump github.com/onsi/ginkgo/v2 from 2.27.4 to 2.27.5 ([#4564](https://github.com/dragonflyoss/dragonfly/issues/4564))
+- **deps:** bump actions/setup-go from 5.5.0 to 6.2.0 ([#4565](https://github.com/dragonflyoss/dragonfly/issues/4565))
+- **deps:** bump google.golang.org/api from 0.248.0 to 0.260.0 ([#4566](https://github.com/dragonflyoss/dragonfly/issues/4566))
+- **deps:** bump actions/cache from 5.0.1 to 5.0.2 ([#4569](https://github.com/dragonflyoss/dragonfly/issues/4569))
+- **deps:** bump github.com/onsi/gomega from 1.38.3 to 1.39.0 ([#4559](https://github.com/dragonflyoss/dragonfly/issues/4559))
+- **deps:** bump anchore/sbom-action from 0.21.0 to 0.21.1 ([#4560](https://github.com/dragonflyoss/dragonfly/issues/4560))
+- **deps:** bump golang.org/x/crypto from 0.44.0 to 0.47.0 ([#4558](https://github.com/dragonflyoss/dragonfly/issues/4558))
+- **deps:** bump github/codeql-action from 4.31.9 to 4.31.10 ([#4562](https://github.com/dragonflyoss/dragonfly/issues/4562))
+- **deps:** bump github.com/onsi/ginkgo/v2 from 2.27.2 to 2.27.4 ([#4561](https://github.com/dragonflyoss/dragonfly/issues/4561))
+
+### Feat
+- **scheduler:** add Name field to Host struct ([#4570](https://github.com/dragonflyoss/dragonfly/issues/4570))
+
+
+<a name="v2.4.0"></a>
+## [v2.4.0] - 2026-01-08
+### Chore
+- **client:** bump client to v1.2.0 ([#4552](https://github.com/dragonflyoss/dragonfly/issues/4552))
+
 
 <a name="v2.3.5-rc.3"></a>
 ## [v2.3.5-rc.3] - 2026-01-06
@@ -127,13 +417,18 @@
 ### Chore
 - **deps:** bump helm/kind-action from 1.12.0 to 1.13.0 ([#4428](https://github.com/dragonflyoss/dragonfly/issues/4428))
 - **deps:** bump github/codeql-action from 4.31.0 to 4.31.2 ([#4429](https://github.com/dragonflyoss/dragonfly/issues/4429))
+
+### Perf
+- **scheduler:** reduce peer registration delays ([#4437](https://github.com/dragonflyoss/dragonfly/issues/4437))
+
+
+<a name="v2.3.4-rc.1"></a>
+## [v2.3.4-rc.1] - 2025-11-03
+### Chore
 - **deps:** bump d7y.io/api/v2 from v2.1.80 to v2.1.81 ([#4427](https://github.com/dragonflyoss/dragonfly/issues/4427))
 
 ### Docs
 - **README:** update project status and descriptions ([#4426](https://github.com/dragonflyoss/dragonfly/issues/4426))
-
-### Perf
-- **scheduler:** reduce peer registration delays ([#4437](https://github.com/dragonflyoss/dragonfly/issues/4437))
 
 
 <a name="v2.3.4-rc.0"></a>
@@ -341,8 +636,8 @@
 - **e2e:** update config to fix the slow resolution of seed peer address ([#4234](https://github.com/dragonflyoss/dragonfly/issues/4234))
 
 
-<a name="2.2.4"></a>
-## [2.2.4] - 2025-09-10
+<a name="v2.2.5"></a>
+## [v2.2.5] - 2025-09-10
 ### Build
 - **docker:** update base images to alpine 3.21 ([#4314](https://github.com/dragonflyoss/dragonfly/issues/4314))
 
@@ -356,114 +651,8 @@
 - **docker:** update base images to alpine 3.21 ([#4314](https://github.com/dragonflyoss/dragonfly/issues/4314))
 
 ### Chore
-- bump version to v2.3.1-rc.4 ([#4275](https://github.com/dragonflyoss/dragonfly/issues/4275))
-- bump client-rs to v1.0.1 ([#4174](https://github.com/dragonflyoss/dragonfly/issues/4174))
-- update submodule commits for client and console ([#4313](https://github.com/dragonflyoss/dragonfly/issues/4313))
-- bump console version to v0.3.0 ([#4196](https://github.com/dragonflyoss/dragonfly/issues/4196))
-- update SECURITY-INSIGHTS with contribution policy details 📜 ([#4198](https://github.com/dragonflyoss/dragonfly/issues/4198))
-- bump console to v0.3.1 ([#4232](https://github.com/dragonflyoss/dragonfly/issues/4232))
-- **SECURITY-INSIGHTS.yml:** change the address of dragonfly repository ([#4199](https://github.com/dragonflyoss/dragonfly/issues/4199))
-- **deps:** bump github.com/docker/go-connections from 0.5.0 to 0.6.0 ([#4272](https://github.com/dragonflyoss/dragonfly/issues/4272))
-- **deps:** bump goreleaser/goreleaser-action from 6.3.0 to 6.4.0 ([#4291](https://github.com/dragonflyoss/dragonfly/issues/4291))
-- **deps:** bump kentaro-m/auto-assign-action from 9f6dbe84a80c6e7639d1b9698048b201052a2a94 to 1a583dfb5dd75d0df34ecc781081e5a6a73d2dce ([#4286](https://github.com/dragonflyoss/dragonfly/issues/4286))
-- **deps:** bump github.com/bits-and-blooms/bitset from 1.22.0 to 1.24.0 ([#4287](https://github.com/dragonflyoss/dragonfly/issues/4287))
-- **deps:** bump github.com/stretchr/testify from 1.10.0 to 1.11.0 ([#4284](https://github.com/dragonflyoss/dragonfly/issues/4284))
-- **deps:** bump github.com/redis/go-redis/v9 from 9.11.0 to 9.12.1 ([#4271](https://github.com/dragonflyoss/dragonfly/issues/4271))
 - **deps:** bump google.golang.org/api from 0.244.0 to 0.248.0 ([#4303](https://github.com/dragonflyoss/dragonfly/issues/4303))
-- **deps:** bump golang.org/x/crypto from 0.40.0 to 0.41.0 ([#4265](https://github.com/dragonflyoss/dragonfly/issues/4265))
-- **deps:** bump actions/checkout from 4.2.2 to 5.0.0 ([#4261](https://github.com/dragonflyoss/dragonfly/issues/4261))
-- **deps:** bump actions/cache from 4.2.2 to 4.2.4 ([#4266](https://github.com/dragonflyoss/dragonfly/issues/4266))
-- **deps:** bump golang.org/x/sys from 0.34.0 to 0.35.0 ([#4264](https://github.com/dragonflyoss/dragonfly/issues/4264))
-- **deps:** bump actions/download-artifact from 4.3.0 to 5.0.0 ([#4263](https://github.com/dragonflyoss/dragonfly/issues/4263))
-- **deps:** bump github/codeql-action from 3.29.7 to 3.29.8 ([#4260](https://github.com/dragonflyoss/dragonfly/issues/4260))
-- **deps:** bump github.com/prometheus/client_golang from 1.20.5 to 1.23.0 ([#4268](https://github.com/dragonflyoss/dragonfly/issues/4268))
-- **deps:** bump client-rs to v1.0.9 ([#4256](https://github.com/dragonflyoss/dragonfly/issues/4256))
-- **deps:** bump github.com/swaggo/swag from 1.16.5 to 1.16.6 ([#4257](https://github.com/dragonflyoss/dragonfly/issues/4257))
-- **deps:** bump github.com/aws/aws-sdk-go from 1.55.7 to 1.55.8 ([#4255](https://github.com/dragonflyoss/dragonfly/issues/4255))
-- **deps:** bump docker/login-action from 3.4.0 to 3.5.0 ([#4249](https://github.com/dragonflyoss/dragonfly/issues/4249))
-- **deps:** bump google.golang.org/api from 0.229.0 to 0.244.0 ([#4251](https://github.com/dragonflyoss/dragonfly/issues/4251))
-- **deps:** bump github/codeql-action from 3.29.4 to 3.29.5 ([#4248](https://github.com/dragonflyoss/dragonfly/issues/4248))
-- **deps:** bump kentaro-m/auto-assign-action from 586b61c136c65d09c1775da39cc4a80e026834f4 to 9f6dbe84a80c6e7639d1b9698048b201052a2a94 ([#4236](https://github.com/dragonflyoss/dragonfly/issues/4236))
-- **deps:** bump github/codeql-action from 3.29.3 to 3.29.4 ([#4237](https://github.com/dragonflyoss/dragonfly/issues/4237))
-- **deps:** bump github.com/onsi/gomega from 1.36.3 to 1.38.0 ([#4241](https://github.com/dragonflyoss/dragonfly/issues/4241))
-- **deps:** bump google.golang.org/grpc from 1.74.2 to 1.75.0 ([#4285](https://github.com/dragonflyoss/dragonfly/issues/4285))
-- **deps:** bump sigstore/cosign-installer from 3.9.1 to 3.9.2 ([#4223](https://github.com/dragonflyoss/dragonfly/issues/4223))
-- **deps:** bump github/codeql-action from 3.29.2 to 3.29.3 ([#4224](https://github.com/dragonflyoss/dragonfly/issues/4224))
-- **deps:** bump kentaro-m/auto-assign-action from db77befe126df3163e8ee988af621569f7f2b82f to 586b61c136c65d09c1775da39cc4a80e026834f4 ([#4225](https://github.com/dragonflyoss/dragonfly/issues/4225))
-- **deps:** bump github.com/swaggo/swag from 1.16.4 to 1.16.5 ([#4228](https://github.com/dragonflyoss/dragonfly/issues/4228))
-- **deps:** bump golang.org/x/crypto from 0.39.0 to 0.40.0 ([#4207](https://github.com/dragonflyoss/dragonfly/issues/4207))
-- **deps:** bump golang.org/x/sys from 0.33.0 to 0.34.0 ([#4206](https://github.com/dragonflyoss/dragonfly/issues/4206))
-- **deps:** bump github.com/gammazero/deque from 1.0.0 to 1.1.0 ([#4205](https://github.com/dragonflyoss/dragonfly/issues/4205))
-- **deps:** bump codecov/codecov-action from 5.4.3 to 5.5.0 ([#4290](https://github.com/dragonflyoss/dragonfly/issues/4290))
-- **deps:** bump go.uber.org/mock from 0.5.2 to 0.6.0 ([#4288](https://github.com/dragonflyoss/dragonfly/issues/4288))
-- **deps:** bump aquasecurity/trivy-action from 0.31.0 to 0.32.0 ([#4188](https://github.com/dragonflyoss/dragonfly/issues/4188))
-- **deps:** bump kentaro-m/auto-assign-action from a558e3a7a389eae6d782d4f5ad0aaa5e36ec2e39 to db77befe126df3163e8ee988af621569f7f2b82f ([#4192](https://github.com/dragonflyoss/dragonfly/issues/4192))
-- **deps:** bump github.com/go-playground/validator/v10 from 10.26.0 to 10.27.0 ([#4191](https://github.com/dragonflyoss/dragonfly/issues/4191))
-- **deps:** bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.60.0 to 0.62.0 ([#4190](https://github.com/dragonflyoss/dragonfly/issues/4190))
-- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.36.0 to 1.37.0 ([#4189](https://github.com/dragonflyoss/dragonfly/issues/4189))
-- **deps:** bump client-rs to v0.2.42 ([#4164](https://github.com/dragonflyoss/dragonfly/issues/4164))
 - **deps:** bump github/codeql-action from 3.29.8 to 3.30.1 ([#4311](https://github.com/dragonflyoss/dragonfly/issues/4311))
-- **deps:** bump client-rs to v1.0.0 and bump console to v0.2.8 ([#4172](https://github.com/dragonflyoss/dragonfly/issues/4172))
-- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.36.0 to 1.37.0 ([#4167](https://github.com/dragonflyoss/dragonfly/issues/4167))
-- **deps:** bump github/codeql-action from 3.28.19 to 3.29.2 ([#4165](https://github.com/dragonflyoss/dragonfly/issues/4165))
-- **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace from 1.36.0 to 1.37.0 ([#4169](https://github.com/dragonflyoss/dragonfly/issues/4169))
-- **deps:** bump github.com/redis/go-redis/v9 from 9.10.0 to 9.11.0 ([#4170](https://github.com/dragonflyoss/dragonfly/issues/4170))
-- **manager:** update subproject commit reference ([#4296](https://github.com/dragonflyoss/dragonfly/issues/4296))
-
-### Docs
-- update DingTalk group link format in README ([#4300](https://github.com/dragonflyoss/dragonfly/issues/4300))
-- update MAINTAINERS.md and OWNERS.md to reference community maintainers list ([#4244](https://github.com/dragonflyoss/dragonfly/issues/4244))
-- fix discontinuous change log ([#4203](https://github.com/dragonflyoss/dragonfly/issues/4203))
-- update README with project health badges 📚 ([#4197](https://github.com/dragonflyoss/dragonfly/issues/4197))
-- add security insights and update community details 📚 ([#4193](https://github.com/dragonflyoss/dragonfly/issues/4193))
-- update README with community engagement details 📚 ([#4184](https://github.com/dragonflyoss/dragonfly/issues/4184))
-
-### Feat
-- add last heartbeat tracking for scheduler service ([#4213](https://github.com/dragonflyoss/dragonfly/issues/4213))
-- add scheduler configuration support ([#4212](https://github.com/dragonflyoss/dragonfly/issues/4212))
-- add error logging for preheat failures and fix peer selection logic ([#4220](https://github.com/dragonflyoss/dragonfly/issues/4220))
-- add proxy port support across all host models ([#4283](https://github.com/dragonflyoss/dragonfly/issues/4283))
-- Add WithGroupUUID logger and optimize GetGroupJobState in internal job ([#4270](https://github.com/dragonflyoss/dragonfly/issues/4270))
-- Update JSON tag for CachedLayers field in Peer struct to "cached_layers" ([#4258](https://github.com/dragonflyoss/dragonfly/issues/4258))
-- implement PreheatImage and StatImage for scheduler ([#4246](https://github.com/dragonflyoss/dragonfly/issues/4246))
-- Moved preheatImage struct and parseManifestURL from manager/job/types.go to internal/job/image.go for better encapsulation ([#4243](https://github.com/dragonflyoss/dragonfly/issues/4243))
-- limit concurrent image distribution jobs and add validation for IPs ([#4219](https://github.com/dragonflyoss/dragonfly/issues/4219))
-- add RemoteIp for calling client ([#4231](https://github.com/dragonflyoss/dragonfly/issues/4231))
-- add the gc task to clean up the inactive schedulers ([#4175](https://github.com/dragonflyoss/dragonfly/issues/4175))
-- add gc task to clean up inactive seed peers ([#4176](https://github.com/dragonflyoss/dragonfly/issues/4176))
-- enhance preheat job concurrency control ([#4233](https://github.com/dragonflyoss/dragonfly/issues/4233))
-- support mark inactive schedulers in the scheduler gc ([#4215](https://github.com/dragonflyoss/dragonfly/issues/4215))
-- update d7y.io/api/v2 to v2.1.42 and report scheduler config to … ([#4214](https://github.com/dragonflyoss/dragonfly/issues/4214))
-- update the cache key for distinguishing from the old searcher way ([#4301](https://github.com/dragonflyoss/dragonfly/issues/4301))
-- Change Result column type to longtext in Job model to fix data too long error ([#4181](https://github.com/dragonflyoss/dragonfly/issues/4181))
-- Add support for selecting specific peer IPs for preheating in job scheduler ([#4194](https://github.com/dragonflyoss/dragonfly/issues/4194))
-- support preheat for multiple urls ([#4185](https://github.com/dragonflyoss/dragonfly/issues/4185))
-- **job:** add timeout parameter to job scheduling ([#4293](https://github.com/dragonflyoss/dragonfly/issues/4293))
-- **manager:** add scheduler cluster ID based listing ([#4222](https://github.com/dragonflyoss/dragonfly/issues/4222))
-- **middlewares:** support token from query parameter ([#4294](https://github.com/dragonflyoss/dragonfly/issues/4294))
-
-### Fix
-- use sha256 generate persistent cache task id ([#4295](https://github.com/dragonflyoss/dragonfly/issues/4295))
-- revert the remove of ip and port in mamager rpc server ([#4180](https://github.com/dragonflyoss/dragonfly/issues/4180))
-- populate the User from UserID when get application and job ([#4178](https://github.com/dragonflyoss/dragonfly/issues/4178))
-- correct the task id of job gc ([#4163](https://github.com/dragonflyoss/dragonfly/issues/4163))
-
-### Refactor
-- remove unused seed peer related logic ([#4259](https://github.com/dragonflyoss/dragonfly/issues/4259))
-- refacts the seed peer selection logic from grpc resolver to… ([#4235](https://github.com/dragonflyoss/dragonfly/issues/4235))
-- **job:** use goroutine to unmarshal task result ([#4245](https://github.com/dragonflyoss/dragonfly/issues/4245))
-
-### Test
-- **e2e:** update config to fix the slow resolution of seed peer address ([#4234](https://github.com/dragonflyoss/dragonfly/issues/4234))
-
-
-<a name="v2.2.5"></a>
-## [v2.2.5] - 2025-09-10
-### Build
-- **docker:** update base images to alpine 3.21 ([#4314](https://github.com/dragonflyoss/dragonfly/issues/4314))
-
-### Chore
-- **client-rs:** bump client-rs to v0.2.37 and bump console to v0.2.6
 
 
 <a name="v2.3.1"></a>
@@ -8473,18 +8662,6 @@
 - **deps:** bump github.com/sirupsen/logrus from 1.8.1 to 1.9.0 ([#1544](https://github.com/dragonflyoss/dragonfly/issues/1544))
 - **deps:** bump github.com/jarcoal/httpmock from 1.0.8 to 1.2.0 ([#1542](https://github.com/dragonflyoss/dragonfly/issues/1542))
 - **deps:** bump go.opentelemetry.io/otel/exporters/jaeger from 1.8.0 to 1.9.0 ([#1541](https://github.com/dragonflyoss/dragonfly/issues/1541))
-- **deps:** bump google.golang.org/grpc from 1.47.0 to 1.48.0 ([#1508](https://github.com/dragonflyoss/dragonfly/issues/1508))
-- **deps:** bump github.com/casbin/casbin/v2 from 2.48.0 to 2.51.2 ([#1512](https://github.com/dragonflyoss/dragonfly/issues/1512))
-- **deps:** bump github.com/shirou/gopsutil/v3 from 3.22.5 to 3.22.7 ([#1511](https://github.com/dragonflyoss/dragonfly/issues/1511))
-- **deps:** bump google.golang.org/api from 0.86.0 to 0.90.0 ([#1510](https://github.com/dragonflyoss/dragonfly/issues/1510))
-- **deps:** bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.32.0 to 0.33.0 ([#1509](https://github.com/dragonflyoss/dragonfly/issues/1509))
-- **deps:** bump gorm.io/driver/postgres from 1.3.7 to 1.3.8 ([#1503](https://github.com/dragonflyoss/dragonfly/issues/1503))
-- **deps:** bump go.opentelemetry.io/otel/exporters/jaeger from 1.7.0 to 1.8.0 ([#1506](https://github.com/dragonflyoss/dragonfly/issues/1506))
-- **deps:** bump github.com/swaggo/gin-swagger from 1.5.0 to 1.5.1 ([#1505](https://github.com/dragonflyoss/dragonfly/issues/1505))
-- **deps:** bump github.com/schollz/progressbar/v3 from 3.8.6 to 3.8.7 ([#1502](https://github.com/dragonflyoss/dragonfly/issues/1502))
-
-### Docs
-- add daemon-socket for daemon docs ([#1522](https://github.com/dragonflyoss/dragonfly/issues/1522))
 
 ### Feat
 - dynconfig add refresh func ([#1563](https://github.com/dragonflyoss/dragonfly/issues/1563))
@@ -8503,41 +8680,15 @@
 - change update model api ([#1538](https://github.com/dragonflyoss/dragonfly/issues/1538))
 - manager adds model and model version api ([#1530](https://github.com/dragonflyoss/dragonfly/issues/1530))
 - when the request has a range header, object storage is no need to  to calculate md5 ([#1534](https://github.com/dragonflyoss/dragonfly/issues/1534))
-- support grpc recursive download ([#1518](https://github.com/dragonflyoss/dragonfly/issues/1518))
-- manager embed frontend assets ([#1523](https://github.com/dragonflyoss/dragonfly/issues/1523))
-- can not return peer with the same host ([#1526](https://github.com/dragonflyoss/dragonfly/issues/1526))
-- add daemon-socket-path ([#1521](https://github.com/dragonflyoss/dragonfly/issues/1521))
-- store preheat result ([#1516](https://github.com/dragonflyoss/dragonfly/issues/1516))
-- replace grpc package with https://github.com/dragonflyoss/api ([#1515](https://github.com/dragonflyoss/dragonfly/issues/1515))
-- dfdaemon add Authorization and WWWAuthenticate headers ([#1513](https://github.com/dragonflyoss/dragonfly/issues/1513))
-- auto switch to concurrent back source based on download speed ([#1494](https://github.com/dragonflyoss/dragonfly/issues/1494))
-- enable dependabot ([#1501](https://github.com/dragonflyoss/dragonfly/issues/1501))
 
 ### Fix
 - scheduler and manager tracing ([#1551](https://github.com/dragonflyoss/dragonfly/issues/1551))
 - scheduler's MainParent func ([#1550](https://github.com/dragonflyoss/dragonfly/issues/1550))
-- check same peer id for sync pieces ([#1525](https://github.com/dragonflyoss/dragonfly/issues/1525))
-- auto switch to concurrent back source ([#1507](https://github.com/dragonflyoss/dragonfly/issues/1507))
-- wait first peer packet fail ([#1500](https://github.com/dragonflyoss/dragonfly/issues/1500))
-- one piece task sometimes backsource after succeed ([#1499](https://github.com/dragonflyoss/dragonfly/issues/1499))
-
-
-<a name="v2.0.5"></a>
-## [v2.0.5] - 2022-08-04
-### Docs
-- add daemon-socket for daemon docs ([#1522](https://github.com/dragonflyoss/dragonfly/issues/1522))
-
-### Feat
-- add daemon-socket-path ([#1521](https://github.com/dragonflyoss/dragonfly/issues/1521))
-
-### Hotfix
-- peer with same host and manager embed assets ([#1528](https://github.com/dragonflyoss/dragonfly/issues/1528))
 
 
 <a name="v2.0.6-alpha.0"></a>
 ## [v2.0.6-alpha.0] - 2022-08-04
 ### Chore
-- dragonfly updates version to v2.0.5 ([#1498](https://github.com/dragonflyoss/dragonfly/issues/1498))
 - **deps:** bump google.golang.org/grpc from 1.47.0 to 1.48.0 ([#1508](https://github.com/dragonflyoss/dragonfly/issues/1508))
 - **deps:** bump github.com/casbin/casbin/v2 from 2.48.0 to 2.51.2 ([#1512](https://github.com/dragonflyoss/dragonfly/issues/1512))
 - **deps:** bump github.com/shirou/gopsutil/v3 from 3.22.5 to 3.22.7 ([#1511](https://github.com/dragonflyoss/dragonfly/issues/1511))
@@ -8561,14 +8712,31 @@
 - dfdaemon add Authorization and WWWAuthenticate headers ([#1513](https://github.com/dragonflyoss/dragonfly/issues/1513))
 - auto switch to concurrent back source based on download speed ([#1494](https://github.com/dragonflyoss/dragonfly/issues/1494))
 - enable dependabot ([#1501](https://github.com/dragonflyoss/dragonfly/issues/1501))
-- scheduler adds filter range limit ([#1497](https://github.com/dragonflyoss/dragonfly/issues/1497))
 
 ### Fix
 - check same peer id for sync pieces ([#1525](https://github.com/dragonflyoss/dragonfly/issues/1525))
 - auto switch to concurrent back source ([#1507](https://github.com/dragonflyoss/dragonfly/issues/1507))
 - wait first peer packet fail ([#1500](https://github.com/dragonflyoss/dragonfly/issues/1500))
 - one piece task sometimes backsource after succeed ([#1499](https://github.com/dragonflyoss/dragonfly/issues/1499))
+
+
+<a name="v2.0.5"></a>
+## [v2.0.5] - 2022-08-04
+### Chore
+- dragonfly updates version to v2.0.5 ([#1498](https://github.com/dragonflyoss/dragonfly/issues/1498))
+
+### Docs
+- add daemon-socket for daemon docs ([#1522](https://github.com/dragonflyoss/dragonfly/issues/1522))
+
+### Feat
+- add daemon-socket-path ([#1521](https://github.com/dragonflyoss/dragonfly/issues/1521))
+- scheduler adds filter range limit ([#1497](https://github.com/dragonflyoss/dragonfly/issues/1497))
+
+### Fix
 - random vertices ([#1496](https://github.com/dragonflyoss/dragonfly/issues/1496))
+
+### Hotfix
+- peer with same host and manager embed assets ([#1528](https://github.com/dragonflyoss/dragonfly/issues/1528))
 
 
 <a name="v2.0.5-rc.0"></a>
@@ -8715,11 +8883,11 @@
 - dfstore closes writer ([#1424](https://github.com/dragonflyoss/dragonfly/issues/1424))
 
 
-<a name="v2.0.4-rc.1"></a>
-## [v2.0.4-rc.1] - 2022-06-30
-
 <a name="v2.0.4-rc.2"></a>
 ## [v2.0.4-rc.2] - 2022-06-30
+
+<a name="v2.0.4-rc.1"></a>
+## [v2.0.4-rc.1] - 2022-06-30
 ### Feat
 - use put object action ([#1422](https://github.com/dragonflyoss/dragonfly/issues/1422))
 - GetObjectInput add range field ([#1421](https://github.com/dragonflyoss/dragonfly/issues/1421))
@@ -10561,7 +10729,21 @@
 - idgen add digest ([#243](https://github.com/dragonflyoss/dragonfly/issues/243))
 
 
-[Unreleased]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-rc.3...HEAD
+[Unreleased]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-rc.4...HEAD
+[v2.4.4-rc.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-rc.3...v2.4.4-rc.4
+[v2.4.4-rc.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-rc.2...v2.4.4-rc.3
+[v2.4.4-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-rc.1...v2.4.4-rc.2
+[v2.4.4-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-rc.0...v2.4.4-rc.1
+[v2.4.4-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.4-beta.0...v2.4.4-rc.0
+[v2.4.4-beta.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.3...v2.4.4-beta.0
+[v2.4.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.2...v2.4.3
+[v2.4.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.1...v2.4.2
+[v2.4.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.1-rc.1...v2.4.1
+[v2.4.1-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.1-rc.0...v2.4.1-rc.1
+[v2.4.1-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.1-beta.1...v2.4.1-rc.0
+[v2.4.1-beta.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.1-beta.0...v2.4.1-beta.1
+[v2.4.1-beta.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.4.0...v2.4.1-beta.0
+[v2.4.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-rc.3...v2.4.0
 [v2.3.5-rc.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-rc.2...v2.3.5-rc.3
 [v2.3.5-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-rc.1...v2.3.5-rc.2
 [v2.3.5-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-rc.0...v2.3.5-rc.1
@@ -10570,16 +10752,16 @@
 [v1.4.9-2]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.5-beta.0...v1.4.9-2
 [v2.3.5-beta.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4...v2.3.5-beta.0
 [v2.3.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-rc.2...v2.3.4
-[v2.3.4-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-rc.0...v2.3.4-rc.2
+[v2.3.4-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-rc.1...v2.3.4-rc.2
+[v2.3.4-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-rc.0...v2.3.4-rc.1
 [v2.3.4-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-beta.1...v2.3.4-rc.0
 [v2.3.4-beta.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.4-beta.0...v2.3.4-beta.1
 [v2.3.4-beta.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.3...v2.3.4-beta.0
 [v2.3.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.3-rc.1...v2.3.3
 [v2.3.3-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.3-rc.0...v2.3.3-rc.1
-[v2.3.3-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/2.2.4...v2.3.3-rc.0
-[2.2.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.2...2.2.4
-[v2.3.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.2.5...v2.3.2
-[v2.2.5]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.1...v2.2.5
+[v2.3.3-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.2.5...v2.3.3-rc.0
+[v2.2.5]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.2...v2.2.5
+[v2.3.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.1...v2.3.2
 [v2.3.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.1-rc.4...v2.3.1
 [v2.3.1-rc.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.1-rc.3...v2.3.1-rc.4
 [v2.3.1-rc.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.3.1-rc.2...v2.3.1-rc.3
@@ -10751,9 +10933,9 @@
 [v2.0.6-beta.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.6-alpha.3...v2.0.6-beta.0
 [v2.0.6-alpha.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.6-alpha.2...v2.0.6-alpha.3
 [v2.0.6-alpha.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.6-alpha.1...v2.0.6-alpha.2
-[v2.0.6-alpha.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5...v2.0.6-alpha.1
-[v2.0.5]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.6-alpha.0...v2.0.5
-[v2.0.6-alpha.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-rc.0...v2.0.6-alpha.0
+[v2.0.6-alpha.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.6-alpha.0...v2.0.6-alpha.1
+[v2.0.6-alpha.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5...v2.0.6-alpha.0
+[v2.0.5]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-rc.0...v2.0.5
 [v2.0.5-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-beta.5...v2.0.5-rc.0
 [v2.0.5-beta.5]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-beta.4...v2.0.5-beta.5
 [v2.0.5-beta.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-beta.3...v2.0.5-beta.4
@@ -10766,9 +10948,9 @@
 [v2.0.5-alpha.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.5-alpha.0...v2.0.5-alpha.1
 [v2.0.5-alpha.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4...v2.0.5-alpha.0
 [v2.0.4]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.3...v2.0.4
-[v2.0.4-rc.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.1...v2.0.4-rc.3
-[v2.0.4-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.2...v2.0.4-rc.1
-[v2.0.4-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.0...v2.0.4-rc.2
+[v2.0.4-rc.3]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.2...v2.0.4-rc.3
+[v2.0.4-rc.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.1...v2.0.4-rc.2
+[v2.0.4-rc.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-rc.0...v2.0.4-rc.1
 [v2.0.4-rc.0]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-beta.2...v2.0.4-rc.0
 [v2.0.4-beta.2]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-beta.1...v2.0.4-beta.2
 [v2.0.4-beta.1]: https://github.com/dragonflyoss/dragonfly/compare/v2.0.4-beta.0...v2.0.4-beta.1

@@ -19,11 +19,11 @@ package standard
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"go.uber.org/atomic"
-
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
@@ -230,7 +230,7 @@ type Host struct {
 	UploadFailedCount *atomic.Int64
 
 	// ConcurrentRegisterCount tracks active peer registration requests.
-	ConcurrentRegisterCount *atomic.Uint32
+	ConcurrentRegisterCount *atomic.Int32
 
 	// Peer sync map.
 	Peers *sync.Map
@@ -239,10 +239,10 @@ type Host struct {
 	PeerCount *atomic.Int32
 
 	// CreatedAt is host create time.
-	CreatedAt *atomic.Time
+	CreatedAt *pkgatomic.Time
 
 	// UpdatedAt is host update time.
-	UpdatedAt *atomic.Time
+	UpdatedAt *pkgatomic.Time
 
 	// Host log.
 	Log *logger.SugaredLoggerOnWith
@@ -420,20 +420,21 @@ func NewHost(
 		DownloadPort:               downloadPort,
 		ProxyPort:                  proxyPort,
 		DisableShared:              false,
-		TxBandwidth:                atomic.NewUint64(0),
-		UploadContentLength:        atomic.NewUint64(0),
-		ConcurrentUploadPieceCount: atomic.NewUint64(0),
-		ConcurrentUploadLimit:      atomic.NewInt32(int32(concurrentUploadLimit)),
-		ConcurrentUploadCount:      atomic.NewInt32(0),
-		UploadCount:                atomic.NewInt64(0),
-		UploadFailedCount:          atomic.NewInt64(0),
-		ConcurrentRegisterCount:    atomic.NewUint32(0),
+		TxBandwidth:                new(atomic.Uint64),
+		UploadContentLength:        new(atomic.Uint64),
+		ConcurrentUploadPieceCount: new(atomic.Uint64),
+		ConcurrentUploadLimit:      new(atomic.Int32),
+		ConcurrentUploadCount:      new(atomic.Int32),
+		UploadCount:                new(atomic.Int64),
+		UploadFailedCount:          new(atomic.Int64),
+		ConcurrentRegisterCount:    new(atomic.Int32),
 		Peers:                      &sync.Map{},
-		PeerCount:                  atomic.NewInt32(0),
-		CreatedAt:                  atomic.NewTime(time.Now()),
-		UpdatedAt:                  atomic.NewTime(time.Now()),
+		PeerCount:                  new(atomic.Int32),
+		CreatedAt:                  pkgatomic.NewTime(time.Now()),
+		UpdatedAt:                  pkgatomic.NewTime(time.Now()),
 		Log:                        logger.WithHost(id, hostname, ip),
 	}
+	h.ConcurrentUploadLimit.Store(int32(concurrentUploadLimit))
 
 	for _, opt := range options {
 		opt(h)
@@ -455,13 +456,13 @@ func (h *Host) LoadPeer(key string) (*Peer, bool) {
 // StorePeer set peer.
 func (h *Host) StorePeer(peer *Peer) {
 	h.Peers.Store(peer.ID, peer)
-	h.PeerCount.Inc()
+	h.PeerCount.Add(1)
 }
 
 // DeletePeer deletes peer for a key.
 func (h *Host) DeletePeer(key string) {
 	if _, loaded := h.Peers.LoadAndDelete(key); loaded {
-		h.PeerCount.Dec()
+		h.PeerCount.Add(-1)
 	}
 }
 

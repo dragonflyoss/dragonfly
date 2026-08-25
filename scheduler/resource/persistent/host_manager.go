@@ -20,7 +20,7 @@ package persistent
 
 import (
 	"context"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"time"
 
@@ -768,8 +768,7 @@ func (h *hostManager) LoadRandom(ctx context.Context, n int, blocklist set.SafeS
 		return nil, err
 	}
 
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	r.Shuffle(len(hostKeys), func(i, j int) {
+	rand.Shuffle(len(hostKeys), func(i, j int) {
 		hostKeys[i], hostKeys[j] = hostKeys[j], hostKeys[i]
 	})
 

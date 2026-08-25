@@ -213,7 +213,7 @@ func (s *syncPeers) mergePeers(ctx context.Context, scheduler models.Scheduler, 
 			// If the peer exists in the sync peer results, update the peer data in the database with
 			// the sync peer results and delete the sync peer from the sync peers map.
 			isSeedPeer := pkgtypes.ParseHostType(oldPeer.Type) != pkgtypes.HostTypeNormal
-			id := idgen.HostIDV2(oldPeer.IP, oldPeer.Hostname, isSeedPeer)
+			id := idgen.HostID(oldPeer.IP, oldPeer.Hostname, isSeedPeer)
 			if syncPeer, ok := syncPeers[id]; ok {
 				peers = append(peers, &models.Peer{
 					Hostname:           syncPeer.Hostname,

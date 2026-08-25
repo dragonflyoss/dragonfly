@@ -53,17 +53,3 @@ func (mr *MockDynconfigMockRecorder[T]) Get() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockDynconfig[T])(nil).Get))
 }
-
-// Refresh mocks base method.
-func (m *MockDynconfig[T]) Refresh() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Refresh")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Refresh indicates an expected call of Refresh.
-func (mr *MockDynconfigMockRecorder[T]) Refresh() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockDynconfig[T])(nil).Refresh))
-}

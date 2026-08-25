@@ -19,23 +19,21 @@ package standard
 import (
 	"context"
 	"errors"
-	"math"
-	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/looplab/fsm"
-	"go.uber.org/atomic"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/graph/dag"
 	pkgmath "d7y.io/dragonfly/v2/pkg/math"
-	pkgstrings "d7y.io/dragonfly/v2/pkg/strings"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -161,10 +159,10 @@ type Task struct {
 	PeerFailedCount *atomic.Int32
 
 	// CreatedAt is task create time.
-	CreatedAt *atomic.Time
+	CreatedAt *pkgatomic.Time
 
 	// UpdatedAt is task update time.
-	UpdatedAt *atomic.Time
+	UpdatedAt *pkgatomic.Time
 
 	// Task log.
 	Log *logger.SugaredLoggerOnWith
@@ -182,17 +180,21 @@ func NewTask(id, url, tag, application string, typ commonv2.TaskType, filteredQu
 		FilteredQueryParams: filteredQueryParams,
 		Header:              header,
 		DirectPiece:         []byte{},
-		ContentLength:       atomic.NewInt64(-1),
-		TotalPieceCount:     atomic.NewInt32(0),
-		BackToSourceLimit:   atomic.NewInt32(backToSourceLimit),
+		ContentLength:       new(atomic.Int64),
+		TotalPieceCount:     new(atomic.Int32),
+		BackToSourceLimit:   new(atomic.Int32),
 		BackToSourcePeers:   set.NewSafeSet[string](),
 		Pieces:              &sync.Map{},
 		DAG:                 dag.NewDAG[*Peer](),
-		PeerFailedCount:     atomic.NewInt32(0),
-		CreatedAt:           atomic.NewTime(time.Now()),
-		UpdatedAt:           atomic.NewTime(time.Now()),
+		PeerFailedCount:     new(atomic.Int32),
+		CreatedAt:           pkgatomic.NewTime(time.Now()),
+		UpdatedAt:           pkgatomic.NewTime(time.Now()),
 		Log:                 logger.WithTask(id, url),
 	}
+
+	// ContentLength is unknown until it is reported by the peer.
+	t.ContentLength.Store(-1)
+	t.BackToSourceLimit.Store(backToSourceLimit)
 
 	// Initialize state machine.
 	t.FSM = fsm.NewFSM(
@@ -264,13 +266,15 @@ func (t *Task) LoadPeers() []*Peer {
 // LoadFinishedPeers return finished peers.
 func (t *Task) LoadFinishedPeers() []*Peer {
 	var finishedPeers []*Peer
-	for _, vertex := range t.DAG.GetVertices() {
+	t.DAG.Range(func(_ string, vertex *dag.Vertex[*Peer]) bool {
 		peer := vertex.Value
-		peerState := peer.FSM.Current()
-		if pkgstrings.Contains([]string{PeerStateSucceeded, PeerStateFailed, PeerStateLeave}, peerState) {
+		switch peer.FSM.Current() {
+		case PeerStateSucceeded, PeerStateFailed, PeerStateLeave:
 			finishedPeers = append(finishedPeers, peer)
 		}
-	}
+
+		return true
+	})
 
 	return finishedPeers
 }
@@ -306,11 +310,15 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		return err
 	}
 
-	fromPeer.Host.UploadCount.Inc()
-	fromPeer.Host.ConcurrentUploadCount.Inc()
+	fromPeer.Host.UploadCount.Add(1)
+	fromPeer.Host.ConcurrentUploadCount.Add(1)
 	fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
 	fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(toPeer.ConcurrentPieceCount))
-	contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
+	var contentLength uint64
+	if cl := t.ContentLength.Load(); cl > 0 { // Handle -1 (unknown length).
+		contentLength = uint64(cl)
+	}
+
 	fromPeer.Host.UploadContentLength.Add(contentLength)
 	t.Log.Debugf("increment host %s metrics on adding edge %s -> %s: "+
 		"UploadCount=%d(+1), ConcurrentUploadCount=%d(+1), "+
@@ -324,8 +332,51 @@ func (t *Task) AddPeerEdge(fromPeer *Peer, toPeer *Peer) error {
 		fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
 		fromPeer.Host.UploadContentLength.Load(), contentLength,
 	)
-
 	return nil
+}
+
+// AddPeerEdges adds edges from the given peers to the peer in a single batch.
+func (t *Task) AddPeerEdges(fromPeers []*Peer, toPeer *Peer) []*Peer {
+	fromPeerIDs := make([]string, 0, len(fromPeers))
+	for _, fromPeer := range fromPeers {
+		fromPeerIDs = append(fromPeerIDs, fromPeer.ID)
+	}
+
+	added := t.DAG.AddEdges(fromPeerIDs, toPeer.ID)
+	addedPeers := make([]*Peer, 0, len(added))
+	for _, fromPeer := range fromPeers {
+		if _, ok := added[fromPeer.ID]; !ok {
+			continue
+		}
+
+		delete(added, fromPeer.ID)
+		fromPeer.Host.UploadCount.Add(1)
+		fromPeer.Host.ConcurrentUploadCount.Add(1)
+		fromPeer.Host.TxBandwidth.Add(toPeer.PeakBandwidthUsage(t.PieceLength))
+		fromPeer.Host.ConcurrentUploadPieceCount.Add(uint64(toPeer.ConcurrentPieceCount))
+		var contentLength uint64
+		if cl := t.ContentLength.Load(); cl > 0 { // Handle -1 (unknown length).
+			contentLength = uint64(cl)
+		}
+
+		fromPeer.Host.UploadContentLength.Add(contentLength)
+		t.Log.Debugf("increment host %s metrics on adding edge %s -> %s: "+
+			"UploadCount=%d(+1), ConcurrentUploadCount=%d(+1), "+
+			"TxBandwidth=%d(+%d), ConcurrentUploadPieceCount=%d(+%d), "+
+			"UploadContentLength=%d(+%d)",
+			fromPeer.Host.ID,
+			fromPeer.ID, toPeer.ID,
+			fromPeer.Host.UploadCount.Load(),
+			fromPeer.Host.ConcurrentUploadCount.Load(),
+			fromPeer.Host.TxBandwidth.Load(), toPeer.PeakBandwidthUsage(t.PieceLength),
+			fromPeer.Host.ConcurrentUploadPieceCount.Load(), toPeer.ConcurrentPieceCount,
+			fromPeer.Host.UploadContentLength.Load(), contentLength,
+		)
+
+		addedPeers = append(addedPeers, fromPeer)
+	}
+
+	return addedPeers
 }
 
 // DeletePeerInEdges deletes inedges of peer.
@@ -335,15 +386,19 @@ func (t *Task) DeletePeerInEdges(key string) error {
 		return err
 	}
 
+	var contentLength uint64
+	if cl := t.ContentLength.Load(); cl > 0 { // Handle -1 (unknown length).
+		contentLength = uint64(cl)
+	}
+
 	for _, parent := range vertex.Parents.Values() {
 		if parent.Value == nil {
 			continue
 		}
 
-		parent.Value.Host.ConcurrentUploadCount.Dec()
+		parent.Value.Host.ConcurrentUploadCount.Add(-1)
 		pkgmath.SafeSubAtomicUint64(parent.Value.Host.TxBandwidth, vertex.Value.PeakBandwidthUsage(t.PieceLength))
 		pkgmath.SafeSubAtomicUint64(parent.Value.Host.ConcurrentUploadPieceCount, uint64(vertex.Value.ConcurrentPieceCount))
-		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
 		pkgmath.SafeSubAtomicUint64(parent.Value.Host.UploadContentLength, contentLength)
 		t.Log.Debugf("decrement host %s metrics on deleting edge %s -> %s: "+
 			"ConcurrentUploadCount=%d(-1), TxBandwidth=%d(-%d),"+
@@ -381,18 +436,22 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 		totalConcurrentUploadPiece uint64
 		totalUploadContentLength   uint64
 	)
+	var contentLength uint64
+	if cl := t.ContentLength.Load(); cl > 0 { // Handle -1 (unknown length).
+		contentLength = uint64(cl)
+	}
+
 	for _, child := range vertex.Children.Values() {
 		if child.Value == nil {
 			continue
 		}
 
-		totalTxBandwidth += peer.PeakBandwidthUsage(t.PieceLength)
-		totalConcurrentUploadPiece += uint64(peer.ConcurrentPieceCount)
-		contentLength := uint64(math.Max(0, float64(t.ContentLength.Load()))) // Handle -1 (unknown length).
+		totalTxBandwidth += child.Value.PeakBandwidthUsage(t.PieceLength)
+		totalConcurrentUploadPiece += uint64(child.Value.ConcurrentPieceCount)
 		totalUploadContentLength += contentLength
 	}
 
-	peer.Host.ConcurrentUploadCount.Sub(int32(vertex.Children.Len()))
+	peer.Host.ConcurrentUploadCount.Add(-int32(vertex.Children.Len()))
 	pkgmath.SafeSubAtomicUint64(peer.Host.TxBandwidth, totalTxBandwidth)
 	pkgmath.SafeSubAtomicUint64(peer.Host.ConcurrentUploadPieceCount, totalConcurrentUploadPiece)
 	pkgmath.SafeSubAtomicUint64(peer.Host.UploadContentLength, totalUploadContentLength)
@@ -417,6 +476,13 @@ func (t *Task) DeletePeerOutEdges(key string) error {
 // CanAddPeerEdge finds whether there are peer circles through depth-first search.
 func (t *Task) CanAddPeerEdge(fromPeerKey, toPeerKey string) bool {
 	return t.DAG.CanAddEdge(fromPeerKey, toPeerKey)
+}
+
+// CanAddPeerEdges reports which of the given peers can currently have an edge
+// added to the peer, running the cycle-detection search once for all
+// candidates instead of once per candidate.
+func (t *Task) CanAddPeerEdges(fromPeerKeys []string, toPeerKey string) map[string]struct{} {
+	return t.DAG.CanAddEdges(fromPeerKeys, toPeerKey)
 }
 
 // PeerDegree returns the degree of peer.
@@ -452,18 +518,18 @@ func (t *Task) PeerOutDegree(key string) (int, error) {
 // HasAvailablePeer returns whether there is an available peer.
 func (t *Task) HasAvailablePeer(hostID string, blocklist set.SafeSet[string]) bool {
 	var hasAvailablePeer bool
-	for _, vertex := range t.DAG.GetVertices() {
+	t.DAG.Range(func(_ string, vertex *dag.Vertex[*Peer]) bool {
 		peer := vertex.Value
 		if peer == nil {
-			continue
+			return true
 		}
 
 		if peer.Host.ID == hostID {
-			continue
+			return true
 		}
 
 		if blocklist.Contains(peer.ID) {
-			continue
+			return true
 		}
 
 		if peer.FSM.Is(PeerStateRunning) ||
@@ -471,36 +537,35 @@ func (t *Task) HasAvailablePeer(hostID string, blocklist set.SafeSet[string]) bo
 			peer.FSM.Is(PeerStateBackToSource) {
 			t.Log.Debugf("found available peer %s state is %s in task %s for host %s", peer.ID, peer.FSM.Current(), t.ID, hostID)
 			hasAvailablePeer = true
-			break
+			return false
 		}
-	}
+
+		return true
+	})
 
 	return hasAvailablePeer
 }
 
 // LoadSeedPeer return latest seed peer in peers sync map.
 func (t *Task) LoadSeedPeer() (*Peer, bool) {
-	var peers []*Peer
-	for _, vertex := range t.DAG.GetVertices() {
+	var seedPeer *Peer
+	t.DAG.Range(func(_ string, vertex *dag.Vertex[*Peer]) bool {
 		peer := vertex.Value
 		if peer == nil {
-			continue
+			return true
 		}
 
 		if peer.Host.Type != types.HostTypeNormal {
-			peers = append(peers, peer)
+			if seedPeer == nil || peer.UpdatedAt.Load().After(seedPeer.UpdatedAt.Load()) {
+				seedPeer = peer
+			}
 		}
-	}
 
-	sort.Slice(
-		peers,
-		func(i, j int) bool {
-			return peers[i].UpdatedAt.Load().After(peers[j].UpdatedAt.Load())
-		},
-	)
+		return true
+	})
 
-	if len(peers) > 0 {
-		return peers[0], true
+	if seedPeer != nil {
+		return seedPeer, true
 	}
 
 	return nil, false

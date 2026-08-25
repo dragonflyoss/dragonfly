@@ -26,7 +26,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,6 +40,7 @@ import (
 	schedulerv2mocks "d7y.io/api/v2/pkg/apis/scheduler/v2/mocks"
 
 	"d7y.io/dragonfly/v2/manager/types"
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
@@ -82,8 +82,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockRawSeedHost = standard.Host{
@@ -104,8 +104,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockCPU = standard.CPU{
@@ -174,12 +174,12 @@ var (
 	mockTaskApplication                = "foo"
 	mockTaskFilteredQueryParams        = []string{"bar"}
 	mockTaskHeader                     = map[string]string{"content-length": "100"}
-	mockHostID                         = idgen.HostIDV2("127.0.0.1", "foo", false)
-	mockSeedHostID                     = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostID                         = idgen.HostID("127.0.0.1", "foo", false)
+	mockSeedHostID                     = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation                   = "baz"
 	mockHostIDC                        = "bas"
-	mockPeerID                         = idgen.PeerIDV2()
-	mockSeedPeerID                     = idgen.PeerIDV2()
+	mockPeerID                         = idgen.PeerID()
+	mockSeedPeerID                     = idgen.PeerID()
 	mockPiece                          = standard.Piece{
 		Number:      1,
 		ParentID:    "foo",
@@ -426,6 +426,88 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(len(peer.Parents()), 1)
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "schedule failed when no edges can be added and falls back to source",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreAnnouncePeerStream(stream)
+
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
+					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
+						if err := task.AddPeerEdge(peer, seedPeer); err != nil {
+							return types.SchedulerClusterConfig{}, err
+						}
+
+						return types.SchedulerClusterConfig{}, errors.New("foo")
+					}).Times(1),
+					ma.Send(gomock.Eq(&schedulerv2.AnnouncePeerResponse{
+						Response: &schedulerv2.AnnouncePeerResponse_NeedBackToSourceResponse{
+							NeedBackToSourceResponse: &schedulerv2.NeedBackToSourceResponse{
+								Description: &exceededLimitDescription,
+							},
+						},
+					})).Return(nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(len(peer.Parents()), 0)
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "schedule succeeded with partially added edges",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				candidateParent := standard.NewPeer(idgen.PeerID(), task, seedPeer.Host)
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				task.StorePeer(candidateParent)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				candidateParent.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreAnnouncePeerStream(stream)
+
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
+					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
+						if err := task.AddPeerEdge(peer, candidateParent); err != nil {
+							return types.SchedulerClusterConfig{}, err
+						}
+
+						return types.SchedulerClusterConfig{}, errors.New("foo")
+					}).Times(1),
+					ma.Send(gomock.Any()).DoAndReturn(func(resp *schedulerv2.AnnouncePeerResponse) error {
+						normalTaskResponse := resp.GetNormalTaskResponse()
+						if normalTaskResponse == nil {
+							return errors.New("expected NormalTaskResponse")
+						}
+
+						if len(normalTaskResponse.CandidateParents) != 1 || normalTaskResponse.CandidateParents[0].Id != seedPeer.ID {
+							return fmt.Errorf("unexpected candidate parents in response")
+						}
+
+						return nil
+					}).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				if assert.Equal(len(peer.Parents()), 1) {
+					assert.Equal(peer.Parents()[0].ID, mockSeedPeerID)
+				}
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -698,6 +780,85 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
 				assert.Equal(len(peer.Parents()), 1)
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "schedule failed when no edges can be added and falls back to source",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreReportPieceResultStream(stream)
+
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
+					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
+						// Simulate concurrent scheduling that makes the candidate a successor
+						// of the peer after candidates were filtered, so adding the edge
+						// would create a cycle.
+						if err := task.AddPeerEdge(peer, seedPeer); err != nil {
+							return types.SchedulerClusterConfig{}, err
+						}
+
+						return types.SchedulerClusterConfig{}, errors.New("foo")
+					}).Times(1),
+					mr.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedNeedBackSource})).Return(nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				assert.Equal(len(peer.Parents()), 0)
+				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "schedule succeeded with partially added edges",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				candidateParent := standard.NewPeer(idgen.PeerID(), task, seedPeer.Host)
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				task.StorePeer(candidateParent)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				candidateParent.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreReportPieceResultStream(stream)
+
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
+					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
+						// Simulate concurrent scheduling that makes candidateParent a
+						// successor of the peer after candidates were filtered, so its
+						// edge can no longer be added.
+						if err := task.AddPeerEdge(peer, candidateParent); err != nil {
+							return types.SchedulerClusterConfig{}, err
+						}
+
+						return types.SchedulerClusterConfig{}, errors.New("foo")
+					}).Times(1),
+					mr.Send(gomock.Any()).DoAndReturn(func(packet *schedulerv1.PeerPacket) error {
+						if packet.MainPeer == nil || packet.MainPeer.PeerId != seedPeer.ID {
+							return errors.New("unexpected main peer in packet")
+						}
+
+						if len(packet.CandidatePeers) != 0 {
+							return errors.New("unexpected candidate peers in packet")
+						}
+
+						return nil
+					}).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				if assert.Equal(len(peer.Parents()), 1) {
+					assert.Equal(peer.Parents()[0].ID, mockSeedPeerID)
+				}
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -1005,11 +1166,11 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := range 11 {
+			for range 11 {
 				mockHost := standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					idgen.HostID("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
+				peer := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
 
@@ -1265,11 +1426,11 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
 
 			var mockPeers []*standard.Peer
-			for i := range 11 {
+			for range 11 {
 				mockHost := standard.NewHost(
-					idgen.HostIDV2("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					idgen.HostID("127.0.0.1", uuid.New().String(), false), mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-				peer := standard.NewPeer(idgen.PeerIDV1(fmt.Sprintf("127.0.0.%d", i)), mockTask, mockHost)
+				peer := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
 				mockPeers = append(mockPeers, peer)
 			}
 
@@ -1408,7 +1569,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
-			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost, standard.WithRange(nethttp.Range{
+			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerID(), mockTask, mockHost, standard.WithRange(nethttp.Range{
 				Start:  1,
 				Length: 10,
 			}))}
@@ -1459,8 +1620,8 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 			mockTask := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, standard.WithDigest(mockTaskDigest))
 
 			peer := standard.NewPeer(mockPeerID, mockTask, mockHost)
-			parent := standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost)
-			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerIDV1("127.0.0.1"), mockTask, mockHost)}
+			parent := standard.NewPeer(idgen.PeerID(), mockTask, mockHost)
+			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerID(), mockTask, mockHost)}
 
 			tc.expect(t, constructSuccessPeerPacket(peer, parent, candidateParents), parent, candidateParents)
 		})

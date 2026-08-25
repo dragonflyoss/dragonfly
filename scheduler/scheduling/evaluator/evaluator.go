@@ -17,10 +17,6 @@
 package evaluator
 
 import (
-	"math/big"
-
-	"github.com/montanaflynn/stats"
-
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
@@ -46,10 +42,6 @@ const (
 const (
 	// Maximum number of elements.
 	maxElementLen = 5
-
-	// If the number of samples is greater than or equal to 2000,
-	// it is close to the normal distribution.
-	normalDistributionLen = 2000
 
 	// When costs len is greater than or equal to 2,
 	// the last cost can be compared and calculated.
@@ -109,10 +101,11 @@ func New(algorithm string, pluginDir string) Evaluator {
 //  2. Its recent download costs indicate poor performance based on statistical analysis.
 //
 // For performance evaluation, the function uses two strategies:
-//   - If sample size is small (< normalDistributionLen): Uses a simple threshold check
+//   - Before the costs window fills: Uses a simple threshold check
 //     where the last cost must not exceed 20 times the mean of previous costs.
-//   - If sample size is sufficient (>= normalDistributionLen): Applies the three-sigma rule
-//     where costs beyond mean + 3*standard_deviation are considered bad.
+//   - Once the costs window is full (enough samples to treat the costs as normally
+//     distributed): Applies the three-sigma rule where costs beyond
+//     mean + 3*standard_deviation are considered bad.
 func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	if peer.FSM.Is(standard.PeerStateFailed) || peer.FSM.Is(standard.PeerStateLeave) || peer.FSM.Is(standard.PeerStatePending) ||
 		peer.FSM.Is(standard.PeerStateReceivedTiny) || peer.FSM.Is(standard.PeerStateReceivedSmall) ||
@@ -121,22 +114,19 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 		return true
 	}
 
-	// Determine whether to bad node based on piece download costs.
-	costs := stats.LoadRawData(peer.PieceCosts())
-	len := len(costs)
-	// Peer has not finished downloading enough piece.
-	if len < minAvailableCostLen {
+	// Determine whether to bad node based on piece download costs. If peer has not finished downloading
+	// enough pieces, it cannot be considered a bad node.
+	costs := peer.PieceCostsStats()
+	if costs.Count < minAvailableCostLen {
 		logger.Debugf("peer %s has not finished downloading enough piece, it can't be bad node", peer.ID)
 		return false
 	}
 
-	lastCost := costs[len-1]
-	mean, _ := stats.Mean(costs[:len-1]) // nolint: errcheck
-
 	// Download costs does not meet the normal distribution,
 	// if the last cost is twenty times more than mean, it is bad node.
-	if len < normalDistributionLen {
-		isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean*20)) > 0
+	mean := costs.MeanExcludingLast()
+	if !costs.IsFull() {
+		isBadParent := costs.Last > mean*20
 		logger.Debugf("peer %s mean is %.2f and it is bad node: %t", peer.ID, mean, isBadParent)
 		return isBadParent
 	}
@@ -144,10 +134,10 @@ func (e *evaluator) IsBadParent(peer *standard.Peer) bool {
 	// Download costs satisfies the normal distribution,
 	// last cost falling outside of three-sigma effect need to be adjusted parent,
 	// refer to https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule.
-	stdev, _ := stats.StandardDeviation(costs[:len-1]) // nolint: errcheck
-	isBadParent := big.NewFloat(lastCost).Cmp(big.NewFloat(mean+3*stdev)) > 0
+	stdDev := costs.StdDevExcludingLast()
+	isBadParent := costs.Last > mean+3*stdDev
 	logger.Debugf("peer %s meet the normal distribution, costs mean is %.2f and standard deviation is %.2f, peer is bad node: %t",
-		peer.ID, mean, stdev, isBadParent)
+		peer.ID, mean, stdDev, isBadParent)
 	return isBadParent
 }
 

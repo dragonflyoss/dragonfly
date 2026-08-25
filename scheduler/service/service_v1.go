@@ -235,7 +235,7 @@ func (v *V1) ReportPieceResult(stream schedulerv1.Scheduler_ReportPieceResultSer
 
 		// Handle piece download successfully.
 		if piece.Success {
-			peer.Log.Infof("receive success piece: %#v %#v", piece, piece.PieceInfo)
+			peer.Log.Debugf("receive success piece: %#v %#v", piece, piece.PieceInfo)
 			v.handlePieceSuccess(ctx, peer, piece)
 
 			// Collect host traffic metrics.
@@ -735,8 +735,8 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 	case commonv1.Priority_LEVEL6, commonv1.Priority_LEVEL0:
 		if v.resource.SeedPeer().HasAvailable() && !task.IsSeedPeerFailed() {
 			if len(req.UrlMeta.GetRange()) > 0 {
-				if rg, err := http.ParseURLMetaRange(req.UrlMeta.GetRange(), math.MaxInt64); err == nil {
-					go v.triggerSeedPeerTask(ctx, &rg, task)
+				if rgs, err := http.ParseURLMetaRange(req.UrlMeta.GetRange(), math.MaxInt64); err == nil && len(rgs) > 0 {
+					go v.triggerSeedPeerTask(ctx, &rgs[0], task)
 					return nil
 				}
 
@@ -855,8 +855,8 @@ func (v *V1) storePeer(_ context.Context, id string, priority commonv1.Priority,
 		}
 
 		if len(rg) > 0 {
-			if r, err := http.ParseURLMetaRange(rg, math.MaxInt64); err == nil {
-				options = append(options, resource.WithRange(r))
+			if rgs, err := http.ParseURLMetaRange(rg, math.MaxInt64); err == nil && len(rgs) > 0 {
+				options = append(options, resource.WithRange(rgs[0]))
 			} else {
 				logger.WithPeer(host.ID, task.ID, id).Error(err)
 			}
@@ -991,7 +991,6 @@ func (v *V1) handleRegisterFailure(ctx context.Context, peer *resource.Peer) {
 	}
 
 	v.resource.PeerManager().Delete(peer.ID)
-	return
 }
 
 // handleBeginOfPiece handles begin of piece.
@@ -1109,7 +1108,7 @@ func (v *V1) handlePieceFailure(ctx context.Context, peer *resource.Peer, piece 
 	}
 
 	// host upload failed and UploadErrorCount needs to be increased.
-	parent.Host.UploadFailedCount.Inc()
+	parent.Host.UploadFailedCount.Add(1)
 
 	// It’s not a case of back-to-source downloading failed,
 	// to help peer to reschedule the parent node.
@@ -1185,7 +1184,7 @@ func (v *V1) handlePeerSuccess(ctx context.Context, peer *resource.Peer) {
 	// If the peer type is tiny and back-to-source,
 	// it needs to directly download the tiny file and store the data in task DirectPiece.
 	if types.SizeScopeV2ToV1(peer.Task.SizeScope()) == commonv1.SizeScope_TINY && len(peer.Task.DirectPiece) == 0 {
-		data, err := peer.DownloadTinyFile()
+		data, err := peer.DownloadTinyFile() //nolint:staticcheck
 		if err != nil {
 			peer.Log.Errorf("download tiny task failed: %s", err.Error())
 			return

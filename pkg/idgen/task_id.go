@@ -17,6 +17,8 @@
 package idgen
 
 import (
+	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -101,21 +103,17 @@ const (
 	FilteredQueryParamsSeparator = "&"
 )
 
+// blobURLRegexp matches OCI blob URLs, e.g. http(s)://<registry>/v2/<repository>/blobs/<digest>.
+var blobURLRegexp = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/blobs/([^?]+)(?:\?.*)?$`)
+
+// IsBlobURL reports whether the url is an OCI blob URL.
+func IsBlobURL(url string) bool {
+	return blobURLRegexp.MatchString(url)
+}
+
 // TaskIDV1 generates v1 version of task id.
 // filter is separated by & character.
 func TaskIDV1(url string, meta *commonv1.UrlMeta) string {
-	return taskIDV1(url, meta, false)
-}
-
-// ParentTaskIDV1 generates v1 version of parent task id, but without range.
-// this func is used to check the parent tasks for ranged requests
-func ParentTaskIDV1(url string, meta *commonv1.UrlMeta) string {
-	return taskIDV1(url, meta, true)
-}
-
-// taskIDV1 generates v1 version of task id.
-// filter is separated by & character.
-func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 	if meta == nil {
 		return pkgdigest.SHA256FromStrings(url)
 	}
@@ -136,7 +134,7 @@ func taskIDV1(url string, meta *commonv1.UrlMeta, ignoreRange bool) string {
 		data = append(data, meta.Digest)
 	}
 
-	if !ignoreRange && meta.Range != "" {
+	if meta.Range != "" {
 		data = append(data, meta.Range)
 	}
 
@@ -180,6 +178,44 @@ func TaskIDV2ByURLBased(url string, pieceLength *uint64, tag, application string
 // TaskIDV2ByContent generates v2 version of task id by content.
 func TaskIDV2ByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
+}
+
+// TaskIDV2ByBlobDigest generates v2 version of task id by the digest
+// extracted from the OCI blob url.
+func TaskIDV2ByBlobDigest(url string) (string, error) {
+	matches := blobURLRegexp.FindStringSubmatch(url)
+	if matches == nil {
+		return "", fmt.Errorf("invalid blob url: %s", url)
+	}
+
+	d, err := pkgdigest.Parse(matches[4])
+	if err != nil {
+		return "", err
+	}
+
+	switch d.Algorithm {
+	case pkgdigest.AlgorithmCRC32, pkgdigest.AlgorithmSHA256, pkgdigest.AlgorithmSHA512:
+		return d.Encoded, nil
+	default:
+		return "", fmt.Errorf("unsupported digest algorithm: %s", d.Algorithm)
+	}
+}
+
+// TaskIDV2 generates v2 version of task id, selecting the generator by the parameters,
+// identical to the client's task id generation. If the content is not empty, generate
+// the task id by the content. If the task id based blob digest is enabled and the url
+// is an OCI blob url, generate the task id by the blob digest. Otherwise, generate the
+// task id by the url based parameters.
+func TaskIDV2(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string, content string, enableTaskIDBasedBlobDigest bool) (string, error) {
+	if content != "" {
+		return TaskIDV2ByContent(content), nil
+	}
+
+	if enableTaskIDBasedBlobDigest && IsBlobURL(url) {
+		return TaskIDV2ByBlobDigest(url)
+	}
+
+	return TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, ""), nil
 }
 
 // PersistentCacheTaskIDByContent generates persistent cache task id by content.

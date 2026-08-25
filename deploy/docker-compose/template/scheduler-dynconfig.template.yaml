@@ -1,0 +1,19 @@
+# Applications configuration.
+applications: []
+
+# Seed peer cluster configuration.
+seedPeerClusterConfig:
+  # loadLimit is the concurrent upload limit of the seed peer.
+  loadLimit: 2000
+
+# Scheduler cluster configuration.
+schedulerClusterConfig:
+  # candidateParentLimit is the limit of candidate parents.
+  candidateParentLimit: 3
+  # filterParentLimit is the limit of filter parents.
+  filterParentLimit: 15
+
+# Client configuration of the scheduler cluster.
+schedulerClusterClientConfig:
+  # loadLimit is the concurrent upload limit of the peer.
+  loadLimit: 200

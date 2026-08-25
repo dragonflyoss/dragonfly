@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -50,8 +50,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockRawSeedHost = Host{
@@ -73,8 +73,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockCPU = CPU{
@@ -136,8 +136,8 @@ var (
 
 	mockAnnounceInterval = 5 * time.Minute
 
-	mockHostID       = idgen.HostIDV2("127.0.0.1", "foo", false)
-	mockSeedHostID   = idgen.HostIDV2("127.0.0.1", "bar", true)
+	mockHostID       = idgen.HostID("127.0.0.1", "foo", false)
+	mockSeedHostID   = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation = "baz"
 	mockHostIDC      = "bas"
 )
@@ -634,7 +634,7 @@ func TestHost_LoadPeer(t *testing.T) {
 		{
 			name:    "peer does not exist",
 			rawHost: mockRawHost,
-			peerID:  idgen.PeerIDV1("0.0.0.0"),
+			peerID:  idgen.PeerID(),
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
 				assert.Equal(loaded, false)

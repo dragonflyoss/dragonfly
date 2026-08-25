@@ -20,10 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
-	retry "github.com/avast/retry-go/v4"
+	retry "github.com/avast/retry-go/v5"
 	machineryv1tasks "github.com/dragonflyoss/machinery/v1/tasks"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
@@ -38,7 +39,6 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
-	"d7y.io/dragonfly/v2/pkg/slices"
 	"d7y.io/dragonfly/v2/pkg/structure"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 )
@@ -501,7 +501,7 @@ func (s *service) extractPeersFromJobs(jobs []*models.Job) ([]types.Peer, error)
 						continue
 					}
 
-					hostID := idgen.HostIDV2(ip, hostname, false)
+					hostID := idgen.HostID(ip, hostname, false)
 					p, found := m[hostID]
 					if !found {
 						m[hostID] = &types.Peer{
@@ -701,7 +701,7 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 				}
 
 				// Scan the schedulers to find the first scheduler that supports feature.
-				if slices.Contains(scheduler.Features, features...) {
+				if containsAllFeatures(scheduler.Features, features) {
 					candidateSchedulers = append(candidateSchedulers, scheduler)
 					break
 				}
@@ -731,7 +731,7 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 				}
 
 				// Scan the schedulers to find the first scheduler that supports feature.
-				if slices.Contains(scheduler.Features, features...) {
+				if containsAllFeatures(scheduler.Features, features) {
 					candidateSchedulers = append(candidateSchedulers, scheduler)
 					break
 				}
@@ -746,12 +746,28 @@ func (s *service) findAllCandidateSchedulersInClusters(ctx context.Context, sche
 	return candidateSchedulers, nil
 }
 
+func containsAllFeatures(schedulerFeatures, features []string) bool {
+	for _, feature := range features {
+		if !slices.Contains(schedulerFeatures, feature) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUID string, delay, maxDelay time.Duration, attempts uint) {
 	var (
 		job models.Job
 		log = logger.WithGroupAndJobID(groupUUID, fmt.Sprint(id))
 	)
-	if err := retry.Do(func() error {
+	if err := retry.New(
+		retry.Attempts(attempts),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Delay(delay),
+		retry.MaxDelay(maxDelay),
+		retry.Context(ctx),
+	).Do(func() error {
 		groupJob, err := s.job.GetGroupJobState(name, groupUUID)
 		if err != nil {
 			err = fmt.Errorf("get group job state failed: %w", err)
@@ -790,13 +806,7 @@ func (s *service) pollingJob(ctx context.Context, name string, id uint, groupUUI
 			log.Info(msg)
 			return errors.New(msg)
 		}
-	},
-		retry.Attempts(attempts),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Delay(delay),
-		retry.MaxDelay(maxDelay),
-		retry.Context(ctx),
-	); err != nil {
+	}); err != nil {
 		err = fmt.Errorf("polling group job failed: %w", err)
 		log.Error(err)
 	}

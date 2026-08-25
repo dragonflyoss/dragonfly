@@ -19,6 +19,7 @@ env:
   KIND_CONFIG_PATH: test/testdata/kind/config.yaml
   DRAGONFLY_CHARTS_PATH: deploy/helm-charts/charts/dragonfly
   DRAGONFLY_FILE_SERVER_PATH: test/testdata/k8s/dufs.yaml
+  DRAGONFLY_SCHEDULER_NODEPORT_SERVICE_PATH: test/testdata/k8s/scheduler-nodeport-svc.yaml
 
 jobs:
   e2e_tests:
@@ -27,14 +28,21 @@ jobs:
     strategy:
       matrix:
         module:
-          - 'normal'
+          - 'lightweight'
+          - 'with-manager'
           - 'ipv6'
         include:
-          - module: normal
+          - module: lightweight
             charts-config: test/testdata/charts/config.yaml
+            mode: lightweight
+            skip: 'Manager|Rate Limit|Dfcache'
+          - module: with-manager
+            charts-config: test/testdata/charts/config-with-manager.yaml
+            mode: with-manager
             skip: 'Rate Limit'
           - module: ipv6
             charts-config: test/testdata/charts/config-ipv6.yaml
+            mode: with-manager
             skip: 'Rate Limit'
 
     steps:
@@ -50,13 +58,13 @@ jobs:
           swap-storage: true
 
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           submodules: recursive
           fetch-depth: 0
 
       - name: Install Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: go.mod
 
@@ -66,13 +74,13 @@ jobs:
           mkdir -p /tmp/artifact
 
       - name: Setup buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
         id: buildx
         with:
           install: true
 
       - name: Cache Docker layers
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -89,7 +97,7 @@ jobs:
           docker tag dragonflyoss/dfinit:$CLIENT_TAG dragonflyoss/dfinit:latest
 
       - name: Build Scheduler Image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
         with:
           context: .
           file: build/images/scheduler/Dockerfile
@@ -100,7 +108,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Build Manager Image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
         with:
           context: .
           file: build/images/manager/Dockerfile
@@ -130,18 +138,24 @@ jobs:
           echo "DRAGONFLY_PAT=$DRAGONFLY_PAT" >> $GITHUB_ENV
 
       - name: Setup Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Setup dragonfly
         run: |
-          helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system --set manager.extraEnvVars[0].name=DRAGONFLY_PAT --set manager.extraEnvVars[0].value=${{ env.DRAGONFLY_PAT }} -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          if [[ "${{ matrix.mode }}" == "with-manager" ]]; then
+            helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system --set manager.extraEnvVars[0].name=DRAGONFLY_PAT --set manager.extraEnvVars[0].value=${{ env.DRAGONFLY_PAT }} -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          else
+            helm install --wait --timeout 15m --dependency-update --create-namespace --namespace dragonfly-system -f ${{ matrix.charts-config }} dragonfly ${{ env.DRAGONFLY_CHARTS_PATH }}
+          fi
+
+          kubectl apply -f ${{ env.DRAGONFLY_SCHEDULER_NODEPORT_SERVICE_PATH }}
           mkdir -p /tmp/artifact/dufs && chmod 777 /tmp/artifact/dufs
           kubectl apply -f ${{ env.DRAGONFLY_FILE_SERVER_PATH }}
           kubectl wait po dufs-0 --namespace dragonfly-e2e --for=condition=ready --timeout=10m
 
       - name: Run E2E test
         run: |
-          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --skip=${{ matrix.skip }} test/e2e
+          ginkgo -v -r --race --fail-fast --cover --trace --show-node-events --skip="${{ matrix.skip }}" test/e2e
           cat coverprofile.out >> coverage.txt
 
       - name: Move cache
@@ -155,6 +169,11 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt
           flags: e2etests
+
+      - name: Export logs
+        if: always()
+        run: |
+          sudo chown -R $USER:$USER /tmp/artifact
 
       - name: Upload Logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

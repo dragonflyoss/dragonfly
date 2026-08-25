@@ -19,7 +19,7 @@ package balancer
 import (
 	"errors"
 	"fmt"
-	"reflect"
+	"slices"
 
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
@@ -90,7 +90,7 @@ func (b *ConsistentHashingPickerBuilder) GetCircle() (map[string]string, error) 
 	}
 
 	members := b.hashring.Members()
-	if reflect.DeepEqual(b.members, members) {
+	if slices.Equal(b.members, members) {
 		return b.circle, nil
 	}
 

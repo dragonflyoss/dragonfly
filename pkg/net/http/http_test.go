@@ -66,6 +66,19 @@ func TestHeaderToMap(t *testing.T) {
 				})
 			},
 		},
+		{
+			name: "header has a key with an empty value slice",
+			header: http.Header{
+				"foo":   {"foo"},
+				"empty": {},
+			},
+			expect: func(t *testing.T, data any) {
+				assert := testifyassert.New(t)
+				assert.EqualValues(data, map[string]string{
+					"foo": "foo",
+				})
+			},
+		},
 	}
 
 	for _, tc := range tests {

@@ -17,11 +17,9 @@
 package dfpath
 
 import (
-	"os"
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,26 +43,9 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
-				assert.Equal(d.CacheDirMode(), DefaultCacheDirMode)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
-			},
-		},
-		{
-			name:    "new dfpath by cacheDir and cacheDirMode",
-			options: []Option{WithCacheDir("foo"), WithCacheDirMode(os.FileMode(0700))},
-			expect: func(t *testing.T, options []Option) {
-				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
-				d, err := New(options...)
-				assert.NoError(err)
-				assert.Equal(d.CacheDir(), "foo")
-				assert.Equal(d.CacheDirMode(), os.FileMode(0700))
 				assert.Equal(d.LogDir(), DefaultLogDir)
 				assert.Equal(d.PluginDir(), DefaultPluginDir)
 			},
@@ -75,10 +56,9 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
 				assert.Equal(d.LogDir(), "foo")
 				assert.Equal(d.PluginDir(), DefaultPluginDir)
 			},
@@ -89,10 +69,9 @@ func TestNew(t *testing.T) {
 			expect: func(t *testing.T, options []Option) {
 				assert := assert.New(t)
 				cache.Once = sync.Once{}
-				cache.err = &multierror.Error{}
+				cache.err = nil
 				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.CacheDir(), DefaultCacheDir)
 				assert.Equal(d.LogDir(), DefaultLogDir)
 				assert.Equal(d.PluginDir(), "foo")
 			},

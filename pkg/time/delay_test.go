@@ -22,76 +22,6 @@ import (
 	"time"
 )
 
-func TestLinearDelay(t *testing.T) {
-	tests := []struct {
-		name        string
-		attempt     uint
-		increment   time.Duration
-		maxDelay    time.Duration
-		expectedMin time.Duration
-		expectedMax time.Duration
-	}{
-		{
-			name:        "attempt zero sleeps zero",
-			attempt:     0,
-			increment:   10 * time.Millisecond,
-			maxDelay:    100 * time.Millisecond,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
-		},
-		{
-			name:        "attempt five sleeps 50ms",
-			attempt:     5,
-			increment:   10 * time.Millisecond,
-			maxDelay:    100 * time.Millisecond,
-			expectedMin: 10 * time.Millisecond,
-			expectedMax: 155 * time.Millisecond,
-		},
-		{
-			name:        "capped at maxDelay",
-			attempt:     15,
-			increment:   10 * time.Millisecond,
-			maxDelay:    100 * time.Millisecond,
-			expectedMin: 55 * time.Millisecond,
-			expectedMax: 155 * time.Millisecond,
-		},
-		{
-			name:        "zero increment sleeps zero",
-			attempt:     10,
-			increment:   0,
-			maxDelay:    100 * time.Millisecond,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
-		},
-		{
-			name:        "zero maxDelay caps at zero",
-			attempt:     10,
-			increment:   10 * time.Millisecond,
-			maxDelay:    0,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			start := time.Now()
-			if err := LinearDelay(context.TODO(), tt.attempt, tt.increment, tt.maxDelay); err != nil {
-				t.Fatalf("LinearDelay returned error: %v", err)
-			}
-
-			duration := time.Since(start)
-			if duration < tt.expectedMin {
-				t.Errorf("LinearDelay slept too short: got %v, want at least %v", duration, tt.expectedMin)
-			}
-
-			if duration > tt.expectedMax {
-				t.Errorf("LinearDelay slept too long: got %v, want at most %v", duration, tt.expectedMax)
-			}
-		})
-	}
-}
-
 func TestExponentialDelayWithJitter(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -150,6 +80,30 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 			expectedMax: 3000 * time.Millisecond,
 		},
 		{
+			name:        "overflow attempt stays capped at maxDelay",
+			attempt:     39,
+			baseDelay:   30 * time.Millisecond,
+			maxDelay:    1 * time.Second,
+			expectedMin: 380 * time.Millisecond,
+			expectedMax: 1500 * time.Millisecond,
+		},
+		{
+			name:        "shift overflow attempt stays capped at maxDelay",
+			attempt:     62,
+			baseDelay:   30 * time.Millisecond,
+			maxDelay:    1 * time.Second,
+			expectedMin: 380 * time.Millisecond,
+			expectedMax: 1500 * time.Millisecond,
+		},
+		{
+			name:        "huge attempt stays capped at maxDelay",
+			attempt:     100,
+			baseDelay:   30 * time.Millisecond,
+			maxDelay:    1 * time.Second,
+			expectedMin: 380 * time.Millisecond,
+			expectedMax: 1500 * time.Millisecond,
+		},
+		{
 			name:        "zero baseDelay with jitter",
 			attempt:     5,
 			baseDelay:   0,
@@ -183,13 +137,10 @@ func TestExponentialDelayWithJitter(t *testing.T) {
 
 			for i := range iterations {
 				start := time.Now()
-				if err := ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay); err != nil {
-					t.Fatalf("ExponentialDelayWithJitter returned error: %v", err)
-				}
-
-				duration := time.Since(start)
+				ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay)
 
 				// Allow some failures due to system scheduling
+				duration := time.Since(start)
 				if duration >= tt.expectedMin && duration <= tt.expectedMax {
 					successCount++
 				} else {
@@ -230,6 +181,12 @@ func TestRandomDelayWithJitter(t *testing.T) {
 			expectedMin: 0,
 			expectedMax: 100 * time.Millisecond,
 		},
+		{
+			name:        "one nanosecond base delay",
+			baseDelay:   time.Nanosecond,
+			expectedMin: 0,
+			expectedMax: 100 * time.Millisecond,
+		},
 	}
 
 	for _, tt := range tests {
@@ -240,7 +197,7 @@ func TestRandomDelayWithJitter(t *testing.T) {
 
 			for i := range iterations {
 				start := time.Now()
-				RandomDelayWithJitter(tt.baseDelay)
+				RandomDelayWithJitter(context.Background(), tt.baseDelay)
 				duration := time.Since(start)
 
 				// Allow some failures due to system scheduling
@@ -256,5 +213,16 @@ func TestRandomDelayWithJitter(t *testing.T) {
 				t.Errorf("Too many iterations out of range: %d/%d successful", successCount, iterations)
 			}
 		})
+	}
+}
+
+func TestRandomDelayWithJitter_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	RandomDelayWithJitter(ctx, time.Minute)
+	if duration := time.Since(start); duration > time.Second {
+		t.Errorf("RandomDelayWithJitter did not return early on canceled context: took %v", duration)
 	}
 }

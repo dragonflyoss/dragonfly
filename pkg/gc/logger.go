@@ -35,10 +35,10 @@ type gcLogger struct{}
 
 // Infof logs routine messages for GC.
 func (gl *gcLogger) Infof(template string, args ...any) {
-	logger.CoreLogger.Infof(template, args)
+	logger.CoreLogger.Infof(template, args...)
 }
 
 // Error logs error messages for GC.
 func (gl *gcLogger) Errorf(template string, args ...any) {
-	logger.CoreLogger.Errorf(template, args)
+	logger.CoreLogger.Errorf(template, args...)
 }

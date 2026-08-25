@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/utils/keymutex"
+
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
@@ -31,6 +33,9 @@ const (
 	// GC peer id.
 	GCPeerID = "peer"
 )
+
+// peerMutexShardCount is the number of mutex shards for peer mutations.
+const peerMutexShardCount = 256
 
 // PeerManager is the interface used for peer manager.
 type PeerManager interface {
@@ -73,8 +78,8 @@ type peerManager struct {
 	// pieceDownloadTimeout is timeout of downloading piece.
 	pieceDownloadTimeout time.Duration
 
-	// mu is peer mutex.
-	mu *sync.Mutex
+	// mu is a mutex for peer mutations.
+	mu keymutex.KeyMutex
 }
 
 // New peer manager interface.
@@ -84,7 +89,7 @@ func newPeerManager(cfg *config.GCConfig, gc pkggc.GC) (PeerManager, error) {
 		peerTTL:              cfg.PeerTTL,
 		hostTTL:              cfg.HostTTL,
 		pieceDownloadTimeout: cfg.PieceDownloadTimeout,
-		mu:                   &sync.Mutex{},
+		mu:                   keymutex.NewHashed(peerMutexShardCount),
 	}
 
 	if err := gc.Add(pkggc.Task{
@@ -111,8 +116,8 @@ func (p *peerManager) Load(key string) (*Peer, bool) {
 
 // Store sets peer.
 func (p *peerManager) Store(peer *Peer) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.mu.LockKey(peer.ID)
+	defer p.mu.UnlockKey(peer.ID) // nolint: errcheck
 
 	p.Map.Store(peer.ID, peer)
 	peer.Task.StorePeer(peer)
@@ -123,8 +128,8 @@ func (p *peerManager) Store(peer *Peer) {
 // Otherwise, it stores and returns the given peer.
 // The loaded result is true if the peer was loaded, false if stored.
 func (p *peerManager) LoadOrStore(peer *Peer) (*Peer, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.mu.LockKey(peer.ID)
+	defer p.mu.UnlockKey(peer.ID) // nolint: errcheck
 
 	rawPeer, loaded := p.Map.LoadOrStore(peer.ID, peer)
 	if !loaded {
@@ -137,8 +142,8 @@ func (p *peerManager) LoadOrStore(peer *Peer) (*Peer, bool) {
 
 // Delete deletes peer for a key.
 func (p *peerManager) Delete(key string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.mu.LockKey(key)
+	defer p.mu.UnlockKey(key) // nolint: errcheck
 
 	if peer, loaded := p.Load(key); loaded {
 		p.Map.Delete(key)

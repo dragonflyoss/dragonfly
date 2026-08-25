@@ -18,12 +18,7 @@
 package cache
 
 import (
-	"encoding/gob"
 	"fmt"
-	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"sync"
@@ -67,10 +62,6 @@ type Cache interface {
 	DeleteExpired()
 	Keys() []string
 	OnEvicted(f func(string, any))
-	Save(w io.Writer) (err error)
-	SaveFile(fname string) error
-	Load(r io.Reader) error
-	LoadFile(fname string) error
 	Items() map[string]Item
 	ItemCount() int
 	Flush()
@@ -289,87 +280,6 @@ func (c *cache) OnEvicted(f func(string, any)) {
 	c.mu.Lock()
 	c.onEvicted = f
 	c.mu.Unlock()
-}
-
-// Write the cache's items (using Gob) to an io.Writer.
-//
-// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
-// documentation for NewFrom().)
-func (c *cache) Save(w io.Writer) (err error) {
-	enc := gob.NewEncoder(w)
-	defer func() {
-		if x := recover(); x != nil {
-			err = fmt.Errorf("Error registering item types with Gob library")
-		}
-	}()
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, v := range c.items {
-		gob.Register(v.Object)
-	}
-	err = enc.Encode(&c.items)
-	return
-}
-
-// Save the cache's items to the given filename, creating the file if it
-// doesn't exist, and overwriting it if it does.
-//
-// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
-// documentation for NewFrom().)
-func (c *cache) SaveFile(fname string) error {
-	dir := filepath.Dir(fname)
-	if err := os.MkdirAll(dir, fs.FileMode(0700)); err != nil {
-		return err
-	}
-
-	fp, err := os.Create(fname)
-	if err != nil {
-		return err
-	}
-
-	defer fp.Close()
-
-	return c.Save(fp)
-}
-
-// Add (Gob-serialized) cache items from an io.Reader, excluding any items with
-// keys that already exist (and haven't expired) in the current cache.
-//
-// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
-// documentation for NewFrom().)
-func (c *cache) Load(r io.Reader) error {
-	dec := gob.NewDecoder(r)
-	items := map[string]Item{}
-	err := dec.Decode(&items)
-	if err == nil {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		for k, v := range items {
-			ov, found := c.items[k]
-			if !found || ov.Expired() {
-				c.items[k] = v
-			}
-		}
-	}
-	return err
-}
-
-// Load and add cache items from the given filename, excluding any items with
-// keys that already exist in the current cache.
-//
-// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
-// documentation for NewFrom().)
-func (c *cache) LoadFile(fname string) error {
-	fp, err := os.Open(fname)
-	if err != nil {
-		return err
-	}
-	err = c.Load(fp)
-	if err != nil {
-		fp.Close()
-		return err
-	}
-	return fp.Close()
 }
 
 // Copies all unexpired items in the cache into a new map and returns it.

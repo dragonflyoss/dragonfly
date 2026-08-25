@@ -19,7 +19,7 @@ package rpc
 import (
 	"context"
 
-	"github.com/juju/ratelimit"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 
 	"d7y.io/dragonfly/v2/internal/dferrors"
@@ -27,24 +27,20 @@ import (
 
 // RateLimiterInterceptor is the interface for ratelimit interceptor.
 type RateLimiterInterceptor struct {
-	// tokenBucket is token bucket of ratelimit.
-	tokenBucket *ratelimit.Bucket
+	// limiter is token bucket of ratelimit.
+	limiter *rate.Limiter
 }
 
 // NewRateLimiterInterceptor returns a RateLimiterInterceptor instance.
 func NewRateLimiterInterceptor(qps float64, burst int64) *RateLimiterInterceptor {
 	return &RateLimiterInterceptor{
-		tokenBucket: ratelimit.NewBucketWithRate(qps, burst),
+		limiter: rate.NewLimiter(rate.Limit(qps), int(burst)),
 	}
 }
 
 // Limit is the predicate which limits the requests.
 func (r *RateLimiterInterceptor) Limit() bool {
-	if r.tokenBucket.TakeAvailable(1) == 0 {
-		return true
-	}
-
-	return false
+	return !r.limiter.Allow()
 }
 
 // ConvertErrorUnaryServerInterceptor returns a new unary server interceptor that convert error when trigger custom error.

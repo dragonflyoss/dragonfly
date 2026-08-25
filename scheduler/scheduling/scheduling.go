@@ -190,17 +190,23 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
-		// Add edges from candidate parents to the peer.
-		for _, candidateParent := range candidateParents {
-			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				err = fmt.Errorf("peer adds edge failed: %w", err)
-				peer.Log.Warn(err)
-				continue
-			}
+		// Add edges from candidate parents to the peer in a single batch.
+		addedParents := peer.Task.AddPeerEdges(candidateParents, peer)
+		if len(addedParents) < len(candidateParents) {
+			peer.Log.Warnf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
+		}
+
+		if len(addedParents) == 0 {
+			n++
+			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
+
+			// Sleep with context-aware timeout to avoid blocking on cancellation.
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
+			continue
 		}
 
 		stream, loaded := peer.LoadAnnouncePeerStream()
@@ -217,7 +223,7 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 
 		peer.Log.Info("send NormalTaskResponse")
 		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
-			Response: constructSuccessNormalTaskResponse(candidateParents),
+			Response: constructSuccessNormalTaskResponse(addedParents),
 		}); err != nil {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 				err = fmt.Errorf("peer deletes inedges failed: %w", err)
@@ -335,7 +341,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Error(err)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
@@ -346,17 +352,23 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 			peer.Log.Infof("scheduling failed in %d times, because of candidate parents not found", n)
 
 			// Sleep with context-aware timeout to avoid blocking on cancellation.
-			pkgtime.RandomDelayWithJitter(s.config.RetryInterval)
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
 			continue
 		}
 
-		// Add edges from candidate parents to the peer.
-		for _, candidateParent := range candidateParents {
-			if err := peer.Task.AddPeerEdge(candidateParent, peer); err != nil {
-				err = fmt.Errorf("peer adds edge failed: %w", err)
-				peer.Log.Debug(err)
-				continue
-			}
+		// Add edges from candidate parents to the peer in a single batch.
+		addedParents := peer.Task.AddPeerEdges(candidateParents, peer)
+		if len(addedParents) < len(candidateParents) {
+			peer.Log.Debugf("peer adds %d of %d edges", len(addedParents), len(candidateParents))
+		}
+
+		if len(addedParents) == 0 {
+			n++
+			peer.Log.Infof("scheduling failed in %d times, because of no candidate parent edges could be added", n)
+
+			// Sleep with context-aware timeout to avoid blocking on cancellation.
+			pkgtime.RandomDelayWithJitter(ctx, s.config.RetryInterval)
+			continue
 		}
 
 		stream, loaded := peer.LoadReportPieceResultStream()
@@ -374,7 +386,7 @@ func (s *scheduling) ScheduleParentAndCandidateParents(ctx context.Context, peer
 		}
 
 		peer.Log.Info("send PeerPacket to peer")
-		if err := stream.Send(constructSuccessPeerPacket(peer, candidateParents[0], candidateParents[1:])); err != nil {
+		if err := stream.Send(constructSuccessPeerPacket(peer, addedParents[0], addedParents[1:])); err != nil {
 			n++
 			err = fmt.Errorf("send PeerPacket to peer failed in %d times, because of %w", n, err)
 			peer.Log.Error(err)
@@ -495,8 +507,8 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 
 	// Load a random sample of peers up to the filter limit.
 	randomPeers := peer.Task.LoadRandomPeers(uint(filterParentLimit))
-	candidateParents := make([]*standard.Peer, 0, len(randomPeers))
-	candidateParentIDs := make([]string, 0, len(randomPeers))
+	prefilteredParents := make([]*standard.Peer, 0, len(randomPeers))
+	prefilteredParentIDs := make([]string, 0, len(randomPeers))
 	for _, candidateParent := range randomPeers {
 		// Skip if candidate is in the blocklist.
 		if blocklist.Contains(candidateParent.ID) {
@@ -540,8 +552,16 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 			continue
 		}
 
+		prefilteredParents = append(prefilteredParents, candidateParent)
+		prefilteredParentIDs = append(prefilteredParentIDs, candidateParent.ID)
+	}
+
+	addableParentIDs := peer.Task.CanAddPeerEdges(prefilteredParentIDs, peer.ID)
+	candidateParents := make([]*standard.Peer, 0, len(prefilteredParents))
+	candidateParentIDs := make([]string, 0, len(prefilteredParents))
+	for _, candidateParent := range prefilteredParents {
 		// Skip if an edge cannot be added between candidate and peer.
-		if !peer.Task.CanAddPeerEdge(candidateParent.ID, peer.ID) {
+		if _, ok := addableParentIDs[candidateParent.ID]; !ok {
 			peer.Log.Debugf("can not add edge with parent %s host %s", candidateParent.ID, candidateParent.Host.ID)
 			continue
 		}

@@ -26,11 +26,10 @@ import (
 
 func TestTaskIDV1(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
-		meta        *commonv1.UrlMeta
-		ignoreRange bool
-		expect      func(t *testing.T, d any)
+		name   string
+		url    string
+		meta   *commonv1.UrlMeta
+		expect func(t *testing.T, d any)
 	}{
 		{
 			name: "generate taskID with url",
@@ -52,20 +51,6 @@ func TestTaskIDV1(t *testing.T) {
 			expect: func(t *testing.T, d any) {
 				assert := assert.New(t)
 				assert.Equal(d, "aeee0e0a2a0c75130582641353c539aaf9011a0088b31347f7588e70e449a3e0")
-			},
-		},
-		{
-			name: "generate taskID with meta",
-			url:  "https://example.com",
-			meta: &commonv1.UrlMeta{
-				Range:  "foo",
-				Digest: "bar",
-				Tag:    "",
-			},
-			ignoreRange: true,
-			expect: func(t *testing.T, d any) {
-				assert := assert.New(t)
-				assert.Equal(d, "63dee2822037636b0109876b58e95692233840753a882afa69b9b5ee82a6c57d")
 			},
 		},
 		{
@@ -95,13 +80,7 @@ func TestTaskIDV1(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var data string
-			if tc.ignoreRange {
-				data = ParentTaskIDV1(tc.url, tc.meta)
-			} else {
-				data = TaskIDV1(tc.url, tc.meta)
-			}
-			tc.expect(t, data)
+			tc.expect(t, TaskIDV1(tc.url, tc.meta))
 		})
 	}
 }
@@ -187,6 +166,54 @@ func TestTaskIDV2ByURLBased(t *testing.T) {
 				assert.Equal(d, "b171331534b80e0bf91da38ebbfcdbf4d177898f4b9beac44f14733e3f004d4e")
 			},
 		},
+		{
+			name:        "generate taskID with sorted query params",
+			url:         "https://example.com/file.txt?z=9&b=2&a=1",
+			tag:         "foo",
+			application: "bar",
+			filters:     []string{"z"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "8b3f6e9b9b8fe20903bced565cfd1d0aaef354a4c17573f0c2c1979210443f9d")
+			},
+		},
+		{
+			name:    "generate taskID with same key query params keeping order",
+			url:     "https://example.com/file.txt?b=2&a=1&b=1",
+			filters: []string{"c"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "7c8801d0596be5e8f9449d5c4af23866c72fe5205119c0e5912981f3b16a37aa")
+			},
+		},
+		{
+			name:        "generate taskID with escaped query params",
+			url:         "https://example.com/file.txt?k=a b&m=x*y&n=c~d",
+			pieceLength: &pieceLength,
+			filters:     []string{"none"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "6196a6846023f6d3c1e4d30f6c86f3d4186e4c664a33e5692b0e04e49b26a9af")
+			},
+		},
+		{
+			name:    "generate taskID with all query params filtered",
+			url:     "https://example.com/file.txt?a=1&b=2",
+			tag:     "foo",
+			filters: []string{"a", "b"},
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "c8f4b41117329d54af920010394f6f607bac707e933ab2f18d372e3dd4c7fcb3")
+			},
+		},
+		{
+			name: "generate taskID with raw url when no filters",
+			url:  "https://example.com/file.txt?b=2&a=1",
+			expect: func(t *testing.T, d any) {
+				assert := assert.New(t)
+				assert.Equal(d, "980ee327518ccc5a7c30703e1a2232e8ba9047b39431f940636c85b6146f8b9a")
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -238,6 +265,195 @@ func TestPersistentCacheTaskIDbyContent(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, PersistentCacheTaskIDByContent(tc.content))
+		})
+	}
+}
+
+func TestIsBlobURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, ok bool)
+	}{
+		{
+			name: "http blob url",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "blob url with nested repository",
+			url:  "https://registry.io/v2/org/team/project/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "blob url with port and query params",
+			url:  "http://localhost:5000/v2/myrepo/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e?ns=docker.io",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "url without blobs path",
+			url:  "https://registry.example.com/v2/library/ubuntu/manifests/latest",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "plain url",
+			url:  "https://example.com/file.txt",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, IsBlobURL(tc.url))
+		})
+	}
+}
+
+func TestTaskIDV2ByBlobDigest(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, d string, err error)
+	}{
+		{
+			name: "generate taskID by sha256 blob digest",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "generate taskID by sha512 blob digest",
+			url:  "https://registry.example.com/v2/myorg/myrepo/blobs/sha512:94381a28e8c039fedfa78de025158a068226c3ccd041b22c2c8e73fc993584e9b167d9ae32bc8b372c66701c808ab134e0768c8f16b9a3e61eec1ccf8faa9db8",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "94381a28e8c039fedfa78de025158a068226c3ccd041b22c2c8e73fc993584e9b167d9ae32bc8b372c66701c808ab134e0768c8f16b9a3e61eec1ccf8faa9db8")
+			},
+		},
+		{
+			name: "generate taskID by blob digest with query params",
+			url:  "http://localhost:5000/v2/myrepo/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e?ns=docker.io",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "not a blob url",
+			url:  "https://example.com/file.txt",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name: "invalid digest length",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:abc",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name: "unsupported digest algorithm",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := TaskIDV2ByBlobDigest(tc.url)
+			tc.expect(t, d, err)
+		})
+	}
+}
+
+func TestTaskIDV2(t *testing.T) {
+	tests := []struct {
+		name                        string
+		url                         string
+		content                     string
+		enableTaskIDBasedBlobDigest bool
+		expect                      func(t *testing.T, d string, err error)
+	}{
+		{
+			name:                        "generate taskID by content",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			content:                     "This is a content",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByContent("This is a content"))
+			},
+		},
+		{
+			name:                        "generate taskID by blob digest",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "generate taskID by url based when blob digest is disabled",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e", nil, "foo", "bar", nil, ""))
+			},
+		},
+		{
+			name:                        "generate taskID by url based for non blob url",
+			url:                         "https://example.com/file.txt",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("https://example.com/file.txt", nil, "foo", "bar", nil, ""))
+			},
+		},
+		{
+			name:                        "unsupported digest algorithm",
+			url:                         "http://registry.example.com/v2/library/ubuntu/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := TaskIDV2(tc.url, nil, "foo", "bar", nil, tc.content, tc.enableTaskIDBasedBlobDigest)
+			tc.expect(t, d, err)
 		})
 	}
 }

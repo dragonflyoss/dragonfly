@@ -17,7 +17,8 @@
 package evaluator
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"d7y.io/dragonfly/v2/pkg/types"
@@ -77,6 +78,34 @@ func newEvaluatorDefault() Evaluator {
 	return &evaluatorDefault{}
 }
 
+// scoredParent pairs a parent with its pre-computed evaluation score.
+type scoredParent[T any] struct {
+	parent T
+	score  float64
+}
+
+// sortParentsByScore evaluates each parent exactly once using the given score function,
+// then sorts parents by score from highest to lowest.
+func sortParents[T any](parents []T, score func(T) float64) []T {
+	scoredParents := make([]scoredParent[T], len(parents))
+	for i, parent := range parents {
+		scoredParents[i] = scoredParent[T]{parent: parent, score: score(parent)}
+	}
+
+	slices.SortFunc(
+		scoredParents,
+		func(a, b scoredParent[T]) int {
+			return cmp.Compare(b.score, a.score)
+		},
+	)
+
+	for i, scoredParent := range scoredParents {
+		parents[i] = scoredParent.parent
+	}
+
+	return parents
+}
+
 // EvaluateParents sorts and returns a list of parent peers ordered by their suitability as download sources.
 // Parents are ranked from best to worst based on a comprehensive multi-dimensional evaluation.
 //
@@ -85,14 +114,9 @@ func newEvaluatorDefault() Evaluator {
 // type. The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
 // parents appearing first in the returned slice.
 func (e *evaluatorDefault) EvaluateParents(parents []*standard.Peer, child *standard.Peer) []*standard.Peer {
-	sort.Slice(
-		parents,
-		func(i, j int) bool {
-			return e.evaluateParents(parents[i], child) > e.evaluateParents(parents[j], child)
-		},
-	)
-
-	return parents
+	return sortParents(parents, func(parent *standard.Peer) float64 {
+		return e.evaluateParents(parent, child)
+	})
 }
 
 // evaluateParents evaluates and scores a parent peer for selection as a download source for a child peer.
@@ -282,14 +306,9 @@ func (e *evaluatorDefault) calculateConcurrencyScore(parent *standard.Peer, chil
 // The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
 // parents appearing first in the returned slice.
 func (e *evaluatorDefault) EvaluatePersistentParents(parents []*persistent.Peer, child *persistent.Peer) []*persistent.Peer {
-	sort.Slice(
-		parents,
-		func(i, j int) bool {
-			return e.evaluatePersistentParents(parents[i], child) > e.evaluatePersistentParents(parents[j], child)
-		},
-	)
-
-	return parents
+	return sortParents(parents, func(parent *persistent.Peer) float64 {
+		return e.evaluatePersistentParents(parent, child)
+	})
 }
 
 // evaluatePersistentParents evaluates and scores a parent peer for selection as a download source for a child peer.
@@ -317,14 +336,9 @@ func (e *evaluatorDefault) evaluatePersistentParents(parent *persistent.Peer, ch
 // The parents are then sorted in descending order by their total scores, with the highest-scoring (most suitable)
 // parents appearing first in the returned slice.
 func (e *evaluatorDefault) EvaluatePersistentCacheParents(parents []*persistentcache.Peer, child *persistentcache.Peer) []*persistentcache.Peer {
-	sort.Slice(
-		parents,
-		func(i, j int) bool {
-			return e.evaluatePersistentCacheParents(parents[i], child) > e.evaluatePersistentCacheParents(parents[j], child)
-		},
-	)
-
-	return parents
+	return sortParents(parents, func(parent *persistentcache.Peer) float64 {
+		return e.evaluatePersistentCacheParents(parent, child)
+	})
 }
 
 // evaluatePersistentCacheParents evaluates and scores a parent peer for selection as a download source for a child peer.

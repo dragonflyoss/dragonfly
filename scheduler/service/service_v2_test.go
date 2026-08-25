@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,6 +46,7 @@ import (
 	internaljob "d7y.io/dragonfly/v2/internal/job"
 	internaljobmocks "d7y.io/dragonfly/v2/internal/job/mocks"
 	managertypes "d7y.io/dragonfly/v2/manager/types"
+	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -77,8 +77,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockRawSeedHost = standard.Host{
@@ -99,8 +99,8 @@ var (
 		Network:         mockNetwork,
 		Disk:            mockDisk,
 		Build:           mockBuild,
-		CreatedAt:       atomic.NewTime(time.Now()),
-		UpdatedAt:       atomic.NewTime(time.Now()),
+		CreatedAt:       pkgatomic.NewTime(time.Now()),
+		UpdatedAt:       pkgatomic.NewTime(time.Now()),
 	}
 
 	mockCPU = standard.CPU{
@@ -3949,6 +3949,99 @@ func TestServiceV2_StatImage(t *testing.T) {
 				assert.NoError(err)
 				assert.Equal(1, len(resp.Image.Layers))
 				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by seed peers with all_seed_peers scope",
+			req: &schedulerv2.StatImageRequest{
+				Url:   "https://example.com/v2/image/manifests/latest",
+				Scope: managertypes.AllSeedPeersScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, managertypes.AllSeedPeersScope, getTaskRequest.Scope)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "seed-peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by peer with default scope",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, managertypes.AllPeersScope, getTaskRequest.Scope)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by peer with task id based blob digest",
+			req: &schedulerv2.StatImageRequest{
+				Url:                         "https://example.com/v2/image/manifests/latest",
+				EnableTaskIdBasedBlobDigest: true,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, "b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", getTaskRequest.TaskID)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "seed-peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by peer with invalid blob digest",
+			req: &schedulerv2.StatImageRequest{
+				Url:                         "https://example.com/v2/image/manifests/latest",
+				EnableTaskIdBasedBlobDigest: true,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c"}}}, nil).Times(1)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorContains(err, "failed to generate task id for layer https://example.com/v2/image/latest/blobs/md5:8a04994a666b4e4b20a2fd9e5a44f44c")
+				assert.Equal(codes.InvalidArgument, status.Code(err))
 			},
 		},
 		{

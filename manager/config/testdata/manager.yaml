@@ -1,6 +1,5 @@
 server:
   name: foo
-  cacheDir: foo
   logDir: foo
   logLevel: debug
   logMaxSize: 512

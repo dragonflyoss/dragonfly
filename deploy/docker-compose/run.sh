@@ -17,7 +17,8 @@ prepare(){
     sed "s,__IP__,$ip," template/client.template.yaml > config/client.yaml
     sed "s,__IP__,$ip," template/seed-client.template.yaml > config/seed-client.yaml
     sed "s,__IP__,$ip," template/scheduler.template.yaml > config/scheduler.yaml
-    sed "s,__IP__,$ip," template/manager.template.yaml > config/manager.yaml
+    sed "s,__IP__,$ip," template/client-dynconfig.template.yaml > config/client-dynconfig.yaml
+    cp template/scheduler-dynconfig.template.yaml config/scheduler-dynconfig.yaml
 }
 
 run() {
@@ -30,7 +31,7 @@ run() {
 
   $COMPOSE up -d
 
-  # docker-compose version 3 depends_on does not wait for redis and mysql to be “ready” before starting manager ...
+  # docker-compose version 3 depends_on does not wait for services to be "ready" before starting ...
   # doc https://docs.docker.com/compose/compose-file/compose-file-v3/#depends_on
   for i in $(seq 0 10); do
     service_num=$($COMPOSE ps --services |wc -l)

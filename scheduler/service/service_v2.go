@@ -146,6 +146,14 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			registerPeerRequest := announcePeerRequest.RegisterPeerRequest
 			log.Infof("receive RegisterPeerRequest, url: %s, range: %#v, header: %#v, need back-to-source: %t",
 				registerPeerRequest.Download.GetUrl(), registerPeerRequest.Download.GetRange(), registerPeerRequest.Download.GetRequestHeader(), registerPeerRequest.Download.GetNeedBackToSource())
+
+			// Reclaim the resource of peer when the stream is closed.
+			defer func(peerID string) {
+				if peer, loaded := v.resource.PeerManager().Load(peerID); loaded {
+					peer.DeleteAnnouncePeerStream()
+				}
+			}(req.GetPeerId())
+
 			if err := v.handleRegisterPeerRequest(ctx, stream, req.GetHostId(), req.GetTaskId(), req.GetPeerId(), registerPeerRequest); err != nil {
 				log.Error(err)
 
@@ -252,13 +260,13 @@ func (v *V2) AnnouncePeer(stream schedulerv2.Scheduler_AnnouncePeerServer) error
 			return nil
 		case *schedulerv2.AnnouncePeerRequest_DownloadPieceFinishedRequest:
 			piece := announcePeerRequest.DownloadPieceFinishedRequest.Piece
-			log.Infof("receive DownloadPieceFinishedRequest, piece number: %d, piece length: %d, traffic type: %s, cost: %s, parent id: %s", piece.GetNumber(), piece.GetLength(), piece.GetTrafficType(), piece.GetCost().AsDuration().String(), piece.GetParentId())
+			log.Debugf("receive DownloadPieceFinishedRequest, piece number: %d, piece length: %d, traffic type: %s, cost: %s, parent id: %s", piece.GetNumber(), piece.GetLength(), piece.GetTrafficType(), piece.GetCost().AsDuration().String(), piece.GetParentId())
 			if err := v.handleDownloadPieceFinishedRequest(req.GetPeerId(), announcePeerRequest.DownloadPieceFinishedRequest); err != nil {
 				log.Error(err)
 			}
 		case *schedulerv2.AnnouncePeerRequest_DownloadPieceBackToSourceFinishedRequest:
 			piece := announcePeerRequest.DownloadPieceBackToSourceFinishedRequest.Piece
-			log.Infof("receive DownloadPieceBackToSourceFinishedRequest, piece number: %d, piece length: %d, traffic type: %s, cost: %s, parent id: %s", piece.GetNumber(), piece.GetLength(), piece.GetTrafficType(), piece.GetCost().AsDuration().String(), piece.GetParentId())
+			log.Debugf("receive DownloadPieceBackToSourceFinishedRequest, piece number: %d, piece length: %d, traffic type: %s, cost: %s, parent id: %s", piece.GetNumber(), piece.GetLength(), piece.GetTrafficType(), piece.GetCost().AsDuration().String(), piece.GetParentId())
 			if err := v.handleDownloadPieceBackToSourceFinishedRequest(ctx, req.GetPeerId(), announcePeerRequest.DownloadPieceBackToSourceFinishedRequest); err != nil {
 				log.Error(err)
 			}
@@ -1295,21 +1303,74 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if err != nil {
 		return err
 	}
-	host.ConcurrentRegisterCount.Inc()
-	defer host.ConcurrentRegisterCount.Dec()
+	host.ConcurrentRegisterCount.Add(1)
+	defer host.ConcurrentRegisterCount.Add(-1)
 
 	// Collect RegisterPeerCount metrics.
 	priority := peer.CalculatePriority(v.dynconfig)
 	metrics.RegisterPeerCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 		peer.Host.Type.Name()).Inc()
 
-	// Provides a exponential delay to prevent thundering herd problems. When a host has many concurrent registration requests, later requests
-	// are delayed progressively to avoid overwhelming the source with simultaneous back-to-source tasks from a single host.
-	if err := pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer); err != nil {
-		// Collect RegisterPeerFailureCount metrics.
-		metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
-			peer.Host.Type.Name()).Inc()
-		return status.Error(codes.Internal, err.Error())
+	// If the download hits the local cache of the peer completely, the peer only reports
+	// the metadata to the scheduler and no need to be scheduled or trigger the seed peer
+	// to download back-to-source.
+	if req.GetDownload().GetMetadataOnly() {
+		// Handle task with peer register request.
+		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
+			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+				// Collect RegisterPeerFailureCount metrics.
+				metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+					peer.Host.Type.Name()).Inc()
+				return status.Error(codes.Internal, err.Error())
+			}
+		} else {
+			peer.Task.UpdatedAt.Store(time.Now())
+		}
+
+		stream, loaded := peer.LoadAnnouncePeerStream()
+		if !loaded {
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.NotFound, "AnnouncePeerStream not found")
+		}
+
+		if err := peer.FSM.Event(ctx, standard.PeerEventRegisterNormal); err != nil {
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		peer.Log.Info("peer hits local cache, send MetadataOnlyResponse")
+		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
+			Response: &schedulerv2.AnnouncePeerResponse_MetadataOnlyResponse{
+				MetadataOnlyResponse: &schedulerv2.MetadataOnlyResponse{},
+			},
+		}); err != nil {
+			peer.Log.Error(err)
+
+			// Collect RegisterPeerFailureCount metrics.
+			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
+				peer.Host.Type.Name()).Inc()
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return nil
+	}
+
+	// Provides an exponential delay with jitter to prevent thundering herd problems. When a host has many
+	// concurrent registration requests, later requests are delayed progressively to avoid overwhelming the
+	// source with simultaneous back-to-source tasks from a single host.
+	//
+	// Note that the delay is skipped for seed peers for the following reasons:
+	//  1. Seed peers serve latency-sensitive workloads such as nydus, which issue large numbers of small
+	//     IO requests. Applying a backoff delay would significantly increase the latency of these requests.
+	//  2. The number of seed peers in a cluster is controlled and limited, and the scheduler can control
+	//     the concurrency of back-to-source tasks for seed peers. Therefore, there is no risk of a
+	//     thundering herd against the source, and the delay is unnecessary.
+	if peer.Host.Type != types.HostTypeSuperSeed {
+		pkgtime.ExponentialDelayWithJitter(ctx, uint(host.ConcurrentRegisterCount.Load()), baseDelayForRegisterPeer, maxDelayForRegisterPeer)
 	}
 
 	blocklist := set.NewSafeSet[string]()
@@ -1413,7 +1474,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 
 		// Record the start time.
 		start := time.Now()
-		if err := v.scheduling.ScheduleCandidateParents(context.Background(), peer, peer.BlockParents); err != nil {
+		if err := v.scheduling.ScheduleCandidateParents(ctx, peer, peer.BlockParents); err != nil {
 			// Collect RegisterPeerFailureCount metrics.
 			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 				peer.Host.Type.Name()).Inc()
@@ -1482,7 +1543,7 @@ func (v *V2) handleDownloadPeerBackToSourceStartedRequest(ctx context.Context, p
 }
 
 // handleReschedulePeerRequest handles ReschedulePeerRequest of AnnouncePeerRequest.
-func (v *V2) handleReschedulePeerRequest(_ context.Context, peerID string, candidateParents []*commonv2.Peer) error {
+func (v *V2) handleReschedulePeerRequest(ctx context.Context, peerID string, candidateParents []*commonv2.Peer) error {
 	peer, loaded := v.resource.PeerManager().Load(peerID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
@@ -1495,7 +1556,7 @@ func (v *V2) handleReschedulePeerRequest(_ context.Context, peerID string, candi
 
 	// Record the start time.
 	start := time.Now()
-	if err := v.scheduling.ScheduleCandidateParents(context.Background(), peer, peer.BlockParents); err != nil {
+	if err := v.scheduling.ScheduleCandidateParents(ctx, peer, peer.BlockParents); err != nil {
 		return status.Error(codes.FailedPrecondition, err.Error())
 	}
 
@@ -1741,7 +1802,7 @@ func (v *V2) handleDownloadPieceFailedRequest(_ context.Context, peerID string, 
 		peer.UpdatedAt.Store(time.Now())
 		peer.BlockParents.Add(req.GetParentId())
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Handle task with piece temporary failed request.
@@ -2614,7 +2675,7 @@ func (v *V2) handleDownloadPersistentPieceFailedRequest(ctx context.Context, pee
 
 		peer.BlockParents = blocklist.Values()
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Update metadata of the persistent peer.
@@ -3830,7 +3891,7 @@ func (v *V2) handleDownloadPersistentCachePieceFailedRequest(ctx context.Context
 
 		peer.BlockParents = blocklist.Values()
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
-			parent.Host.UploadFailedCount.Inc()
+			parent.Host.UploadFailedCount.Add(1)
 		}
 
 		// Update metadata of the persistent cache peer.
@@ -4551,6 +4612,10 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
 	log := logger.WithStatImage(req.Url)
 
+	if req.Scope == "" {
+		req.Scope = managertypes.AllPeersScope
+	}
+
 	if req.ConcurrentLayerCount == nil {
 		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
 		req.ConcurrentLayerCount = &concurrentLayerCount
@@ -4613,6 +4678,18 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	filteredQueryParams := req.FilteredQueryParams
 	timeout := req.GetTimeout().AsDuration()
 	concurrentPeerCount := *req.ConcurrentPeerCount
+	scope := req.GetScope()
+	enableTaskIDBasedBlobDigest := req.GetEnableTaskIdBasedBlobDigest()
+
+	taskIDs := make(map[string]string, len(layers[0].URLs))
+	for _, url := range layers[0].URLs {
+		taskID, err := idgen.TaskIDV2(url, pieceLength, tag, application, filteredQueryParams, "", enableTaskIDBasedBlobDigest)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "failed to generate task id for layer %s: %s", url, err)
+		}
+
+		taskIDs[url] = taskID
+	}
 
 	var mu sync.Mutex
 	peers := map[string]*schedulerv2.PeerImage{}
@@ -4621,11 +4698,12 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	for _, url := range layers[0].URLs {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, "")
+			taskID := taskIDs[url]
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             timeout,
 				ConcurrentPeerCount: concurrentPeerCount,
+				Scope:               scope,
 			}
 
 			log := logger.WithStatImageAndTaskID(url, taskID)
@@ -4639,7 +4717,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 			log.Infof("get length of peers: %d", len(task.Peers))
 
 			for _, peer := range task.Peers {
-				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				hostID := idgen.HostID(peer.IP, peer.Hostname, false)
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerImage{
@@ -4715,8 +4793,13 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		taskID, err := idgen.TaskIDV2(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "failed to generate task id: %s", err)
+		}
+
 		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			TaskID:           taskID,
 			Url:              req.GetUrl(),
 			Timeout:          req.GetTimeout(),
 			Header:           req.GetHeader(),
@@ -4841,8 +4924,13 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 
 	var urls []string
 	if strings.HasSuffix(req.GetUrl(), "/") {
+		taskID, err := idgen.TaskIDV2(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "failed to generate task id: %s", err)
+		}
+
 		listResp, err := v.job.ListTaskEntries(ctx, &internaljob.ListTaskEntriesRequest{
-			TaskID:           idgen.TaskIDV2ByURLBased(req.GetUrl(), req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, ""),
+			TaskID:           taskID,
 			Url:              req.GetUrl(),
 			Timeout:          req.GetTimeout(),
 			Header:           req.GetHeader(),
@@ -4878,7 +4966,12 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, url := range urls {
 		eg.Go(func() error {
-			taskID := idgen.TaskIDV2ByURLBased(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "")
+			taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.GetTag(), req.GetApplication(), req.FilteredQueryParams, "", false)
+			if err != nil {
+				log.Errorf("generate task id failed: %s", err.Error())
+				return nil
+			}
+
 			getTaskRequest := &internaljob.GetTaskRequest{
 				TaskID:              taskID,
 				Timeout:             req.GetTimeout().AsDuration(),
@@ -4896,7 +4989,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 			log.Infof("get length of peers: %d", len(task.Peers))
 
 			for _, peer := range task.Peers {
-				hostID := idgen.HostIDV2(peer.IP, peer.Hostname, false)
+				hostID := idgen.HostID(peer.IP, peer.Hostname, false)
 				mu.Lock()
 				if _, exists := peers[hostID]; !exists {
 					peers[hostID] = &schedulerv2.PeerFile{

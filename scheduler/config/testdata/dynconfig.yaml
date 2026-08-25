@@ -1,0 +1,18 @@
+applications:
+  - id: 1
+    name: foo
+    url: example.com
+    bio: bar
+    priority:
+      value: 1
+      urls:
+        - regex: blobs*
+          value: 2
+seedPeerClusterConfig:
+  loadLimit: 2000
+schedulerClusterConfig:
+  candidateParentLimit: 5
+  filterParentLimit: 10
+  jobRateLimit: 10
+schedulerClusterClientConfig:
+  loadLimit: 100

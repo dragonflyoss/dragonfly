@@ -14,7 +14,6 @@ import (
 
 	manager "d7y.io/api/v2/pkg/apis/manager/v2"
 	types "d7y.io/dragonfly/v2/manager/types"
-	config "d7y.io/dragonfly/v2/scheduler/config"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,21 +41,6 @@ func (m *MockDynconfigInterface) EXPECT() *MockDynconfigInterfaceMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method.
-func (m *MockDynconfigInterface) Get() (*config.DynconfigData, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get")
-	ret0, _ := ret[0].(*config.DynconfigData)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Get indicates an expected call of Get.
-func (mr *MockDynconfigInterfaceMockRecorder) Get() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockDynconfigInterface)(nil).Get))
-}
-
 // GetApplications mocks base method.
 func (m *MockDynconfigInterface) GetApplications() ([]*manager.Application, error) {
 	m.ctrl.T.Helper()
@@ -70,36 +54,6 @@ func (m *MockDynconfigInterface) GetApplications() ([]*manager.Application, erro
 func (mr *MockDynconfigInterfaceMockRecorder) GetApplications() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplications", reflect.TypeOf((*MockDynconfigInterface)(nil).GetApplications))
-}
-
-// GetScheduler mocks base method.
-func (m *MockDynconfigInterface) GetScheduler() (*manager.Scheduler, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScheduler")
-	ret0, _ := ret[0].(*manager.Scheduler)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetScheduler indicates an expected call of GetScheduler.
-func (mr *MockDynconfigInterfaceMockRecorder) GetScheduler() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScheduler", reflect.TypeOf((*MockDynconfigInterface)(nil).GetScheduler))
-}
-
-// GetSchedulerCluster mocks base method.
-func (m *MockDynconfigInterface) GetSchedulerCluster() (*manager.SchedulerCluster, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSchedulerCluster")
-	ret0, _ := ret[0].(*manager.SchedulerCluster)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSchedulerCluster indicates an expected call of GetSchedulerCluster.
-func (mr *MockDynconfigInterfaceMockRecorder) GetSchedulerCluster() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerCluster", reflect.TypeOf((*MockDynconfigInterface)(nil).GetSchedulerCluster))
 }
 
 // GetSchedulerClusterClientConfig mocks base method.
@@ -145,47 +99,4 @@ func (m *MockDynconfigInterface) GetSeedPeerClusterConfig() (types.SeedPeerClust
 func (mr *MockDynconfigInterfaceMockRecorder) GetSeedPeerClusterConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedPeerClusterConfig", reflect.TypeOf((*MockDynconfigInterface)(nil).GetSeedPeerClusterConfig))
-}
-
-// GetSeedPeers mocks base method.
-func (m *MockDynconfigInterface) GetSeedPeers() ([]*manager.SeedPeer, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeedPeers")
-	ret0, _ := ret[0].([]*manager.SeedPeer)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSeedPeers indicates an expected call of GetSeedPeers.
-func (mr *MockDynconfigInterfaceMockRecorder) GetSeedPeers() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedPeers", reflect.TypeOf((*MockDynconfigInterface)(nil).GetSeedPeers))
-}
-
-// Serve mocks base method.
-func (m *MockDynconfigInterface) Serve() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Serve")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Serve indicates an expected call of Serve.
-func (mr *MockDynconfigInterfaceMockRecorder) Serve() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockDynconfigInterface)(nil).Serve))
-}
-
-// Stop mocks base method.
-func (m *MockDynconfigInterface) Stop() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stop")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Stop indicates an expected call of Stop.
-func (mr *MockDynconfigInterfaceMockRecorder) Stop() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockDynconfigInterface)(nil).Stop))
 }
