@@ -17,34 +17,27 @@
 package dependency
 
 import (
+	"net"
 	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
+	managerconfig "d7y.io/dragonfly/v2/manager/config"
 	schedulerconfig "d7y.io/dragonfly/v2/scheduler/config"
 )
 
-// tlsConfig mirrors the optional, pointer-typed TLS sections of the real
-// configs (e.g. scheduler/config.Config.Server.TLS), which are left nil by the
-// default config and therefore never appear in a marshalled value snapshot.
 type tlsConfig struct {
 	CACert string `yaml:"caCert" mapstructure:"caCert"`
 }
 
-// portRange mirrors manager/config.TCPListenPortRange, whose fields carry no
-// tags and therefore decode by field name.
 type portRange struct {
 	Start int
 	End   int
 }
 
-// testConfig mirrors the real config shape: an embedded squashed section,
-// populated scalar defaults, an optional nested section behind a nil pointer,
-// and a section with untagged fields.
 type testConfig struct {
 	base.Options `yaml:",inline" mapstructure:",squash"`
 
@@ -53,14 +46,10 @@ type testConfig struct {
 	Port portRange  `yaml:"port" mapstructure:"port"`
 }
 
-// newTestConfig returns the default config: scalar defaults set, optional TLS
-// section left nil (as config.New() does for the real configs).
 func newTestConfig() *testConfig {
 	return &testConfig{Name: "default-name"}
 }
 
-// setupViper resets and configures the package-global viper the same way
-// InitCommandAndConfig does, with the given env prefix.
 func setupViper(prefix string) {
 	viper.Reset()
 	viper.SetEnvPrefix(prefix)
@@ -68,90 +57,120 @@ func setupViper(prefix string) {
 	viper.AutomaticEnv()
 }
 
-func TestBindEnvsFromConfig_TopLevelOverride(t *testing.T) {
-	setupViper("test")
-	t.Setenv("TEST_NAME", "from-env")
+func TestBindEnvsFromConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		configFile string
+		envs       map[string]string
+		expect     func(t *testing.T, cfg *testConfig, err error)
+	}{
+		{
+			name: "no env keeps defaults",
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("default-name", cfg.Name)
+				assert.Nil(cfg.TLS)
+			},
+		},
+		{
+			name: "env overrides top-level default",
+			envs: map[string]string{"TEST_NAME": "from-env"},
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("from-env", cfg.Name)
+			},
+		},
+		{
+			name: "env materializes section behind nil pointer",
+			envs: map[string]string{"TEST_TLS_CACERT": "/etc/ssl/ca.crt"},
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				if assert.NotNil(cfg.TLS) {
+					assert.Equal("/etc/ssl/ca.crt", cfg.TLS.CACert)
+				}
+			},
+		},
+		{
+			name: "env binds squashed embedded section at top level",
+			envs: map[string]string{"TEST_CONSOLE": "true"},
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.True(cfg.Console)
+			},
+		},
+		{
+			name: "env binds untagged field by field name",
+			envs: map[string]string{"TEST_PORT_START": "65003"},
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(65003, cfg.Port.Start)
+			},
+		},
+		{
+			name:       "env overrides config file value and keeps file-only values",
+			configFile: "name: from-file\nport:\n  start: 7000\n",
+			envs:       map[string]string{"TEST_NAME": "from-env"},
+			expect: func(t *testing.T, cfg *testConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("from-env", cfg.Name)
+				assert.Equal(7000, cfg.Port.Start)
+			},
+		},
+	}
 
-	cfg := newTestConfig()
-	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			setupViper("test")
+			for k, v := range tc.envs {
+				t.Setenv(k, v)
+			}
 
-	assert.Equal(t, "from-env", cfg.Name)
+			cfg := newTestConfig()
+			bindEnvsFromConfig(cfg)
+
+			if tc.configFile != "" {
+				viper.SetConfigType("yaml")
+				assert.NoError(viper.ReadConfig(strings.NewReader(tc.configFile)))
+			}
+
+			tc.expect(t, cfg, viper.Unmarshal(cfg, initDecoderConfig))
+		})
+	}
 }
 
-// TestBindEnvsFromConfig_NestedNilPointerOverride is the regression guard: the
-// TLS section is nil in the default config, so the previous marshal-of-value
-// implementation never bound TEST_TLS_CACERT and this override was silently
-// dropped. Enumerating keys from the type closes that gap.
-func TestBindEnvsFromConfig_NestedNilPointerOverride(t *testing.T) {
-	setupViper("test")
-	t.Setenv("TEST_TLS_CACERT", "/etc/ssl/ca.crt")
-
-	cfg := newTestConfig()
-	require.Nil(t, cfg.TLS, "TLS should start nil to model the default config")
-
-	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
-
-	require.NotNil(t, cfg.TLS, "nested env override should materialize the TLS section")
-	assert.Equal(t, "/etc/ssl/ca.crt", cfg.TLS.CACert)
-}
-
-func TestBindEnvsFromConfig_NoEnvKeepsDefaults(t *testing.T) {
-	setupViper("test")
-
-	cfg := newTestConfig()
-	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
-
-	assert.Equal(t, "default-name", cfg.Name)
-	assert.Nil(t, cfg.TLS, "no env set should leave the optional section nil")
-}
-
-// TestBindEnvsFromConfig_SquashedOverride covers embedded sections tagged
-// mapstructure:",squash" (base.Options in the real configs), whose keys live
-// at the top level rather than under the field name.
-func TestBindEnvsFromConfig_SquashedOverride(t *testing.T) {
-	setupViper("test")
-	t.Setenv("TEST_CONSOLE", "true")
-
-	cfg := newTestConfig()
-	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
-
-	assert.True(t, cfg.Console, "squashed key should bind at the top level")
-}
-
-// TestBindEnvsFromConfig_UntaggedFieldOverride covers fields without a
-// mapstructure tag (manager/config.TCPListenPortRange), which decode by field
-// name matched case-insensitively.
-func TestBindEnvsFromConfig_UntaggedFieldOverride(t *testing.T) {
-	setupViper("test")
-	t.Setenv("TEST_PORT_START", "65003")
-
-	cfg := newTestConfig()
-	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
-
-	assert.Equal(t, 65003, cfg.Port.Start, "untagged field should bind by field name")
-}
-
-// TestBindEnvsFromConfig_RealSchedulerConfig exercises the actual production
-// config type end-to-end, including a nested key (Server.TLS.CACert) that lives
-// under a pointer left nil by config.New() — the regression the fix targets.
 func TestBindEnvsFromConfig_RealSchedulerConfig(t *testing.T) {
+	assert := assert.New(t)
 	setupViper("scheduler")
 	t.Setenv("SCHEDULER_SERVER_HOST", "override-host")
+	t.Setenv("SCHEDULER_SERVER_ADVERTISEIP", "192.0.2.1")
 	t.Setenv("SCHEDULER_SERVER_TLS_CACERT", "/etc/ssl/ca.crt")
 
 	cfg := schedulerconfig.New()
-	require.Nil(t, cfg.Server.TLS, "default scheduler config leaves Server.TLS nil")
+	assert.Nil(cfg.Server.TLS)
 
 	bindEnvsFromConfig(cfg)
-	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
+	assert.NoError(viper.Unmarshal(cfg, initDecoderConfig))
+	assert.Equal("override-host", cfg.Server.Host)
+	assert.True(cfg.Server.AdvertiseIP.Equal(net.ParseIP("192.0.2.1")))
+	if assert.NotNil(cfg.Server.TLS) {
+		assert.Equal("/etc/ssl/ca.crt", cfg.Server.TLS.CACert)
+	}
+}
 
-	assert.Equal(t, "override-host", cfg.Server.Host, "env should override a populated default")
+func TestBindEnvsFromConfig_RealManagerConfig(t *testing.T) {
+	assert := assert.New(t)
+	setupViper("manager")
+	t.Setenv("MANAGER_SERVER_GRPC_PORT_START", "65003")
 
-	require.NotNil(t, cfg.Server.TLS, "nested env override should materialize the TLS section")
-	assert.Equal(t, "/etc/ssl/ca.crt", cfg.Server.TLS.CACert)
+	cfg := managerconfig.New()
+	bindEnvsFromConfig(cfg)
+	assert.NoError(viper.Unmarshal(cfg, initDecoderConfig))
+	assert.Equal(65003, cfg.Server.GRPC.Port.Start)
 }
