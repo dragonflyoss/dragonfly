@@ -201,6 +201,23 @@ func TaskIDV2ByBlobDigest(url string) (string, error) {
 	}
 }
 
+// TaskIDV2 generates v2 version of task id, selecting the generator by the parameters,
+// identical to the client's task id generation. If the content is not empty, generate
+// the task id by the content. If the task id based blob digest is enabled and the url
+// is an OCI blob url, generate the task id by the blob digest. Otherwise, generate the
+// task id by the url based parameters.
+func TaskIDV2(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string, content string, enableTaskIDBasedBlobDigest bool) (string, error) {
+	if content != "" {
+		return TaskIDV2ByContent(content), nil
+	}
+
+	if enableTaskIDBasedBlobDigest && IsBlobURL(url) {
+		return TaskIDV2ByBlobDigest(url)
+	}
+
+	return TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, ""), nil
+}
+
 // PersistentCacheTaskIDByContent generates persistent cache task id by content.
 func PersistentCacheTaskIDByContent(content string) string {
 	return pkgdigest.SHA256FromStrings(content)
