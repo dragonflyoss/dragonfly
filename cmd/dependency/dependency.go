@@ -17,7 +17,6 @@
 package dependency
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -77,14 +76,17 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 			panic(fmt.Errorf("bind common flags to viper: %w", err))
 		}
 
-		// Config for binding env
+		// Env overrides: AutomaticEnv resolves env values for keys viper
+		// already knows (config file, flags); bindEnvsFromConfig registers
+		// every config struct key so overrides also reach keys absent from
+		// the config file (spf13/viper#761).
 		viper.SetEnvPrefix(rootName)
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		viper.AutomaticEnv()
-		_ = viper.BindEnv("config")
-
-		// Bind env for keys absent from the config file
 		bindEnvsFromConfig(config)
+
+		// "config" is a flag-only key, not part of the config struct.
+		_ = viper.BindEnv("config")
 
 		// Add common cmds only on root cmd
 		cmd.AddCommand(VersionCmd)
@@ -93,48 +95,55 @@ func InitCommandAndConfig(cmd *cobra.Command, useConfigFile bool, config any) {
 	}
 }
 
-// bindEnvsFromConfig binds an env for every config key, so AutomaticEnv can
-// override keys that are not present in the config file.
+// bindEnvsFromConfig binds an env for every key in the config struct, so
+// AutomaticEnv can override keys that are not present in the config file.
+// Viper only applies env overrides in Unmarshal for keys it already knows
+// (spf13/viper#761), so each key must be bound explicitly.
 func bindEnvsFromConfig(config any) {
-	schema := reflect.New(reflect.TypeOf(config).Elem()).Interface()
-	materializeStructPtrs(reflect.ValueOf(schema).Elem())
-
-	b, err := yaml.Marshal(schema)
-	if err != nil {
-		panic(fmt.Errorf("marshal config for env binding: %w", err))
-	}
-
-	keys := viper.New()
-	keys.SetConfigType("yaml")
-	if err := keys.ReadConfig(bytes.NewReader(b)); err != nil {
-		panic(fmt.Errorf("read config for env binding: %w", err))
-	}
-
-	for _, key := range keys.AllKeys() {
-		_ = viper.BindEnv(key)
-	}
+	bindEnvs(reflect.TypeOf(config), "")
 }
 
-// materializeStructPtrs allocates nil struct-pointers so their nested keys serialize.
-func materializeStructPtrs(v reflect.Value) {
-	switch v.Kind() {
-	case reflect.Pointer:
-		if v.Type().Elem().Kind() != reflect.Struct {
-			return
+// bindEnvs walks a config type over its mapstructure tags — the tags
+// viper.Unmarshal decodes with — and binds every leaf key. Walking the type
+// rather than a value also covers optional sections behind nil pointers
+// (e.g. the scheduler's server.tls), which a marshalled snapshot of the
+// default config would miss.
+func bindEnvs(t reflect.Type, prefix string) {
+	// Descend through pointers (optional sections like server.tls).
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		_ = viper.BindEnv(prefix)
+		return
+	}
+
+	for i := range t.NumField() {
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
 		}
-		if v.IsNil() {
-			if !v.CanSet() {
-				return
-			}
-			v.Set(reflect.New(v.Type().Elem()))
+
+		name, opts, _ := strings.Cut(field.Tag.Get("mapstructure"), ",")
+		switch {
+		case name == "-":
+			continue
+		case field.Anonymous && strings.Contains(opts, "squash"):
+			// mapstructure:",squash" flattens the embedded struct's
+			// keys into the parent.
+			bindEnvs(field.Type, prefix)
+			continue
+		case name == "":
+			// Untagged fields decode by field name, matched
+			// case-insensitively.
+			name = field.Name
 		}
-		materializeStructPtrs(v.Elem())
-	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			if f := v.Field(i); f.CanSet() {
-				materializeStructPtrs(f)
-			}
+
+		if prefix != "" {
+			name = prefix + "." + name
 		}
+		bindEnvs(field.Type, name)
 	}
 }
 

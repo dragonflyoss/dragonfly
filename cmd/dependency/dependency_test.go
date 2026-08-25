@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	schedulerconfig "d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -34,11 +35,22 @@ type tlsConfig struct {
 	CACert string `yaml:"caCert" mapstructure:"caCert"`
 }
 
-// testConfig mirrors the real config shape: populated scalar defaults plus an
-// optional nested section behind a nil pointer.
+// portRange mirrors manager/config.TCPListenPortRange, whose fields carry no
+// tags and therefore decode by field name.
+type portRange struct {
+	Start int
+	End   int
+}
+
+// testConfig mirrors the real config shape: an embedded squashed section,
+// populated scalar defaults, an optional nested section behind a nil pointer,
+// and a section with untagged fields.
 type testConfig struct {
+	base.Options `yaml:",inline" mapstructure:",squash"`
+
 	Name string     `yaml:"name" mapstructure:"name"`
 	TLS  *tlsConfig `yaml:"tls" mapstructure:"tls"`
+	Port portRange  `yaml:"port" mapstructure:"port"`
 }
 
 // newTestConfig returns the default config: scalar defaults set, optional TLS
@@ -94,6 +106,34 @@ func TestBindEnvsFromConfig_NoEnvKeepsDefaults(t *testing.T) {
 
 	assert.Equal(t, "default-name", cfg.Name)
 	assert.Nil(t, cfg.TLS, "no env set should leave the optional section nil")
+}
+
+// TestBindEnvsFromConfig_SquashedOverride covers embedded sections tagged
+// mapstructure:",squash" (base.Options in the real configs), whose keys live
+// at the top level rather than under the field name.
+func TestBindEnvsFromConfig_SquashedOverride(t *testing.T) {
+	setupViper("test")
+	t.Setenv("TEST_CONSOLE", "true")
+
+	cfg := newTestConfig()
+	bindEnvsFromConfig(cfg)
+	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
+
+	assert.True(t, cfg.Console, "squashed key should bind at the top level")
+}
+
+// TestBindEnvsFromConfig_UntaggedFieldOverride covers fields without a
+// mapstructure tag (manager/config.TCPListenPortRange), which decode by field
+// name matched case-insensitively.
+func TestBindEnvsFromConfig_UntaggedFieldOverride(t *testing.T) {
+	setupViper("test")
+	t.Setenv("TEST_PORT_START", "65003")
+
+	cfg := newTestConfig()
+	bindEnvsFromConfig(cfg)
+	require.NoError(t, viper.Unmarshal(cfg, initDecoderConfig))
+
+	assert.Equal(t, 65003, cfg.Port.Start, "untagged field should bind by field name")
 }
 
 // TestBindEnvsFromConfig_RealSchedulerConfig exercises the actual production
