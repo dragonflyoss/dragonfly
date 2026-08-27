@@ -135,7 +135,7 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 	// preheat request and carries the auth info in the headers, which is used
 	// as the issued token by the resolver.
 	header := nethttp.MapToHeader(req.Headers)
-	blobURLs, token, err := pkgoci.Resolve(ctx, ref,
+	_, blobURLs, token, err := pkgoci.Resolve(ctx, ref,
 		pkgoci.WithAuth(req.Username, req.Password),
 		pkgoci.WithPlatform(req.Platform),
 		pkgoci.WithHeader(header.Clone()),

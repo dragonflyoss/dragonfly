@@ -324,6 +324,77 @@ func TestIsBlobURL(t *testing.T) {
 	}
 }
 
+func TestIsManifestDigestURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, ok bool)
+	}{
+		{
+			name: "manifest url with sha256 digest",
+			url:  "http://registry.example.com/v2/library/ubuntu/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "manifest url with nested repository",
+			url:  "https://registry.io/v2/org/team/project/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "manifest url with port and query params",
+			url:  "http://localhost:5000/v2/myrepo/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e?ns=docker.io",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name: "manifest url with tag",
+			url:  "https://registry.example.com/v2/library/ubuntu/manifests/latest",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "manifest url with invalid digest length",
+			url:  "https://registry.example.com/v2/library/ubuntu/manifests/sha256:abc",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "blob url",
+			url:  "http://registry.example.com/v2/library/ubuntu/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "plain url",
+			url:  "https://example.com/file.txt",
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, IsManifestDigestURL(tc.url))
+		})
+	}
+}
+
 func TestTaskIDV2ByBlobDigest(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -391,6 +462,73 @@ func TestTaskIDV2ByBlobDigest(t *testing.T) {
 	}
 }
 
+func TestTaskIDV2ByManifestDigest(t *testing.T) {
+	tests := []struct {
+		name   string
+		url    string
+		expect func(t *testing.T, d string, err error)
+	}{
+		{
+			name: "generate taskID by sha256 manifest digest",
+			url:  "http://registry.example.com/v2/library/ubuntu/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "generate taskID by sha512 manifest digest",
+			url:  "https://registry.example.com/v2/myorg/myrepo/manifests/sha512:94381a28e8c039fedfa78de025158a068226c3ccd041b22c2c8e73fc993584e9b167d9ae32bc8b372c66701c808ab134e0768c8f16b9a3e61eec1ccf8faa9db8",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "94381a28e8c039fedfa78de025158a068226c3ccd041b22c2c8e73fc993584e9b167d9ae32bc8b372c66701c808ab134e0768c8f16b9a3e61eec1ccf8faa9db8")
+			},
+		},
+		{
+			name: "generate taskID by manifest digest with query params",
+			url:  "http://localhost:5000/v2/myrepo/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e?ns=docker.io",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "not a manifest url",
+			url:  "https://example.com/file.txt",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name: "invalid digest length",
+			url:  "http://registry.example.com/v2/library/ubuntu/manifests/sha256:abc",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name: "unsupported digest algorithm",
+			url:  "http://registry.example.com/v2/library/ubuntu/manifests/md5:8a04994a666b4e4b20a2fd9e5a44f44c",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := TaskIDV2ByManifestDigest(tc.url)
+			tc.expect(t, d, err)
+		})
+	}
+}
+
 func TestTaskIDV2(t *testing.T) {
 	tests := []struct {
 		name                        string
@@ -418,6 +556,35 @@ func TestTaskIDV2(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name:                        "generate taskID by manifest digest",
+			url:                         "http://registry.example.com/v2/library/ubuntu/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, "b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e")
+			},
+		},
+		{
+			name: "generate taskID by url based when manifest digest is disabled",
+			url:  "http://registry.example.com/v2/library/ubuntu/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("http://registry.example.com/v2/library/ubuntu/manifests/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e", nil, "foo", "bar", nil, ""))
+			},
+		},
+		{
+			name:                        "generate taskID by url based for manifest url with tag",
+			url:                         "http://registry.example.com/v2/library/ubuntu/manifests/latest",
+			enableTaskIDBasedBlobDigest: true,
+			expect: func(t *testing.T, d string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(d, TaskIDV2ByURLBased("http://registry.example.com/v2/library/ubuntu/manifests/latest", nil, "foo", "bar", nil, ""))
 			},
 		},
 		{

@@ -151,10 +151,10 @@ func WithHTTPClient(client *http.Client) ResolveOption {
 	}
 }
 
-// Resolve resolves the manifest of the reference (including multi-platform
-// image indexes) from the registry and returns the blob urls (config and
-// layers) along with the authorization token for downloading them.
-func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobURLs []string, token string, err error) {
+// Resolve resolves the manifest of the reference (including multi-platform image indexes) from
+// the registry and returns the manifest urls referenced by the digests of the resolved manifests,
+// the blob urls (config and layers) and the authorization token for downloading them.
+func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (manifestURLs, blobURLs []string, token string, err error) {
 	options := &resolveOptions{header: make(http.Header)}
 	for _, opt := range opts {
 		opt(options)
@@ -164,7 +164,7 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobUR
 	if options.platform != "" {
 		platform, err = platforms.Parse(options.platform)
 		if err != nil {
-			return nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", options.platform, err)
+			return nil, nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", options.platform, err)
 		}
 	}
 
@@ -179,16 +179,16 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobUR
 
 	client, err := NewAuthClient(ref, options.httpClient, options.username, options.password, authOpts...)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
 	}
 
-	manifests, err := client.ResolveManifests(ctx, ref, options.header.Clone(), platform)
+	manifests, manifestURLs, err := client.ResolveManifests(ctx, ref, options.header.Clone(), platform)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to pull image manifest: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to pull image manifest: %w", err)
 	}
 
 	if len(manifests) == 0 {
-		return nil, "", fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
+		return nil, nil, "", fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
 	}
 
 	for _, manifest := range manifests {
@@ -197,5 +197,5 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (blobUR
 		}
 	}
 
-	return blobURLs, client.AuthToken(), nil
+	return manifestURLs, blobURLs, client.AuthToken(), nil
 }

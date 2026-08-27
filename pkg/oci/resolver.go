@@ -34,11 +34,12 @@ import (
 
 // ResolveManifests fetches and resolves container image manifests from a registry for a specified platform.
 // It constructs an HTTP request to retrieve the manifest, handles authentication via headers, and processes the response
-// to return manifests matching the given platform. Supports single manifests and manifest lists.
-func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, header http.Header, platform specs.Platform) ([]distribution.Manifest, error) {
+// to return manifests matching the given platform, along with the manifest urls referenced by the digests of the
+// matched platform manifests, excluding the manifest list (image index) itself.
+func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, header http.Header, platform specs.Platform) ([]distribution.Manifest, []string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.ManifestURL(), nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Set header from the user request.
@@ -55,48 +56,51 @@ func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, heade
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
 	// Handle response.
 	if resp.StatusCode == http.StatusNotModified {
-		return nil, distribution.ErrManifestNotModified
+		return nil, nil, distribution.ErrManifestNotModified
 	} else if !registryclient.SuccessStatus(resp.StatusCode) {
-		return nil, registryclient.HandleErrorResponse(resp)
+		return nil, nil, registryclient.HandleErrorResponse(resp)
 	}
 
 	ctHeader := resp.Header.Get("Content-Type")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Unmarshal manifest.
-	manifest, _, err := distribution.UnmarshalManifest(ctHeader, body)
+	manifest, desc, err := distribution.UnmarshalManifest(ctHeader, body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	switch v := manifest.(type) {
 	case *schema1.SignedManifest, *schema2.DeserializedManifest, *ocischema.DeserializedManifest:
-		return []distribution.Manifest{v}, nil
+		digestRef := *ref
+		digestRef.Reference = desc.Digest.String()
+		return []distribution.Manifest{v}, []string{digestRef.ManifestURL()}, nil
 	case *manifestlist.DeserializedManifestList:
 		var result []distribution.Manifest
+		var manifestURLs []string
 		for _, desc := range filterManifests(v.Manifests, platform) {
 			ref.Reference = desc.Digest.String()
-			manifests, err := c.ResolveManifests(ctx, ref, header.Clone(), platform)
+			manifests, childManifestURLs, err := c.ResolveManifests(ctx, ref, header.Clone(), platform)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			result = append(result, manifests...)
+			manifestURLs = append(manifestURLs, childManifestURLs...)
 		}
 
-		return result, nil
+		return result, manifestURLs, nil
 	}
 
-	return nil, errors.New("unknown manifest type")
+	return nil, nil, errors.New("unknown manifest type")
 }
 
 // filterManifests filters a list of manifest descriptors to return only those
