@@ -94,13 +94,14 @@ type seedPeer struct {
 	// dialOpts is the options for grpc dial.
 	dialOptions []grpc.DialOption
 
+	// mu protects hosts and hashring, which are replaced together by refresh.
+	mu sync.RWMutex
+
 	// hosts is the list of seed peers.
 	hosts *sync.Map
 
 	// hashring is the hashring constructed from seed peers.
 	hashring *consistent.Consistent
-
-	snapshotMutex sync.RWMutex
 
 	// done is the channel to stop the seed peer service.
 	done chan struct{}
@@ -287,22 +288,19 @@ func (s *seedPeer) TriggerTask(ctx context.Context, rg *http.Range, task *Task) 
 
 // Select selects a seed peer by the task id.
 func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
-	// The synchronization of the hash ring is handled by the refreshSeedPeers periodically and asynchronously.
-	s.snapshotMutex.RLock()
-	hosts := s.hosts
-	hashring := s.hashring
-	s.snapshotMutex.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	if len(hashring.Members()) == 0 {
-		return nil, fmt.Errorf("no seed peer available")
+	if len(s.hashring.Members()) == 0 {
+		return nil, fmt.Errorf("no available seed peer")
 	}
 
-	addr, err := hashring.Get(taskID)
+	addr, err := s.hashring.Get(taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to select seed peer: %w", err)
 	}
 
-	host, ok := hosts.Load(addr)
+	host, ok := s.hosts.Load(addr)
 	if !ok {
 		return nil, fmt.Errorf("failed to load host: %s", addr)
 	}
@@ -312,10 +310,10 @@ func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 
 // HasAvailable returns whether there is any available seed peer.
 func (s *seedPeer) HasAvailable() bool {
-	s.snapshotMutex.RLock()
-	hashring := s.hashring
-	s.snapshotMutex.RUnlock()
-	return len(hashring.Members()) > 0
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.hashring.Members()) > 0
 }
 
 // Initialize seed peer.
@@ -352,6 +350,8 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 	return peer, nil
 }
 
+// refresh refreshes the hosts and hashring of seed peers, and clears
+// them when no seed peer is found in host manager.
 func (s *seedPeer) refresh(ctx context.Context) {
 	hosts := s.hostManager.LoadAllSeeds()
 	if len(hosts) == 0 {
@@ -359,7 +359,6 @@ func (s *seedPeer) refresh(ctx context.Context) {
 	}
 
 	healthyHosts := &sync.Map{}
-	// Do the health check for each seed peer.
 	for _, host := range hosts {
 		addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
 		if err := healthclient.Check(ctx, addr, s.dialOptions...); err != nil {
@@ -368,16 +367,17 @@ func (s *seedPeer) refresh(ctx context.Context) {
 			healthyHosts.Store(addr, host)
 		}
 	}
+
 	hashring := consistent.New()
 	healthyHosts.Range(func(addr, _ any) bool {
 		hashring.Add(addr.(string))
 		return true
 	})
 
-	s.snapshotMutex.Lock()
+	s.mu.Lock()
 	s.hosts = healthyHosts
 	s.hashring = hashring
-	s.snapshotMutex.Unlock()
+	s.mu.Unlock()
 }
 
 // Serve serves the seed peer service.
