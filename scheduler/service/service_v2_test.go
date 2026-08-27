@@ -3733,6 +3733,30 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 			},
 		},
 		{
+			name: "preheat single_seed_peer with task id based blob digest",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:                         "https://example.com/v2/image/manifesat/latest",
+				Scope:                       managertypes.SingleSeedPeerScope,
+				EnableTaskIdBasedBlobDigest: true,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.True(t, preheatRequest.EnableTaskIDBasedBlobDigest)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+				)
+
+				assert := assert.New(t)
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
 			name: "preheat single_seed_peer failed",
 			req: &schedulerv2.PreheatImageRequest{
 				Url:   "https://example.com/v2/image/manifesat/latest",
@@ -4017,6 +4041,32 @@ func TestServiceV2_StatImage(t *testing.T) {
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
 						assert.Equal(t, "b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", getTaskRequest.TaskID)
+						wg.Done()
+					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "seed-peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, len(resp.Image.Layers))
+				assert.Equal(1, len(resp.Peers))
+			},
+		},
+		{
+			name: "stat layer by peer with disabled task id based blob digest",
+			req: &schedulerv2.StatImageRequest{
+				Url:                         "https://example.com/v2/image/manifests/latest",
+				EnableTaskIdBasedBlobDigest: false,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, getTaskRequest *internaljob.GetTaskRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal(t, "d7f6227f463bd06d64c4e69fb2de589e0a587a687e1938d2a6321b66632d11e2", getTaskRequest.TaskID)
 						wg.Done()
 					}).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "seed-peer-1"}}}, nil).Times(1),
 				)

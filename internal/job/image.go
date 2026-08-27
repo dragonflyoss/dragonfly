@@ -100,6 +100,10 @@ type ManifestRequest struct {
 
 	// InsecureSkipVerify indicates whether to skip TLS verification.
 	InsecureSkipVerify bool
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when the blob url is an OCI blob url (e.g., /v2/<name>/blobs/sha256:<digest>).
+	EnableTaskIDBasedBlobDigest bool
 }
 
 // Image implements the interface for handling container images.
@@ -167,5 +171,7 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 		CertificateChain:    certificateChain,
 		InsecureSkipVerify:  req.InsecureSkipVerify,
 		Timeout:             req.Timeout,
+
+		EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 	}}, nil
 }

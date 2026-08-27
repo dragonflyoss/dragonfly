@@ -193,6 +193,13 @@ type PreheatArgs struct {
 
 	// Hdfs is the hdfs configuration for preheating files from hdfs.
 	Hdfs *commonv2.HDFS `json:"hdfs" binding:"omitempty"`
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when the layer url is an OCI blob url (e.g., /v2/<name>/blobs/sha256:<digest>). When enabled,
+	// the task ID is derived from the blob digest rather than the full URL, so the same blob from
+	// different registries shares one task ID. This enables deduplication across registries and
+	// eliminates redundant downloads and storage.
+	EnableTaskIDBasedBlobDigest bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {

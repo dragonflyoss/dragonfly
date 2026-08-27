@@ -267,7 +267,7 @@ func (j *job) PreheatSingleSeedPeer(ctx context.Context, req *internaljob.Prehea
 
 // preheatV1SingleSeedPeer preheats job by v1 grpc protocol.
 func (j *job) preheatV1SingleSeedPeer(ctx context.Context, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
-	taskID, err := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "", false)
+	taskID, err := idgen.TaskIDV2(req.URL, req.PieceLength, req.Tag, req.Application, idgen.ParseFilteredQueryParams(req.FilteredQueryParams), "", req.EnableTaskIDBasedBlobDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +363,7 @@ func (j *job) preheatV2SingleSeedPeer(ctx context.Context, req *internaljob.Preh
 // preheatV2SingleSeedPeerByURL preheats job by v2 grpc protocol for single seed peer by URL.
 func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req *internaljob.PreheatRequest, log *logger.SugaredLoggerOnWith) (*internaljob.PreheatResponse, error) {
 	filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-	taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+	taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", req.EnableTaskIDBasedBlobDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -385,20 +385,21 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 
 	stream, err := client.DownloadTask(ctx, taskID, &dfdaemonv2.DownloadTaskRequest{
 		Download: &commonv2.Download{
-			Url:                 url,
-			PieceLength:         req.PieceLength,
-			Type:                commonv2.TaskType_STANDARD,
-			Tag:                 &req.Tag,
-			Application:         &req.Application,
-			Priority:            commonv2.Priority(req.Priority),
-			FilteredQueryParams: filteredQueryParams,
-			RequestHeader:       req.Headers,
-			CertificateChain:    req.CertificateChain,
-			RemoteIp:            &advertiseIP,
-			Timeout:             durationpb.New(req.Timeout),
-			ObjectStorage:       req.ObjectStorage,
-			Hdfs:                req.Hdfs,
-			OutputPath:          req.OutputPath,
+			Url:                         url,
+			PieceLength:                 req.PieceLength,
+			Type:                        commonv2.TaskType_STANDARD,
+			Tag:                         &req.Tag,
+			Application:                 &req.Application,
+			Priority:                    commonv2.Priority(req.Priority),
+			FilteredQueryParams:         filteredQueryParams,
+			RequestHeader:               req.Headers,
+			CertificateChain:            req.CertificateChain,
+			RemoteIp:                    &advertiseIP,
+			Timeout:                     durationpb.New(req.Timeout),
+			ObjectStorage:               req.ObjectStorage,
+			Hdfs:                        req.Hdfs,
+			OutputPath:                  req.OutputPath,
+			EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 		}})
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -462,7 +463,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", req.EnableTaskIDBasedBlobDigest)
 					if err != nil {
 						return err
 					}
@@ -490,20 +491,21 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 						ctx,
 						taskID,
 						&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-							Url:                 url,
-							PieceLength:         req.PieceLength,
-							Type:                commonv2.TaskType_STANDARD,
-							Tag:                 &req.Tag,
-							Application:         &req.Application,
-							Priority:            commonv2.Priority(req.Priority),
-							FilteredQueryParams: filteredQueryParams,
-							RequestHeader:       req.Headers,
-							Timeout:             durationpb.New(req.Timeout),
-							CertificateChain:    req.CertificateChain,
-							RemoteIp:            &advertiseIP,
-							ObjectStorage:       req.ObjectStorage,
-							Hdfs:                req.Hdfs,
-							OutputPath:          req.OutputPath,
+							Url:                         url,
+							PieceLength:                 req.PieceLength,
+							Type:                        commonv2.TaskType_STANDARD,
+							Tag:                         &req.Tag,
+							Application:                 &req.Application,
+							Priority:                    commonv2.Priority(req.Priority),
+							FilteredQueryParams:         filteredQueryParams,
+							RequestHeader:               req.Headers,
+							Timeout:                     durationpb.New(req.Timeout),
+							CertificateChain:            req.CertificateChain,
+							RemoteIp:                    &advertiseIP,
+							ObjectStorage:               req.ObjectStorage,
+							Hdfs:                        req.Hdfs,
+							OutputPath:                  req.OutputPath,
+							EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -690,7 +692,7 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 				addr := net.JoinHostPort(ip, strconv.Itoa(int(port)))
 				peg.Go(func() error {
 					filteredQueryParams := idgen.ParseFilteredQueryParams(req.FilteredQueryParams)
-					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", false)
+					taskID, err := idgen.TaskIDV2(url, req.PieceLength, req.Tag, req.Application, filteredQueryParams, "", req.EnableTaskIDBasedBlobDigest)
 					if err != nil {
 						return err
 					}
@@ -718,20 +720,21 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 						ctx,
 						taskID,
 						&dfdaemonv2.DownloadTaskRequest{Download: &commonv2.Download{
-							Url:                 url,
-							PieceLength:         req.PieceLength,
-							Type:                commonv2.TaskType_STANDARD,
-							Tag:                 &req.Tag,
-							Application:         &req.Application,
-							Priority:            commonv2.Priority(req.Priority),
-							FilteredQueryParams: filteredQueryParams,
-							RequestHeader:       req.Headers,
-							Timeout:             durationpb.New(req.Timeout),
-							CertificateChain:    req.CertificateChain,
-							RemoteIp:            &advertiseIP,
-							ObjectStorage:       req.ObjectStorage,
-							Hdfs:                req.Hdfs,
-							OutputPath:          req.OutputPath,
+							Url:                         url,
+							PieceLength:                 req.PieceLength,
+							Type:                        commonv2.TaskType_STANDARD,
+							Tag:                         &req.Tag,
+							Application:                 &req.Application,
+							Priority:                    commonv2.Priority(req.Priority),
+							FilteredQueryParams:         filteredQueryParams,
+							RequestHeader:               req.Headers,
+							Timeout:                     durationpb.New(req.Timeout),
+							CertificateChain:            req.CertificateChain,
+							RemoteIp:                    &advertiseIP,
+							ObjectStorage:               req.ObjectStorage,
+							Hdfs:                        req.Hdfs,
+							OutputPath:                  req.OutputPath,
+							EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
