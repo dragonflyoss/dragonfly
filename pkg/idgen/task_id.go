@@ -111,6 +111,22 @@ func IsBlobURL(url string) bool {
 	return blobURLRegexp.MatchString(url)
 }
 
+// manifestURLRegexp matches OCI manifest URLs, e.g. http(s)://<registry>/v2/<repository>/manifests/<reference>.
+var manifestURLRegexp = regexp.MustCompile(`^(.*)://(.*)/v2/(.*)/manifests/([^?]+)(?:\?.*)?$`)
+
+// IsManifestDigestURL reports whether the url is an OCI manifest URL whose reference is
+// a digest, e.g. http(s)://<registry>/v2/<repository>/manifests/sha256:<hex>. A manifest
+// url referenced by a tag returns false, so it falls back to the url based task id.
+func IsManifestDigestURL(url string) bool {
+	matches := manifestURLRegexp.FindStringSubmatch(url)
+	if matches == nil {
+		return false
+	}
+
+	_, err := pkgdigest.Parse(matches[4])
+	return err == nil
+}
+
 // TaskIDV1 generates v1 version of task id.
 // filter is separated by & character.
 func TaskIDV1(url string, meta *commonv1.UrlMeta) string {
@@ -201,11 +217,32 @@ func TaskIDV2ByBlobDigest(url string) (string, error) {
 	}
 }
 
+// TaskIDV2ByManifestDigest generates v2 version of task id by the digest
+// extracted from the OCI manifest url.
+func TaskIDV2ByManifestDigest(url string) (string, error) {
+	matches := manifestURLRegexp.FindStringSubmatch(url)
+	if matches == nil {
+		return "", fmt.Errorf("invalid manifest url: %s", url)
+	}
+
+	d, err := pkgdigest.Parse(matches[4])
+	if err != nil {
+		return "", err
+	}
+
+	switch d.Algorithm {
+	case pkgdigest.AlgorithmCRC32, pkgdigest.AlgorithmSHA256, pkgdigest.AlgorithmSHA512:
+		return d.Encoded, nil
+	default:
+		return "", fmt.Errorf("unsupported digest algorithm: %s", d.Algorithm)
+	}
+}
+
 // TaskIDV2 generates v2 version of task id, selecting the generator by the parameters,
 // identical to the client's task id generation. If the content is not empty, generate
 // the task id by the content. If the task id based blob digest is enabled and the url
-// is an OCI blob url, generate the task id by the blob digest. Otherwise, generate the
-// task id by the url based parameters.
+// is an OCI blob url or an OCI manifest url referenced by a digest, generate the task
+// id by the digest. Otherwise, generate the task id by the url based parameters.
 func TaskIDV2(url string, pieceLength *uint64, tag, application string, filteredQueryParams []string, content string, enableTaskIDBasedBlobDigest bool) (string, error) {
 	if content != "" {
 		return TaskIDV2ByContent(content), nil
@@ -213,6 +250,10 @@ func TaskIDV2(url string, pieceLength *uint64, tag, application string, filtered
 
 	if enableTaskIDBasedBlobDigest && IsBlobURL(url) {
 		return TaskIDV2ByBlobDigest(url)
+	}
+
+	if enableTaskIDBasedBlobDigest && IsManifestDigestURL(url) {
+		return TaskIDV2ByManifestDigest(url)
 	}
 
 	return TaskIDV2ByURLBased(url, pieceLength, tag, application, filteredQueryParams, ""), nil
