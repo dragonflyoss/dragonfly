@@ -30,6 +30,20 @@ auth:
     timeout: 30s
     maxRefresh: 1m
 
+grpcAuth:
+  mode: required
+  requireTransportSecurity: true
+  jwt:
+    issuer: dragonfly-test
+    tokenTTL: 10m
+    maxTokenTTL: 15m
+    clockSkew: 30s
+    refreshBefore: 1m
+    activeKeyID: test-key
+    keys:
+      - id: test-key
+        secretFile: /etc/dragonfly/secrets/grpc-jwt/test-key
+
 database:
   type: mysql
   mysql:

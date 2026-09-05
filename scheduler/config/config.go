@@ -25,6 +25,7 @@ import (
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/fqdn"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -34,6 +35,9 @@ type Config struct {
 
 	// Server configuration.
 	Server ServerConfig `yaml:"server" mapstructure:"server"`
+
+	// GRPCAuth is the inter-component gRPC authentication configuration.
+	GRPCAuth grpcauth.Config `yaml:"grpcAuth" mapstructure:"grpcAuth"`
 
 	// Scheduler configuration.
 	Scheduler SchedulerConfig `yaml:"scheduler" mapstructure:"scheduler"`
@@ -353,6 +357,7 @@ func New() *Config {
 			LogMaxAge:        DefaultLogRotateMaxAge,
 			LogMaxBackups:    DefaultLogRotateMaxBackups,
 		},
+		GRPCAuth: grpcauth.DefaultConfig(),
 		Scheduler: SchedulerConfig{
 			Algorithm:              DefaultSchedulerAlgorithm,
 			BackToSourceCount:      DefaultSchedulerBackToSourceCount,
@@ -444,6 +449,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Server.RequestRateLimit <= 0 {
 		return errors.New("server requires parameter requestRateLimit")
+	}
+
+	if err := grpcauth.ValidateConfig(cfg.GRPCAuth); err != nil {
+		return err
 	}
 
 	if cfg.Scheduler.Algorithm == "" {

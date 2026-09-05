@@ -26,6 +26,7 @@ import (
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -38,6 +39,9 @@ type Config struct {
 
 	// Auth configuration.
 	Auth AuthConfig `yaml:"auth" mapstructure:"auth"`
+
+	// GRPCAuth is the inter-component gRPC authentication configuration.
+	GRPCAuth grpcauth.Config `yaml:"grpcAuth" mapstructure:"grpcAuth"`
 
 	// Database configuration.
 	Database DatabaseConfig `yaml:"database" mapstructure:"database"`
@@ -441,6 +445,7 @@ func New() *Config {
 				MaxRefresh: DefaultJWTMaxRefresh,
 			},
 		},
+		GRPCAuth: grpcauth.DefaultConfig(),
 		Database: DatabaseConfig{
 			Type: DatabaseTypeMysql,
 			Mysql: MysqlConfig{
@@ -531,6 +536,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Server.GRPC.RequestRateLimit <= 0 {
 		return errors.New("grpc requires parameter requestRateLimit")
+	}
+
+	if err := grpcauth.ValidateConfig(cfg.GRPCAuth); err != nil {
+		return err
 	}
 
 	if cfg.Server.REST.TLS != nil {

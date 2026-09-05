@@ -26,6 +26,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
+	grpcauth "d7y.io/dragonfly/v2/pkg/rpc/auth/jwt"
 	managerserver "d7y.io/dragonfly/v2/pkg/rpc/manager/server"
 )
 
@@ -51,6 +52,14 @@ type Server struct {
 func New(
 	cfg *config.Config, database *database.Database, cache *cache.Cache, searcher searcher.Searcher,
 	opts ...grpc.ServerOption) (*Server, *grpc.Server, error) {
+	return NewWithAuthentication(cfg, nil, database, cache, searcher, opts...)
+}
+
+// NewWithAuthentication returns a new manager server with inter-component JWT
+// authentication.
+func NewWithAuthentication(
+	cfg *config.Config, authenticator *grpcauth.Authenticator, database *database.Database, cache *cache.Cache, searcher searcher.Searcher,
+	opts ...grpc.ServerOption) (*Server, *grpc.Server, error) {
 	s := &Server{
 		config:   cfg,
 		db:       database.DB,
@@ -59,10 +68,11 @@ func New(
 		searcher: searcher,
 	}
 
-	return s, managerserver.New(
+	return s, managerserver.NewWithAuthentication(
 		newManagerServerV1(s.config, database, s.cache, s.searcher),
 		newManagerServerV2(s.config, database, s.cache, s.searcher),
 		cfg.Server.GRPC.RequestRateLimit,
+		authenticator,
 		opts...), nil
 }
 
