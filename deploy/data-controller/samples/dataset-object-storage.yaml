@@ -1,0 +1,48 @@
+# Distribute objects from S3 with credentials and a manager token held in Secrets, and
+# a manager other than the one configured on the controller.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-credentials
+  namespace: default
+type: Opaque
+stringData:
+  accessKeyID: AKIAEXAMPLE
+  accessKeySecret: EXAMPLESECRET
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: manager-token
+  namespace: default
+type: Opaque
+stringData:
+  token: REPLACE_WITH_MANAGER_PERSONAL_ACCESS_TOKEN
+---
+apiVersion: data.d7y.io/v1alpha1
+kind: Dataset
+metadata:
+  name: training-shards
+  namespace: default
+  labels:
+    tier: hot
+spec:
+  managerRef:
+    endpoint: https://dragonfly-manager.other-cluster.example.com
+    tokenSecretRef:
+      name: manager-token
+      key: token
+  sources:
+    - name: shards
+      type: file
+      urls:
+        - s3://training-data/shards/shard-0000.tar
+        - s3://training-data/shards/shard-0001.tar
+      objectStorage:
+        region: us-east-1
+        credentialsSecretRef:
+          name: s3-credentials
+  distribution:
+    scope: all_seed_peers
+    schedulerClusterIDs:
+      - 1

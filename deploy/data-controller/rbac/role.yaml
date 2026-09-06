@@ -1,0 +1,54 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dragonfly-datacontroller
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - data.d7y.io
+  resources:
+  - datalifecyclepolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - data.d7y.io
+  resources:
+  - datalifecyclepolicies/status
+  - datasets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - data.d7y.io
+  resources:
+  - datasets
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - data.d7y.io
+  resources:
+  - datasets/finalizers
+  verbs:
+  - update

@@ -6,6 +6,7 @@ set -o pipefail
 
 SCHEDULER_BINARY_NAME=scheduler
 MANAGER_BINARY_NAME=manager
+DATACONTROLLER_BINARY_NAME=datacontroller
 
 PKG=d7y.io/dragonfly/v2
 BUILD_IMAGE=golang:1.25.5-alpine3.23
@@ -54,6 +55,10 @@ build-manager-local() {
     build-local ${MANAGER_BINARY_NAME} manager
 }
 
+build-datacontroller-local() {
+    build-local ${DATACONTROLLER_BINARY_NAME} datacontroller
+}
+
 build-docker() {
     cd "${BUILD_SOURCE_HOME}" || return
     docker run \
@@ -85,6 +90,10 @@ build-manager-docker() {
     build-docker ${MANAGER_BINARY_NAME} manager
 }
 
+build-datacontroller-docker() {
+    build-docker ${DATACONTROLLER_BINARY_NAME} datacontroller
+}
+
 build-manager-console() {
     set -x
     CONSOLE_DIR=$(echo $CUR_DIR | sed 's#hack#manager/console#')
@@ -108,12 +117,16 @@ main() {
         manager)
             build-manager-docker
             ;;
+        datacontroller)
+            build-datacontroller-docker
+            ;;
         manager-console)
             build-manager-console
             ;;
         *)
             build-scheduler-docker
             build-manager-docker
+            build-datacontroller-docker
             ;;
         esac
     else
@@ -125,12 +138,16 @@ main() {
         manager)
             build-manager-local
             ;;
+        datacontroller)
+            build-datacontroller-local
+            ;;
         manager-console)
             build-manager-console
             ;;
         *)
             build-scheduler-local
             build-manager-local
+            build-datacontroller-local
             ;;
         esac
     fi

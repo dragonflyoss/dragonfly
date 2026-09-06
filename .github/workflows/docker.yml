@@ -17,11 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: ['manager', 'scheduler']
+        module: ['manager', 'scheduler', 'datacontroller']
         include:
           - module: manager
             platforms: linux/amd64,linux/arm64
           - module: scheduler
+            platforms: linux/amd64,linux/arm64
+          - module: datacontroller
             platforms: linux/amd64,linux/arm64
     timeout-minutes: 120
     steps:
