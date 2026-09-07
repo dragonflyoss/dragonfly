@@ -40,18 +40,21 @@ var (
 			"client_secret": "secret",
 			"name": "google"
 		}`
+
 	mockCreateOauthRequest = types.CreateOauthRequest{
 		Name:         "google",
 		BIO:          "bio",
 		ClientID:     "2",
 		ClientSecret: "secret",
 	}
+
 	mockUpdateOauthRequest = types.UpdateOauthRequest{
 		Name:         "google",
 		BIO:          "bio",
 		ClientID:     "2",
 		ClientSecret: "secret",
 	}
+
 	mockOauthModel = &models.Oauth{
 		BaseModel:    mockBaseModel,
 		Name:         "google",
@@ -59,10 +62,8 @@ var (
 		ClientID:     "2",
 		ClientSecret: "secret",
 	}
-	// mockOauthResponseModel is the shape clients observe over the wire.
-	// The model's ClientSecret field is marked json:"-" so the secret never
-	// crosses the API boundary, even on create/update/get responses.
-	mockOauthResponseModel = &models.Oauth{
+
+	mockOauthModelWithoutClientSecret = &models.Oauth{
 		BaseModel: mockBaseModel,
 		Name:      "google",
 		BIO:       "bio",
@@ -110,10 +111,11 @@ func TestHandlers_CreateOauth(t *testing.T) {
 				oauth := models.Oauth{}
 				err := json.Unmarshal(w.Body.Bytes(), &oauth)
 				assert.NoError(err)
-				assert.Equal(mockOauthResponseModel, &oauth)
+				assert.Equal(mockOauthModelWithoutClientSecret, &oauth)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -158,6 +160,7 @@ func TestHandlers_DestroyOauth(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -211,10 +214,11 @@ func TestHandlers_UpdateOauth(t *testing.T) {
 				oauth := models.Oauth{}
 				err := json.Unmarshal(w.Body.Bytes(), &oauth)
 				assert.NoError(err)
-				assert.Equal(mockOauthResponseModel, &oauth)
+				assert.Equal(mockOauthModelWithoutClientSecret, &oauth)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -259,10 +263,11 @@ func TestHandlers_GetOauth(t *testing.T) {
 				oauth := models.Oauth{}
 				err := json.Unmarshal(w.Body.Bytes(), &oauth)
 				assert.NoError(err)
-				assert.Equal(mockOauthResponseModel, &oauth)
+				assert.Equal(mockOauthModelWithoutClientSecret, &oauth)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -311,10 +316,11 @@ func TestHandlers_GetOauths(t *testing.T) {
 				oauth := models.Oauth{}
 				err := json.Unmarshal(w.Body.Bytes()[1:w.Body.Len()-1], &oauth)
 				assert.NoError(err)
-				assert.Equal(mockOauthResponseModel, &oauth)
+				assert.Equal(mockOauthModelWithoutClientSecret, &oauth)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

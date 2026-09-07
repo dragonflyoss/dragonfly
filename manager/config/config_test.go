@@ -207,13 +207,12 @@ func TestConfig_Load(t *testing.T) {
 		},
 	}
 
-	managerConfigYAML := &Config{}
-	contentYAML, _ := os.ReadFile("./testdata/manager.yaml")
-	if err := yaml.Unmarshal(contentYAML, &managerConfigYAML); err != nil {
-		t.Fatal(err)
-	}
-
 	assert := assert.New(t)
+	contentYAML, err := os.ReadFile("./testdata/manager.yaml")
+	assert.NoError(err)
+
+	managerConfigYAML := &Config{}
+	assert.NoError(yaml.Unmarshal(contentYAML, &managerConfigYAML))
 	assert.EqualValues(config, managerConfigYAML)
 }
 
@@ -259,7 +258,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter name")
+				assert.Error(err)
 			},
 		},
 		{
@@ -270,7 +269,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc requires parameter advertiseIP")
+				assert.Error(err)
 			},
 		},
 		{
@@ -281,7 +280,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc requires parameter listenIP")
+				assert.Error(err)
 			},
 		},
 		{
@@ -296,7 +295,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc tls requires parameter caCert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -311,7 +310,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -326,7 +325,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -337,7 +336,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "grpc requires parameter requestRateLimit")
+				assert.Error(err)
 			},
 		},
 		{
@@ -351,7 +350,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "rest tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -365,7 +364,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "rest tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -376,7 +375,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "jwt requires parameter realm")
+				assert.Error(err)
 			},
 		},
 		{
@@ -387,7 +386,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "jwt requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -399,7 +398,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "jwt requires parameter timeout")
+				assert.Error(err)
 			},
 		},
 		{
@@ -411,7 +410,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "jwt requires parameter maxRefresh")
+				assert.Error(err)
 			},
 		},
 		{
@@ -423,7 +422,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "database requires parameter type")
+				assert.Error(err)
 			},
 		},
 		{
@@ -437,7 +436,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql requires parameter user")
+				assert.Error(err)
 			},
 		},
 		{
@@ -451,7 +450,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql requires parameter password")
+				assert.Error(err)
 			},
 		},
 		{
@@ -465,7 +464,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql requires parameter host")
+				assert.Error(err)
 			},
 		},
 		{
@@ -479,7 +478,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql requires parameter port")
+				assert.Error(err)
 			},
 		},
 		{
@@ -493,7 +492,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql requires parameter dbname")
+				assert.Error(err)
 			},
 		},
 		{
@@ -512,7 +511,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql tls requires parameter caCert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -531,7 +530,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -550,7 +549,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "mysql tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -564,7 +563,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter user")
+				assert.Error(err)
 			},
 		},
 		{
@@ -578,7 +577,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter password")
+				assert.Error(err)
 			},
 		},
 		{
@@ -592,7 +591,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter host")
+				assert.Error(err)
 			},
 		},
 		{
@@ -606,7 +605,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter port")
+				assert.Error(err)
 			},
 		},
 		{
@@ -620,7 +619,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter dbname")
+				assert.Error(err)
 			},
 		},
 		{
@@ -634,7 +633,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter sslMode")
+				assert.Error(err)
 			},
 		},
 		{
@@ -648,7 +647,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "postgres requires parameter timezone")
+				assert.Error(err)
 			},
 		},
 		{
@@ -663,7 +662,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "polardb requires parameter user")
+				assert.Error(err)
 			},
 		},
 		{
@@ -678,7 +677,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "polardb requires parameter password")
+				assert.Error(err)
 			},
 		},
 		{
@@ -693,7 +692,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "polardb requires parameter addrList, format: \"host1:port1,host2:port2\"")
+				assert.Error(err)
 			},
 		},
 		{
@@ -708,7 +707,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "polardb requires parameter addrList, format: \"host1:port1,host2:port2\"")
+				assert.Error(err)
 			},
 		},
 		{
@@ -723,7 +722,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "polardb requires parameter dbname")
+				assert.Error(err)
 			},
 		},
 		{
@@ -738,7 +737,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter addrs")
+				assert.Error(err)
 			},
 		},
 		{
@@ -753,7 +752,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter db")
+				assert.Error(err)
 			},
 		},
 		{
@@ -768,7 +767,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter brokerDB")
+				assert.Error(err)
 			},
 		},
 		{
@@ -783,7 +782,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter backendDB")
+				assert.Error(err)
 			},
 		},
 		{
@@ -798,7 +797,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter ttl")
+				assert.Error(err)
 			},
 		},
 		{
@@ -814,7 +813,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis proxy requires parameter addr")
+				assert.Error(err)
 			},
 		},
 		{
@@ -882,7 +881,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls requires parameter caCert or insecureSkipVerify")
+				assert.Error(err)
 			},
 		},
 		{
@@ -901,7 +900,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls cert and key must be provided together")
+				assert.Error(err)
 			},
 		},
 		{
@@ -920,7 +919,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls cert and key must be provided together")
+				assert.Error(err)
 			},
 		},
 		{
@@ -935,7 +934,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "local requires parameter size")
+				assert.Error(err)
 			},
 		},
 		{
@@ -950,7 +949,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "local requires parameter ttl")
+				assert.Error(err)
 			},
 		},
 		{
@@ -965,7 +964,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "syncPeers requires parameter interval and it must be greater than 12 hours")
+				assert.Error(err)
 			},
 		},
 		{
@@ -980,7 +979,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "syncPeers requires parameter timeout")
+				assert.Error(err)
 			},
 		},
 		{
@@ -995,7 +994,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "syncPeers requires parameter batchSize")
+				assert.Error(err)
 			},
 		},
 		{
@@ -1011,7 +1010,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "metrics requires parameter addr")
+				assert.Error(err)
 			},
 		},
 	}

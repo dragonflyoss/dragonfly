@@ -23,35 +23,98 @@ import (
 )
 
 func TestFilterQuery(t *testing.T) {
-	url, err := FilterQueryParams("http://www.xx.yy/path?u=f&x=y&m=z&x=s#size", []string{"x", "m"})
-	assert.Nil(t, err)
-	assert.Equal(t, "http://www.xx.yy/path?u=f#size", url)
+	tests := []struct {
+		name    string
+		rawURL  string
+		filters []string
+		expect  func(t *testing.T, url string, err error)
+	}{
+		{
+			name:    "filter repeated params and keep fragment",
+			rawURL:  "http://www.xx.yy/path?u=f&x=y&m=z&x=s#size",
+			filters: []string{"x", "m"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("http://www.xx.yy/path?u=f#size", url)
+			},
+		},
+		{
+			name:    "no filters returns raw url",
+			rawURL:  "http://www.xx.yy/path?u=f&x=y&m=z&x=s#size",
+			filters: []string{},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("http://www.xx.yy/path?u=f&x=y&m=z&x=s#size", url)
+			},
+		},
+		{
+			name:    "remaining params are sorted",
+			rawURL:  "https://example.com/file.txt?z=9&b=2&a=1",
+			filters: []string{"z"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https://example.com/file.txt?a=1&b=2", url)
+			},
+		},
+		{
+			name:    "same key params keep order",
+			rawURL:  "https://example.com/file.txt?b=2&a=1&b=1",
+			filters: []string{"c"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https://example.com/file.txt?a=1&b=2&b=1", url)
+			},
+		},
+		{
+			name:    "all params filtered",
+			rawURL:  "https://example.com?foo=foo",
+			filters: []string{"foo"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https://example.com", url)
+			},
+		},
+		{
+			name:    "params are escaped",
+			rawURL:  "https://example.com/file.txt?k=a b&m=x*y&n=c~d",
+			filters: []string{"none"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https://example.com/file.txt?k=a+b&m=x%2Ay&n=c~d", url)
+			},
+		},
+		{
+			name:    "semicolon separated param is dropped",
+			rawURL:  "https://example.com/file.txt?a=1;x&b=2",
+			filters: []string{"none"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https://example.com/file.txt?b=2", url)
+			},
+		},
+		{
+			name:    "invalid url",
+			rawURL:  ":error_url",
+			filters: []string{"x", "m"},
+			expect: func(t *testing.T, url string, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(url)
+			},
+		},
+	}
 
-	url, err = FilterQueryParams("http://www.xx.yy/path?u=f&x=y&m=z&x=s#size", []string{})
-	assert.Nil(t, err)
-	assert.Equal(t, "http://www.xx.yy/path?u=f&x=y&m=z&x=s#size", url)
-
-	url, err = FilterQueryParams("https://example.com/file.txt?z=9&b=2&a=1", []string{"z"})
-	assert.Nil(t, err)
-	assert.Equal(t, "https://example.com/file.txt?a=1&b=2", url)
-
-	url, err = FilterQueryParams("https://example.com/file.txt?b=2&a=1&b=1", []string{"c"})
-	assert.Nil(t, err)
-	assert.Equal(t, "https://example.com/file.txt?a=1&b=2&b=1", url)
-
-	url, err = FilterQueryParams("https://example.com?foo=foo", []string{"foo"})
-	assert.Nil(t, err)
-	assert.Equal(t, "https://example.com", url)
-
-	url, err = FilterQueryParams("https://example.com/file.txt?k=a b&m=x*y&n=c~d", []string{"none"})
-	assert.Nil(t, err)
-	assert.Equal(t, "https://example.com/file.txt?k=a+b&m=x%2Ay&n=c~d", url)
-
-	url, err = FilterQueryParams("https://example.com/file.txt?a=1;x&b=2", []string{"none"})
-	assert.Nil(t, err)
-	assert.Equal(t, "https://example.com/file.txt?b=2", url)
-
-	url, err = FilterQueryParams(":error_url", []string{"x", "m"})
-	assert.NotNil(t, err)
-	assert.Equal(t, "", url)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			url, err := FilterQueryParams(tc.rawURL, tc.filters)
+			tc.expect(t, url, err)
+		})
+	}
 }

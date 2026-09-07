@@ -43,6 +43,7 @@ import (
 	pkgatomic "d7y.io/dragonfly/v2/pkg/atomic"
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/digest"
+	"d7y.io/dragonfly/v2/pkg/graph/dag"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
@@ -55,7 +56,8 @@ import (
 )
 
 var (
-	mockPluginDir       = "bas"
+	mockPluginDir = "bas"
+
 	mockSchedulerConfig = &config.SchedulerConfig{
 		RetryLimit:             2,
 		RetryBackToSourceLimit: 1,
@@ -180,7 +182,8 @@ var (
 	mockHostIDC                        = "bas"
 	mockPeerID                         = idgen.PeerID()
 	mockSeedPeerID                     = idgen.PeerID()
-	mockPiece                          = standard.Piece{
+
+	mockPiece = standard.Piece{
 		Number:      1,
 		ParentID:    "foo",
 		Offset:      2,
@@ -203,7 +206,7 @@ func TestScheduling_New(t *testing.T) {
 			pluginDir: "bar",
 			expect: func(t *testing.T, s any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(s).Elem().Name(), "scheduling")
+				assert.Equal("scheduling", reflect.TypeOf(s).Elem().Name())
 			},
 		},
 		{
@@ -211,7 +214,7 @@ func TestScheduling_New(t *testing.T) {
 			pluginDir: "",
 			expect: func(t *testing.T, s any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(s).Elem().Name(), "scheduling")
+				assert.Equal("scheduling", reflect.TypeOf(s).Elem().Name())
 			},
 		},
 	}
@@ -262,7 +265,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "load stream failed"))
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -287,7 +290,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "foo"))
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -312,7 +315,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -328,7 +331,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "load stream failed"))
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -355,7 +358,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "foo"))
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -382,7 +385,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -403,7 +406,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "scheduling exceeded RetryLimit"))
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -425,7 +428,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(len(peer.Parents()), 1)
+				assert.Len(peer.Parents(), 1)
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -461,7 +464,7 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -505,11 +508,61 @@ func TestScheduling_ScheduleCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				if assert.Equal(len(peer.Parents()), 1) {
-					assert.Equal(peer.Parents()[0].ID, mockSeedPeerID)
+				if assert.Len(peer.Parents(), 1) {
+					assert.Equal(mockSeedPeerID, peer.Parents()[0].ID)
 				}
+
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "peer is not stored in task",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.ErrorIs(err, status.Error(codes.Internal, dag.ErrVertexNotFound.Error()))
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+			},
+		},
+		{
+			name: "candidate parents found but peer stream load failed",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "load stream failed"))
+				assert.Empty(peer.Parents())
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+			},
+		},
+		{
+			name: "send NormalTaskResponse failed",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv2.Scheduler_AnnouncePeerServer, ma *schedulerv2mocks.MockScheduler_AnnouncePeerServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreAnnouncePeerStream(stream)
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2),
+					ma.Send(gomock.Any()).Return(errors.New("foo")).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "foo"))
+				assert.Empty(peer.Parents())
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 			},
 		},
 	}
@@ -569,7 +622,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -587,7 +640,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -605,7 +658,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -624,7 +677,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
 				assert.True(peer.Task.FSM.Is(standard.TaskStateRunning))
 			},
@@ -639,7 +692,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -659,7 +712,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -679,7 +732,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -700,7 +753,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
 				assert.True(peer.Task.FSM.Is(standard.TaskStateRunning))
 			},
@@ -716,7 +769,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -737,7 +790,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -758,7 +811,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -779,7 +832,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 1)
+				assert.Len(peer.Parents(), 1)
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -797,9 +850,6 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 				gomock.InOrder(
 					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
 					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
-						// Simulate concurrent scheduling that makes the candidate a successor
-						// of the peer after candidates were filtered, so adding the edge
-						// would create a cycle.
 						if err := task.AddPeerEdge(peer, seedPeer); err != nil {
 							return types.SchedulerClusterConfig{}, err
 						}
@@ -811,7 +861,7 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				assert.Equal(len(peer.Parents()), 0)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -832,9 +882,6 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 				gomock.InOrder(
 					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1),
 					md.GetSchedulerClusterConfig().DoAndReturn(func() (types.SchedulerClusterConfig, error) {
-						// Simulate concurrent scheduling that makes candidateParent a
-						// successor of the peer after candidates were filtered, so its
-						// edge can no longer be added.
 						if err := task.AddPeerEdge(peer, candidateParent); err != nil {
 							return types.SchedulerClusterConfig{}, err
 						}
@@ -856,9 +903,79 @@ func TestScheduling_ScheduleParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer) {
 				assert := assert.New(t)
-				if assert.Equal(len(peer.Parents()), 1) {
-					assert.Equal(peer.Parents()[0].ID, mockSeedPeerID)
+				if assert.Len(peer.Parents(), 1) {
+					assert.Equal(mockSeedPeerID, peer.Parents()[0].ID)
 				}
+
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "peer needs back-to-source but peer fsm event failed",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				peer.NeedBackToSource.Store(true)
+				peer.FSM.SetState(standard.PeerStateSucceeded)
+				peer.StoreReportPieceResultStream(stream)
+
+				mr.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedNeedBackSource})).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				assert.True(peer.FSM.Is(standard.PeerStateSucceeded))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "peer is not stored in task and retries until back-to-source",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreReportPieceResultStream(stream)
+
+				mr.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedNeedBackSource})).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				assert.True(peer.FSM.Is(standard.PeerStateBackToSource))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "candidate parents found but peer stream load failed",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				assert.Empty(peer.Parents())
+				assert.True(peer.FSM.Is(standard.PeerStateRunning))
+				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
+			},
+		},
+		{
+			name: "send PeerPacket failed",
+			mock: func(cancel context.CancelFunc, peer *standard.Peer, seedPeer *standard.Peer, blocklist set.SafeSet[string], stream schedulerv1.Scheduler_ReportPieceResultServer, mr *schedulerv1mocks.MockScheduler_ReportPieceResultServerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				task := peer.Task
+				task.StorePeer(peer)
+				task.StorePeer(seedPeer)
+				peer.FSM.SetState(standard.PeerStateRunning)
+				seedPeer.FSM.SetState(standard.PeerStateRunning)
+				peer.StoreReportPieceResultStream(stream)
+				gomock.InOrder(
+					md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(2),
+					mr.Send(gomock.Any()).Return(errors.New("foo")).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer) {
+				assert := assert.New(t)
+				assert.Empty(peer.Parents())
 				assert.True(peer.FSM.Is(standard.PeerStateRunning))
 				assert.True(peer.Task.FSM.Is(standard.TaskStatePending))
 			},
@@ -906,7 +1023,7 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
-				assert.Equal(len(parents), 0)
+				assert.Empty(parents)
 				assert.False(ok)
 			},
 		},
@@ -1146,8 +1263,66 @@ func TestScheduling_FindCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(len(parents), 1)
+				assert.Len(parents, 1)
 				assert.Equal(mockPeers[0].ID, parents[0].ID)
+			},
+		},
+		{
+			name: "seed parent is bad node",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateFailed)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "candidate parents are trimmed to candidateParentLimit",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
+				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+				peer.Task.StorePeer(mockPeers[1])
+				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
+				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
+					CandidateParentLimit: 1,
+				}, nil).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+				assert.Len(parents, 1)
+				assert.Contains([]string{mockPeers[0].ID, mockPeers[1].ID}, parents[0].ID)
+			},
+		},
+		{
+			name: "find parent and fetch filterParentLimit from manager dynconfig",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
+					FilterParentLimit: 2,
+				}, nil).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+				assert.Equal([]string{mockPeers[0].ID}, []string{parents[0].ID})
 			},
 		},
 	}
@@ -1196,7 +1371,7 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
-				assert.Equal(len(parents), 0)
+				assert.Empty(parents)
 				assert.False(ok)
 			},
 		},
@@ -1406,8 +1581,66 @@ func TestScheduling_FindParentAndCandidateParents(t *testing.T) {
 			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
 				assert := assert.New(t)
 				assert.True(ok)
-				assert.Equal(len(parents), 1)
+				assert.Len(parents, 1)
 				assert.Equal(mockPeers[0].ID, parents[0].ID)
+			},
+		},
+		{
+			name: "seed parent is bad node",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateFailed)
+				mockPeers[0].Host.Type = pkgtypes.HostTypeSuperSeed
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name: "candidate parents are trimmed to candidateParentLimit",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
+				mockPeers[1].FSM.SetState(standard.PeerStateBackToSource)
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+				peer.Task.StorePeer(mockPeers[1])
+				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
+				peer.Task.BackToSourcePeers.Add(mockPeers[1].ID)
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
+					CandidateParentLimit: 1,
+				}, nil).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+				assert.Len(parents, 1)
+				assert.Contains([]string{mockPeers[0].ID, mockPeers[1].ID}, parents[0].ID)
+			},
+		},
+		{
+			name: "find parent and fetch filterParentLimit from manager dynconfig",
+			mock: func(peer *standard.Peer, mockPeers []*standard.Peer, blocklist set.SafeSet[string], md *configmocks.MockDynconfigInterfaceMockRecorder) {
+				peer.FSM.SetState(standard.PeerStateRunning)
+				mockPeers[0].FSM.SetState(standard.PeerStateBackToSource)
+				peer.Task.StorePeer(peer)
+				peer.Task.StorePeer(mockPeers[0])
+				peer.Task.BackToSourcePeers.Add(mockPeers[0].ID)
+
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{
+					FilterParentLimit: 2,
+				}, nil).Times(2)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, mockPeers []*standard.Peer, parents []*standard.Peer, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+				assert.Equal([]string{mockPeers[0].ID}, []string{parents[0].ID})
 			},
 		},
 	}
@@ -1454,7 +1687,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 				dgst := candidateParents[0].Task.Digest.String()
 
 				assert := assert.New(t)
-				assert.EqualValues(resp, &schedulerv2.AnnouncePeerResponse_NormalTaskResponse{
+				assert.EqualValues(&schedulerv2.AnnouncePeerResponse_NormalTaskResponse{
 					NormalTaskResponse: &schedulerv2.NormalTaskResponse{
 						CandidateParents: []*commonv2.Peer{
 							{
@@ -1556,7 +1789,7 @@ func TestScheduling_constructSuccessNormalTaskResponse(t *testing.T) {
 							},
 						},
 					},
-				})
+				}, resp)
 			},
 		},
 	}
@@ -1589,7 +1822,7 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 			name: "construct success peer packet",
 			expect: func(t *testing.T, packet *schedulerv1.PeerPacket, parent *standard.Peer, candidateParents []*standard.Peer) {
 				assert := assert.New(t)
-				assert.EqualValues(packet, &schedulerv1.PeerPacket{
+				assert.EqualValues(&schedulerv1.PeerPacket{
 					TaskId: mockTaskID,
 					SrcPid: mockPeerID,
 					MainPeer: &schedulerv1.PeerPacket_DestPeer{
@@ -1605,7 +1838,7 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 						},
 					},
 					Code: commonv1.Code_Success,
-				})
+				}, packet)
 			},
 		},
 	}
@@ -1624,6 +1857,612 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 			candidateParents := []*standard.Peer{standard.NewPeer(idgen.PeerID(), mockTask, mockHost)}
 
 			tc.expect(t, constructSuccessPeerPacket(peer, parent, candidateParents), parent, candidateParents)
+		})
+	}
+}
+
+func newMockPersistentHost(id string, idc string, disableShared bool, diskFree uint64) *persistent.Host {
+	return persistent.NewHost(
+		id, id, id, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
+		1, disableShared, pkgtypes.HostTypeNormal, persistent.CPU{}, persistent.Memory{}, persistent.Network{IDC: idc},
+		persistent.Disk{Free: diskFree}, persistent.Build{}, time.Second, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentTask(persistentReplicaCount, contentLength uint64) *persistent.Task {
+	return persistent.NewTask(mockTaskID, mockTaskURL, "", "", persistent.TaskStatePending, persistentReplicaCount, contentLength, 1, time.Hour, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentPeer(state string, isPersistent bool, task *persistent.Task, host *persistent.Host) *persistent.Peer {
+	return persistent.NewPeer(idgen.PeerID(), state, isPersistent, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentCacheHost(id string, idc string, disableShared bool, diskFree uint64) *persistentcache.Host {
+	return persistentcache.NewHost(
+		id, id, id, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
+		1, disableShared, pkgtypes.HostTypeNormal, persistentcache.CPU{}, persistentcache.Memory{}, persistentcache.Network{IDC: idc},
+		persistentcache.Disk{Free: diskFree}, persistentcache.Build{}, time.Second, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentCacheTask(persistentReplicaCount, contentLength uint64) *persistentcache.Task {
+	return persistentcache.NewTask(mockTaskID, mockTaskTag, mockTaskApplication, persistentcache.TaskStatePending, persistentReplicaCount, mockTaskPieceLength, contentLength, 1, time.Hour, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentCachePeer(state string, isPersistent bool, task *persistentcache.Task, host *persistentcache.Host) *persistentcache.Peer {
+	return persistentcache.NewPeer(idgen.PeerID(), state, isPersistent, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
+}
+
+func TestScheduling_FindReplicatePersistentHosts(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host)
+		expect func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool)
+	}{
+		{
+			name: "load current persistent replica count failed",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "task already has enough persistent replicas",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(task.PersistentReplicaCount, nil).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "cached parents satisfy the needed replica count",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				cachedParents := []*persistent.Peer{
+					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached1", mockHostIDC, false, 1000)),
+					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached2", mockHostIDC, false, 1000)),
+					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached3", mockHostIDC, false, 1000)),
+				}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(1), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(cachedParents, nil).Times(1)
+				return cachedParents[:2], nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, cachedParents)
+				assert.Nil(hosts)
+				assert.Equal(uint(0), blocklist.Len())
+			},
+		},
+		{
+			name: "ineligible cached parents are filtered and replicate hosts are found",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				blocklisted := newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("blocklisted", mockHostIDC, false, 1000))
+				blocklist.Add(blocklisted.ID)
+				persistentPeer := newMockPersistentPeer(persistent.PeerStateSucceeded, true, task, newMockPersistentHost("persistent", mockHostIDC, false, 1000))
+				parents := []*persistent.Peer{
+					blocklisted,
+					persistentPeer,
+					newMockPersistentPeer(persistent.PeerStateRunning, false, task, newMockPersistentHost("running", mockHostIDC, false, 1000)),
+					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("disableShared", mockHostIDC, true, 1000)),
+				}
+				hosts := []*persistent.Host{
+					newMockPersistentHost("shared", mockHostIDC, false, 1000),
+					newMockPersistentHost("hostDisableShared", mockHostIDC, true, 1000),
+					newMockPersistentHost("smallDisk", mockHostIDC, false, 10),
+				}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(2), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(parents, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistent.Peer{persistentPeer}, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 1, gomock.Any()).Return(hosts, nil).Times(1)
+				return nil, hosts[:1]
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Nil(cachedParents)
+				assert.Equal(mockHosts, hosts)
+				assert.True(blocklist.Contains("persistent"))
+			},
+		},
+		{
+			name: "load current persistent peers failed",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, errors.New("foo")).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "cached parents are insufficient and are completed with replicate hosts",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				cachedParent := newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached", mockHostIDC, false, 1000))
+				persistentPeer := newMockPersistentPeer(persistent.PeerStateSucceeded, true, task, newMockPersistentHost("persistent", mockHostIDC, false, 1000))
+				hosts := []*persistent.Host{newMockPersistentHost("host1", mockHostIDC, false, 1000), newMockPersistentHost("host2", mockHostIDC, false, 1000)}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return([]*persistent.Peer{cachedParent, persistentPeer}, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistent.Peer{persistentPeer}, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 2, gomock.Any()).Return(hosts, nil).Times(1)
+				return []*persistent.Peer{cachedParent}, hosts
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, cachedParents)
+				assert.Equal(mockHosts, hosts)
+				assert.True(blocklist.Contains("cached"))
+				assert.True(blocklist.Contains("persistent"))
+			},
+		},
+		{
+			name: "load replicate hosts failed",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 3, gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "no cached parent and no replicate host",
+			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 3, gomock.Any()).Return(nil, nil).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, mockHosts []*persistent.Host, cachedParents []*persistent.Peer, hosts []*persistent.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			taskManager := persistent.NewMockTaskManager(ctl)
+			peerManager := persistent.NewMockPeerManager(ctl)
+			hostManager := persistent.NewMockHostManager(ctl)
+			persistentResource.EXPECT().TaskManager().Return(taskManager).AnyTimes()
+			persistentResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
+			persistentResource.EXPECT().HostManager().Return(hostManager).AnyTimes()
+
+			task := newMockPersistentTask(3, 100)
+			blocklist := set.NewSafeSet[string]()
+			mockParents, mockHosts := tc.mock(task, blocklist, taskManager.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
+			cachedParents, hosts, found := scheduling.FindReplicatePersistentHosts(context.Background(), task, blocklist)
+			tc.expect(t, mockParents, mockHosts, cachedParents, hosts, blocklist, found)
+		})
+	}
+}
+
+func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer
+		expect func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool)
+	}{
+		{
+			name: "load persistent parents failed",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return(nil, errors.New("foo")).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent is in blocklist",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				parent := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("parent", mockHostIDC, false, 1000))
+				blocklist.Add(parent.ID)
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent shares the peer host",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				parent := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, peer.Host)
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent is bad node",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				parent := newMockPersistentPeer(persistent.PeerStateFailed, true, peer.Task, newMockPersistentHost("parent", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "candidate parents are sorted by affinity",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				far := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("far", "other", false, 1000))
+				near := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("near", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{far, near}, nil).Times(1)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
+				return []*persistent.Peer{near, far}
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, candidateParents)
+			},
+		},
+		{
+			name: "candidate parents are trimmed to candidateParentLimit",
+			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
+				far := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("far", "other", false, 1000))
+				near := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("near", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{far, near}, nil).Times(1)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{CandidateParentLimit: 1}, nil).Times(1)
+				return []*persistent.Peer{near}
+			},
+			expect: func(t *testing.T, mockParents []*persistent.Peer, candidateParents []*persistent.Peer, found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, candidateParents)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			peerManager := persistent.NewMockPeerManager(ctl)
+			persistentResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
+
+			task := newMockPersistentTask(3, 100)
+			peer := newMockPersistentPeer(persistent.PeerStateRunning, false, task, newMockPersistentHost("peer", mockHostIDC, false, 1000))
+			blocklist := set.NewSafeSet[string]()
+			mockParents := tc.mock(peer, blocklist, peerManager.EXPECT(), dynconfig.EXPECT())
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
+			candidateParents, found := scheduling.FindCandidatePersistentParents(context.Background(), peer, blocklist)
+			tc.expect(t, mockParents, candidateParents, found)
+		})
+	}
+}
+
+func TestScheduling_FindReplicatePersistentCacheHosts(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host)
+		expect func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool)
+	}{
+		{
+			name: "load current persistent replica count failed",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "task already has enough persistent replicas",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(task.PersistentReplicaCount, nil).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "cached parents satisfy the needed replica count",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				cachedParents := []*persistentcache.Peer{
+					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached1", mockHostIDC, false, 1000)),
+					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached2", mockHostIDC, false, 1000)),
+					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached3", mockHostIDC, false, 1000)),
+				}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(1), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(cachedParents, nil).Times(1)
+				return cachedParents[:2], nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, cachedParents)
+				assert.Nil(hosts)
+				assert.Equal(uint(0), blocklist.Len())
+			},
+		},
+		{
+			name: "ineligible cached parents are filtered and replicate hosts are found",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				blocklisted := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("blocklisted", mockHostIDC, false, 1000))
+				blocklist.Add(blocklisted.ID)
+				persistentPeer := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, newMockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
+				parents := []*persistentcache.Peer{
+					blocklisted,
+					persistentPeer,
+					newMockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, newMockPersistentCacheHost("running", mockHostIDC, false, 1000)),
+					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("disableShared", mockHostIDC, true, 1000)),
+				}
+				hosts := []*persistentcache.Host{
+					newMockPersistentCacheHost("shared", mockHostIDC, false, 1000),
+					newMockPersistentCacheHost("hostDisableShared", mockHostIDC, true, 1000),
+					newMockPersistentCacheHost("smallDisk", mockHostIDC, false, 10),
+				}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(2), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(parents, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistentcache.Peer{persistentPeer}, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 1, gomock.Any()).Return(hosts, nil).Times(1)
+				return nil, hosts[:1]
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Nil(cachedParents)
+				assert.Equal(mockHosts, hosts)
+				assert.True(blocklist.Contains("persistent"))
+			},
+		},
+		{
+			name: "load current persistent peers failed",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, errors.New("foo")).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "cached parents are insufficient and are completed with replicate hosts",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				cachedParent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached", mockHostIDC, false, 1000))
+				persistentPeer := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, newMockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
+				hosts := []*persistentcache.Host{newMockPersistentCacheHost("host1", mockHostIDC, false, 1000), newMockPersistentCacheHost("host2", mockHostIDC, false, 1000)}
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return([]*persistentcache.Peer{cachedParent, persistentPeer}, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistentcache.Peer{persistentPeer}, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 2, gomock.Any()).Return(hosts, nil).Times(1)
+				return []*persistentcache.Peer{cachedParent}, hosts
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, cachedParents)
+				assert.Equal(mockHosts, hosts)
+				assert.True(blocklist.Contains("cached"))
+				assert.True(blocklist.Contains("persistent"))
+			},
+		},
+		{
+			name: "load replicate hosts failed",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 3, gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+		{
+			name: "no cached parent and no replicate host",
+			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
+				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
+				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return(nil, nil).Times(1)
+				mh.LoadRandom(gomock.Any(), 3, gomock.Any()).Return(nil, nil).Times(1)
+				return nil, nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, mockHosts []*persistentcache.Host, cachedParents []*persistentcache.Peer, hosts []*persistentcache.Host, blocklist set.SafeSet[string], found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Nil(cachedParents)
+				assert.Nil(hosts)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			taskManager := persistentcache.NewMockTaskManager(ctl)
+			peerManager := persistentcache.NewMockPeerManager(ctl)
+			hostManager := persistentcache.NewMockHostManager(ctl)
+			persistentCacheResource.EXPECT().TaskManager().Return(taskManager).AnyTimes()
+			persistentCacheResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
+			persistentCacheResource.EXPECT().HostManager().Return(hostManager).AnyTimes()
+
+			task := newMockPersistentCacheTask(3, 100)
+			blocklist := set.NewSafeSet[string]()
+			mockParents, mockHosts := tc.mock(task, blocklist, taskManager.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
+			cachedParents, hosts, found := scheduling.FindReplicatePersistentCacheHosts(context.Background(), task, blocklist)
+			tc.expect(t, mockParents, mockHosts, cachedParents, hosts, blocklist, found)
+		})
+	}
+}
+
+func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer
+		expect func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool)
+	}{
+		{
+			name: "load persistent cache parents failed",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return(nil, errors.New("foo")).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent is in blocklist",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				parent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("parent", mockHostIDC, false, 1000))
+				blocklist.Add(parent.ID)
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent shares the peer host",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				parent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, peer.Host)
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "parent is bad node",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				parent := newMockPersistentCachePeer(persistentcache.PeerStateFailed, true, peer.Task, newMockPersistentCacheHost("parent", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
+				return nil
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.False(found)
+				assert.Empty(candidateParents)
+			},
+		},
+		{
+			name: "candidate parents are sorted by affinity",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				far := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("far", "other", false, 1000))
+				near := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("near", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{far, near}, nil).Times(1)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
+				return []*persistentcache.Peer{near, far}
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, candidateParents)
+			},
+		},
+		{
+			name: "candidate parents are trimmed to candidateParentLimit",
+			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
+				far := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("far", "other", false, 1000))
+				near := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("near", mockHostIDC, false, 1000))
+				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{far, near}, nil).Times(1)
+				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{CandidateParentLimit: 1}, nil).Times(1)
+				return []*persistentcache.Peer{near}
+			},
+			expect: func(t *testing.T, mockParents []*persistentcache.Peer, candidateParents []*persistentcache.Peer, found bool) {
+				assert := assert.New(t)
+				assert.True(found)
+				assert.Equal(mockParents, candidateParents)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			dynconfig := configmocks.NewMockDynconfigInterface(ctl)
+			persistentResource := persistent.NewMockResource(ctl)
+			persistentCacheResource := persistentcache.NewMockResource(ctl)
+			peerManager := persistentcache.NewMockPeerManager(ctl)
+			persistentCacheResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
+
+			task := newMockPersistentCacheTask(3, 100)
+			peer := newMockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, newMockPersistentCacheHost("peer", mockHostIDC, false, 1000))
+			blocklist := set.NewSafeSet[string]()
+			mockParents := tc.mock(peer, blocklist, peerManager.EXPECT(), dynconfig.EXPECT())
+			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
+			candidateParents, found := scheduling.FindCandidatePersistentCacheParents(context.Background(), peer, blocklist)
+			tc.expect(t, mockParents, candidateParents, found)
 		})
 	}
 }

@@ -154,23 +154,24 @@ func TestHost_NewHost(t *testing.T) {
 			rawHost: mockRawHost,
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.False(host.DisableShared)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -181,23 +182,24 @@ func TestHost_NewHost(t *testing.T) {
 			rawHost: mockRawSeedHost,
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawSeedHost.ID)
-				assert.Equal(host.Type, mockRawSeedHost.Type)
-				assert.Equal(host.Name, mockRawSeedHost.Name)
-				assert.Equal(host.Hostname, mockRawSeedHost.Hostname)
-				assert.Equal(host.IP, mockRawSeedHost.IP)
-				assert.Equal(host.Port, mockRawSeedHost.Port)
-				assert.Equal(host.DownloadPort, mockRawSeedHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawSeedHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultSeedPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawSeedHost.ID, host.ID)
+				assert.Equal(mockRawSeedHost.Type, host.Type)
+				assert.Equal(mockRawSeedHost.Name, host.Name)
+				assert.Equal(mockRawSeedHost.Hostname, host.Hostname)
+				assert.Equal(mockRawSeedHost.IP, host.IP)
+				assert.Equal(mockRawSeedHost.Port, host.Port)
+				assert.Equal(mockRawSeedHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawSeedHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.False(host.DisableShared)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultSeedPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -209,21 +211,21 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithSchedulerClusterID(1)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.SchedulerClusterID, uint64(1))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(uint64(1), host.SchedulerClusterID)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -235,23 +237,23 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithObjectStoragePort(1)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(1))
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(1), host.ObjectStoragePort)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -260,28 +262,42 @@ func TestHost_NewHost(t *testing.T) {
 		{
 			name:    "new host and set upload loadlimit",
 			rawHost: mockRawHost,
-			options: []HostOption{WithConcurrentUploadLimit(200)},
+			options: []HostOption{WithConcurrentUploadLimit(300)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(200))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(300), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
+				assert.NotNil(host.Log)
+			},
+		},
+		{
+			name:    "new host and set disable shared",
+			rawHost: mockRawHost,
+			options: []HostOption{WithDisableShared(true)},
+			expect: func(t *testing.T, host *Host) {
+				assert := assert.New(t)
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.True(host.DisableShared)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotNil(host.Log)
 			},
 		},
@@ -291,24 +307,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithOS("linux")},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.OS, "linux")
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal("linux", host.OS)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -320,24 +336,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithPlatform("ubuntu")},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.Platform, "ubuntu")
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal("ubuntu", host.Platform)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -349,24 +365,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithPlatformFamily("debian")},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.PlatformFamily, "debian")
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal("debian", host.PlatformFamily)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -378,23 +394,23 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithPlatformVersion("22.04")},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.PlatformVersion, "22.04")
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal("22.04", host.PlatformVersion)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -406,24 +422,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithKernelVersion("5.15.0-27-generic")},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.KernelVersion, "5.15.0-27-generic")
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal("5.15.0-27-generic", host.KernelVersion)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -435,24 +451,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithCPU(mockCPU)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.EqualValues(host.CPU, mockCPU)
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.EqualValues(mockCPU, host.CPU)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -464,24 +480,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithMemory(mockMemory)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.EqualValues(host.Memory, mockMemory)
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.EqualValues(mockMemory, host.Memory)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -493,24 +509,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithNetwork(mockNetwork)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.EqualValues(host.Network, mockNetwork)
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.EqualValues(mockNetwork, host.Network)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -522,24 +538,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithDisk(mockDisk)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.EqualValues(host.Disk, mockDisk)
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.EqualValues(mockDisk, host.Disk)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -551,24 +567,24 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithBuild(mockBuild)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.EqualValues(host.Build, mockBuild)
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, time.Duration(0))
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.EqualValues(mockBuild, host.Build)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(time.Duration(0), host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -580,23 +596,23 @@ func TestHost_NewHost(t *testing.T) {
 			options: []HostOption{WithAnnounceInterval(mockAnnounceInterval)},
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
-				assert.Equal(host.ID, mockRawHost.ID)
-				assert.Equal(host.Type, types.HostTypeNormal)
-				assert.Equal(host.Name, mockRawHost.Name)
-				assert.Equal(host.Hostname, mockRawHost.Hostname)
-				assert.Equal(host.IP, mockRawHost.IP)
-				assert.Equal(host.Port, mockRawHost.Port)
-				assert.Equal(host.DownloadPort, mockRawHost.DownloadPort)
-				assert.Equal(host.ProxyPort, mockRawHost.ProxyPort)
-				assert.Equal(host.ObjectStoragePort, int32(0))
-				assert.Equal(host.SchedulerClusterID, uint64(0))
-				assert.Equal(host.AnnounceInterval, 5*time.Minute)
-				assert.Equal(host.ConcurrentUploadLimit.Load(), int32(config.DefaultPeerConcurrentUploadLimit))
-				assert.Equal(host.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(host.UploadCount.Load(), int64(0))
-				assert.Equal(host.UploadFailedCount.Load(), int64(0))
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(types.HostTypeNormal, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(int32(0), host.ObjectStoragePort)
+				assert.Equal(uint64(0), host.SchedulerClusterID)
+				assert.Equal(mockAnnounceInterval, host.AnnounceInterval)
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.ConcurrentUploadLimit.Load())
+				assert.Equal(int32(0), host.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), host.UploadCount.Load())
+				assert.Equal(int64(0), host.UploadFailedCount.Load())
 				assert.NotNil(host.Peers)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				assert.Equal(int32(0), host.PeerCount.Load())
 				assert.NotEmpty(host.CreatedAt.Load())
 				assert.NotEmpty(host.UpdatedAt.Load())
 				assert.NotNil(host.Log)
@@ -616,37 +632,33 @@ func TestHost_NewHost(t *testing.T) {
 
 func TestHost_LoadPeer(t *testing.T) {
 	tests := []struct {
-		name    string
-		rawHost Host
-		peerID  string
-		expect  func(t *testing.T, peer *Peer, loaded bool)
+		name   string
+		peerID string
+		expect func(t *testing.T, peer *Peer, loaded bool)
 	}{
 		{
-			name:    "load peer",
-			rawHost: mockRawHost,
-			peerID:  mockPeerID,
+			name:   "load peer",
+			peerID: mockPeerID,
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				assert.True(loaded)
+				assert.Equal(mockPeerID, peer.ID)
 			},
 		},
 		{
-			name:    "peer does not exist",
-			rawHost: mockRawHost,
-			peerID:  idgen.PeerID(),
+			name:   "peer does not exist",
+			peerID: idgen.PeerID(),
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
-			name:    "load key is empty",
-			rawHost: mockRawHost,
-			peerID:  "",
+			name:   "load key is empty",
+			peerID: "",
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 	}
@@ -654,8 +666,8 @@ func TestHost_LoadPeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -668,30 +680,28 @@ func TestHost_LoadPeer(t *testing.T) {
 
 func TestHost_StorePeer(t *testing.T) {
 	tests := []struct {
-		name    string
-		rawHost Host
-		peerID  string
-		options []HostOption
-		expect  func(t *testing.T, peer *Peer, loaded bool)
+		name   string
+		peerID string
+		expect func(t *testing.T, host *Host, peer *Peer, loaded bool)
 	}{
 		{
-			name:    "store peer",
-			rawHost: mockRawHost,
-			peerID:  mockPeerID,
-			expect: func(t *testing.T, peer *Peer, loaded bool) {
+			name:   "store peer",
+			peerID: mockPeerID,
+			expect: func(t *testing.T, host *Host, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				assert.True(loaded)
+				assert.Equal(mockPeerID, peer.ID)
+				assert.Equal(int32(1), host.PeerCount.Load())
 			},
 		},
 		{
-			name:    "store key is empty",
-			rawHost: mockRawHost,
-			peerID:  "",
-			expect: func(t *testing.T, peer *Peer, loaded bool) {
+			name:   "store key is empty",
+			peerID: "",
+			expect: func(t *testing.T, host *Host, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, "")
+				assert.True(loaded)
+				assert.Equal("", peer.ID)
+				assert.Equal(int32(1), host.PeerCount.Load())
 			},
 		},
 	}
@@ -699,45 +709,53 @@ func TestHost_StorePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(tc.peerID, mockTask, host)
 
 			host.StorePeer(mockPeer)
 			peer, loaded := host.LoadPeer(tc.peerID)
-			tc.expect(t, peer, loaded)
+			tc.expect(t, host, peer, loaded)
 		})
 	}
 }
 
 func TestHost_DeletePeer(t *testing.T) {
 	tests := []struct {
-		name    string
-		rawHost Host
-		peerID  string
-		options []HostOption
-		expect  func(t *testing.T, host *Host)
+		name   string
+		peerID string
+		expect func(t *testing.T, host *Host)
 	}{
 		{
-			name:    "delete peer",
-			rawHost: mockRawHost,
-			peerID:  mockPeerID,
+			name:   "delete peer",
+			peerID: mockPeerID,
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
 				_, loaded := host.LoadPeer(mockPeerID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
+				assert.Equal(int32(0), host.PeerCount.Load())
 			},
 		},
 		{
-			name:    "delete key is empty",
-			rawHost: mockRawHost,
-			peerID:  "",
+			name:   "delete key is empty",
+			peerID: "",
 			expect: func(t *testing.T, host *Host) {
 				assert := assert.New(t)
 				peer, loaded := host.LoadPeer(mockPeerID)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				assert.True(loaded)
+				assert.Equal(mockPeerID, peer.ID)
+				assert.Equal(int32(1), host.PeerCount.Load())
+			},
+		},
+		{
+			name:   "delete key does not exist",
+			peerID: idgen.PeerID(),
+			expect: func(t *testing.T, host *Host) {
+				assert := assert.New(t)
+				_, loaded := host.LoadPeer(mockPeerID)
+				assert.True(loaded)
+				assert.Equal(int32(1), host.PeerCount.Load())
 			},
 		},
 	}
@@ -745,8 +763,8 @@ func TestHost_DeletePeer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -759,18 +777,15 @@ func TestHost_DeletePeer(t *testing.T) {
 
 func TestHost_LeavePeers(t *testing.T) {
 	tests := []struct {
-		name    string
-		rawHost Host
-		options []HostOption
-		expect  func(t *testing.T, host *Host, mockPeer *Peer)
+		name   string
+		expect func(t *testing.T, host *Host, mockPeer *Peer)
 	}{
 		{
-			name:    "leave peers",
-			rawHost: mockRawHost,
+			name: "leave peers",
 			expect: func(t *testing.T, host *Host, mockPeer *Peer) {
 				assert := assert.New(t)
 				host.StorePeer(mockPeer)
-				assert.Equal(host.PeerCount.Load(), int32(1))
+				assert.Equal(int32(1), host.PeerCount.Load())
 				host.LeavePeers()
 				host.Peers.Range(func(_, value any) bool {
 					peer := value.(*Peer)
@@ -780,16 +795,31 @@ func TestHost_LeavePeers(t *testing.T) {
 			},
 		},
 		{
-			name:    "peers is empty ",
-			rawHost: mockRawHost,
+			name: "leave peers keeps peers that already left",
 			expect: func(t *testing.T, host *Host, mockPeer *Peer) {
 				assert := assert.New(t)
-				assert.Equal(host.PeerCount.Load(), int32(0))
+				mockPeer.FSM.SetState(PeerStateLeave)
+				host.StorePeer(mockPeer)
 				host.LeavePeers()
-				host.Peers.Range(func(_, value any) bool {
-					assert.Fail("host peers is not empty")
+				peer, loaded := host.LoadPeer(mockPeer.ID)
+				assert.True(loaded)
+				assert.True(peer.FSM.Is(PeerStateLeave))
+				assert.Equal(int32(1), host.PeerCount.Load())
+			},
+		},
+		{
+			name: "peers is empty",
+			expect: func(t *testing.T, host *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				assert.Equal(int32(0), host.PeerCount.Load())
+				host.LeavePeers()
+				var count int
+				host.Peers.Range(func(_, _ any) bool {
+					count++
 					return true
 				})
+
+				assert.Zero(count)
 			},
 		},
 	}
@@ -797,8 +827,8 @@ func TestHost_LeavePeers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
@@ -809,14 +839,11 @@ func TestHost_LeavePeers(t *testing.T) {
 
 func TestHost_FreeUploadCount(t *testing.T) {
 	tests := []struct {
-		name    string
-		rawHost Host
-		options []HostOption
-		expect  func(t *testing.T, host *Host, mockTask *Task, mockPeer *Peer)
+		name   string
+		expect func(t *testing.T, host *Host, mockTask *Task, mockPeer *Peer)
 	}{
 		{
-			name:    "get free upload load",
-			rawHost: mockRawHost,
+			name: "get free upload load",
 			expect: func(t *testing.T, host *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
 				mockSeedPeer := NewPeer(mockSeedPeerID, mockTask, host)
@@ -824,24 +851,23 @@ func TestHost_FreeUploadCount(t *testing.T) {
 				mockPeer.Task.StorePeer(mockPeer)
 				err := mockPeer.Task.AddPeerEdge(mockSeedPeer, mockPeer)
 				assert.NoError(err)
-				assert.Equal(host.FreeUploadCount(), int32(config.DefaultPeerConcurrentUploadLimit-1))
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit-1), host.FreeUploadCount())
 				err = mockTask.DeletePeerInEdges(mockPeer.ID)
 				assert.NoError(err)
-				assert.Equal(host.FreeUploadCount(), int32(config.DefaultPeerConcurrentUploadLimit))
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.FreeUploadCount())
 				err = mockPeer.Task.AddPeerEdge(mockSeedPeer, mockPeer)
 				assert.NoError(err)
-				assert.Equal(host.FreeUploadCount(), int32(config.DefaultPeerConcurrentUploadLimit-1))
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit-1), host.FreeUploadCount())
 				err = mockTask.DeletePeerOutEdges(mockSeedPeer.ID)
 				assert.NoError(err)
-				assert.Equal(host.FreeUploadCount(), int32(config.DefaultPeerConcurrentUploadLimit))
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.FreeUploadCount())
 			},
 		},
 		{
-			name:    "upload peer does not exist",
-			rawHost: mockRawHost,
+			name: "upload peer does not exist",
 			expect: func(t *testing.T, host *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				assert.Equal(host.FreeUploadCount(), int32(config.DefaultPeerConcurrentUploadLimit))
+				assert.Equal(int32(config.DefaultPeerConcurrentUploadLimit), host.FreeUploadCount())
 			},
 		},
 	}
@@ -849,12 +875,46 @@ func TestHost_FreeUploadCount(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			host := NewHost(
-				tc.rawHost.ID, tc.rawHost.IP, tc.rawHost.Name, tc.rawHost.Hostname,
-				tc.rawHost.Port, tc.rawHost.DownloadPort, tc.rawHost.ProxyPort, tc.rawHost.Type)
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			mockPeer := NewPeer(mockPeerID, mockTask, host)
 
 			tc.expect(t, host, mockTask, mockPeer)
+		})
+	}
+}
+
+func TestHost_IsSeedPeer(t *testing.T) {
+	tests := []struct {
+		name   string
+		typ    types.HostType
+		expect func(t *testing.T, isSeedPeer bool)
+	}{
+		{
+			name: "normal host",
+			typ:  types.HostTypeNormal,
+			expect: func(t *testing.T, isSeedPeer bool) {
+				assert := assert.New(t)
+				assert.False(isSeedPeer)
+			},
+		},
+		{
+			name: "super seed host",
+			typ:  types.HostTypeSuperSeed,
+			expect: func(t *testing.T, isSeedPeer bool) {
+				assert := assert.New(t)
+				assert.True(isSeedPeer)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			host := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, tc.typ)
+			tc.expect(t, host.IsSeedPeer())
 		})
 	}
 }

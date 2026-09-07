@@ -26,8 +26,16 @@ import (
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	managerconfig "d7y.io/dragonfly/v2/manager/config"
+	"d7y.io/dragonfly/v2/pkg/dfnet"
+	"d7y.io/dragonfly/v2/pkg/types"
 	schedulerconfig "d7y.io/dragonfly/v2/scheduler/config"
 )
+
+type decoderConfig struct {
+	Addr dfnet.NetAddr    `mapstructure:"addr"`
+	Cert types.PEMContent `mapstructure:"cert"`
+	IP   net.IP           `mapstructure:"ip"`
+}
 
 type tlsConfig struct {
 	CACert string `yaml:"caCert" mapstructure:"caCert"`
@@ -173,4 +181,87 @@ func TestBindEnvsFromConfig_RealManagerConfig(t *testing.T) {
 	bindEnvsFromConfig(cfg)
 	assert.NoError(viper.Unmarshal(cfg, initDecoderConfig))
 	assert.Equal(65003, cfg.Server.GRPC.Port.Start)
+}
+
+func TestInitDecoderConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		configFile string
+		expect     func(t *testing.T, cfg *decoderConfig, err error)
+	}{
+		{
+			name:       "scalar net addr decodes as tcp",
+			configFile: "addr: 127.0.0.1:8002\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(dfnet.NetAddr{Type: dfnet.TCP, Addr: "127.0.0.1:8002"}, cfg.Addr)
+			},
+		},
+		{
+			name:       "mapping net addr keeps its type",
+			configFile: "addr:\n  type: unix\n  addr: /var/run/dfdaemon.sock\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(dfnet.NetAddr{Type: dfnet.UNIX, Addr: "/var/run/dfdaemon.sock"}, cfg.Addr)
+			},
+		},
+		{
+			name:       "inline pem content is trimmed and kept",
+			configFile: "cert: |\n  -----BEGIN CERTIFICATE-----\n  Zm9v\n  -----END CERTIFICATE-----\n\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(types.PEMContent("-----BEGIN CERTIFICATE-----\nZm9v\n-----END CERTIFICATE-----"), cfg.Cert)
+			},
+		},
+		{
+			name:       "empty pem content stays empty",
+			configFile: "cert: \"\"\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(types.PEMContent(""), cfg.Cert)
+			},
+		},
+		{
+			name:       "pem path that does not exist fails",
+			configFile: "cert: /nonexistent/ca.crt\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:       "ip string is parsed",
+			configFile: "ip: 192.0.2.1\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.True(net.ParseIP("192.0.2.1").Equal(cfg.IP))
+			},
+		},
+		{
+			name:       "invalid ip fails",
+			configFile: "ip: not-an-ip\n",
+			expect: func(t *testing.T, cfg *decoderConfig, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setupViper("test")
+			viper.SetConfigType("yaml")
+			if err := viper.ReadConfig(strings.NewReader(tc.configFile)); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg := &decoderConfig{}
+			tc.expect(t, cfg, viper.Unmarshal(cfg, initDecoderConfig))
+		})
+	}
 }

@@ -23,137 +23,121 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPEMToCertPool(t *testing.T) {
-	// Generate a valid certificate for testing.
 	_, pemCert, err := generateTestCertificate()
 	if err != nil {
-		t.Fatalf("failed to generate test certificate: %v", err)
+		t.Fatal(err)
 	}
 
-	// Create an expected CertPool with the test cert.
 	expectedCertPool := x509.NewCertPool()
 	if !expectedCertPool.AppendCertsFromPEM(pemCert) {
-		t.Fatal("failed to create expected cert pool")
+		t.FailNow()
 	}
 
 	tests := []struct {
-		name        string
-		pemCerts    []byte
-		expected    *x509.CertPool
-		expectedErr bool
-		checkPool   bool // Flag to check if the pool content should be compared
+		name     string
+		pemCerts []byte
+		expect   func(t *testing.T, pool *x509.CertPool, err error)
 	}{
 		{
-			name:        "Empty PEM certs",
-			pemCerts:    []byte{},
-			expected:    nil,
-			expectedErr: false,
+			name:     "empty pem certs",
+			pemCerts: []byte{},
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Nil(pool)
+			},
 		},
 		{
-			name:        "Valid PEM cert",
-			pemCerts:    pemCert,
-			expected:    expectedCertPool,
-			expectedErr: false,
-			checkPool:   true,
+			name:     "valid pem cert",
+			pemCerts: pemCert,
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.True(expectedCertPool.Equal(pool))
+			},
 		},
 		{
-			name:        "Invalid PEM cert",
-			pemCerts:    []byte("this is not a valid pem"),
-			expected:    nil,
-			expectedErr: true,
+			name:     "invalid pem cert",
+			pemCerts: []byte("this is not a valid pem"),
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(pool)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := PEMToCertPool(tt.pemCerts)
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("PEMToCertPool() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			if tt.checkPool {
-				if got == nil || !got.Equal(tt.expected) {
-					t.Errorf("PEMToCertPool() = %v, expected %v", got, tt.expected)
-				}
-			} else {
-				if !reflect.DeepEqual(got, tt.expected) {
-					t.Errorf("PEMToCertPool() = %v, expected %v", got, tt.expected)
-				}
-			}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pool, err := PEMToCertPool(tc.pemCerts)
+			tc.expect(t, pool, err)
 		})
 	}
 }
 
 func TestDERToCertPool(t *testing.T) {
-	// Generate a valid certificate for testing.
 	derCert, _, err := generateTestCertificate()
 	if err != nil {
-		t.Fatalf("failed to generate test certificate: %v", err)
+		t.Fatal(err)
 	}
 
-	// Create an expected CertPool with the test cert.
 	cert, err := x509.ParseCertificate(derCert)
 	if err != nil {
-		t.Fatalf("failed to parse generated der cert: %v", err)
+		t.Fatal(err)
 	}
+
 	expectedCertPool := x509.NewCertPool()
 	expectedCertPool.AddCert(cert)
 
 	tests := []struct {
-		name        string
-		derCerts    [][]byte
-		expected    *x509.CertPool
-		expectedErr bool
-		checkPool   bool // Flag to check if the pool content should be compared
+		name     string
+		derCerts [][]byte
+		expect   func(t *testing.T, pool *x509.CertPool, err error)
 	}{
 		{
-			name:        "Empty DER certs",
-			derCerts:    [][]byte{},
-			expected:    nil,
-			expectedErr: false,
+			name:     "empty der certs",
+			derCerts: [][]byte{},
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Nil(pool)
+			},
 		},
 		{
-			name:        "Valid DER cert",
-			derCerts:    [][]byte{derCert},
-			expected:    expectedCertPool,
-			expectedErr: false,
-			checkPool:   true,
+			name:     "valid der cert",
+			derCerts: [][]byte{derCert},
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.True(expectedCertPool.Equal(pool))
+			},
 		},
 		{
-			name:        "Invalid DER cert",
-			derCerts:    [][]byte{[]byte("this is not a valid der")},
-			expected:    nil,
-			expectedErr: true,
+			name:     "invalid der cert",
+			derCerts: [][]byte{[]byte("this is not a valid der")},
+			expect: func(t *testing.T, pool *x509.CertPool, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(pool)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := DERToCertPool(tt.derCerts)
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("DERToCertPool() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			if tt.checkPool {
-				if got == nil || !got.Equal(tt.expected) {
-					t.Errorf("DERToCertPool() = %v, expected %v", got, tt.expected)
-				}
-			} else {
-				if !reflect.DeepEqual(got, tt.expected) {
-					t.Errorf("DERToCertPool() = %v, expected %v", got, tt.expected)
-				}
-			}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pool, err := DERToCertPool(tc.derCerts)
+			tc.expect(t, pool, err)
 		})
 	}
 }
 
-// generateTestCertificate generates a self-signed certificate for testing purposes
-// and returns the certificate in both DER and PEM formats.
 func generateTestCertificate() (derBytes []byte, pemBytes []byte, err error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

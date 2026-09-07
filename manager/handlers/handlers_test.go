@@ -17,6 +17,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,6 +30,10 @@ import (
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 )
 
+var (
+	errMockService = errors.New("service unavailable")
+)
+
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -38,10 +43,11 @@ func TestNew(t *testing.T) {
 			name: "new handler",
 			expect: func(t *testing.T, h any) {
 				assert := assert.New(t)
-				assert.NotNil(t, h)
+				assert.NotNil(h)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -56,30 +62,33 @@ func TestNew(t *testing.T) {
 
 func TestHandlers_setPaginationDefault(t *testing.T) {
 	tests := []struct {
-		name   string
-		expect func(t *testing.T, h *Handlers)
+		name    string
+		page    int
+		perPage int
+		expect  func(t *testing.T, page, perPage int)
 	}{
 		{
-			name: "use default value",
-			expect: func(t *testing.T, h *Handlers) {
+			name:    "use default value",
+			page:    0,
+			perPage: 0,
+			expect: func(t *testing.T, page, perPage int) {
 				assert := assert.New(t)
-				page, perpage := 0, 0
-				h.setPaginationDefault(&page, &perpage)
 				assert.Equal(1, page)
-				assert.Equal(10, perpage)
+				assert.Equal(10, perPage)
 			},
 		},
 		{
-			name: "use customized value",
-			expect: func(t *testing.T, h *Handlers) {
+			name:    "use customized value",
+			page:    5,
+			perPage: 20,
+			expect: func(t *testing.T, page, perPage int) {
 				assert := assert.New(t)
-				page, perpage := 5, 20
-				h.setPaginationDefault(&page, &perpage)
 				assert.Equal(5, page)
-				assert.Equal(20, perpage)
+				assert.Equal(20, perPage)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -87,22 +96,28 @@ func TestHandlers_setPaginationDefault(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			h := New(svc)
 
-			tc.expect(t, h)
+			page, perPage := tc.page, tc.perPage
+			h.setPaginationDefault(&page, &perPage)
+			tc.expect(t, page, perPage)
 		})
 	}
 }
 
 func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 	tests := []struct {
-		name   string
-		expect func(t *testing.T, h *Handlers, c *gin.Context)
+		name       string
+		page       int
+		perPage    int
+		totalCount int
+		expect     func(t *testing.T, linkHeader []string)
 	}{
 		{
-			name: "first page",
-			expect: func(t *testing.T, h *Handlers, c *gin.Context) {
+			name:       "first page",
+			page:       1,
+			perPage:    10,
+			totalCount: 95,
+			expect: func(t *testing.T, linkHeader []string) {
 				assert := assert.New(t)
-				h.setPaginationLinkHeader(c, 1, 10, 95)
-				linkHeader := c.Writer.Header()["Link"]
 				assert.Len(linkHeader, 1)
 				links := strings.Split(linkHeader[0], ",")
 				assert.Len(links, 4)
@@ -113,11 +128,12 @@ func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 			},
 		},
 		{
-			name: "middle page",
-			expect: func(t *testing.T, h *Handlers, c *gin.Context) {
+			name:       "middle page",
+			page:       5,
+			perPage:    10,
+			totalCount: 95,
+			expect: func(t *testing.T, linkHeader []string) {
 				assert := assert.New(t)
-				h.setPaginationLinkHeader(c, 5, 10, 95)
-				linkHeader := c.Writer.Header()["Link"]
 				assert.Len(linkHeader, 1)
 				links := strings.Split(linkHeader[0], ",")
 				assert.Len(links, 4)
@@ -128,11 +144,12 @@ func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 			},
 		},
 		{
-			name: "last page",
-			expect: func(t *testing.T, h *Handlers, c *gin.Context) {
+			name:       "last page",
+			page:       10,
+			perPage:    10,
+			totalCount: 95,
+			expect: func(t *testing.T, linkHeader []string) {
 				assert := assert.New(t)
-				h.setPaginationLinkHeader(c, 10, 10, 95)
-				linkHeader := c.Writer.Header()["Link"]
 				assert.Len(linkHeader, 1)
 				links := strings.Split(linkHeader[0], ",")
 				assert.Len(links, 4)
@@ -143,6 +160,7 @@ func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -153,7 +171,8 @@ func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest("GET", "/test", nil)
 
-			tc.expect(t, h, c)
+			h.setPaginationLinkHeader(c, tc.page, tc.perPage, tc.totalCount)
+			tc.expect(t, c.Writer.Header()["Link"])
 		})
 	}
 }

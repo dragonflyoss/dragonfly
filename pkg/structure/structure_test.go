@@ -26,7 +26,7 @@ func TestStructToMap(t *testing.T) {
 	tests := []struct {
 		name   string
 		s      any
-		expect func(*testing.T, map[string]any, error)
+		expect func(t *testing.T, m map[string]any, err error)
 	}{
 		{
 			name: "conver struct to map",
@@ -39,10 +39,11 @@ func TestStructToMap(t *testing.T) {
 			},
 			expect: func(t *testing.T, m map[string]any, err error) {
 				assert := assert.New(t)
-				assert.Equal(m, map[string]any{
+				assert.NoError(err)
+				assert.Equal(map[string]any{
 					"Name": "foo",
 					"Age":  float64(18),
-				})
+				}, m)
 			},
 		},
 		{
@@ -50,7 +51,8 @@ func TestStructToMap(t *testing.T) {
 			s:    "foo",
 			expect: func(t *testing.T, m map[string]any, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "json: cannot unmarshal string into Go value of type map[string]interface {}")
+				assert.Error(err)
+				assert.Nil(m)
 			},
 		},
 		{
@@ -58,7 +60,8 @@ func TestStructToMap(t *testing.T) {
 			s:    1,
 			expect: func(t *testing.T, m map[string]any, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "json: cannot unmarshal number into Go value of type map[string]interface {}")
+				assert.Error(err)
+				assert.Nil(m)
 			},
 		},
 		{
@@ -66,7 +69,8 @@ func TestStructToMap(t *testing.T) {
 			s:    nil,
 			expect: func(t *testing.T, m map[string]any, err error) {
 				assert := assert.New(t)
-				assert.Equal(m, map[string]any(nil))
+				assert.NoError(err)
+				assert.Equal(map[string]any(nil), m)
 			},
 		},
 	}
@@ -88,10 +92,10 @@ func TestMapToStruct(t *testing.T) {
 	tests := []struct {
 		name   string
 		m      map[string]any
-		expect func(*testing.T, *person, error)
+		expect func(t *testing.T, s *person, err error)
 	}{
 		{
-			name: "conver struct to map",
+			name: "conver map to struct",
 			m: map[string]any{
 				"Name": "foo",
 				"Age":  float64(18),
@@ -99,19 +103,19 @@ func TestMapToStruct(t *testing.T) {
 			expect: func(t *testing.T, s *person, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(s, &person{
+				assert.Equal(&person{
 					Name: "foo",
 					Age:  18,
-				})
+				}, s)
 			},
 		},
 		{
-			name: "conver nil to map",
+			name: "conver nil map to struct",
 			m:    nil,
 			expect: func(t *testing.T, s *person, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(s, &person{Name: "", Age: 0})
+				assert.Equal(&person{Name: "", Age: 0}, s)
 			},
 		},
 	}

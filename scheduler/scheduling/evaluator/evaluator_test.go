@@ -22,6 +22,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 )
 
 func TestEvaluator_New(t *testing.T) {
@@ -38,7 +41,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "default",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
+				assert.Equal("evaluatorDefault", reflect.TypeOf(e).Elem().Name())
 			},
 		},
 		{
@@ -46,7 +49,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "plugin",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
+				assert.Equal("evaluatorDefault", reflect.TypeOf(e).Elem().Name())
 			},
 		},
 		{
@@ -54,7 +57,7 @@ func TestEvaluator_New(t *testing.T) {
 			algorithm: "",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
+				assert.Equal("evaluatorDefault", reflect.TypeOf(e).Elem().Name())
 			},
 		},
 	}
@@ -62,6 +65,150 @@ func TestEvaluator_New(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, New(tc.algorithm, pluginDir))
+		})
+	}
+}
+
+func TestEvaluator_IsBadPersistentParent(t *testing.T) {
+	tests := []struct {
+		name   string
+		state  string
+		expect func(t *testing.T, isBadParent bool)
+	}{
+		{
+			name:  "peer state is PeerStatePending",
+			state: persistent.PeerStatePending,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateUploading",
+			state: persistent.PeerStateUploading,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateReceivedEmpty",
+			state: persistent.PeerStateReceivedEmpty,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateReceivedNormal",
+			state: persistent.PeerStateReceivedNormal,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateFailed",
+			state: persistent.PeerStateFailed,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateRunning",
+			state: persistent.PeerStateRunning,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.False(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateSucceeded",
+			state: persistent.PeerStateSucceeded,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.False(isBadParent)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.IsBadPersistentParent(newMockPersistentPeer("parent", tc.state, mockHostIDC, mockHostLocation)))
+		})
+	}
+}
+
+func TestEvaluator_IsBadPersistentCacheParent(t *testing.T) {
+	tests := []struct {
+		name   string
+		state  string
+		expect func(t *testing.T, isBadParent bool)
+	}{
+		{
+			name:  "peer state is PeerStatePending",
+			state: persistentcache.PeerStatePending,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateUploading",
+			state: persistentcache.PeerStateUploading,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateReceivedEmpty",
+			state: persistentcache.PeerStateReceivedEmpty,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateReceivedNormal",
+			state: persistentcache.PeerStateReceivedNormal,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateFailed",
+			state: persistentcache.PeerStateFailed,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.True(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateRunning",
+			state: persistentcache.PeerStateRunning,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.False(isBadParent)
+			},
+		},
+		{
+			name:  "peer state is PeerStateSucceeded",
+			state: persistentcache.PeerStateSucceeded,
+			expect: func(t *testing.T, isBadParent bool) {
+				assert := assert.New(t)
+				assert.False(isBadParent)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.IsBadPersistentCacheParent(newMockPersistentCachePeer("parent", tc.state, mockHostIDC, mockHostLocation)))
 		})
 	}
 }

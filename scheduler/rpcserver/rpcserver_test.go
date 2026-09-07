@@ -17,12 +17,12 @@
 package rpcserver
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/grpc"
 
 	"d7y.io/dragonfly/v2/scheduler/config"
 	configmocks "d7y.io/dragonfly/v2/scheduler/config/mocks"
@@ -45,13 +45,16 @@ var (
 func TestRPCServer_New(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect func(t *testing.T, s any)
+		expect func(t *testing.T, svr *grpc.Server)
 	}{
 		{
-			name: "new server",
-			expect: func(t *testing.T, s any) {
+			name: "v1, v2 and health services are registered",
+			expect: func(t *testing.T, svr *grpc.Server) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(s).Elem().Name(), "Server")
+				services := svr.GetServiceInfo()
+				assert.Contains(services, "scheduler.Scheduler")
+				assert.Contains(services, "scheduler.v2.Scheduler")
+				assert.Contains(services, "grpc.health.v1.Health")
 			},
 		},
 	}

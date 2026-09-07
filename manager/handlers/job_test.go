@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
@@ -39,6 +40,7 @@ var (
 			"user_id": 4,
 			"bio": "bio"
 		}`
+
 	mockGetTaskJobReqBody = `
 		{
 			"type": "get_task",
@@ -48,6 +50,7 @@ var (
 				"task_id": "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8"
 			}
 		}`
+
 	mockDeleteTaskJobReqBody = `
 		{
 			"type": "delete_task",
@@ -57,23 +60,99 @@ var (
 				"task_id": "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49"
 			}
 		}`
+
 	mockOtherJobReqBody = `
 		{
 			"type": "others",
 			"user_id": 4,
 			"bio": "bio"
 		}`
+
+	mockPreheatJobWithInvalidArgsReqBody = `
+		{
+			"type": "preheat",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"type": "others"
+			}
+		}`
+
+	mockSyncPeersJobReqBody = `
+		{
+			"type": "sync_peers",
+			"user_id": 4,
+			"bio": "bio",
+			"scheduler_cluster_ids": [1]
+		}`
+
+	mockGetTaskJobWithoutArgsReqBody = `
+		{
+			"type": "get_task",
+			"user_id": 4,
+			"bio": "bio"
+		}`
+
+	mockGetImageDistributionJobReqBody = `
+		{
+			"type": "get_image_distribution",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"url": "http://example.com/v2/foo/manifests/latest"
+			}
+		}`
+
+	mockGetImageDistributionJobWithoutURLReqBody = `
+		{
+			"type": "get_image_distribution",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"tag": "foo"
+			}
+		}`
+
+	mockDeleteTaskJobWithoutArgsReqBody = `
+		{
+			"type": "delete_task",
+			"user_id": 4,
+			"bio": "bio"
+		}`
+
+	mockGCJobReqBody = `
+		{
+			"type": "gc",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"type": "audit"
+			}
+		}`
+
+	mockGCJobWithInvalidArgsReqBody = `
+		{
+			"type": "gc",
+			"user_id": 4,
+			"bio": "bio",
+			"args": {
+				"type": "others"
+			}
+		}`
+
 	mockPreheatCreateJobRequest = types.CreatePreheatJobRequest{
 		UserID: 4,
 		Type:   "preheat",
 		BIO:    "bio",
 	}
+
 	mockCreateGetTaskJobRequest = types.CreateGetTaskJobRequest{
 		UserID: 4,
 		Type:   "get_task",
 		BIO:    "bio",
 		Args:   types.GetTaskArgs{TaskID: "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8"},
 	}
+
 	mockCreateDeleteTaskJobRequest = types.CreateDeleteTaskJobRequest{
 		UserID: 4,
 		Type:   "delete_task",
@@ -82,10 +161,33 @@ var (
 			TaskID: "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49",
 		},
 	}
+
+	mockCreateSyncPeersJobRequest = types.CreateSyncPeersJobRequest{
+		UserID:              4,
+		Type:                "sync_peers",
+		BIO:                 "bio",
+		SchedulerClusterIDs: []uint{1},
+	}
+
+	mockCreateGetImageDistributionJobRequest = types.CreateGetImageDistributionJobRequest{
+		UserID: 4,
+		Type:   "get_image_distribution",
+		BIO:    "bio",
+		Args:   types.GetImageDistributionArgs{URL: "http://example.com/v2/foo/manifests/latest"},
+	}
+
+	mockCreateGCJobRequest = types.CreateGCJobRequest{
+		UserID: 4,
+		Type:   "gc",
+		BIO:    "bio",
+		Args:   types.GCArgs{Type: "audit"},
+	}
+
 	mockUpdateJobRequest = types.UpdateJobRequest{
 		UserID: 4,
 		BIO:    "bio",
 	}
+
 	mockPreheatJobModel = &models.Job{
 		BaseModel: mockBaseModel,
 		UserID:    4,
@@ -93,6 +195,7 @@ var (
 		BIO:       "bio",
 		TaskID:    "dec6fe878785cea844dcecdf2ea25e19156822201016455733e47e9f0bfab563",
 	}
+
 	mockGetTaskJobModel = &models.Job{
 		BaseModel: mockBaseModel,
 		UserID:    4,
@@ -100,6 +203,7 @@ var (
 		BIO:       "bio",
 		TaskID:    "7575d21d69495905a4709bf4e10d0e5cffcf7fd1e76e93171e0ef6e0abcf07a8",
 	}
+
 	mockDeleteTaskJobModel = &models.Job{
 		BaseModel: mockBaseModel,
 		UserID:    4,
@@ -107,10 +211,32 @@ var (
 		BIO:       "bio",
 		TaskID:    "04a29122b0c4d0affde2d577fb36bb956caa3da10e9130375623c24a5f865a49",
 	}
+
+	mockGCJobModel = &models.Job{
+		BaseModel: mockBaseModel,
+		UserID:    4,
+		Type:      "gc",
+		BIO:       "bio",
+	}
+
+	mockGetImageDistributionJobResponse = &types.CreateGetImageDistributionJobResponse{
+		Image: types.Image{
+			Layers: []types.Layer{{URL: "http://example.com/v2/foo/blobs/sha256:foo"}},
+		},
+		Peers: []types.Peer{
+			{
+				IP:                 "127.0.0.1",
+				Hostname:           "foo",
+				CachedLayers:       []types.Layer{{URL: "http://example.com/v2/foo/blobs/sha256:foo"}},
+				SchedulerClusterID: 1,
+			},
+		},
+	}
 )
 
 func mockJobRouter(h *Handlers) *gin.Engine {
 	r := gin.Default()
+	r.Use(middlewares.Error())
 	oapiv1 := r.Group("/oapi/v1")
 	ojob := oapiv1.Group("/jobs")
 	ojob.POST("", h.CreateJob)
@@ -147,6 +273,15 @@ func TestHandlers_CreateJob(t *testing.T) {
 			},
 		},
 		{
+			name: "unprocessable entity by preheat job args",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockPreheatJobWithInvalidArgsReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
+			},
+		},
+		{
 			name: "create preheat job success",
 			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockPreheatJobReqBody)),
 			mock: func(ms *mocks.MockServiceMockRecorder) {
@@ -159,6 +294,49 @@ func TestHandlers_CreateJob(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &job)
 				assert.NoError(err)
 				assert.Equal(mockPreheatJobModel, &job)
+			},
+		},
+		{
+			name: "create preheat job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockPreheatJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreatePreheatJob(gomock.Any(), gomock.Eq(mockPreheatCreateJobRequest)).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name: "create sync peers job success",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockSyncPeersJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateSyncPeersJob(gomock.Any(), gomock.Eq(mockCreateSyncPeersJobRequest)).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				assert.Equal(`"OK"`, w.Body.String())
+			},
+		},
+		{
+			name: "create sync peers job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockSyncPeersJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateSyncPeersJob(gomock.Any(), gomock.Eq(mockCreateSyncPeersJobRequest)).Return(errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name: "unprocessable entity by get task job args",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetTaskJobWithoutArgsReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
 			},
 		},
 		{
@@ -177,6 +355,61 @@ func TestHandlers_CreateJob(t *testing.T) {
 			},
 		},
 		{
+			name: "create get task job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetTaskJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGetTaskJob(gomock.Any(), gomock.Eq(mockCreateGetTaskJobRequest)).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name: "unprocessable entity by get image distribution job args",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetImageDistributionJobWithoutURLReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
+			},
+		},
+		{
+			name: "create get image distribution job success",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetImageDistributionJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGetImageDistributionJob(gomock.Any(), gomock.Eq(mockCreateGetImageDistributionJobRequest)).Return(mockGetImageDistributionJobResponse, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				resp := types.CreateGetImageDistributionJobResponse{}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(err)
+				assert.Equal(mockGetImageDistributionJobResponse, &resp)
+			},
+		},
+		{
+			name: "create get image distribution job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGetImageDistributionJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGetImageDistributionJob(gomock.Any(), gomock.Eq(mockCreateGetImageDistributionJobRequest)).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name: "unprocessable entity by delete task job args",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockDeleteTaskJobWithoutArgsReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
+			},
+		},
+		{
 			name: "create delete task job success",
 			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockDeleteTaskJobReqBody)),
 			mock: func(ms *mocks.MockServiceMockRecorder) {
@@ -191,7 +424,54 @@ func TestHandlers_CreateJob(t *testing.T) {
 				assert.Equal(mockDeleteTaskJobModel, &job)
 			},
 		},
+		{
+			name: "create delete task job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockDeleteTaskJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateDeleteTaskJob(gomock.Any(), gomock.Eq(mockCreateDeleteTaskJobRequest)).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name: "unprocessable entity by gc job args",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGCJobWithInvalidArgsReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
+			},
+		},
+		{
+			name: "create gc job success",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGCJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGCJob(gomock.Any(), gomock.Eq(mockCreateGCJobRequest)).Return(mockGCJobModel, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusOK, w.Code)
+				job := models.Job{}
+				err := json.Unmarshal(w.Body.Bytes(), &job)
+				assert.NoError(err)
+				assert.Equal(mockGCJobModel, &job)
+			},
+		},
+		{
+			name: "create gc job internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/oapi/v1/jobs", strings.NewReader(mockGCJobReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.CreateGCJob(gomock.Any(), gomock.Eq(mockCreateGCJobRequest)).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -236,6 +516,7 @@ func TestHandlers_DestroyJob(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -293,6 +574,7 @@ func TestHandlers_UpdateJob(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -341,6 +623,7 @@ func TestHandlers_GetJob(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -393,6 +676,7 @@ func TestHandlers_GetJobs(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

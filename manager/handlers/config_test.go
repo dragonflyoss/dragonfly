@@ -40,18 +40,21 @@ var (
 		   "user_id": 4,
 		   "value": "value"
 		}`
+
 	mockCreateConfigRequest = types.CreateConfigRequest{
 		Name:   "foo",
 		Value:  "value",
 		BIO:    "bio",
 		UserID: 4,
 	}
+
 	mockUpdateConfigRequest = types.UpdateConfigRequest{
 		Name:   "foo",
 		Value:  "value",
 		BIO:    "bio",
 		UserID: 4,
 	}
+
 	mockConfigModel = &models.Config{
 		BaseModel: mockBaseModel,
 		Name:      "foo",
@@ -105,6 +108,7 @@ func TestHandlers_CreateConfig(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -149,6 +153,7 @@ func TestHandlers_DestroyConfig(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -206,6 +211,7 @@ func TestHandlers_UpdateConfig(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -254,6 +260,7 @@ func TestHandlers_GetConfig(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -306,6 +313,7 @@ func TestHandlers_GetConfigs(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

@@ -41,14 +41,14 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 			expect: func(t *testing.T, window *RollingWindow) {
 				assert := assert.New(t)
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 0)
-				assert.Equal(snapshot.Capacity, 8)
+				assert.Equal(0, snapshot.Count)
+				assert.Equal(8, snapshot.Capacity)
 				assert.False(snapshot.IsFull())
-				assert.Equal(snapshot.Last, float64(0))
-				assert.Equal(snapshot.Mean, float64(0))
-				assert.Equal(snapshot.StdDev, float64(0))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(0))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(0))
+				assert.Equal(float64(0), snapshot.Last)
+				assert.Equal(float64(0), snapshot.Mean)
+				assert.Equal(float64(0), snapshot.StdDev)
+				assert.Equal(float64(0), snapshot.MeanExcludingLast())
+				assert.Equal(float64(0), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -57,12 +57,12 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				assert := assert.New(t)
 				window.Add(100)
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 1)
-				assert.Equal(snapshot.Last, float64(100))
-				assert.Equal(snapshot.Mean, float64(100))
-				assert.Equal(snapshot.StdDev, float64(0))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(0))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(0))
+				assert.Equal(1, snapshot.Count)
+				assert.Equal(float64(100), snapshot.Last)
+				assert.Equal(float64(100), snapshot.Mean)
+				assert.Equal(float64(0), snapshot.StdDev)
+				assert.Equal(float64(0), snapshot.MeanExcludingLast())
+				assert.Equal(float64(0), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -73,12 +73,12 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				window.Add(200)
 				window.Add(600)
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 3)
-				assert.Equal(snapshot.Last, float64(600))
-				assert.Equal(snapshot.Mean, float64(300))
-				assert.InDelta(snapshot.StdDev, math.Sqrt(140000.0/3), 1e-9)
-				assert.Equal(snapshot.MeanExcludingLast(), float64(150))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(50))
+				assert.Equal(3, snapshot.Count)
+				assert.Equal(float64(600), snapshot.Last)
+				assert.Equal(float64(300), snapshot.Mean)
+				assert.InDelta(math.Sqrt(140000.0/3), snapshot.StdDev, 1e-9)
+				assert.Equal(float64(150), snapshot.MeanExcludingLast())
+				assert.Equal(float64(50), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -90,13 +90,13 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				}
 
 				values := window.Values()
-				assert.Equal(values, []float64{4, 5, 6, 7, 8, 9, 10, 11})
+				assert.Equal([]float64{4, 5, 6, 7, 8, 9, 10, 11}, values)
 
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 8)
-				assert.Equal(snapshot.Last, float64(11))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(7))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(2))
+				assert.Equal(8, snapshot.Count)
+				assert.Equal(float64(11), snapshot.Last)
+				assert.Equal(float64(7), snapshot.MeanExcludingLast())
+				assert.Equal(float64(2), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -108,13 +108,14 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				}
 
 				values := window.Values()
-				assert.Equal(len(values), 8)
+				assert.Equal(8, len(values))
 
 				history := values[:len(values)-1]
 				var sum float64
 				for _, value := range history {
 					sum += value
 				}
+
 				mean := sum / float64(len(history))
 
 				var squaredDeviations float64
@@ -122,11 +123,12 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 					deviation := value - mean
 					squaredDeviations += deviation * deviation
 				}
+
 				stdDev := math.Sqrt(squaredDeviations / float64(len(history)))
 
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 8)
-				assert.Equal(snapshot.Last, values[len(values)-1])
+				assert.Equal(8, snapshot.Count)
+				assert.Equal(values[len(values)-1], snapshot.Last)
 				assert.InEpsilon(mean, snapshot.MeanExcludingLast(), 1e-9)
 				assert.InEpsilon(stdDev, snapshot.StdDevExcludingLast(), 1e-6)
 			},
@@ -138,12 +140,12 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				window.Add(100)
 				window.Add(300)
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 2)
-				assert.Equal(snapshot.Last, float64(300))
-				assert.Equal(snapshot.Mean, float64(200))
-				assert.Equal(snapshot.StdDev, float64(100))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(100))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(0))
+				assert.Equal(2, snapshot.Count)
+				assert.Equal(float64(300), snapshot.Last)
+				assert.Equal(float64(200), snapshot.Mean)
+				assert.Equal(float64(100), snapshot.StdDev)
+				assert.Equal(float64(100), snapshot.MeanExcludingLast())
+				assert.Equal(float64(0), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -162,11 +164,11 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				window.Add(2)
 
 				values := window.Values()
-				assert.Equal(values, []float64{3, 1, 2})
+				assert.Equal([]float64{3, 1, 2}, values)
 				assert.False(window.Snapshot().IsFull())
 
 				values[0] = 999
-				assert.Equal(window.Values(), []float64{3, 1, 2})
+				assert.Equal([]float64{3, 1, 2}, window.Values())
 			},
 		},
 		{
@@ -176,14 +178,15 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				for i := range 8 {
 					window.Add(float64(i))
 				}
-				assert.Equal(window.Values(), []float64{0, 1, 2, 3, 4, 5, 6, 7})
+
+				assert.Equal([]float64{0, 1, 2, 3, 4, 5, 6, 7}, window.Values())
 
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 8)
+				assert.Equal(8, snapshot.Count)
 				assert.True(snapshot.IsFull())
-				assert.Equal(snapshot.Last, float64(7))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(3))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(2))
+				assert.Equal(float64(7), snapshot.Last)
+				assert.Equal(float64(3), snapshot.MeanExcludingLast())
+				assert.Equal(float64(2), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -195,12 +198,12 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 				}
 
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 8)
-				assert.Equal(snapshot.Last, float64(5))
-				assert.Equal(snapshot.Mean, float64(5))
-				assert.Equal(snapshot.StdDev, float64(0))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(5))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(0))
+				assert.Equal(8, snapshot.Count)
+				assert.Equal(float64(5), snapshot.Last)
+				assert.Equal(float64(5), snapshot.Mean)
+				assert.Equal(float64(0), snapshot.StdDev)
+				assert.Equal(float64(5), snapshot.MeanExcludingLast())
+				assert.Equal(float64(0), snapshot.StdDevExcludingLast())
 			},
 		},
 		{
@@ -213,29 +216,29 @@ func TestRollingWindow_Snapshot(t *testing.T) {
 
 				snapshot := window.Snapshot()
 				assert.InEpsilon(1e9+0.1, snapshot.Mean, 1e-9)
-				assert.InDelta(snapshot.StdDev, 0, 1e-6*snapshot.Mean)
-				assert.InDelta(snapshot.StdDevExcludingLast(), 0, 1e-6*snapshot.Mean)
+				assert.InDelta(0, snapshot.StdDev, 1e-6*snapshot.Mean)
+				assert.InDelta(0, snapshot.StdDevExcludingLast(), 1e-6*snapshot.Mean)
 			},
 		},
 		{
 			name: "window with capacity one keeps only the latest sample",
-			expect: func(t *testing.T, _window *RollingWindow) {
+			expect: func(t *testing.T, _ *RollingWindow) {
 				assert := assert.New(t)
 				window := NewRollingWindow(1)
 				for i := range 10 {
 					window.Add(float64(i))
 				}
 
-				assert.Equal(window.Values(), []float64{9})
+				assert.Equal([]float64{9}, window.Values())
 				snapshot := window.Snapshot()
-				assert.Equal(snapshot.Count, 1)
-				assert.Equal(snapshot.Capacity, 1)
+				assert.Equal(1, snapshot.Count)
+				assert.Equal(1, snapshot.Capacity)
 				assert.True(snapshot.IsFull())
-				assert.Equal(snapshot.Last, float64(9))
-				assert.Equal(snapshot.Mean, float64(9))
-				assert.Equal(snapshot.StdDev, float64(0))
-				assert.Equal(snapshot.MeanExcludingLast(), float64(0))
-				assert.Equal(snapshot.StdDevExcludingLast(), float64(0))
+				assert.Equal(float64(9), snapshot.Last)
+				assert.Equal(float64(9), snapshot.Mean)
+				assert.Equal(float64(0), snapshot.StdDev)
+				assert.Equal(float64(0), snapshot.MeanExcludingLast())
+				assert.Equal(float64(0), snapshot.StdDevExcludingLast())
 			},
 		},
 	}
@@ -272,13 +275,13 @@ func TestRollingWindow_Concurrent(t *testing.T) {
 	wg.Wait()
 
 	values := window.Values()
-	assert.Equal(len(values), 64)
+	assert.Equal(64, len(values))
 	var sum float64
 	for _, value := range values {
 		sum += value
 	}
 
 	snapshot := window.Snapshot()
-	assert.Equal(snapshot.Count, 64)
+	assert.Equal(64, snapshot.Count)
 	assert.InEpsilon(sum/64, snapshot.Mean, 1e-9)
 }

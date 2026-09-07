@@ -22,11 +22,11 @@ import (
 	"path"
 	"testing"
 
-	testifyassert "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPlugin_Load(t *testing.T) {
-	assert := testifyassert.New(t)
+	assert := assert.New(t)
 	defer func() {
 		os.Remove("./testdata/d7y-scheduler-plugin-evaluator.so")
 		os.Remove("./testdata/test")
@@ -39,34 +39,65 @@ func TestPlugin_Load(t *testing.T) {
 		err    error
 	)
 
-	// build plugin
 	cmd = exec.Command("go", "build", "-buildmode=plugin", "-o=./testdata/d7y-scheduler-plugin-evaluator.so", "testdata/plugin/evaluator.go")
 	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	assert.NoError(err)
 	if err != nil {
 		t.Fatal(string(output))
 		return
 	}
 
-	// build test binary
 	cmd = exec.Command("go", "build", "-o=./testdata/test", "testdata/main.go")
 	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	assert.NoError(err)
 	if err != nil {
 		t.Fatal(string(output))
 		return
 	}
 
 	wd, err = os.Getwd()
-	assert.Nil(err)
+	assert.NoError(err)
 	wd = path.Join(wd, "testdata")
 
-	// execute test binary
 	cmd = exec.Command("./testdata/test", "-plugin-dir", wd)
 	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	assert.NoError(err)
 	if err != nil {
 		t.Fatal(string(output))
 		return
+	}
+}
+
+func TestPlugin_LoadFailed(t *testing.T) {
+	tests := []struct {
+		name   string
+		dir    string
+		expect func(t *testing.T, e Evaluator, err error)
+	}{
+		{
+			name: "plugin directory does not exist",
+			dir:  "./testdata/not-exist",
+			expect: func(t *testing.T, e Evaluator, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(e)
+			},
+		},
+		{
+			name: "plugin directory without plugin file",
+			dir:  "./testdata/plugin",
+			expect: func(t *testing.T, e Evaluator, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(e)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e, err := LoadPlugin(tc.dir)
+			tc.expect(t, e, err)
+		})
 	}
 }

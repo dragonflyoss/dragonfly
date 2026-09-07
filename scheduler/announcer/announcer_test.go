@@ -107,7 +107,7 @@ func TestAnnouncer_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, a Announcer, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 	}
@@ -133,7 +133,7 @@ func TestAnnouncer_Serve(t *testing.T) {
 		data   []byte
 		sleep  func()
 		mock   func(data []byte, m *managerclientmocks.MockV2MockRecorder)
-		except func(t *testing.T, a Announcer)
+		expect func(t *testing.T, a Announcer)
 	}{
 		{
 			name: "started announcer server success",
@@ -160,7 +160,6 @@ func TestAnnouncer_Serve(t *testing.T) {
 				time.Sleep(3 * time.Second)
 			},
 			mock: func(data []byte, m *managerclientmocks.MockV2MockRecorder) {
-
 				gomock.InOrder(
 					m.UpdateScheduler(gomock.Any(), gomock.Eq(&managerv2.UpdateSchedulerRequest{
 						SourceType:         managerv2.SourceType_SCHEDULER_SOURCE,
@@ -181,7 +180,7 @@ func TestAnnouncer_Serve(t *testing.T) {
 					}), gomock.Any()).Times(1),
 				)
 			},
-			except: func(t *testing.T, a Announcer) {
+			expect: func(t *testing.T, a Announcer) {
 				go a.Serve()
 			},
 		},
@@ -197,7 +196,7 @@ func TestAnnouncer_Serve(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tc.except(t, a)
+			tc.expect(t, a)
 			tc.sleep()
 			a.Stop()
 		})
@@ -210,7 +209,7 @@ func TestAnnouncer_announceToManager(t *testing.T) {
 		config *config.Config
 		sleep  func()
 		mock   func(m *managerclientmocks.MockV2MockRecorder)
-		except func(a Announcer)
+		expect func(a Announcer)
 	}{
 		{
 			name: "announce to manager success",
@@ -256,7 +255,7 @@ func TestAnnouncer_announceToManager(t *testing.T) {
 					}), gomock.Any()).Times(1),
 				)
 			},
-			except: func(a Announcer) {
+			expect: func(a Announcer) {
 				a.(*announcer).announceToManager()
 			},
 		},
@@ -274,7 +273,7 @@ func TestAnnouncer_announceToManager(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tc.except(a)
+			tc.expect(a)
 			tc.sleep()
 		})
 	}

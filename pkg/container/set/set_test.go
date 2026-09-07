@@ -25,26 +25,25 @@ import (
 func TestSetAdd(t *testing.T) {
 	tests := []struct {
 		name   string
-		value  string
-		expect func(t *testing.T, ok bool, s Set[string], value string)
+		values []string
+		expect func(t *testing.T, oks []bool, s Set[string])
 	}{
 		{
-			name:  "add value",
-			value: "foo",
-			expect: func(t *testing.T, ok bool, s Set[string], value string) {
+			name:   "add value",
+			values: []string{"foo"},
+			expect: func(t *testing.T, oks []bool, s Set[string]) {
 				assert := assert.New(t)
-				assert.Equal(ok, true)
-				assert.Equal(s.Values(), []string{value})
+				assert.Equal([]bool{true}, oks)
+				assert.Equal([]string{"foo"}, s.Values())
 			},
 		},
 		{
-			name:  "add value failed",
-			value: "foo",
-			expect: func(t *testing.T, _ bool, s Set[string], value string) {
+			name:   "add duplicate value",
+			values: []string{"foo", "foo"},
+			expect: func(t *testing.T, oks []bool, s Set[string]) {
 				assert := assert.New(t)
-				ok := s.Add("foo")
-				assert.Equal(ok, false)
-				assert.Equal(s.Values(), []string{value})
+				assert.Equal([]bool{true, false}, oks)
+				assert.Equal([]string{"foo"}, s.Values())
 			},
 		},
 	}
@@ -52,7 +51,12 @@ func TestSetAdd(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			tc.expect(t, s.Add(tc.value), s, tc.value)
+			oks := make([]bool, 0, len(tc.values))
+			for _, v := range tc.values {
+				oks = append(oks, s.Add(v))
+			}
+
+			tc.expect(t, oks, s)
 		})
 	}
 }
@@ -61,24 +65,22 @@ func TestSetDelete(t *testing.T) {
 	tests := []struct {
 		name   string
 		value  string
-		expect func(t *testing.T, s Set[string], value string)
+		expect func(t *testing.T, s Set[string])
 	}{
 		{
 			name:  "delete value",
 			value: "foo",
-			expect: func(t *testing.T, s Set[string], value string) {
+			expect: func(t *testing.T, s Set[string]) {
 				assert := assert.New(t)
-				s.Delete(value)
-				assert.Equal(s.Len(), uint(0))
+				assert.Equal(uint(0), s.Len())
 			},
 		},
 		{
 			name:  "delete value does not exist",
-			value: "foo",
-			expect: func(t *testing.T, s Set[string], _ string) {
+			value: "bar",
+			expect: func(t *testing.T, s Set[string]) {
 				assert := assert.New(t)
-				s.Delete("bar")
-				assert.Equal(s.Len(), uint(1))
+				assert.Equal(uint(1), s.Len())
 			},
 		},
 	}
@@ -86,8 +88,9 @@ func TestSetDelete(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			s.Add(tc.value)
-			tc.expect(t, s, tc.value)
+			s.Add("foo")
+			s.Delete(tc.value)
+			tc.expect(t, s)
 		})
 	}
 }
@@ -95,23 +98,47 @@ func TestSetDelete(t *testing.T) {
 func TestSetContains(t *testing.T) {
 	tests := []struct {
 		name   string
-		value  string
-		expect func(t *testing.T, s Set[string], value string)
+		values []string
+		expect func(t *testing.T, ok bool)
 	}{
 		{
-			name:  "contains value",
-			value: "foo",
-			expect: func(t *testing.T, s Set[string], value string) {
+			name:   "contains value",
+			values: []string{"foo"},
+			expect: func(t *testing.T, ok bool) {
 				assert := assert.New(t)
-				assert.Equal(s.Contains(value), true)
+				assert.True(ok)
 			},
 		},
 		{
-			name:  "contains value does not exist",
-			value: "foo",
-			expect: func(t *testing.T, s Set[string], _ string) {
+			name:   "contains value does not exist",
+			values: []string{"baz"},
+			expect: func(t *testing.T, ok bool) {
 				assert := assert.New(t)
-				assert.Equal(s.Contains("bar"), false)
+				assert.False(ok)
+			},
+		},
+		{
+			name:   "contains all of multiple values",
+			values: []string{"foo", "bar"},
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
+			},
+		},
+		{
+			name:   "contains fails when one of multiple values is missing",
+			values: []string{"foo", "baz"},
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.False(ok)
+			},
+		},
+		{
+			name:   "contains no values",
+			values: nil,
+			expect: func(t *testing.T, ok bool) {
+				assert := assert.New(t)
+				assert.True(ok)
 			},
 		},
 	}
@@ -119,8 +146,9 @@ func TestSetContains(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			s.Add(tc.value)
-			tc.expect(t, s, tc.value)
+			s.Add("foo")
+			s.Add("bar")
+			tc.expect(t, s.Contains(tc.values...))
 		})
 	}
 }
@@ -128,21 +156,23 @@ func TestSetContains(t *testing.T) {
 func TestSetLen(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect func(t *testing.T, s Set[string])
+		values []string
+		expect func(t *testing.T, n uint)
 	}{
 		{
-			name: "get length",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "get length",
+			values: []string{"foo"},
+			expect: func(t *testing.T, n uint) {
 				assert := assert.New(t)
-				s.Add("foo")
-				assert.Equal(s.Len(), uint(1))
+				assert.Equal(uint(1), n)
 			},
 		},
 		{
-			name: "get empty set length",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "get empty set length",
+			values: nil,
+			expect: func(t *testing.T, n uint) {
 				assert := assert.New(t)
-				assert.Equal(s.Len(), uint(0))
+				assert.Equal(uint(0), n)
 			},
 		},
 	}
@@ -150,7 +180,11 @@ func TestSetLen(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			tc.expect(t, s)
+			for _, v := range tc.values {
+				s.Add(v)
+			}
+
+			tc.expect(t, s.Len())
 		})
 	}
 }
@@ -158,31 +192,31 @@ func TestSetLen(t *testing.T) {
 func TestSetValues(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect func(t *testing.T, s Set[string])
+		values []string
+		expect func(t *testing.T, values []string)
 	}{
 		{
-			name: "get values",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "get values",
+			values: []string{"foo"},
+			expect: func(t *testing.T, values []string) {
 				assert := assert.New(t)
-				s.Add("foo")
-				assert.Equal(s.Values(), []string{"foo"})
+				assert.Equal([]string{"foo"}, values)
 			},
 		},
 		{
-			name: "get empty values",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "get empty values",
+			values: nil,
+			expect: func(t *testing.T, values []string) {
 				assert := assert.New(t)
-				assert.Equal(s.Values(), []string(nil))
+				assert.Equal([]string(nil), values)
 			},
 		},
 		{
-			name: "get multi values",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "get multi values",
+			values: []string{"foo", "bar"},
+			expect: func(t *testing.T, values []string) {
 				assert := assert.New(t)
-				s.Add("foo")
-				s.Add("bar")
-				assert.Contains(s.Values(), "bar")
-				assert.Contains(s.Values(), "foo")
+				assert.ElementsMatch([]string{"foo", "bar"}, values)
 			},
 		},
 	}
@@ -190,7 +224,11 @@ func TestSetValues(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			tc.expect(t, s)
+			for _, v := range tc.values {
+				s.Add(v)
+			}
+
+			tc.expect(t, s.Values())
 		})
 	}
 }
@@ -198,25 +236,27 @@ func TestSetValues(t *testing.T) {
 func TestSetClear(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect func(t *testing.T, s Set[string])
+		values []string
+		expect func(t *testing.T, cleared []string, readded bool, s Set[string])
 	}{
 		{
-			name: "clear empty set",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "clear empty set",
+			values: nil,
+			expect: func(t *testing.T, cleared []string, readded bool, s Set[string]) {
 				assert := assert.New(t)
-				s.Clear()
-				assert.Equal(s.Values(), []string(nil))
+				assert.Equal([]string(nil), cleared)
+				assert.True(readded)
+				assert.Equal([]string{"foo"}, s.Values())
 			},
 		},
 		{
-			name: "clear set",
-			expect: func(t *testing.T, s Set[string]) {
+			name:   "clear set",
+			values: []string{"foo"},
+			expect: func(t *testing.T, cleared []string, readded bool, s Set[string]) {
 				assert := assert.New(t)
-				assert.Equal(s.Add("foo"), true)
-				s.Clear()
-				assert.Equal(s.Values(), []string(nil))
-				assert.Equal(s.Add("foo"), true)
-				assert.Equal(s.Values(), []string{"foo"})
+				assert.Equal([]string(nil), cleared)
+				assert.True(readded)
+				assert.Equal([]string{"foo"}, s.Values())
 			},
 		},
 	}
@@ -224,7 +264,14 @@ func TestSetClear(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := New[string]()
-			tc.expect(t, s)
+			for _, v := range tc.values {
+				s.Add(v)
+			}
+
+			s.Clear()
+			cleared := s.Values()
+			readded := s.Add("foo")
+			tc.expect(t, cleared, readded, s)
 		})
 	}
 }

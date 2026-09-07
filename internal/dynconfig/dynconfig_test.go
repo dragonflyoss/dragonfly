@@ -44,7 +44,7 @@ func TestDynconfig_Get(t *testing.T) {
 		expire time.Duration
 		sleep  func()
 		mock   func(m *mocks.MockClientMockRecorder)
-		run    func(t *testing.T, d Dynconfig[TestDynconfig])
+		expect func(t *testing.T, d Dynconfig[TestDynconfig])
 	}{
 		{
 			name:   "get config success",
@@ -62,15 +62,15 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).AnyTimes()
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -91,15 +91,15 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).Times(2)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: "foo",
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -123,15 +123,15 @@ func TestDynconfig_Get(t *testing.T) {
 					m.Get().Return(nil, errors.New("manager service error")).Times(1),
 				)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -150,23 +150,23 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).Times(1)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -199,32 +199,32 @@ func TestDynconfig_Get(t *testing.T) {
 					m.Get().Return(ds, nil).Times(1),
 				)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				time.Sleep(30 * time.Millisecond)
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: "foo",
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -245,24 +245,24 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(df, nil).Times(3)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				time.Sleep(30 * time.Millisecond)
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -281,23 +281,23 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(df, nil).Times(1)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[TestDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
+				assert.EqualValues(&TestDynconfig{
 					Scheduler: SchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 	}
@@ -315,7 +315,7 @@ func TestDynconfig_Get(t *testing.T) {
 			}
 
 			tc.sleep()
-			tc.run(t, d)
+			tc.expect(t, d)
 		})
 	}
 }

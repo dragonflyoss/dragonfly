@@ -140,141 +140,91 @@ var (
 )
 
 func TestNewHost(t *testing.T) {
-	tests := []struct {
-		name               string
-		id                 string
-		hostname           string
-		ip                 string
-		os                 string
-		platform           string
-		platformFamily     string
-		platformVersion    string
-		kernelVersion      string
-		port               int32
-		downloadPort       int32
-		proxyPort          int32
-		schedulerClusterId uint64
-		disableShared      bool
-		typ                types.HostType
-		cpu                CPU
-		memory             Memory
-		network            Network
-		disk               Disk
-		build              Build
-		announceInterval   time.Duration
-		createdAt          time.Time
-		updatedAt          time.Time
-		log                *logger.SugaredLoggerOnWith
-	}{
-		{
-			name:               "new host",
-			id:                 "test-id",
-			hostname:           "test-host",
-			ip:                 "127.0.0.1",
-			os:                 "linux",
-			platform:           "amd64",
-			platformFamily:     "debian",
-			platformVersion:    "11",
-			kernelVersion:      "5.10.0",
-			port:               8002,
-			downloadPort:       8001,
-			proxyPort:          8004,
-			schedulerClusterId: 1,
-			disableShared:      false,
-			typ:                types.HostTypeNormal,
-			cpu: CPU{
-				LogicalCount:   4,
-				PhysicalCount:  2,
-				Percent:        50.0,
-				ProcessPercent: 25.0,
-				Times: CPUTimes{
-					User:      100.0,
-					System:    50.0,
-					Idle:      200.0,
-					Nice:      10.0,
-					Iowait:    5.0,
-					Irq:       1.0,
-					Softirq:   2.0,
-					Steal:     0.0,
-					Guest:     0.0,
-					GuestNice: 0.0,
-				},
-			},
-			memory: Memory{
-				Total:              16 * 1024 * 1024 * 1024,
-				Available:          8 * 1024 * 1024 * 1024,
-				Used:               8 * 1024 * 1024 * 1024,
-				UsedPercent:        50.0,
-				ProcessUsedPercent: 25.0,
-				Free:               4 * 1024 * 1024 * 1024,
-			},
-			network: Network{
-				TCPConnectionCount:       100,
-				UploadTCPConnectionCount: 50,
-				Location:                 "us-west",
-				IDC:                      "test-idc",
-				RxBandwidth:              1024 * 1024,
-				MaxRxBandwidth:           2 * 1024 * 1024,
-				TxBandwidth:              512 * 1024,
-				MaxTxBandwidth:           1024 * 1024,
-			},
-			disk: Disk{
-				Total:             1000 * 1024 * 1024 * 1024,
-				Free:              500 * 1024 * 1024 * 1024,
-				Used:              500 * 1024 * 1024 * 1024,
-				UsedPercent:       50.0,
-				InodesTotal:       1000000,
-				InodesUsed:        500000,
-				InodesFree:        500000,
-				InodesUsedPercent: 50.0,
-				WriteBandwidth:    100 * 1024 * 1024,
-				ReadBandwidth:     200 * 1024 * 1024,
-			},
-			build: Build{
-				GitVersion:  "v1.0.0",
-				GitCommit:   "abc123",
-				GoVersion:   "go1.17",
-				RustVersion: "1.57",
-				Platform:    "linux/amd64",
-			},
-			announceInterval: 30 * time.Second,
-			createdAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			updatedAt:        time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	cpu := CPU{
+		LogicalCount:   4,
+		PhysicalCount:  2,
+		Percent:        50.0,
+		ProcessPercent: 25.0,
+		Times: CPUTimes{
+			User:      100.0,
+			System:    50.0,
+			Idle:      200.0,
+			Nice:      10.0,
+			Iowait:    5.0,
+			Irq:       1.0,
+			Softirq:   2.0,
+			Steal:     0.0,
+			Guest:     0.0,
+			GuestNice: 0.0,
 		},
 	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := NewHost(
-				tc.id, tc.name, tc.hostname, tc.ip, tc.os, tc.platform, tc.platformFamily, tc.platformVersion,
-				tc.kernelVersion, tc.port, tc.downloadPort, tc.proxyPort, tc.schedulerClusterId, tc.disableShared,
-				tc.typ, tc.cpu, tc.memory, tc.network, tc.disk, tc.build, tc.announceInterval,
-				tc.createdAt, tc.updatedAt, tc.log,
-			)
-
-			assert.Equal(t, tc.id, got.ID)
-			assert.Equal(t, tc.name, got.Name)
-			assert.Equal(t, tc.hostname, got.Hostname)
-			assert.Equal(t, tc.ip, got.IP)
-			assert.Equal(t, tc.os, got.OS)
-			assert.Equal(t, tc.platform, got.Platform)
-			assert.Equal(t, tc.platformFamily, got.PlatformFamily)
-			assert.Equal(t, tc.platformVersion, got.PlatformVersion)
-			assert.Equal(t, tc.kernelVersion, got.KernelVersion)
-			assert.Equal(t, tc.port, got.Port)
-			assert.Equal(t, tc.downloadPort, got.DownloadPort)
-			assert.Equal(t, tc.proxyPort, got.ProxyPort)
-			assert.Equal(t, tc.schedulerClusterId, got.SchedulerClusterID)
-			assert.Equal(t, tc.disableShared, got.DisableShared)
-			assert.Equal(t, tc.typ, got.Type)
-			assert.Equal(t, tc.cpu, got.CPU)
-			assert.Equal(t, tc.memory, got.Memory)
-			assert.Equal(t, tc.network, got.Network)
-			assert.Equal(t, tc.disk, got.Disk)
-			assert.Equal(t, tc.build, got.Build)
-			assert.Equal(t, tc.announceInterval, got.AnnounceInterval)
-			assert.Equal(t, tc.createdAt, got.CreatedAt)
-			assert.Equal(t, tc.updatedAt, got.UpdatedAt)
-		})
+	memory := Memory{
+		Total:              16 * 1024 * 1024 * 1024,
+		Available:          8 * 1024 * 1024 * 1024,
+		Used:               8 * 1024 * 1024 * 1024,
+		UsedPercent:        50.0,
+		ProcessUsedPercent: 25.0,
+		Free:               4 * 1024 * 1024 * 1024,
 	}
+	network := Network{
+		TCPConnectionCount:       100,
+		UploadTCPConnectionCount: 50,
+		Location:                 "us-west",
+		IDC:                      "test-idc",
+		RxBandwidth:              1024 * 1024,
+		MaxRxBandwidth:           2 * 1024 * 1024,
+		TxBandwidth:              512 * 1024,
+		MaxTxBandwidth:           1024 * 1024,
+	}
+	disk := Disk{
+		Total:             1000 * 1024 * 1024 * 1024,
+		Free:              500 * 1024 * 1024 * 1024,
+		Used:              500 * 1024 * 1024 * 1024,
+		UsedPercent:       50.0,
+		InodesTotal:       1000000,
+		InodesUsed:        500000,
+		InodesFree:        500000,
+		InodesUsedPercent: 50.0,
+		WriteBandwidth:    100 * 1024 * 1024,
+		ReadBandwidth:     200 * 1024 * 1024,
+	}
+	build := Build{
+		GitVersion:  "v1.0.0",
+		GitCommit:   "abc123",
+		GoVersion:   "go1.17",
+		RustVersion: "1.57",
+		Platform:    "linux/amd64",
+	}
+
+	host := NewHost(
+		"test-id", "test-name", "test-host", "127.0.0.1", "linux", "amd64", "debian", "11", "5.10.0", 8002, 8001, 8004,
+		1, false, types.HostTypeNormal, cpu, memory, network, disk, build, 30*time.Second,
+		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), nil,
+	)
+
+	assert := assert.New(t)
+	assert.Equal("test-id", host.ID)
+	assert.Equal("test-name", host.Name)
+	assert.Equal("test-host", host.Hostname)
+	assert.Equal("127.0.0.1", host.IP)
+	assert.Equal("linux", host.OS)
+	assert.Equal("amd64", host.Platform)
+	assert.Equal("debian", host.PlatformFamily)
+	assert.Equal("11", host.PlatformVersion)
+	assert.Equal("5.10.0", host.KernelVersion)
+	assert.Equal(int32(8002), host.Port)
+	assert.Equal(int32(8001), host.DownloadPort)
+	assert.Equal(int32(8004), host.ProxyPort)
+	assert.Equal(uint64(1), host.SchedulerClusterID)
+	assert.False(host.DisableShared)
+	assert.Equal(types.HostTypeNormal, host.Type)
+	assert.Equal(cpu, host.CPU)
+	assert.Equal(memory, host.Memory)
+	assert.Equal(network, host.Network)
+	assert.Equal(disk, host.Disk)
+	assert.Equal(build, host.Build)
+	assert.Equal(30*time.Second, host.AnnounceInterval)
+	assert.Equal(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), host.CreatedAt)
+	assert.Equal(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), host.UpdatedAt)
+	assert.NotNil(host.Log)
 }

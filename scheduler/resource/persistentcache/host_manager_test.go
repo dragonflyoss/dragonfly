@@ -18,7 +18,8 @@ package persistentcache
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -26,633 +27,1025 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/container/set"
+	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
-	pkgtypes "d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
-func TestHostManager_Load(t *testing.T) {
+var mockHostManagerConfig = &config.Config{
+	Manager:   config.ManagerConfig{SchedulerClusterID: 1},
+	Scheduler: config.SchedulerConfig{GC: config.GCConfig{HostGCInterval: 10 * time.Minute}},
+}
+
+func mockRawHostFields(hostID string) map[string]string {
+	return map[string]string{
+		"id":                                  hostID,
+		"type":                                mockRawHost.Type.Name(),
+		"name":                                mockRawHost.Name,
+		"hostname":                            mockRawHost.Hostname,
+		"ip":                                  mockRawHost.IP,
+		"port":                                strconv.FormatInt(int64(mockRawHost.Port), 10),
+		"download_port":                       strconv.FormatInt(int64(mockRawHost.DownloadPort), 10),
+		"proxy_port":                          strconv.FormatInt(int64(mockRawHost.ProxyPort), 10),
+		"disable_shared":                      strconv.FormatBool(mockRawHost.DisableShared),
+		"os":                                  mockRawHost.OS,
+		"platform":                            mockRawHost.Platform,
+		"platform_family":                     mockRawHost.PlatformFamily,
+		"platform_version":                    mockRawHost.PlatformVersion,
+		"kernel_version":                      mockRawHost.KernelVersion,
+		"cpu_logical_count":                   strconv.FormatUint(uint64(mockRawHost.CPU.LogicalCount), 10),
+		"cpu_physical_count":                  strconv.FormatUint(uint64(mockRawHost.CPU.PhysicalCount), 10),
+		"cpu_percent":                         strconv.FormatFloat(mockRawHost.CPU.Percent, 'f', -1, 64),
+		"cpu_process_percent":                 strconv.FormatFloat(mockRawHost.CPU.ProcessPercent, 'f', -1, 64),
+		"cpu_times_user":                      strconv.FormatFloat(mockRawHost.CPU.Times.User, 'f', -1, 64),
+		"cpu_times_system":                    strconv.FormatFloat(mockRawHost.CPU.Times.System, 'f', -1, 64),
+		"cpu_times_idle":                      strconv.FormatFloat(mockRawHost.CPU.Times.Idle, 'f', -1, 64),
+		"cpu_times_nice":                      strconv.FormatFloat(mockRawHost.CPU.Times.Nice, 'f', -1, 64),
+		"cpu_times_iowait":                    strconv.FormatFloat(mockRawHost.CPU.Times.Iowait, 'f', -1, 64),
+		"cpu_times_irq":                       strconv.FormatFloat(mockRawHost.CPU.Times.Irq, 'f', -1, 64),
+		"cpu_times_softirq":                   strconv.FormatFloat(mockRawHost.CPU.Times.Softirq, 'f', -1, 64),
+		"cpu_times_steal":                     strconv.FormatFloat(mockRawHost.CPU.Times.Steal, 'f', -1, 64),
+		"cpu_times_guest":                     strconv.FormatFloat(mockRawHost.CPU.Times.Guest, 'f', -1, 64),
+		"cpu_times_guest_nice":                strconv.FormatFloat(mockRawHost.CPU.Times.GuestNice, 'f', -1, 64),
+		"memory_total":                        strconv.FormatUint(mockRawHost.Memory.Total, 10),
+		"memory_available":                    strconv.FormatUint(mockRawHost.Memory.Available, 10),
+		"memory_used":                         strconv.FormatUint(mockRawHost.Memory.Used, 10),
+		"memory_used_percent":                 strconv.FormatFloat(mockRawHost.Memory.UsedPercent, 'f', -1, 64),
+		"memory_process_used_percent":         strconv.FormatFloat(mockRawHost.Memory.ProcessUsedPercent, 'f', -1, 64),
+		"memory_free":                         strconv.FormatUint(mockRawHost.Memory.Free, 10),
+		"network_tcp_connection_count":        strconv.FormatUint(uint64(mockRawHost.Network.TCPConnectionCount), 10),
+		"network_upload_tcp_connection_count": strconv.FormatUint(uint64(mockRawHost.Network.UploadTCPConnectionCount), 10),
+		"network_location":                    mockRawHost.Network.Location,
+		"network_idc":                         mockRawHost.Network.IDC,
+		"network_rx_bandwidth":                strconv.FormatUint(mockRawHost.Network.RxBandwidth, 10),
+		"network_max_rx_bandwidth":            strconv.FormatUint(mockRawHost.Network.MaxRxBandwidth, 10),
+		"network_tx_bandwidth":                strconv.FormatUint(mockRawHost.Network.TxBandwidth, 10),
+		"network_max_tx_bandwidth":            strconv.FormatUint(mockRawHost.Network.MaxTxBandwidth, 10),
+		"disk_total":                          strconv.FormatUint(mockRawHost.Disk.Total, 10),
+		"disk_free":                           strconv.FormatUint(mockRawHost.Disk.Free, 10),
+		"disk_used":                           strconv.FormatUint(mockRawHost.Disk.Used, 10),
+		"disk_used_percent":                   strconv.FormatFloat(mockRawHost.Disk.UsedPercent, 'f', -1, 64),
+		"disk_inodes_total":                   strconv.FormatUint(mockRawHost.Disk.InodesTotal, 10),
+		"disk_inodes_used":                    strconv.FormatUint(mockRawHost.Disk.InodesUsed, 10),
+		"disk_inodes_free":                    strconv.FormatUint(mockRawHost.Disk.InodesFree, 10),
+		"disk_inodes_used_percent":            strconv.FormatFloat(mockRawHost.Disk.InodesUsedPercent, 'f', -1, 64),
+		"disk_write_bandwidth":                strconv.FormatUint(mockRawHost.Disk.WriteBandwidth, 10),
+		"disk_read_bandwidth":                 strconv.FormatUint(mockRawHost.Disk.ReadBandwidth, 10),
+		"build_git_version":                   mockRawHost.Build.GitVersion,
+		"build_git_commit":                    mockRawHost.Build.GitCommit,
+		"build_go_version":                    mockRawHost.Build.GoVersion,
+		"build_platform":                      mockRawHost.Build.Platform,
+		"scheduler_cluster_id":                strconv.FormatUint(mockRawHost.SchedulerClusterID, 10),
+		"announce_interval":                   strconv.FormatInt(mockRawHost.AnnounceInterval.Nanoseconds(), 10),
+		"created_at":                          mockRawHost.CreatedAt.Format(time.RFC3339),
+		"updated_at":                          mockRawHost.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func mockStoreHostScript(mock redismock.ClientMock) *redismock.ExpectedCmd {
+	return mock.CustomMatch(matchScriptArgs).ExpectEvalSha("", []string{
+		pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID),
+		pkgredis.MakePersistentCacheHostsInScheduler(1),
+	},
+		mockRawHost.ID,
+		mockRawHost.Type.Name(),
+		mockRawHost.Name,
+		mockRawHost.Hostname,
+		mockRawHost.IP,
+		mockRawHost.Port,
+		mockRawHost.DownloadPort,
+		mockRawHost.ProxyPort,
+		mockRawHost.DisableShared,
+		mockRawHost.OS,
+		mockRawHost.Platform,
+		mockRawHost.PlatformFamily,
+		mockRawHost.PlatformVersion,
+		mockRawHost.KernelVersion,
+		mockRawHost.CPU.LogicalCount,
+		mockRawHost.CPU.PhysicalCount,
+		mockRawHost.CPU.Percent,
+		mockRawHost.CPU.ProcessPercent,
+		mockRawHost.CPU.Times.User,
+		mockRawHost.CPU.Times.System,
+		mockRawHost.CPU.Times.Idle,
+		mockRawHost.CPU.Times.Nice,
+		mockRawHost.CPU.Times.Iowait,
+		mockRawHost.CPU.Times.Irq,
+		mockRawHost.CPU.Times.Softirq,
+		mockRawHost.CPU.Times.Steal,
+		mockRawHost.CPU.Times.Guest,
+		mockRawHost.CPU.Times.GuestNice,
+		mockRawHost.Memory.Total,
+		mockRawHost.Memory.Available,
+		mockRawHost.Memory.Used,
+		mockRawHost.Memory.UsedPercent,
+		mockRawHost.Memory.ProcessUsedPercent,
+		mockRawHost.Memory.Free,
+		mockRawHost.Network.TCPConnectionCount,
+		mockRawHost.Network.UploadTCPConnectionCount,
+		mockRawHost.Network.Location,
+		mockRawHost.Network.IDC,
+		mockRawHost.Network.RxBandwidth,
+		mockRawHost.Network.MaxRxBandwidth,
+		mockRawHost.Network.TxBandwidth,
+		mockRawHost.Network.MaxTxBandwidth,
+		mockRawHost.Disk.Total,
+		mockRawHost.Disk.Free,
+		mockRawHost.Disk.Used,
+		mockRawHost.Disk.UsedPercent,
+		mockRawHost.Disk.InodesTotal,
+		mockRawHost.Disk.InodesUsed,
+		mockRawHost.Disk.InodesFree,
+		mockRawHost.Disk.InodesUsedPercent,
+		mockRawHost.Disk.WriteBandwidth,
+		mockRawHost.Disk.ReadBandwidth,
+		mockRawHost.Build.GitVersion,
+		mockRawHost.Build.GitCommit,
+		mockRawHost.Build.GoVersion,
+		mockRawHost.Build.Platform,
+		mockRawHost.SchedulerClusterID,
+		mockRawHost.AnnounceInterval.Nanoseconds(),
+		mockRawHost.CreatedAt.Format(time.RFC3339),
+		mockRawHost.UpdatedAt.Format(time.RFC3339),
+	)
+}
+
+func mockDeleteHostScript(mock redismock.ClientMock, hostID string) *redismock.ExpectedCmd {
+	return mock.CustomMatch(matchScriptArgs).ExpectEvalSha("", []string{
+		pkgredis.MakePersistentCacheHostKeyInScheduler(1, hostID),
+		pkgredis.MakePersistentCacheHostsInScheduler(1),
+	}, hostID)
+}
+
+func TestNewHostManager(t *testing.T) {
 	tests := []struct {
-		name           string
-		hostID         string
-		mockRedis      func(mock redismock.ClientMock)
-		expectedHost   *Host
-		expectedLoaded bool
-		expectedError  bool
-		errorMsg       string
+		name   string
+		mock   func(mock *pkggc.MockGCMockRecorder)
+		expect func(t *testing.T, hostManager HostManager, err error)
 	}{
 		{
-			name:   "host exists in Redis",
-			hostID: "host1",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                                  "host1",
-					"type":                                "normal",
-					"hostname":                            "hostname1",
-					"ip":                                  "127.0.0.1",
-					"port":                                "8080",
-					"download_port":                       "8081",
-					"proxy_port":                          "8082",
-					"disable_shared":                      "false",
-					"os":                                  "linux",
-					"platform":                            "x86_64",
-					"platform_family":                     "debian",
-					"platform_version":                    "11",
-					"kernel_version":                      "5.10",
-					"cpu_logical_count":                   "4",
-					"cpu_physical_count":                  "2",
-					"cpu_percent":                         "50.0",
-					"cpu_process_percent":                 "25.0",
-					"cpu_times_user":                      "10.0",
-					"cpu_times_system":                    "5.0",
-					"cpu_times_idle":                      "100.0",
-					"cpu_times_nice":                      "0.0",
-					"cpu_times_iowait":                    "1.0",
-					"cpu_times_irq":                       "0.5",
-					"cpu_times_softirq":                   "0.2",
-					"cpu_times_steal":                     "0.1",
-					"cpu_times_guest":                     "0.0",
-					"cpu_times_guest_nice":                "0.0",
-					"memory_total":                        "8000000000",
-					"memory_available":                    "4000000000",
-					"memory_used":                         "4000000000",
-					"memory_used_percent":                 "50.0",
-					"memory_process_used_percent":         "25.0",
-					"memory_free":                         "2000000000",
-					"network_tcp_connection_count":        "100",
-					"network_upload_tcp_connection_count": "50",
-					"network_location":                    "location1",
-					"network_idc":                         "idc1",
-					"network_rx_bandwidth":                "1000000",
-					"network_max_rx_bandwidth":            "2000000",
-					"network_tx_bandwidth":                "500000",
-					"network_max_tx_bandwidth":            "1000000",
-					"disk_total":                          "100000000000",
-					"disk_free":                           "50000000000",
-					"disk_used":                           "50000000000",
-					"disk_used_percent":                   "50.0",
-					"disk_inodes_total":                   "100000",
-					"disk_inodes_used":                    "50000",
-					"disk_inodes_free":                    "50000",
-					"disk_inodes_used_percent":            "50.0",
-					"disk_write_bandwidth":                "10000000",
-					"disk_read_bandwidth":                 "20000000",
-					"build_git_version":                   "v1.0.0",
-					"build_git_commit":                    "commit1",
-					"build_go_version":                    "1.16",
-					"build_platform":                      "linux/amd64",
-					"scheduler_cluster_id":                "1",
-					"announce_interval":                   "300",
-					"created_at":                          time.Now().Format(time.RFC3339),
-					"updated_at":                          time.Now().Format(time.RFC3339),
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(mockData)
+			name: "registers host gc task with configured interval",
+			mock: func(mock *pkggc.MockGCMockRecorder) {
+				mock.Add(gomock.Cond(func(task pkggc.Task) bool {
+					return task.ID == GCHostID &&
+						task.Interval == mockHostManagerConfig.Scheduler.GC.HostGCInterval &&
+						task.Timeout == mockHostManagerConfig.Scheduler.GC.HostGCInterval &&
+						task.Runner != nil
+				})).Return(nil).Times(1)
 			},
-			expectedHost: &Host{
-				ID:                 "host1",
-				Type:               pkgtypes.HostTypeNormal,
-				Hostname:           "hostname1",
-				IP:                 "127.0.0.1",
-				Port:               8080,
-				DownloadPort:       8081,
-				ProxyPort:          8082,
-				DisableShared:      false,
-				OS:                 "linux",
-				Platform:           "x86_64",
-				PlatformFamily:     "debian",
-				PlatformVersion:    "11",
-				KernelVersion:      "5.10",
-				CPU:                CPU{LogicalCount: 4, PhysicalCount: 2, Percent: 50.0, ProcessPercent: 25.0, Times: CPUTimes{User: 10.0, System: 5.0, Idle: 100.0, Nice: 0.0, Iowait: 1.0, Irq: 0.5, Softirq: 0.2, Steal: 0.1, Guest: 0.0, GuestNice: 0.0}},
-				Memory:             Memory{Total: 8000000000, Available: 4000000000, Used: 4000000000, UsedPercent: 50.0, ProcessUsedPercent: 25.0, Free: 2000000000},
-				Network:            Network{TCPConnectionCount: 100, UploadTCPConnectionCount: 50, Location: "location1", IDC: "idc1", RxBandwidth: 1000000, MaxRxBandwidth: 2000000, TxBandwidth: 500000, MaxTxBandwidth: 1000000},
-				Disk:               Disk{Total: 100000000000, Free: 50000000000, Used: 50000000000, UsedPercent: 50.0, InodesTotal: 100000, InodesUsed: 50000, InodesFree: 50000, InodesUsedPercent: 50.0, WriteBandwidth: 10000000, ReadBandwidth: 20000000},
-				Build:              Build{GitVersion: "v1.0.0", GitCommit: "commit1", GoVersion: "1.16", Platform: "linux/amd64"},
-				SchedulerClusterID: 1,
-				AnnounceInterval:   time.Duration(300),
-				CreatedAt:          time.Now(),
-				UpdatedAt:          time.Now(),
-				Log:                logger.WithHost("host1", "hostname1", "127.0.0.1"),
+			expect: func(t *testing.T, hostManager HostManager, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.NotNil(hostManager)
 			},
-			expectedLoaded: true,
 		},
 		{
-			name:   "host does not exist in Redis",
-			hostID: "host2",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host2")).SetVal(map[string]string{})
+			name: "gc registration fails",
+			mock: func(mock *pkggc.MockGCMockRecorder) {
+				mock.Add(gomock.Any()).Return(errors.New("gc error")).Times(1)
 			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-		},
-		{
-			name:   "redis returns an error",
-			hostID: "host3",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host3")).SetErr(fmt.Errorf("Redis error"))
+			expect: func(t *testing.T, hostManager HostManager, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(hostManager)
 			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid port value",
-			hostID: "host4",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":   "host4",
-					"port": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host4")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid scheduler_cluster_id value",
-			hostID: "host5",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                   "host5",
-					"scheduler_cluster_id": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host5")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid disable_shared value",
-			hostID: "host6",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":             "host6",
-					"disable_shared": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host6")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid cpu_logical_count value",
-			hostID: "host7",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                "host7",
-					"cpu_logical_count": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host7")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid cpu_percent value",
-			hostID: "host8",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":          "host8",
-					"cpu_percent": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host8")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid memory_total value",
-			hostID: "host9",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":           "host9",
-					"memory_total": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host9")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid network_tcp_connection_count value",
-			hostID: "host10",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                           "host10",
-					"network_tcp_connection_count": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host10")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid disk_total value",
-			hostID: "host11",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":         "host11",
-					"disk_total": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host11")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid announce_interval value",
-			hostID: "host12",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                "host12",
-					"announce_interval": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host12")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid created_at value",
-			hostID: "host13",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":         "host13",
-					"created_at": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host13")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
-		},
-		{
-			name:   "invalid updated_at value",
-			hostID: "host14",
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":         "host14",
-					"updated_at": "invalid",
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host14")).SetVal(mockData)
-			},
-			expectedHost:   nil,
-			expectedLoaded: false,
-			expectedError:  false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
+			gc := pkggc.NewMockGC(ctrl)
+			tc.mock(gc.EXPECT())
+
+			rdb, _ := redismock.NewClientMock()
+			hostManager, err := newHostManager(mockHostManagerConfig, gc, rdb)
+			tc.expect(t, hostManager, err)
+		})
+	}
+}
+
+func TestHostManager_Load(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, host *Host, loaded bool)
+	}{
+		{
+			name: "redis error",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetErr(errors.New("redis error"))
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "host not found",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(map[string]string{})
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid port value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["port"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid download_port value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["download_port"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid proxy_port value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["proxy_port"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid scheduler_cluster_id value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["scheduler_cluster_id"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disable_shared value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disable_shared"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_logical_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_logical_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_physical_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_physical_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_process_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_process_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_user value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_user"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_system value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_system"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_idle value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_idle"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_nice value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_nice"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_iowait value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_iowait"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_irq value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_irq"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_softirq value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_softirq"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_steal value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_steal"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_guest value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_guest"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid cpu_times_guest_nice value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["cpu_times_guest_nice"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_total value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_total"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_available value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_available"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_used value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_used"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_used_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_used_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_process_used_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_process_used_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid memory_free value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["memory_free"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_tcp_connection_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_tcp_connection_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_upload_tcp_connection_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_upload_tcp_connection_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_rx_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_rx_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_max_rx_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_max_rx_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_tx_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_tx_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid network_max_tx_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["network_max_tx_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_total value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_total"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_free value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_free"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_used value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_used"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_used_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_used_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_inodes_total value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_inodes_total"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_inodes_used value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_inodes_used"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_inodes_free value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_inodes_free"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_inodes_used_percent value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_inodes_used_percent"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_write_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_write_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid disk_read_bandwidth value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["disk_read_bandwidth"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid announce_interval value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["announce_interval"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid created_at value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["created_at"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "invalid updated_at value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields(mockRawHost.ID)
+				fields["updated_at"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(host)
+			},
+		},
+		{
+			name: "successful load",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, mockRawHost.ID)).SetVal(mockRawHostFields(mockRawHost.ID))
+			},
+			expect: func(t *testing.T, host *Host, loaded bool) {
+				assert := assert.New(t)
+				assert.True(loaded)
+				assert.Equal(mockRawHost.ID, host.ID)
+				assert.Equal(mockRawHost.Type, host.Type)
+				assert.Equal(mockRawHost.Name, host.Name)
+				assert.Equal(mockRawHost.Hostname, host.Hostname)
+				assert.Equal(mockRawHost.IP, host.IP)
+				assert.Equal(mockRawHost.Port, host.Port)
+				assert.Equal(mockRawHost.DownloadPort, host.DownloadPort)
+				assert.Equal(mockRawHost.ProxyPort, host.ProxyPort)
+				assert.Equal(mockRawHost.DisableShared, host.DisableShared)
+				assert.Equal(mockRawHost.OS, host.OS)
+				assert.Equal(mockRawHost.Platform, host.Platform)
+				assert.Equal(mockRawHost.PlatformFamily, host.PlatformFamily)
+				assert.Equal(mockRawHost.PlatformVersion, host.PlatformVersion)
+				assert.Equal(mockRawHost.KernelVersion, host.KernelVersion)
+				assert.Equal(mockRawHost.CPU, host.CPU)
+				assert.Equal(mockRawHost.Memory, host.Memory)
+				assert.Equal(mockRawHost.Network, host.Network)
+				assert.Equal(mockRawHost.Disk, host.Disk)
+				assert.Equal(mockRawHost.Build, host.Build)
+				assert.Equal(mockRawHost.SchedulerClusterID, host.SchedulerClusterID)
+				assert.Equal(mockRawHost.AnnounceInterval, host.AnnounceInterval)
+				assert.Equal(mockRawHost.CreatedAt.Format(time.RFC3339), host.CreatedAt.Format(time.RFC3339))
+				assert.Equal(mockRawHost.UpdatedAt.Format(time.RFC3339), host.UpdatedAt.Format(time.RFC3339))
+				assert.NotNil(host.Log)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			h := &hostManager{
-				config: &config.Config{
-					Manager: config.ManagerConfig{
-						SchedulerClusterID: 1,
-					},
-				},
-				rdb: rdb,
-			}
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
+			host, loaded := h.Load(context.Background(), mockRawHost.ID)
+			tc.expect(t, host, loaded)
+			assert.NoError(mock.ExpectationsWereMet())
+		})
+	}
+}
 
-			host, loaded := h.Load(context.Background(), tt.hostID)
-			if tt.expectedError {
-				assert.Error(t, nil)
-				assert.Contains(t, "", tt.errorMsg)
-			} else {
-				assert.NoError(t, nil)
-			}
+func TestHostManager_Store(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, err error)
+	}{
+		{
+			name: "store succeeds",
+			mock: func(mock redismock.ClientMock) {
+				mockStoreHostScript(mock).SetVal(true)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "redis error",
+			mock: func(mock redismock.ClientMock) {
+				mockStoreHostScript(mock).SetErr(errors.New("redis error"))
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
 
-			if tt.expectedLoaded {
-				assert.NotNil(t, host)
-				assert.Equal(t, tt.expectedHost.ID, host.ID)
-				assert.Equal(t, tt.expectedHost.Type, host.Type)
-				assert.Equal(t, tt.expectedHost.Hostname, host.Hostname)
-				assert.Equal(t, tt.expectedHost.IP, host.IP)
-				assert.Equal(t, tt.expectedHost.Port, host.Port)
-				assert.Equal(t, tt.expectedHost.DownloadPort, host.DownloadPort)
-				assert.Equal(t, tt.expectedHost.ProxyPort, host.ProxyPort)
-				assert.Equal(t, tt.expectedHost.DisableShared, host.DisableShared)
-				assert.Equal(t, tt.expectedHost.OS, host.OS)
-				assert.Equal(t, tt.expectedHost.Platform, host.Platform)
-				assert.Equal(t, tt.expectedHost.PlatformFamily, host.PlatformFamily)
-				assert.Equal(t, tt.expectedHost.PlatformVersion, host.PlatformVersion)
-				assert.Equal(t, tt.expectedHost.KernelVersion, host.KernelVersion)
-				assert.Equal(t, tt.expectedHost.CPU, host.CPU)
-				assert.Equal(t, tt.expectedHost.Memory, host.Memory)
-				assert.Equal(t, tt.expectedHost.Network, host.Network)
-				assert.Equal(t, tt.expectedHost.Disk, host.Disk)
-				assert.Equal(t, tt.expectedHost.Build, host.Build)
-				assert.Equal(t, tt.expectedHost.SchedulerClusterID, host.SchedulerClusterID)
-				assert.Equal(t, tt.expectedHost.AnnounceInterval.Abs(), host.AnnounceInterval.Abs())
-				assert.Equal(t, tt.expectedHost.CreatedAt.Format(time.RFC3339), host.CreatedAt.Format(time.RFC3339))
-				assert.Equal(t, tt.expectedHost.UpdatedAt.Format(time.RFC3339), host.UpdatedAt.Format(time.RFC3339))
-			}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			rdb, mock := redismock.NewClientMock()
+			tc.mock(mock)
 
-			assert.Equal(t, tt.expectedLoaded, loaded)
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("there were unfulfilled expectations: %s", err)
-			}
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
+			tc.expect(t, h.Store(context.Background(), &mockRawHost))
+			assert.NoError(mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestHostManager_Delete(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, err error)
+	}{
+		{
+			name: "delete succeeds",
+			mock: func(mock redismock.ClientMock) {
+				mockDeleteHostScript(mock, mockRawHost.ID).SetVal(true)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "redis error",
+			mock: func(mock redismock.ClientMock) {
+				mockDeleteHostScript(mock, mockRawHost.ID).SetErr(errors.New("redis error"))
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			rdb, mock := redismock.NewClientMock()
+			tc.mock(mock)
+
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
+			tc.expect(t, h.Delete(context.Background(), mockRawHost.ID))
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestHostManager_LoadAll(t *testing.T) {
 	tests := []struct {
-		name          string
-		mockRedis     func(mock redismock.ClientMock)
-		expectedError bool
-		expectedHosts int
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, hosts []*Host, err error)
 	}{
 		{
 			name: "scan fails",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).
-					SetErr(fmt.Errorf("redis scan error"))
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetErr(errors.New("redis scan error"))
 			},
-			expectedError: true,
-			expectedHosts: 0,
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(hosts)
+			},
 		},
 		{
-			name: "some hosts fail to load",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).
-					SetVal([]string{"host1", "host2"}, 0)
-				// host1 loaded successfully
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).
-					SetVal(map[string]string{
-						"id":                                  "host1",
-						"type":                                "normal",
-						"hostname":                            "hostname1",
-						"ip":                                  "127.0.0.1",
-						"port":                                "8080",
-						"download_port":                       "8081",
-						"proxy_port":                          "8082",
-						"disable_shared":                      "false",
-						"os":                                  "linux",
-						"platform":                            "x86_64",
-						"platform_family":                     "debian",
-						"platform_version":                    "11",
-						"kernel_version":                      "5.10",
-						"cpu_logical_count":                   "4",
-						"cpu_physical_count":                  "2",
-						"cpu_percent":                         "50.0",
-						"cpu_process_percent":                 "25.0",
-						"cpu_times_user":                      "10.0",
-						"cpu_times_system":                    "5.0",
-						"cpu_times_idle":                      "100.0",
-						"cpu_times_nice":                      "0.0",
-						"cpu_times_iowait":                    "1.0",
-						"cpu_times_irq":                       "0.5",
-						"cpu_times_softirq":                   "0.2",
-						"cpu_times_steal":                     "0.1",
-						"cpu_times_guest":                     "0.0",
-						"cpu_times_guest_nice":                "0.0",
-						"memory_total":                        "8000000000",
-						"memory_available":                    "4000000000",
-						"memory_used":                         "4000000000",
-						"memory_used_percent":                 "50.0",
-						"memory_process_used_percent":         "25.0",
-						"memory_free":                         "2000000000",
-						"network_tcp_connection_count":        "100",
-						"network_upload_tcp_connection_count": "50",
-						"network_location":                    "location1",
-						"network_idc":                         "idc1",
-						"network_rx_bandwidth":                "1000000",
-						"network_max_rx_bandwidth":            "2000000",
-						"network_tx_bandwidth":                "500000",
-						"network_max_tx_bandwidth":            "1000000",
-						"disk_total":                          "100000000000",
-						"disk_free":                           "50000000000",
-						"disk_used":                           "50000000000",
-						"disk_used_percent":                   "50.0",
-						"disk_inodes_total":                   "100000",
-						"disk_inodes_used":                    "50000",
-						"disk_inodes_free":                    "50000",
-						"disk_inodes_used_percent":            "50.0",
-						"disk_write_bandwidth":                "10000000",
-						"disk_read_bandwidth":                 "20000000",
-						"build_git_version":                   "v1.0.0",
-						"build_git_commit":                    "commit1",
-						"build_go_version":                    "1.16",
-						"build_platform":                      "linux/amd64",
-						"scheduler_cluster_id":                "1",
-						"announce_interval":                   "0",
-						"updated_at":                          time.Now().Format(time.RFC3339),
-						"created_at":                          time.Now().Format(time.RFC3339),
-					})
-				// host2 load fails
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host2")).
-					SetErr(fmt.Errorf("redis hgetall error"))
+			name: "host that fails to load is skipped",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host1", "host2"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(mockRawHostFields("host1"))
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host2")).SetErr(errors.New("redis hgetall error"))
 			},
-			expectedError: false,
-			expectedHosts: 1,
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(hosts, 1)
+				assert.Equal("host1", hosts[0].ID)
+			},
 		},
 		{
-			name: "multiple scans, all loaded successfully",
-			mockRedis: func(mock redismock.ClientMock) {
-				// First scan
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).
-					SetVal([]string{"host3"}, 123)
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host3")).
-					SetVal(map[string]string{
-						"id":                                  "host3",
-						"type":                                "normal",
-						"hostname":                            "hostname1",
-						"ip":                                  "127.0.0.1",
-						"port":                                "8080",
-						"download_port":                       "8081",
-						"proxy_port":                          "8082",
-						"disable_shared":                      "false",
-						"os":                                  "linux",
-						"platform":                            "x86_64",
-						"platform_family":                     "debian",
-						"platform_version":                    "11",
-						"kernel_version":                      "5.10",
-						"cpu_logical_count":                   "4",
-						"cpu_physical_count":                  "2",
-						"cpu_percent":                         "50.0",
-						"cpu_process_percent":                 "25.0",
-						"cpu_times_user":                      "10.0",
-						"cpu_times_system":                    "5.0",
-						"cpu_times_idle":                      "100.0",
-						"cpu_times_nice":                      "0.0",
-						"cpu_times_iowait":                    "1.0",
-						"cpu_times_irq":                       "0.5",
-						"cpu_times_softirq":                   "0.2",
-						"cpu_times_steal":                     "0.1",
-						"cpu_times_guest":                     "0.0",
-						"cpu_times_guest_nice":                "0.0",
-						"memory_total":                        "8000000000",
-						"memory_available":                    "4000000000",
-						"memory_used":                         "4000000000",
-						"memory_used_percent":                 "50.0",
-						"memory_process_used_percent":         "25.0",
-						"memory_free":                         "2000000000",
-						"network_tcp_connection_count":        "100",
-						"network_upload_tcp_connection_count": "50",
-						"network_location":                    "location1",
-						"network_idc":                         "idc1",
-						"network_rx_bandwidth":                "1000000",
-						"network_max_rx_bandwidth":            "2000000",
-						"network_tx_bandwidth":                "500000",
-						"network_max_tx_bandwidth":            "1000000",
-						"disk_total":                          "100000000000",
-						"disk_free":                           "50000000000",
-						"disk_used":                           "50000000000",
-						"disk_used_percent":                   "50.0",
-						"disk_inodes_total":                   "100000",
-						"disk_inodes_used":                    "50000",
-						"disk_inodes_free":                    "50000",
-						"disk_inodes_used_percent":            "50.0",
-						"disk_write_bandwidth":                "10000000",
-						"disk_read_bandwidth":                 "20000000",
-						"build_git_version":                   "v1.0.0",
-						"build_git_commit":                    "commit1",
-						"build_go_version":                    "1.16",
-						"build_platform":                      "linux/amd64",
-						"scheduler_cluster_id":                "1",
-						"announce_interval":                   "0",
-						"updated_at":                          time.Now().Format(time.RFC3339),
-						"created_at":                          time.Now().Format(time.RFC3339),
-					})
-				// Second scan
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 123, "*", 10).
-					SetVal([]string{"host4"}, 0)
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host4")).
-					SetVal(map[string]string{
-						"id":                                  "host4",
-						"type":                                "normal",
-						"hostname":                            "hostname1",
-						"ip":                                  "127.0.0.1",
-						"port":                                "8080",
-						"download_port":                       "8081",
-						"proxy_port":                          "8082",
-						"disable_shared":                      "false",
-						"os":                                  "linux",
-						"platform":                            "x86_64",
-						"platform_family":                     "debian",
-						"platform_version":                    "11",
-						"kernel_version":                      "5.10",
-						"cpu_logical_count":                   "4",
-						"cpu_physical_count":                  "2",
-						"cpu_percent":                         "50.0",
-						"cpu_process_percent":                 "25.0",
-						"cpu_times_user":                      "10.0",
-						"cpu_times_system":                    "5.0",
-						"cpu_times_idle":                      "100.0",
-						"cpu_times_nice":                      "0.0",
-						"cpu_times_iowait":                    "1.0",
-						"cpu_times_irq":                       "0.5",
-						"cpu_times_softirq":                   "0.2",
-						"cpu_times_steal":                     "0.1",
-						"cpu_times_guest":                     "0.0",
-						"cpu_times_guest_nice":                "0.0",
-						"memory_total":                        "8000000000",
-						"memory_available":                    "4000000000",
-						"memory_used":                         "4000000000",
-						"memory_used_percent":                 "50.0",
-						"memory_process_used_percent":         "25.0",
-						"memory_free":                         "2000000000",
-						"network_tcp_connection_count":        "100",
-						"network_upload_tcp_connection_count": "50",
-						"network_location":                    "location1",
-						"network_idc":                         "idc1",
-						"network_rx_bandwidth":                "1000000",
-						"network_max_rx_bandwidth":            "2000000",
-						"network_tx_bandwidth":                "500000",
-						"network_max_tx_bandwidth":            "1000000",
-						"disk_total":                          "100000000000",
-						"disk_free":                           "50000000000",
-						"disk_used":                           "50000000000",
-						"disk_used_percent":                   "50.0",
-						"disk_inodes_total":                   "100000",
-						"disk_inodes_used":                    "50000",
-						"disk_inodes_free":                    "50000",
-						"disk_inodes_used_percent":            "50.0",
-						"disk_write_bandwidth":                "10000000",
-						"disk_read_bandwidth":                 "20000000",
-						"build_git_version":                   "v1.0.0",
-						"build_git_commit":                    "commit1",
-						"build_go_version":                    "1.16",
-						"build_platform":                      "linux/amd64",
-						"scheduler_cluster_id":                "1",
-						"announce_interval":                   "0",
-						"updated_at":                          time.Now().Format(time.RFC3339),
-						"created_at":                          time.Now().Format(time.RFC3339),
-					})
+			name: "hosts spanning multiple scan cursors are all loaded",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host3"}, 123)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host3")).SetVal(mockRawHostFields("host3"))
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 123, "*", 10).SetVal([]string{"host4"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host4")).SetVal(mockRawHostFields("host4"))
 			},
-			expectedError: false,
-			expectedHosts: 2,
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(hosts, 2)
+				assert.Equal("host3", hosts[0].ID)
+				assert.Equal("host4", hosts[1].ID)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			h := &hostManager{
-				config: &config.Config{
-					Manager: config.ManagerConfig{SchedulerClusterID: 1},
-				},
-				rdb: rdb,
-			}
-
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
 			hosts, err := h.LoadAll(context.Background())
-			if tt.expectedError {
-				assert.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedHosts, len(hosts))
-
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("redis expectations were not met: %v", err)
-			}
+			tc.expect(t, hosts, err)
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestHostManager_LoadRandom(t *testing.T) {
 	tests := []struct {
-		name              string
-		n                 int
-		blocklist         set.SafeSet[string]
-		mockRedis         func(mock redismock.ClientMock)
-		expectedErr       bool
-		expectedHostCount int
+		name      string
+		n         int
+		blocklist set.SafeSet[string]
+		mock      func(mock redismock.ClientMock)
+		expect    func(t *testing.T, hosts []*Host, err error)
 	}{
 		{
 			name:      "smembers fails",
 			n:         2,
 			blocklist: set.NewSafeSet[string](),
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).
-					SetErr(fmt.Errorf("redis error"))
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).SetErr(errors.New("redis error"))
 			},
-			expectedErr:       true,
-			expectedHostCount: 0,
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(hosts)
+			},
 		},
 		{
-			name: "some hosts in blocklist",
+			name: "every host in blocklist is skipped",
 			n:    3,
 			blocklist: func() set.SafeSet[string] {
 				s := set.NewSafeSet[string]()
@@ -661,160 +1054,149 @@ func TestHostManager_LoadRandom(t *testing.T) {
 				s.Add("host3")
 				return s
 			}(),
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).
-					SetVal([]string{"host1", "host2", "host3"})
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).SetVal([]string{"host1", "host2", "host3"})
 			},
-			expectedErr:       false,
-			expectedHostCount: 0, // host2 is skipped
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(hosts)
+			},
+		},
+		{
+			name: "blocklisted host is skipped and remaining host is loaded",
+			n:    2,
+			blocklist: func() set.SafeSet[string] {
+				s := set.NewSafeSet[string]()
+				s.Add("host1")
+				return s
+			}(),
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).SetVal([]string{"host1", "host2"})
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host2")).SetVal(mockRawHostFields("host2"))
+			},
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(hosts, 1)
+				assert.Equal("host2", hosts[0].ID)
+			},
+		},
+		{
+			name:      "host that fails to load is skipped",
+			n:         1,
+			blocklist: set.NewSafeSet[string](),
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSMembers(pkgredis.MakePersistentCacheHostsInScheduler(1)).SetVal([]string{"host1"})
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetErr(errors.New("redis hgetall error"))
+			},
+			expect: func(t *testing.T, hosts []*Host, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(hosts)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			h := &hostManager{
-				config: &config.Config{
-					Manager: config.ManagerConfig{
-						SchedulerClusterID: 1,
-					},
-				},
-				rdb: rdb,
-			}
-
-			hosts, err := h.LoadRandom(context.Background(), tt.n, tt.blocklist)
-			if tt.expectedErr {
-				assert.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-			assert.Len(t, hosts, tt.expectedHostCount)
-
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("unmet redis expectations: %v", err)
-			}
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
+			hosts, err := h.LoadRandom(context.Background(), tc.n, tc.blocklist)
+			tc.expect(t, hosts, err)
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestHostManager_RunGC(t *testing.T) {
 	tests := []struct {
-		name      string
-		mockRedis func(mock redismock.ClientMock)
-		expectErr bool
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, err error)
 	}{
 		{
-			name: "loadAll fails",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).
-					SetErr(fmt.Errorf("redis error"))
+			name: "load all fails",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetErr(errors.New("redis error"))
 			},
-			expectErr: true,
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
 		},
 		{
-			name: "hosts found, none older than 2 intervals => no delete",
-			mockRedis: func(mock redismock.ClientMock) {
-				// Return a single host
-				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).
-					SetVal([]string{"host1"}, 0)
-				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).
-					SetVal(map[string]string{
-						"id":                                  "host1",
-						"type":                                "normal",
-						"hostname":                            "hostname1",
-						"ip":                                  "127.0.0.1",
-						"port":                                "8080",
-						"download_port":                       "8081",
-						"proxy_port":                          "8082",
-						"disable_shared":                      "false",
-						"os":                                  "linux",
-						"platform":                            "x86_64",
-						"platform_family":                     "debian",
-						"platform_version":                    "11",
-						"kernel_version":                      "5.10",
-						"cpu_logical_count":                   "4",
-						"cpu_physical_count":                  "2",
-						"cpu_percent":                         "50.0",
-						"cpu_process_percent":                 "25.0",
-						"cpu_times_user":                      "10.0",
-						"cpu_times_system":                    "5.0",
-						"cpu_times_idle":                      "100.0",
-						"cpu_times_nice":                      "0.0",
-						"cpu_times_iowait":                    "1.0",
-						"cpu_times_irq":                       "0.5",
-						"cpu_times_softirq":                   "0.2",
-						"cpu_times_steal":                     "0.1",
-						"cpu_times_guest":                     "0.0",
-						"cpu_times_guest_nice":                "0.0",
-						"memory_total":                        "8000000000",
-						"memory_available":                    "4000000000",
-						"memory_used":                         "4000000000",
-						"memory_used_percent":                 "50.0",
-						"memory_process_used_percent":         "25.0",
-						"memory_free":                         "2000000000",
-						"network_tcp_connection_count":        "100",
-						"network_upload_tcp_connection_count": "50",
-						"network_location":                    "location1",
-						"network_idc":                         "idc1",
-						"network_rx_bandwidth":                "1000000",
-						"network_max_rx_bandwidth":            "2000000",
-						"network_tx_bandwidth":                "500000",
-						"network_max_tx_bandwidth":            "1000000",
-						"disk_total":                          "100000000000",
-						"disk_free":                           "50000000000",
-						"disk_used":                           "50000000000",
-						"disk_used_percent":                   "50.0",
-						"disk_inodes_total":                   "100000",
-						"disk_inodes_used":                    "50000",
-						"disk_inodes_free":                    "50000",
-						"disk_inodes_used_percent":            "50.0",
-						"disk_write_bandwidth":                "10000000",
-						"disk_read_bandwidth":                 "20000000",
-						"build_git_version":                   "v1.0.0",
-						"build_git_commit":                    "commit1",
-						"build_go_version":                    "1.16",
-						"build_platform":                      "linux/amd64",
-						"scheduler_cluster_id":                "1",
-						"announce_interval":                   "0",
-						"created_at":                          time.Now().Format(time.RFC3339),
-						"updated_at":                          time.Now().Format(time.RFC3339),
-					})
+			name: "recently announced host is kept",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields("host1")
+				fields["announce_interval"] = strconv.FormatInt(mockAnnounceInterval.Nanoseconds(), 10)
+				fields["updated_at"] = time.Now().Format(time.RFC3339)
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host1"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(fields)
 			},
-			expectErr: false,
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "host without announce interval is never reclaimed",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields("host1")
+				fields["announce_interval"] = "0"
+				fields["updated_at"] = time.Now().Add(-time.Hour).Format(time.RFC3339)
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host1"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(fields)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "host silent for more than twice the announce interval is reclaimed",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields("host1")
+				fields["announce_interval"] = strconv.FormatInt(mockAnnounceInterval.Nanoseconds(), 10)
+				fields["updated_at"] = time.Now().Add(-3 * mockAnnounceInterval).Format(time.RFC3339)
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host1"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(fields)
+				mockDeleteHostScript(mock, "host1").SetVal(true)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "failure to reclaim a stale host does not fail gc",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawHostFields("host1")
+				fields["announce_interval"] = strconv.FormatInt(mockAnnounceInterval.Nanoseconds(), 10)
+				fields["updated_at"] = time.Now().Add(-3 * mockAnnounceInterval).Format(time.RFC3339)
+				mock.ExpectSScan(pkgredis.MakePersistentCacheHostsInScheduler(1), 0, "*", 10).SetVal([]string{"host1"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentCacheHostKeyInScheduler(1, "host1")).SetVal(fields)
+				mockDeleteHostScript(mock, "host1").SetErr(errors.New("redis error"))
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			h := &hostManager{
-				config: &config.Config{
-					Manager: config.ManagerConfig{
-						SchedulerClusterID: 1,
-					},
-				},
-				rdb: rdb,
-			}
-
-			err := h.RunGC(context.Background())
-			if tt.expectErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("unmet redis expectations: %v", err)
-			}
+			h := &hostManager{config: mockHostManagerConfig, rdb: rdb}
+			tc.expect(t, h.RunGC(context.Background()))
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }

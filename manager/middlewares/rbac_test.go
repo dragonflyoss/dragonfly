@@ -63,17 +63,18 @@ func mockRBACRouter(e *casbin.Enforcer, id float64) *gin.Engine {
 }
 
 func newRBACEnforcer(t *testing.T, id uint) *casbin.Enforcer {
+	assert := assert.New(t)
 	m, err := model.NewModelFromString(rbacModelText)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	e, err := casbin.NewEnforcer(m)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	_, err = e.AddPermissionForUser(rbac.RootRole, "users", rbac.AllAction)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	_, err = e.AddRoleForUser(fmt.Sprint(id), rbac.RootRole)
-	assert.NoError(t, err)
+	assert.NoError(err)
 	return e
 }
 

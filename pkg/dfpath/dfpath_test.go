@@ -27,60 +27,53 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
 		options []Option
-		expect  func(t *testing.T, options []Option)
+		expect  func(t *testing.T, d Dfpath, err error)
 	}{
 		{
 			name:    "new dfpath failed",
 			options: []Option{WithLogDir("")},
-			expect: func(t *testing.T, options []Option) {
+			expect: func(t *testing.T, d Dfpath, err error) {
 				assert := assert.New(t)
-				_, err := New(options...)
 				assert.Error(err)
 			},
 		},
 		{
 			name: "new dfpath",
-			expect: func(t *testing.T, options []Option) {
+			expect: func(t *testing.T, d Dfpath, err error) {
 				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = nil
-				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
+				assert.Equal(DefaultLogDir, d.LogDir())
+				assert.Equal(DefaultPluginDir, d.PluginDir())
 			},
 		},
 		{
 			name:    "new dfpath by logDir",
 			options: []Option{WithLogDir("foo")},
-			expect: func(t *testing.T, options []Option) {
+			expect: func(t *testing.T, d Dfpath, err error) {
 				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = nil
-				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.LogDir(), "foo")
-				assert.Equal(d.PluginDir(), DefaultPluginDir)
+				assert.Equal("foo", d.LogDir())
+				assert.Equal(DefaultPluginDir, d.PluginDir())
 			},
 		},
 		{
 			name:    "new dfpath by pluginDir",
 			options: []Option{WithPluginDir("foo")},
-			expect: func(t *testing.T, options []Option) {
+			expect: func(t *testing.T, d Dfpath, err error) {
 				assert := assert.New(t)
-				cache.Once = sync.Once{}
-				cache.err = nil
-				d, err := New(options...)
 				assert.NoError(err)
-				assert.Equal(d.LogDir(), DefaultLogDir)
-				assert.Equal(d.PluginDir(), "foo")
+				assert.Equal(DefaultLogDir, d.LogDir())
+				assert.Equal("foo", d.PluginDir())
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, tc.options)
+			cache.Once = sync.Once{}
+			cache.err = nil
+			d, err := New(tc.options...)
+			tc.expect(t, d, err)
 		})
 	}
 }

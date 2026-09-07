@@ -40,17 +40,20 @@ var (
 		   "port": 8003,
 		   "scheduler_cluster_id": 2
 		}`
+
 	mockCreateSchedulerRequest = types.CreateSchedulerRequest{
 		Hostname:           "foo",
 		IP:                 "127.0.0.1",
 		Port:               8003,
 		SchedulerClusterID: 2,
 	}
+
 	mockUpdateSchedulerRequest = types.UpdateSchedulerRequest{
 		IP:                 "127.0.0.1",
 		Port:               8003,
 		SchedulerClusterID: 2,
 	}
+
 	mockSchedulerModel = &models.Scheduler{
 		BaseModel: mockBaseModel,
 		Hostname:  "foo",
@@ -103,6 +106,7 @@ func TestHandlers_CreateScheduler(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -147,6 +151,7 @@ func TestHandlers_DestroyScheduler(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -204,6 +209,7 @@ func TestHandlers_UpdateScheduler(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -252,6 +258,7 @@ func TestHandlers_GetScheduler(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -303,6 +310,7 @@ func TestHandlers_GetSchedulers(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

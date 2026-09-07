@@ -18,7 +18,6 @@ package job
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/dragonflyoss/machinery/v1"
@@ -36,7 +35,7 @@ func TestTask_CreateGetTask(t *testing.T) {
 		name       string
 		schedulers []models.Scheduler
 		args       types.GetTaskArgs
-		expect     func(t *testing.T, g *job.GroupJobState, e error)
+		expect     func(t *testing.T, g *job.GroupJobState, err error)
 	}{
 		{
 			name: "queue retrieval error",
@@ -49,9 +48,10 @@ func TestTask_CreateGetTask(t *testing.T) {
 			args: types.GetTaskArgs{
 				TaskID: "e7a7132d133ab769af4b64c54c0ea4572d2089142d9f1c04203572697439f467",
 			},
-			expect: func(t *testing.T, g *job.GroupJobState, e error) {
+			expect: func(t *testing.T, g *job.GroupJobState, err error) {
 				assert := assert.New(t)
-				assert.Error(errors.New("empty cluster id config is not specified"), e)
+				assert.Nil(g)
+				assert.Error(err)
 			},
 		},
 		{
@@ -60,14 +60,16 @@ func TestTask_CreateGetTask(t *testing.T) {
 				{
 					SchedulerClusterID: 1,
 					Hostname:           "hostname",
+					IP:                 "127.0.0.1",
 				},
 			},
 			args: types.GetTaskArgs{
 				TaskID: "55697b6298a6ee5118443f23c4f4532666421361d31d4b1e822d2480c42eda0c",
 			},
-			expect: func(t *testing.T, g *job.GroupJobState, e error) {
+			expect: func(t *testing.T, g *job.GroupJobState, err error) {
 				assert := assert.New(t)
-				assert.Error(errors.New("Result backend required"), e)
+				assert.Nil(g)
+				assert.Error(err)
 			},
 		},
 	}
@@ -87,7 +89,7 @@ func TestTask_CreateDeleteTask(t *testing.T) {
 		name       string
 		schedulers []models.Scheduler
 		args       types.DeleteTaskArgs
-		expect     func(t *testing.T, g *job.GroupJobState, e error)
+		expect     func(t *testing.T, g *job.GroupJobState, err error)
 	}{
 		{
 			name: "queue retrieval error",
@@ -100,9 +102,10 @@ func TestTask_CreateDeleteTask(t *testing.T) {
 			args: types.DeleteTaskArgs{
 				TaskID: "e7a7132d133ab769af4b64c54c0ea4572d2089142d9f1c04203572697439f467",
 			},
-			expect: func(t *testing.T, g *job.GroupJobState, e error) {
+			expect: func(t *testing.T, g *job.GroupJobState, err error) {
 				assert := assert.New(t)
-				assert.Error(errors.New("empty cluster id config is not specified"), e)
+				assert.Nil(g)
+				assert.Error(err)
 			},
 		},
 		{
@@ -111,14 +114,16 @@ func TestTask_CreateDeleteTask(t *testing.T) {
 				{
 					SchedulerClusterID: 1,
 					Hostname:           "hostname",
+					IP:                 "127.0.0.1",
 				},
 			},
 			args: types.DeleteTaskArgs{
 				TaskID: "55697b6298a6ee5118443f23c4f4532666421361d31d4b1e822d2480c42eda0c",
 			},
-			expect: func(t *testing.T, g *job.GroupJobState, e error) {
+			expect: func(t *testing.T, g *job.GroupJobState, err error) {
 				assert := assert.New(t)
-				assert.Error(errors.New("Result backend required"), e)
+				assert.Nil(g)
+				assert.Error(err)
 			},
 		},
 	}

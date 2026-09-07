@@ -29,6 +29,8 @@ import (
 	"d7y.io/dragonfly/v2/pkg/digest"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/types"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
+	"d7y.io/dragonfly/v2/scheduler/resource/persistentcache"
 	"d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
@@ -161,7 +163,7 @@ func TestEvaluatorDefault_newEvaluatorDefault(t *testing.T) {
 			name: "new evaluator commonv1",
 			expect: func(t *testing.T, e any) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(e).Elem().Name(), "evaluatorDefault")
+				assert.Equal("evaluatorDefault", reflect.TypeOf(e).Elem().Name())
 			},
 		},
 	}
@@ -740,7 +742,7 @@ func TestEvaluatorDefault_calculateHostTypeScore(t *testing.T) {
 			mock: func(peer *standard.Peer) {},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0.5))
+				assert.Equal(float64(0.5), score)
 			},
 		},
 		{
@@ -751,7 +753,7 @@ func TestEvaluatorDefault_calculateHostTypeScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -762,7 +764,7 @@ func TestEvaluatorDefault_calculateHostTypeScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(1))
+				assert.Equal(float64(1), score)
 			},
 		},
 	}
@@ -795,7 +797,7 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -805,7 +807,7 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -815,7 +817,7 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -826,7 +828,7 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -837,7 +839,7 @@ func TestEvaluatorDefault_calculateIDCAffinityScore(t *testing.T) {
 			},
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(1))
+				assert.Equal(float64(1), score)
 			},
 		},
 	}
@@ -870,7 +872,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -879,7 +881,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "baz",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -888,7 +890,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -897,7 +899,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(1))
+				assert.Equal(float64(1), score)
 			},
 		},
 		{
@@ -906,7 +908,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "bar",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -915,7 +917,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(1))
+				assert.Equal(float64(1), score)
 			},
 		},
 		{
@@ -924,7 +926,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "bar|foo",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0))
+				assert.Equal(float64(0), score)
 			},
 		},
 		{
@@ -933,7 +935,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0.4))
+				assert.Equal(float64(0.4), score)
 			},
 		},
 		{
@@ -942,7 +944,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar|baz",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0.4))
+				assert.Equal(float64(0.4), score)
 			},
 		},
 		{
@@ -951,7 +953,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar|baz",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0.6))
+				assert.Equal(float64(0.6), score)
 			},
 		},
 		{
@@ -960,7 +962,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar|baz|bac|bae|baf",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(0.6))
+				assert.Equal(float64(0.6), score)
 			},
 		},
 		{
@@ -969,7 +971,7 @@ func TestEvaluatorDefault_calculateLocationAffinityScore(t *testing.T) {
 			src:  "foo|bar|baz|bac|bae|bai",
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
-				assert.Equal(score, float64(1))
+				assert.Equal(float64(1), score)
 			},
 		},
 	}
@@ -1104,6 +1106,7 @@ func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 				for i := range 2000 {
 					peer.AppendPieceCost(time.Duration(i))
 				}
+
 				peer.AppendPieceCost(5000)
 			},
 			expect: func(t *testing.T, isBadParent bool) {
@@ -1120,6 +1123,7 @@ func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 				for i := range 2000 {
 					peer.AppendPieceCost(time.Duration(i))
 				}
+
 				peer.AppendPieceCost(20)
 			},
 			expect: func(t *testing.T, isBadParent bool) {
@@ -1136,6 +1140,7 @@ func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 				for i := 20; i < 2020; i++ {
 					peer.AppendPieceCost(time.Duration(i))
 				}
+
 				peer.AppendPieceCost(0)
 			},
 			expect: func(t *testing.T, isBadParent bool) {
@@ -1150,6 +1155,216 @@ func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 			e := newEvaluatorDefault()
 			tc.mock(tc.peer)
 			tc.expect(t, e.IsBadParent(tc.peer))
+		})
+	}
+}
+
+func newMockPersistentPeer(hostID, state, idc, location string) *persistent.Peer {
+	host := persistent.NewHost(
+		hostID, hostID, hostID, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
+		1, false, types.HostTypeNormal, persistent.CPU{}, persistent.Memory{}, persistent.Network{IDC: idc, Location: location},
+		persistent.Disk{}, persistent.Build{}, time.Second, time.Now(), time.Now(), nil)
+	task := persistent.NewTask(mockTaskID, mockTaskURL, "", "", persistent.TaskStatePending, 1, 100, 1, time.Hour, time.Now(), time.Now(), nil)
+	return persistent.NewPeer(idgen.PeerID(), state, false, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
+}
+
+func newMockPersistentCachePeer(hostID, state, idc, location string) *persistentcache.Peer {
+	host := persistentcache.NewHost(
+		hostID, hostID, hostID, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
+		1, false, types.HostTypeNormal, persistentcache.CPU{}, persistentcache.Memory{}, persistentcache.Network{IDC: idc, Location: location},
+		persistentcache.Disk{}, persistentcache.Build{}, time.Second, time.Now(), time.Now(), nil)
+	task := persistentcache.NewTask(mockTaskID, mockTaskTag, mockTaskApplication, persistentcache.TaskStatePending, 1, mockTaskPieceLength, 100, 1, time.Hour, time.Now(), time.Now(), nil)
+	return persistentcache.NewPeer(idgen.PeerID(), state, false, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
+}
+
+func TestEvaluatorDefault_EvaluatePersistentParents(t *testing.T) {
+	tests := []struct {
+		name    string
+		parents []*persistent.Peer
+		child   *persistent.Peer
+		expect  func(t *testing.T, parents []*persistent.Peer)
+	}{
+		{
+			name: "sort parents by idc and location affinity in descending order",
+			parents: []*persistent.Peer{
+				newMockPersistentPeer("different", persistent.PeerStateSucceeded, "other", "other"),
+				newMockPersistentPeer("same-idc", persistent.PeerStateSucceeded, mockHostIDC, "other"),
+				newMockPersistentPeer("same-location", persistent.PeerStateSucceeded, "other", mockHostLocation),
+				newMockPersistentPeer("same-idc-and-location", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			},
+			child: newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, parents []*persistent.Peer) {
+				assert := assert.New(t)
+				assert.Equal("same-idc-and-location", parents[0].Host.ID)
+				assert.Equal("same-idc", parents[1].Host.ID)
+				assert.Equal("same-location", parents[2].Host.ID)
+				assert.Equal("different", parents[3].Host.ID)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.EvaluatePersistentParents(tc.parents, tc.child))
+		})
+	}
+}
+
+func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
+	tests := []struct {
+		name   string
+		parent *persistent.Peer
+		child  *persistent.Peer
+		expect func(t *testing.T, score float64)
+	}{
+		{
+			name:   "same idc and location",
+			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(1.0, score, 0.001)
+			},
+		},
+		{
+			name:   "same idc only",
+			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, "other"),
+			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.7, score, 0.001)
+			},
+		},
+		{
+			name:   "same location only",
+			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", mockHostLocation),
+			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.3, score, 0.001)
+			},
+		},
+		{
+			name:   "partial location match",
+			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "foo|bar"),
+			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, "foo|baz"),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.06, score, 0.001)
+			},
+		},
+		{
+			name:   "no affinity",
+			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "other"),
+			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.Equal(0.0, score)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.(*evaluatorDefault).evaluatePersistentParents(tc.parent, tc.child))
+		})
+	}
+}
+
+func TestEvaluatorDefault_EvaluatePersistentCacheParents(t *testing.T) {
+	tests := []struct {
+		name    string
+		parents []*persistentcache.Peer
+		child   *persistentcache.Peer
+		expect  func(t *testing.T, parents []*persistentcache.Peer)
+	}{
+		{
+			name: "sort parents by idc and location affinity in descending order",
+			parents: []*persistentcache.Peer{
+				newMockPersistentCachePeer("different", persistentcache.PeerStateSucceeded, "other", "other"),
+				newMockPersistentCachePeer("same-idc", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
+				newMockPersistentCachePeer("same-location", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
+				newMockPersistentCachePeer("same-idc-and-location", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			},
+			child: newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, parents []*persistentcache.Peer) {
+				assert := assert.New(t)
+				assert.Equal("same-idc-and-location", parents[0].Host.ID)
+				assert.Equal("same-idc", parents[1].Host.ID)
+				assert.Equal("same-location", parents[2].Host.ID)
+				assert.Equal("different", parents[3].Host.ID)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.EvaluatePersistentCacheParents(tc.parents, tc.child))
+		})
+	}
+}
+
+func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
+	tests := []struct {
+		name   string
+		parent *persistentcache.Peer
+		child  *persistentcache.Peer
+		expect func(t *testing.T, score float64)
+	}{
+		{
+			name:   "same idc and location",
+			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(1.0, score, 0.001)
+			},
+		},
+		{
+			name:   "same idc only",
+			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
+			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.7, score, 0.001)
+			},
+		},
+		{
+			name:   "same location only",
+			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
+			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.3, score, 0.001)
+			},
+		},
+		{
+			name:   "partial location match",
+			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "foo|bar"),
+			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, "foo|baz"),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.InDelta(0.06, score, 0.001)
+			},
+		},
+		{
+			name:   "no affinity",
+			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "other"),
+			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			expect: func(t *testing.T, score float64) {
+				assert := assert.New(t)
+				assert.Equal(0.0, score)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEvaluatorDefault()
+			tc.expect(t, e.(*evaluatorDefault).evaluatePersistentCacheParents(tc.parent, tc.child))
 		})
 	}
 }
