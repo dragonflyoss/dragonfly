@@ -2,18 +2,17 @@
 
 ![alt][logo-linear]
 
+[![CNCF Status](https://img.shields.io/badge/CNCF%20Status-Graduated-informational)](https://www.cncf.io/projects/dragonfly/)
 [![GitHub release](https://img.shields.io/github/release/dragonflyoss/dragonfly.svg)](https://github.com/dragonflyoss/dragonfly/releases)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/dragonfly)](https://artifacthub.io/packages/search?repo=dragonfly)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dragonflyoss/dragonfly/badge)](https://scorecard.dev/viewer/?uri=github.com/dragonflyoss/dragonfly)
 [![CI](https://github.com/dragonflyoss/dragonfly/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dragonflyoss/dragonfly/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dragonflyoss/dragonfly?style=flat-square)](https://goreportcard.com/report/github.com/dragonflyoss/dragonfly)
 [![Discussions](https://img.shields.io/badge/discussions-on%20github-blue?style=flat-square)](https://github.com/dragonflyoss/dragonfly/discussions)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10432/badge)](https://www.bestpractices.dev/projects/10432)
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2Fdragonfly_oss)](https://twitter.com/dragonfly_oss)
 [![LICENSE](https://img.shields.io/github/license/dragonflyoss/dragonfly.svg?style=flat-square)](https://github.com/dragonflyoss/dragonfly/blob/main/LICENSE)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdragonflyoss%2Fdragonfly?ref=badge_shield&issueType=license)
 [![LFX Health Score](https://img.shields.io/static/v1?label=Health%20Score&message=Healthy&color=A7F3D0&logo=linuxfoundation&logoColor=white&style=flat)](https://insights.linuxfoundation.org/project/d7y)
-[![CNCF Status](https://img.shields.io/badge/CNCF%20Status-Graduated-informational)](https://www.cncf.io/projects/dragonfly/)
 
 ## Introduction
 
