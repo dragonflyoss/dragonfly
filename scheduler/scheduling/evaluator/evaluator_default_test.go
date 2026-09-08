@@ -1159,7 +1159,7 @@ func TestEvaluatorDefault_IsBadParent(t *testing.T) {
 	}
 }
 
-func newMockPersistentPeer(hostID, state, idc, location string) *persistent.Peer {
+func mockPersistentPeer(hostID, state, idc, location string) *persistent.Peer {
 	host := persistent.NewHost(
 		hostID, hostID, hostID, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
 		1, false, types.HostTypeNormal, persistent.CPU{}, persistent.Memory{}, persistent.Network{IDC: idc, Location: location},
@@ -1168,7 +1168,7 @@ func newMockPersistentPeer(hostID, state, idc, location string) *persistent.Peer
 	return persistent.NewPeer(idgen.PeerID(), state, false, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentCachePeer(hostID, state, idc, location string) *persistentcache.Peer {
+func mockPersistentCachePeer(hostID, state, idc, location string) *persistentcache.Peer {
 	host := persistentcache.NewHost(
 		hostID, hostID, hostID, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
 		1, false, types.HostTypeNormal, persistentcache.CPU{}, persistentcache.Memory{}, persistentcache.Network{IDC: idc, Location: location},
@@ -1187,12 +1187,12 @@ func TestEvaluatorDefault_EvaluatePersistentParents(t *testing.T) {
 		{
 			name: "sort parents by idc and location affinity in descending order",
 			parents: []*persistent.Peer{
-				newMockPersistentPeer("different", persistent.PeerStateSucceeded, "other", "other"),
-				newMockPersistentPeer("same-idc", persistent.PeerStateSucceeded, mockHostIDC, "other"),
-				newMockPersistentPeer("same-location", persistent.PeerStateSucceeded, "other", mockHostLocation),
-				newMockPersistentPeer("same-idc-and-location", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+				mockPersistentPeer("different", persistent.PeerStateSucceeded, "other", "other"),
+				mockPersistentPeer("same-idc", persistent.PeerStateSucceeded, mockHostIDC, "other"),
+				mockPersistentPeer("same-location", persistent.PeerStateSucceeded, "other", mockHostLocation),
+				mockPersistentPeer("same-idc-and-location", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
 			},
-			child: newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			child: mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, parents []*persistent.Peer) {
 				assert := assert.New(t)
 				assert.Equal("same-idc-and-location", parents[0].Host.ID)
@@ -1220,8 +1220,8 @@ func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
 	}{
 		{
 			name:   "same idc and location",
-			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
-			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			child:  mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(1.0, score, 0.001)
@@ -1229,8 +1229,8 @@ func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
 		},
 		{
 			name:   "same idc only",
-			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, "other"),
-			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentPeer("parent", persistent.PeerStateSucceeded, mockHostIDC, "other"),
+			child:  mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.7, score, 0.001)
@@ -1238,8 +1238,8 @@ func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
 		},
 		{
 			name:   "same location only",
-			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", mockHostLocation),
-			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", mockHostLocation),
+			child:  mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.3, score, 0.001)
@@ -1247,8 +1247,8 @@ func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
 		},
 		{
 			name:   "partial location match",
-			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "foo|bar"),
-			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, "foo|baz"),
+			parent: mockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "foo|bar"),
+			child:  mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, "foo|baz"),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.06, score, 0.001)
@@ -1256,8 +1256,8 @@ func TestEvaluatorDefault_evaluatePersistentParents(t *testing.T) {
 		},
 		{
 			name:   "no affinity",
-			parent: newMockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "other"),
-			child:  newMockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentPeer("parent", persistent.PeerStateSucceeded, "other", "other"),
+			child:  mockPersistentPeer("child", persistent.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.Equal(0.0, score)
@@ -1283,12 +1283,12 @@ func TestEvaluatorDefault_EvaluatePersistentCacheParents(t *testing.T) {
 		{
 			name: "sort parents by idc and location affinity in descending order",
 			parents: []*persistentcache.Peer{
-				newMockPersistentCachePeer("different", persistentcache.PeerStateSucceeded, "other", "other"),
-				newMockPersistentCachePeer("same-idc", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
-				newMockPersistentCachePeer("same-location", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
-				newMockPersistentCachePeer("same-idc-and-location", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+				mockPersistentCachePeer("different", persistentcache.PeerStateSucceeded, "other", "other"),
+				mockPersistentCachePeer("same-idc", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
+				mockPersistentCachePeer("same-location", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
+				mockPersistentCachePeer("same-idc-and-location", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
 			},
-			child: newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			child: mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, parents []*persistentcache.Peer) {
 				assert := assert.New(t)
 				assert.Equal("same-idc-and-location", parents[0].Host.ID)
@@ -1316,8 +1316,8 @@ func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
 	}{
 		{
 			name:   "same idc and location",
-			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
-			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, mockHostLocation),
+			child:  mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(1.0, score, 0.001)
@@ -1325,8 +1325,8 @@ func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
 		},
 		{
 			name:   "same idc only",
-			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
-			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, mockHostIDC, "other"),
+			child:  mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.7, score, 0.001)
@@ -1334,8 +1334,8 @@ func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
 		},
 		{
 			name:   "same location only",
-			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
-			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", mockHostLocation),
+			child:  mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.3, score, 0.001)
@@ -1343,8 +1343,8 @@ func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
 		},
 		{
 			name:   "partial location match",
-			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "foo|bar"),
-			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, "foo|baz"),
+			parent: mockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "foo|bar"),
+			child:  mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, "foo|baz"),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.InDelta(0.06, score, 0.001)
@@ -1352,8 +1352,8 @@ func TestEvaluatorDefault_evaluatePersistentCacheParents(t *testing.T) {
 		},
 		{
 			name:   "no affinity",
-			parent: newMockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "other"),
-			child:  newMockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
+			parent: mockPersistentCachePeer("parent", persistentcache.PeerStateSucceeded, "other", "other"),
+			child:  mockPersistentCachePeer("child", persistentcache.PeerStateRunning, mockHostIDC, mockHostLocation),
 			expect: func(t *testing.T, score float64) {
 				assert := assert.New(t)
 				assert.Equal(0.0, score)

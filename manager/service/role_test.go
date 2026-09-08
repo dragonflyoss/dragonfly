@@ -87,7 +87,7 @@ func TestService_CreateRole(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			tc.expect(t, s, s.CreateRole(context.Background(), tc.req))
@@ -137,7 +137,7 @@ func TestService_DestroyRole(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			ok, err := s.DestroyRole(context.Background(), tc.role)
@@ -194,7 +194,7 @@ func TestService_AddPermissionForRole(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			ok, err := s.AddPermissionForRole(context.Background(), "developer", tc.req)
@@ -251,7 +251,7 @@ func TestService_DeletePermissionForRole(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			ok, err := s.DeletePermissionForRole(context.Background(), "developer", tc.req)

@@ -31,7 +31,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 )
 
-func newTestDB(t *testing.T) *gorm.DB {
+func mockDB(t *testing.T) *gorm.DB {
 	assert := assert.New(t)
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", uuid.NewString())), &gorm.Config{
 		NamingStrategy:                           schema.NamingStrategy{SingularTable: true},
@@ -57,9 +57,9 @@ func newTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func newTestService(t *testing.T) *service {
+func mockService(t *testing.T) *service {
 	assert := assert.New(t)
-	db := newTestDB(t)
+	db := mockDB(t)
 	enforcer, err := rbac.NewEnforcer(db)
 	assert.NoError(err)
 

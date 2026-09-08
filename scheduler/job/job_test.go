@@ -54,23 +54,29 @@ var (
 		Server:  config.ServerConfig{AdvertiseIP: net.ParseIP(mockAdvertiseIP)},
 		Manager: config.ManagerConfig{SchedulerClusterID: 1},
 	}
+
+	mockCountOne              uint32 = 1
+	mockCountBelowHosts       uint32 = 2
+	mockCountAll              uint32 = 3
+	mockCountAboveHosts       uint32 = 5
+	mockPercentageZero        uint32 = 0
+	mockPercentageRoundsToOne uint32 = 10
+	mockPercentageHalf        uint32 = 50
+	mockPercentageFull        uint32 = 100
+	mockPercentageOverflow    uint32 = 200
 )
 
-func newMockHost(hostname, ip string, typ pkgtypes.HostType) *resource.Host {
+func mockHost(hostname, ip string, typ pkgtypes.HostType) *resource.Host {
 	return resource.NewHost(idgen.HostID(ip, hostname, typ != pkgtypes.HostTypeNormal), ip, hostname, hostname, 8003, 8001, 8004, typ)
 }
 
-func newMockHosts(n int, typ pkgtypes.HostType) []*resource.Host {
+func mockHosts(n int, typ pkgtypes.HostType) []*resource.Host {
 	hosts := make([]*resource.Host, 0, n)
 	for i := range n {
-		hosts = append(hosts, newMockHost(fmt.Sprintf("host%d", i+1), fmt.Sprintf("127.0.0.%d", i+1), typ))
+		hosts = append(hosts, mockHost(fmt.Sprintf("host%d", i+1), fmt.Sprintf("127.0.0.%d", i+1), typ))
 	}
 
 	return hosts
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func TestJob_preheat(t *testing.T) {
@@ -161,7 +167,7 @@ func TestJob_preheat(t *testing.T) {
 			name: "all peers scope marshals preheat response",
 			data: `{"urls":["http://example.com/foo"],"scope":"all_peers","timeout":1000000000,"concurrent_task_count":1,"concurrent_peer_count":1}`,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
 				stream.EXPECT().Recv().Return(nil, io.EOF).Times(1)
@@ -294,7 +300,7 @@ func TestJob_PreheatSingleSeedPeer(t *testing.T) {
 			pool := dfdaemonclientmocks.NewMockPool(ctl)
 			client := dfdaemonclientmocks.NewMockClient(ctl)
 			stream := dfdaemonv2mocks.NewMockDfdaemonUpload_DownloadTaskClient(ctl)
-			seedHost := newMockHost("bar", "127.0.0.1", pkgtypes.HostTypeSuperSeed)
+			seedHost := mockHost("bar", "127.0.0.1", pkgtypes.HostTypeSuperSeed)
 			res.EXPECT().SeedPeer().Return(seedPeer).AnyTimes()
 			res.EXPECT().HostManager().Return(hostManager).AnyTimes()
 			res.EXPECT().PeerClientPool().Return(pool).AnyTimes()
@@ -335,7 +341,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 			urls: []string{mockTaskURL},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
-				hostManager.EXPECT().LoadAllSeeds().Return(newMockHosts(2, pkgtypes.HostTypeSuperSeed)).Times(1)
+				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(2, pkgtypes.HostTypeSuperSeed)).Times(1)
 				pool.EXPECT().Get(gomock.Any()).Return(client, nil).Times(2)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(2)
 				stream.EXPECT().Recv().Return(nil, io.EOF).Times(2)
@@ -356,7 +362,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 			urls: []string{mockTaskURL},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
-				hostManager.EXPECT().LoadAllSeeds().Return(newMockHosts(2, pkgtypes.HostTypeSuperSeed)).Times(1)
+				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(2, pkgtypes.HostTypeSuperSeed)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(nil, errors.New("foo")).Times(1)
 				pool.EXPECT().Get("127.0.0.2:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
@@ -374,7 +380,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 			urls: []string{mockTaskURL},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
-				hostManager.EXPECT().LoadAllSeeds().Return(newMockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
+				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(nil, errors.New("foo")).Times(1)
 			},
@@ -389,7 +395,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 			urls: []string{mockTaskURL},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
-				hostManager.EXPECT().LoadAllSeeds().Return(newMockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
+				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
 				stream.EXPECT().Recv().Return(nil, errors.New("foo")).Times(1)
@@ -404,7 +410,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 			urls: []string{mockTaskURL, "http://example.com/bar"},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
-				hostManager.EXPECT().LoadAllSeeds().Return(newMockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
+				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(1, pkgtypes.HostTypeSuperSeed)).Times(1)
 				gomock.InOrder(
 					pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1),
 					pool.EXPECT().Get("127.0.0.1:8003").Return(nil, errors.New("foo")).Times(1),
@@ -467,7 +473,7 @@ func TestJob_PreheatAllPeers(t *testing.T) {
 		{
 			name: "all peers succeed",
 			mock: func(hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(2, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(2, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get(gomock.Any()).Return(client, nil).Times(2)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(2)
 				stream.EXPECT().Recv().Return(nil, io.EOF).Times(2)
@@ -486,7 +492,7 @@ func TestJob_PreheatAllPeers(t *testing.T) {
 		{
 			name: "peer whose client cannot be obtained is reported as failure",
 			mock: func(hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(2, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(2, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(nil, errors.New("foo")).Times(1)
 				pool.EXPECT().Get("127.0.0.2:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
@@ -502,7 +508,7 @@ func TestJob_PreheatAllPeers(t *testing.T) {
 		{
 			name: "all peers failed returns error",
 			mock: func(hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
 				stream.EXPECT().Recv().Return(nil, errors.New("foo")).Times(1)
@@ -575,7 +581,7 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:  "ips select only matching seed peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeSuperSeed),
+			hosts: mockHosts(3, pkgtypes.HostTypeSuperSeed),
 			ips:   []string{"127.0.0.2", "10.0.0.1"},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
@@ -589,10 +595,10 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "ips take priority over count and percentage",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeSuperSeed),
+			hosts:      mockHosts(3, pkgtypes.HostTypeSuperSeed),
 			ips:        []string{"127.0.0.3"},
-			count:      ptr[uint32](3),
-			percentage: ptr[uint32](100),
+			count:      &mockCountAll,
+			percentage: &mockPercentageFull,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -605,7 +611,7 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:  "no seed peer matches ips",
-			hosts: newMockHosts(3, pkgtypes.HostTypeSuperSeed),
+			hosts: mockHosts(3, pkgtypes.HostTypeSuperSeed),
 			ips:   []string{"10.0.0.1"},
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
@@ -618,8 +624,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:  "count selects the first n seed peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeSuperSeed),
-			count: ptr[uint32](2),
+			hosts: mockHosts(3, pkgtypes.HostTypeSuperSeed),
+			count: &mockCountBelowHosts,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -632,8 +638,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:  "count over available seed peers is clamped",
-			hosts: newMockHosts(3, pkgtypes.HostTypeSuperSeed),
-			count: ptr[uint32](5),
+			hosts: mockHosts(3, pkgtypes.HostTypeSuperSeed),
+			count: &mockCountAboveHosts,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -646,9 +652,9 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "count takes priority over percentage",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeSuperSeed),
-			count:      ptr[uint32](1),
-			percentage: ptr[uint32](100),
+			hosts:      mockHosts(3, pkgtypes.HostTypeSuperSeed),
+			count:      &mockCountOne,
+			percentage: &mockPercentageFull,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -661,8 +667,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "percentage over 100 is clamped to available seed peers",
-			hosts:      newMockHosts(2, pkgtypes.HostTypeSuperSeed),
-			percentage: ptr[uint32](200),
+			hosts:      mockHosts(2, pkgtypes.HostTypeSuperSeed),
+			percentage: &mockPercentageOverflow,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -675,8 +681,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "valid percentage selects a proportional number of seed peers",
-			hosts:      newMockHosts(4, pkgtypes.HostTypeSuperSeed),
-			percentage: ptr[uint32](50),
+			hosts:      mockHosts(4, pkgtypes.HostTypeSuperSeed),
+			percentage: &mockPercentageHalf,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -689,8 +695,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "percentage rounding down to zero still selects one seed peer",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeSuperSeed),
-			percentage: ptr[uint32](10),
+			hosts:      mockHosts(3, pkgtypes.HostTypeSuperSeed),
+			percentage: &mockPercentageRoundsToOne,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -703,8 +709,8 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:       "zero percentage selects no seed peer",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeSuperSeed),
-			percentage: ptr[uint32](0),
+			hosts:      mockHosts(3, pkgtypes.HostTypeSuperSeed),
+			percentage: &mockPercentageZero,
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -717,7 +723,7 @@ func TestJob_selectSeedPeers(t *testing.T) {
 		},
 		{
 			name:  "nil count and percentage select all seed peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeSuperSeed),
+			hosts: mockHosts(3, pkgtypes.HostTypeSuperSeed),
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(hosts).Times(1)
@@ -742,8 +748,14 @@ func TestJob_selectSeedPeers(t *testing.T) {
 			res.EXPECT().HostManager().Return(hostManager).AnyTimes()
 			tc.mock(seedPeer, hostManager, tc.hosts)
 
+			var count *uint32
+			if tc.count != nil {
+				c := *tc.count
+				count = &c
+			}
+
 			j := &job{resource: res, config: mockConfig}
-			seedPeers, err := j.selectSeedPeers(tc.ips, tc.count, tc.percentage, logger.WithPeerID("test"))
+			seedPeers, err := j.selectSeedPeers(tc.ips, count, tc.percentage, logger.WithPeerID("test"))
 			tc.expect(t, tc.hosts, seedPeers, err)
 		})
 	}
@@ -771,7 +783,7 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:  "ips select only matching peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeNormal),
+			hosts: mockHosts(3, pkgtypes.HostTypeNormal),
 			ips:   []string{"127.0.0.2", "10.0.0.1"},
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
@@ -784,10 +796,10 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "ips take priority over count and percentage",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeNormal),
+			hosts:      mockHosts(3, pkgtypes.HostTypeNormal),
 			ips:        []string{"127.0.0.3"},
-			count:      ptr[uint32](3),
-			percentage: ptr[uint32](100),
+			count:      &mockCountAll,
+			percentage: &mockPercentageFull,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -799,7 +811,7 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:  "no peer matches ips",
-			hosts: newMockHosts(3, pkgtypes.HostTypeNormal),
+			hosts: mockHosts(3, pkgtypes.HostTypeNormal),
 			ips:   []string{"10.0.0.1"},
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
@@ -811,8 +823,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:  "count selects the first n peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeNormal),
-			count: ptr[uint32](2),
+			hosts: mockHosts(3, pkgtypes.HostTypeNormal),
+			count: &mockCountBelowHosts,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -824,8 +836,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:  "count over available peers is clamped",
-			hosts: newMockHosts(3, pkgtypes.HostTypeNormal),
-			count: ptr[uint32](5),
+			hosts: mockHosts(3, pkgtypes.HostTypeNormal),
+			count: &mockCountAboveHosts,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -837,9 +849,9 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "count takes priority over percentage",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeNormal),
-			count:      ptr[uint32](1),
-			percentage: ptr[uint32](100),
+			hosts:      mockHosts(3, pkgtypes.HostTypeNormal),
+			count:      &mockCountOne,
+			percentage: &mockPercentageFull,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -851,8 +863,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "percentage over 100 is clamped to available peers",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeNormal),
-			percentage: ptr[uint32](200),
+			hosts:      mockHosts(3, pkgtypes.HostTypeNormal),
+			percentage: &mockPercentageOverflow,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -864,8 +876,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "valid percentage selects a proportional number of peers",
-			hosts:      newMockHosts(4, pkgtypes.HostTypeNormal),
-			percentage: ptr[uint32](50),
+			hosts:      mockHosts(4, pkgtypes.HostTypeNormal),
+			percentage: &mockPercentageHalf,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -877,8 +889,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "percentage rounding down to zero still selects one peer",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeNormal),
-			percentage: ptr[uint32](10),
+			hosts:      mockHosts(3, pkgtypes.HostTypeNormal),
+			percentage: &mockPercentageRoundsToOne,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -890,8 +902,8 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:       "zero percentage selects no peer",
-			hosts:      newMockHosts(3, pkgtypes.HostTypeNormal),
-			percentage: ptr[uint32](0),
+			hosts:      mockHosts(3, pkgtypes.HostTypeNormal),
+			percentage: &mockPercentageZero,
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -903,7 +915,7 @@ func TestJob_selectPeers(t *testing.T) {
 		},
 		{
 			name:  "nil count and percentage select all peers",
-			hosts: newMockHosts(3, pkgtypes.HostTypeNormal),
+			hosts: mockHosts(3, pkgtypes.HostTypeNormal),
 			mock: func(hostManager *resource.MockHostManager, hosts []*resource.Host) {
 				hostManager.EXPECT().LoadAllNormals().Return(hosts).Times(1)
 			},
@@ -925,8 +937,14 @@ func TestJob_selectPeers(t *testing.T) {
 			res.EXPECT().HostManager().Return(hostManager).AnyTimes()
 			tc.mock(hostManager, tc.hosts)
 
+			var count *uint32
+			if tc.count != nil {
+				c := *tc.count
+				count = &c
+			}
+
 			j := &job{resource: res, config: mockConfig}
-			peers, err := j.selectPeers(tc.ips, tc.count, tc.percentage, logger.WithPeerID("test"))
+			peers, err := j.selectPeers(tc.ips, count, tc.percentage, logger.WithPeerID("test"))
 			tc.expect(t, tc.hosts, peers, err)
 		})
 	}
@@ -985,7 +1003,7 @@ func TestJob_syncPeers(t *testing.T) {
 
 			res := resource.NewMockResource(ctl)
 			hostManager := resource.NewMockHostManager(ctl)
-			hosts := newMockHosts(2, pkgtypes.HostTypeNormal)
+			hosts := mockHosts(2, pkgtypes.HostTypeNormal)
 			res.EXPECT().HostManager().Return(hostManager).AnyTimes()
 			tc.mock(hostManager, hosts)
 
@@ -1186,7 +1204,7 @@ func TestJob_GetTask(t *testing.T) {
 			hostManager := resource.NewMockHostManager(ctl)
 			pool := dfdaemonclientmocks.NewMockPool(ctl)
 			client := dfdaemonclientmocks.NewMockClient(ctl)
-			host := newMockHost("foo", "127.0.0.1", pkgtypes.HostTypeNormal)
+			host := mockHost("foo", "127.0.0.1", pkgtypes.HostTypeNormal)
 			res.EXPECT().HostManager().Return(hostManager).AnyTimes()
 			res.EXPECT().PeerClientPool().Return(pool).AnyTimes()
 			tc.mock(hostManager, pool, client, host)
@@ -1337,7 +1355,7 @@ func TestJob_deleteTask(t *testing.T) {
 			pool := dfdaemonclientmocks.NewMockPool(ctl)
 			client := dfdaemonclientmocks.NewMockClient(ctl)
 			task := resource.NewTask(mockTaskID, mockTaskURL, "", "", commonv2.TaskType_STANDARD, nil, nil, 200)
-			peer := resource.NewPeer(idgen.PeerID(), task, newMockHost("foo", "127.0.0.1", pkgtypes.HostTypeNormal))
+			peer := resource.NewPeer(idgen.PeerID(), task, mockHost("foo", "127.0.0.1", pkgtypes.HostTypeNormal))
 			res.EXPECT().TaskManager().Return(taskManager).AnyTimes()
 			res.EXPECT().PeerClientPool().Return(pool).AnyTimes()
 			if tc.mock != nil {
@@ -1360,7 +1378,7 @@ func TestJob_ListTaskEntries(t *testing.T) {
 		{
 			name: "normal peer is preferred and multiple entries are recursive",
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().ListTaskEntries(gomock.Any(), gomock.Any()).Return(&dfdaemonv2.ListTaskEntriesResponse{
 					Entries: []*dfdaemonv2.Entry{{Url: "http://example.com/foo/a"}, {Url: "http://example.com/foo/b"}},
@@ -1378,7 +1396,7 @@ func TestJob_ListTaskEntries(t *testing.T) {
 			name: "seed peer is used when no normal peer is available and a single entry is not recursive",
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient) {
 				hostManager.EXPECT().LoadAllNormals().Return(nil).Times(1)
-				seedPeer.EXPECT().Select(gomock.Any(), mockTaskID).Return(newMockHost("bar", "127.0.0.2", pkgtypes.HostTypeSuperSeed), nil).Times(1)
+				seedPeer.EXPECT().Select(gomock.Any(), mockTaskID).Return(mockHost("bar", "127.0.0.2", pkgtypes.HostTypeSuperSeed), nil).Times(1)
 				pool.EXPECT().Get("127.0.0.2:8003").Return(client, nil).Times(1)
 				client.EXPECT().ListTaskEntries(gomock.Any(), gomock.Any()).Return(&dfdaemonv2.ListTaskEntriesResponse{
 					Entries: []*dfdaemonv2.Entry{{Url: mockTaskURL}},
@@ -1405,7 +1423,7 @@ func TestJob_ListTaskEntries(t *testing.T) {
 		{
 			name: "client cannot be obtained",
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(nil, errors.New("foo")).Times(1)
 			},
 			expect: func(t *testing.T, resp *internaljob.ListTaskEntriesResponse, err error) {
@@ -1416,7 +1434,7 @@ func TestJob_ListTaskEntries(t *testing.T) {
 		{
 			name: "list task entries rpc failed",
 			mock: func(seedPeer *resource.MockSeedPeer, hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient) {
-				hostManager.EXPECT().LoadAllNormals().Return(newMockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
+				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(1, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
 				client.EXPECT().ListTaskEntries(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
 			},

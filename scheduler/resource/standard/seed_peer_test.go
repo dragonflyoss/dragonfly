@@ -93,13 +93,6 @@ func mockUnreachableSeedHost(t *testing.T) *Host {
 	return mockSeedHost(port)
 }
 
-func storeSeedHost(seedPeer *seedPeer, host *Host) string {
-	addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
-	seedPeer.hosts.Store(addr, host)
-	seedPeer.hashring.Add(addr)
-	return addr
-}
-
 func TestSeedPeer_newSeedPeer(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -181,7 +174,10 @@ func TestSeedPeer_refresh(t *testing.T) {
 			},
 			expect: func(t *testing.T, seedPeer *seedPeer, hosts []*Host) {
 				assert := assert.New(t)
-				mockAddr := storeSeedHost(seedPeer, mockSeedHost(4000))
+				mockHost := mockSeedHost(4000)
+				mockAddr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(mockAddr, mockHost)
+				seedPeer.hashring.Add(mockAddr)
 
 				seedPeer.refresh(context.Background())
 				_, loaded := seedPeer.hosts.Load(mockAddr)
@@ -261,7 +257,9 @@ func TestSeedPeer_Select(t *testing.T) {
 			name: "select seed peer by task id",
 			expect: func(t *testing.T, seedPeer *seedPeer, mockHost *Host) {
 				assert := assert.New(t)
-				storeSeedHost(seedPeer, mockHost)
+				addr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
 				host, err := seedPeer.Select(context.Background(), mockTaskID)
 				assert.NoError(err)
 				assert.Same(mockHost, host)
@@ -379,7 +377,10 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 			seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
 			var addr string
 			if tc.available {
-				addr = storeSeedHost(seedPeer, mockSeedHost(mockRawSeedHost.Port))
+				mockHost := mockSeedHost(mockRawSeedHost.Port)
+				addr = net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
 			}
 
 			tc.mock(clientPool, client, stream, addr)
@@ -652,7 +653,9 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 			seedPeer := newSeedPeer(peerManager, hostManager, clientPool,
 				grpc.WithTransportCredentials(insecure.NewCredentials())).(*seedPeer)
 			if tc.available {
-				storeSeedHost(seedPeer, mockHost)
+				addr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
 			}
 
 			if tc.mock != nil {

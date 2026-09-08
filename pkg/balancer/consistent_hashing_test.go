@@ -30,12 +30,12 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-type fakeSubConn struct {
+type mockSubConn struct {
 	balancer.SubConn
 	id string
 }
 
-func newReadySCs(subConns ...*fakeSubConn) map[balancer.SubConn]base.SubConnInfo {
+func mockReadySCs(subConns ...*mockSubConn) map[balancer.SubConn]base.SubConnInfo {
 	readySCs := make(map[balancer.SubConn]base.SubConnInfo, len(subConns))
 	for _, sc := range subConns {
 		readySCs[sc] = base.SubConnInfo{Address: resolver.Address{Addr: sc.id + ":8002", ServerName: sc.id}}
@@ -45,7 +45,7 @@ func newReadySCs(subConns ...*fakeSubConn) map[balancer.SubConn]base.SubConnInfo
 }
 
 func TestConsistentHashingPickerBuilder_Build(t *testing.T) {
-	foo, bar, baz := &fakeSubConn{id: "foo"}, &fakeSubConn{id: "bar"}, &fakeSubConn{id: "baz"}
+	foo, bar, baz := &mockSubConn{id: "foo"}, &mockSubConn{id: "bar"}, &mockSubConn{id: "baz"}
 
 	tests := []struct {
 		name     string
@@ -63,7 +63,7 @@ func TestConsistentHashingPickerBuilder_Build(t *testing.T) {
 		},
 		{
 			name:     "ready subconns are keyed by address and server name",
-			readySCs: newReadySCs(foo, bar, baz),
+			readySCs: mockReadySCs(foo, bar, baz),
 			expect: func(t *testing.T, picker balancer.Picker) {
 				assert := assert.New(t)
 				p, ok := picker.(*consistentHashingPicker)
@@ -91,7 +91,7 @@ func TestConsistentHashingPickerBuilder_Build(t *testing.T) {
 
 func TestConsistentHashingPicker_Pick(t *testing.T) {
 	b := &ConsistentHashingPickerBuilder{}
-	picker := b.Build(base.PickerBuildInfo{ReadySCs: newReadySCs(&fakeSubConn{id: "foo"}, &fakeSubConn{id: "bar"}, &fakeSubConn{id: "baz"})}).(*consistentHashingPicker)
+	picker := b.Build(base.PickerBuildInfo{ReadySCs: mockReadySCs(&mockSubConn{id: "foo"}, &mockSubConn{id: "bar"}, &mockSubConn{id: "baz"})}).(*consistentHashingPicker)
 
 	tests := []struct {
 		name   string
@@ -161,7 +161,7 @@ func TestConsistentHashingPicker_Pick(t *testing.T) {
 
 func TestConsistentHashingPicker_Pick_Deterministic(t *testing.T) {
 	assert := assert.New(t)
-	readySCs := newReadySCs(&fakeSubConn{id: "foo"}, &fakeSubConn{id: "bar"}, &fakeSubConn{id: "baz"})
+	readySCs := mockReadySCs(&mockSubConn{id: "foo"}, &mockSubConn{id: "bar"}, &mockSubConn{id: "baz"})
 	picker := (&ConsistentHashingPickerBuilder{}).Build(base.PickerBuildInfo{ReadySCs: readySCs})
 	rebuilt := (&ConsistentHashingPickerBuilder{}).Build(base.PickerBuildInfo{ReadySCs: readySCs})
 
@@ -195,7 +195,7 @@ func TestConsistentHashingPickerBuilder_GetCircle(t *testing.T) {
 		},
 		{
 			name:     "single member",
-			readySCs: newReadySCs(&fakeSubConn{id: "foo"}),
+			readySCs: mockReadySCs(&mockSubConn{id: "foo"}),
 			expect: func(t *testing.T, b *ConsistentHashingPickerBuilder, circle map[string]string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
@@ -209,7 +209,7 @@ func TestConsistentHashingPickerBuilder_GetCircle(t *testing.T) {
 		},
 		{
 			name:     "multiple members",
-			readySCs: newReadySCs(&fakeSubConn{id: "foo"}, &fakeSubConn{id: "bar"}, &fakeSubConn{id: "baz"}),
+			readySCs: mockReadySCs(&mockSubConn{id: "foo"}, &mockSubConn{id: "bar"}, &mockSubConn{id: "baz"}),
 			expect: func(t *testing.T, b *ConsistentHashingPickerBuilder, circle map[string]string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
@@ -239,7 +239,7 @@ func TestConsistentHashingPickerBuilder_GetCircle(t *testing.T) {
 func TestConsistentHashingPickerBuilder_GetCircle_Cached(t *testing.T) {
 	assert := assert.New(t)
 	b := &ConsistentHashingPickerBuilder{}
-	b.Build(base.PickerBuildInfo{ReadySCs: newReadySCs(&fakeSubConn{id: "foo"})})
+	b.Build(base.PickerBuildInfo{ReadySCs: mockReadySCs(&mockSubConn{id: "foo"})})
 
 	first, err := b.GetCircle()
 	assert.NoError(err)
@@ -247,7 +247,7 @@ func TestConsistentHashingPickerBuilder_GetCircle_Cached(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(reflect.ValueOf(first).Pointer(), reflect.ValueOf(second).Pointer())
 
-	b.Build(base.PickerBuildInfo{ReadySCs: newReadySCs(&fakeSubConn{id: "foo"}, &fakeSubConn{id: "bar"})})
+	b.Build(base.PickerBuildInfo{ReadySCs: mockReadySCs(&mockSubConn{id: "foo"}, &mockSubConn{id: "bar"})})
 	rebuilt, err := b.GetCircle()
 	assert.NoError(err)
 	assert.NotEqual(reflect.ValueOf(first).Pointer(), reflect.ValueOf(rebuilt).Pointer())

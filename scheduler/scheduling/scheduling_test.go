@@ -1861,33 +1861,33 @@ func TestScheduling_constructSuccessPeerPacket(t *testing.T) {
 	}
 }
 
-func newMockPersistentHost(id string, idc string, disableShared bool, diskFree uint64) *persistent.Host {
+func mockPersistentHost(id string, idc string, disableShared bool, diskFree uint64) *persistent.Host {
 	return persistent.NewHost(
 		id, id, id, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
 		1, disableShared, pkgtypes.HostTypeNormal, persistent.CPU{}, persistent.Memory{}, persistent.Network{IDC: idc},
 		persistent.Disk{Free: diskFree}, persistent.Build{}, time.Second, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentTask(persistentReplicaCount, contentLength uint64) *persistent.Task {
+func mockPersistentTask(persistentReplicaCount, contentLength uint64) *persistent.Task {
 	return persistent.NewTask(mockTaskID, mockTaskURL, "", "", persistent.TaskStatePending, persistentReplicaCount, contentLength, 1, time.Hour, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentPeer(state string, isPersistent bool, task *persistent.Task, host *persistent.Host) *persistent.Peer {
+func mockPersistentPeer(state string, isPersistent bool, task *persistent.Task, host *persistent.Host) *persistent.Peer {
 	return persistent.NewPeer(idgen.PeerID(), state, isPersistent, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentCacheHost(id string, idc string, disableShared bool, diskFree uint64) *persistentcache.Host {
+func mockPersistentCacheHost(id string, idc string, disableShared bool, diskFree uint64) *persistentcache.Host {
 	return persistentcache.NewHost(
 		id, id, id, "127.0.0.1", "darwin", "darwin", "Standalone Workstation", "11.1", "20.2.0", 8003, 8001, 8004,
 		1, disableShared, pkgtypes.HostTypeNormal, persistentcache.CPU{}, persistentcache.Memory{}, persistentcache.Network{IDC: idc},
 		persistentcache.Disk{Free: diskFree}, persistentcache.Build{}, time.Second, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentCacheTask(persistentReplicaCount, contentLength uint64) *persistentcache.Task {
+func mockPersistentCacheTask(persistentReplicaCount, contentLength uint64) *persistentcache.Task {
 	return persistentcache.NewTask(mockTaskID, mockTaskTag, mockTaskApplication, persistentcache.TaskStatePending, persistentReplicaCount, mockTaskPieceLength, contentLength, 1, time.Hour, time.Now(), time.Now(), nil)
 }
 
-func newMockPersistentCachePeer(state string, isPersistent bool, task *persistentcache.Task, host *persistentcache.Host) *persistentcache.Peer {
+func mockPersistentCachePeer(state string, isPersistent bool, task *persistentcache.Task, host *persistentcache.Host) *persistentcache.Peer {
 	return persistentcache.NewPeer(idgen.PeerID(), state, isPersistent, nil, nil, task, host, 0, time.Now(), time.Now(), nil)
 }
 
@@ -1927,9 +1927,9 @@ func TestScheduling_FindReplicatePersistentHosts(t *testing.T) {
 			name: "cached parents satisfy the needed replica count",
 			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
 				cachedParents := []*persistent.Peer{
-					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached1", mockHostIDC, false, 1000)),
-					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached2", mockHostIDC, false, 1000)),
-					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached3", mockHostIDC, false, 1000)),
+					mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("cached1", mockHostIDC, false, 1000)),
+					mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("cached2", mockHostIDC, false, 1000)),
+					mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("cached3", mockHostIDC, false, 1000)),
 				}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(1), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(cachedParents, nil).Times(1)
@@ -1946,19 +1946,19 @@ func TestScheduling_FindReplicatePersistentHosts(t *testing.T) {
 		{
 			name: "ineligible cached parents are filtered and replicate hosts are found",
 			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
-				blocklisted := newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("blocklisted", mockHostIDC, false, 1000))
+				blocklisted := mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("blocklisted", mockHostIDC, false, 1000))
 				blocklist.Add(blocklisted.ID)
-				persistentPeer := newMockPersistentPeer(persistent.PeerStateSucceeded, true, task, newMockPersistentHost("persistent", mockHostIDC, false, 1000))
+				persistentPeer := mockPersistentPeer(persistent.PeerStateSucceeded, true, task, mockPersistentHost("persistent", mockHostIDC, false, 1000))
 				parents := []*persistent.Peer{
 					blocklisted,
 					persistentPeer,
-					newMockPersistentPeer(persistent.PeerStateRunning, false, task, newMockPersistentHost("running", mockHostIDC, false, 1000)),
-					newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("disableShared", mockHostIDC, true, 1000)),
+					mockPersistentPeer(persistent.PeerStateRunning, false, task, mockPersistentHost("running", mockHostIDC, false, 1000)),
+					mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("disableShared", mockHostIDC, true, 1000)),
 				}
 				hosts := []*persistent.Host{
-					newMockPersistentHost("shared", mockHostIDC, false, 1000),
-					newMockPersistentHost("hostDisableShared", mockHostIDC, true, 1000),
-					newMockPersistentHost("smallDisk", mockHostIDC, false, 10),
+					mockPersistentHost("shared", mockHostIDC, false, 1000),
+					mockPersistentHost("hostDisableShared", mockHostIDC, true, 1000),
+					mockPersistentHost("smallDisk", mockHostIDC, false, 10),
 				}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(2), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(parents, nil).Times(1)
@@ -1992,9 +1992,9 @@ func TestScheduling_FindReplicatePersistentHosts(t *testing.T) {
 		{
 			name: "cached parents are insufficient and are completed with replicate hosts",
 			mock: func(task *persistent.Task, blocklist set.SafeSet[string], mt *persistent.MockTaskManagerMockRecorder, mp *persistent.MockPeerManagerMockRecorder, mh *persistent.MockHostManagerMockRecorder) ([]*persistent.Peer, []*persistent.Host) {
-				cachedParent := newMockPersistentPeer(persistent.PeerStateSucceeded, false, task, newMockPersistentHost("cached", mockHostIDC, false, 1000))
-				persistentPeer := newMockPersistentPeer(persistent.PeerStateSucceeded, true, task, newMockPersistentHost("persistent", mockHostIDC, false, 1000))
-				hosts := []*persistent.Host{newMockPersistentHost("host1", mockHostIDC, false, 1000), newMockPersistentHost("host2", mockHostIDC, false, 1000)}
+				cachedParent := mockPersistentPeer(persistent.PeerStateSucceeded, false, task, mockPersistentHost("cached", mockHostIDC, false, 1000))
+				persistentPeer := mockPersistentPeer(persistent.PeerStateSucceeded, true, task, mockPersistentHost("persistent", mockHostIDC, false, 1000))
+				hosts := []*persistent.Host{mockPersistentHost("host1", mockHostIDC, false, 1000), mockPersistentHost("host2", mockHostIDC, false, 1000)}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return([]*persistent.Peer{cachedParent, persistentPeer}, nil).Times(1)
 				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistent.Peer{persistentPeer}, nil).Times(1)
@@ -2058,7 +2058,7 @@ func TestScheduling_FindReplicatePersistentHosts(t *testing.T) {
 			persistentResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
 			persistentResource.EXPECT().HostManager().Return(hostManager).AnyTimes()
 
-			task := newMockPersistentTask(3, 100)
+			task := mockPersistentTask(3, 100)
 			blocklist := set.NewSafeSet[string]()
 			mockParents, mockHosts := tc.mock(task, blocklist, taskManager.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
 			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
@@ -2089,7 +2089,7 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 		{
 			name: "parent is in blocklist",
 			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
-				parent := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("parent", mockHostIDC, false, 1000))
+				parent := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, mockPersistentHost("parent", mockHostIDC, false, 1000))
 				blocklist.Add(parent.ID)
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
 				return nil
@@ -2103,7 +2103,7 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 		{
 			name: "parent shares the peer host",
 			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
-				parent := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, peer.Host)
+				parent := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, peer.Host)
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
 				return nil
 			},
@@ -2116,7 +2116,7 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 		{
 			name: "parent is bad node",
 			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
-				parent := newMockPersistentPeer(persistent.PeerStateFailed, true, peer.Task, newMockPersistentHost("parent", mockHostIDC, false, 1000))
+				parent := mockPersistentPeer(persistent.PeerStateFailed, true, peer.Task, mockPersistentHost("parent", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{parent}, nil).Times(1)
 				return nil
 			},
@@ -2129,8 +2129,8 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 		{
 			name: "candidate parents are sorted by affinity",
 			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
-				far := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("far", "other", false, 1000))
-				near := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("near", mockHostIDC, false, 1000))
+				far := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, mockPersistentHost("far", "other", false, 1000))
+				near := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, mockPersistentHost("near", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{far, near}, nil).Times(1)
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
 				return []*persistent.Peer{near, far}
@@ -2144,8 +2144,8 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 		{
 			name: "candidate parents are trimmed to candidateParentLimit",
 			mock: func(peer *persistent.Peer, blocklist set.SafeSet[string], mp *persistent.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistent.Peer {
-				far := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("far", "other", false, 1000))
-				near := newMockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, newMockPersistentHost("near", mockHostIDC, false, 1000))
+				far := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, mockPersistentHost("far", "other", false, 1000))
+				near := mockPersistentPeer(persistent.PeerStateSucceeded, true, peer.Task, mockPersistentHost("near", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistent.Peer{far, near}, nil).Times(1)
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{CandidateParentLimit: 1}, nil).Times(1)
 				return []*persistent.Peer{near}
@@ -2168,8 +2168,8 @@ func TestScheduling_FindCandidatePersistentParents(t *testing.T) {
 			peerManager := persistent.NewMockPeerManager(ctl)
 			persistentResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
 
-			task := newMockPersistentTask(3, 100)
-			peer := newMockPersistentPeer(persistent.PeerStateRunning, false, task, newMockPersistentHost("peer", mockHostIDC, false, 1000))
+			task := mockPersistentTask(3, 100)
+			peer := mockPersistentPeer(persistent.PeerStateRunning, false, task, mockPersistentHost("peer", mockHostIDC, false, 1000))
 			blocklist := set.NewSafeSet[string]()
 			mockParents := tc.mock(peer, blocklist, peerManager.EXPECT(), dynconfig.EXPECT())
 			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
@@ -2215,9 +2215,9 @@ func TestScheduling_FindReplicatePersistentCacheHosts(t *testing.T) {
 			name: "cached parents satisfy the needed replica count",
 			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
 				cachedParents := []*persistentcache.Peer{
-					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached1", mockHostIDC, false, 1000)),
-					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached2", mockHostIDC, false, 1000)),
-					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached3", mockHostIDC, false, 1000)),
+					mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("cached1", mockHostIDC, false, 1000)),
+					mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("cached2", mockHostIDC, false, 1000)),
+					mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("cached3", mockHostIDC, false, 1000)),
 				}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(1), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(cachedParents, nil).Times(1)
@@ -2234,19 +2234,19 @@ func TestScheduling_FindReplicatePersistentCacheHosts(t *testing.T) {
 		{
 			name: "ineligible cached parents are filtered and replicate hosts are found",
 			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
-				blocklisted := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("blocklisted", mockHostIDC, false, 1000))
+				blocklisted := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("blocklisted", mockHostIDC, false, 1000))
 				blocklist.Add(blocklisted.ID)
-				persistentPeer := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, newMockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
+				persistentPeer := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, mockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
 				parents := []*persistentcache.Peer{
 					blocklisted,
 					persistentPeer,
-					newMockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, newMockPersistentCacheHost("running", mockHostIDC, false, 1000)),
-					newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("disableShared", mockHostIDC, true, 1000)),
+					mockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, mockPersistentCacheHost("running", mockHostIDC, false, 1000)),
+					mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("disableShared", mockHostIDC, true, 1000)),
 				}
 				hosts := []*persistentcache.Host{
-					newMockPersistentCacheHost("shared", mockHostIDC, false, 1000),
-					newMockPersistentCacheHost("hostDisableShared", mockHostIDC, true, 1000),
-					newMockPersistentCacheHost("smallDisk", mockHostIDC, false, 10),
+					mockPersistentCacheHost("shared", mockHostIDC, false, 1000),
+					mockPersistentCacheHost("hostDisableShared", mockHostIDC, true, 1000),
+					mockPersistentCacheHost("smallDisk", mockHostIDC, false, 10),
 				}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(2), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return(parents, nil).Times(1)
@@ -2280,9 +2280,9 @@ func TestScheduling_FindReplicatePersistentCacheHosts(t *testing.T) {
 		{
 			name: "cached parents are insufficient and are completed with replicate hosts",
 			mock: func(task *persistentcache.Task, blocklist set.SafeSet[string], mt *persistentcache.MockTaskManagerMockRecorder, mp *persistentcache.MockPeerManagerMockRecorder, mh *persistentcache.MockHostManagerMockRecorder) ([]*persistentcache.Peer, []*persistentcache.Host) {
-				cachedParent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, newMockPersistentCacheHost("cached", mockHostIDC, false, 1000))
-				persistentPeer := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, newMockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
-				hosts := []*persistentcache.Host{newMockPersistentCacheHost("host1", mockHostIDC, false, 1000), newMockPersistentCacheHost("host2", mockHostIDC, false, 1000)}
+				cachedParent := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, false, task, mockPersistentCacheHost("cached", mockHostIDC, false, 1000))
+				persistentPeer := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, task, mockPersistentCacheHost("persistent", mockHostIDC, false, 1000))
+				hosts := []*persistentcache.Host{mockPersistentCacheHost("host1", mockHostIDC, false, 1000), mockPersistentCacheHost("host2", mockHostIDC, false, 1000)}
 				mt.LoadCurrentPersistentReplicaCount(gomock.Any(), task.ID).Return(uint64(0), nil).Times(1)
 				mp.LoadAllByTaskID(gomock.Any(), task.ID).Return([]*persistentcache.Peer{cachedParent, persistentPeer}, nil).Times(1)
 				mp.LoadPersistentAllByTaskID(gomock.Any(), task.ID).Return([]*persistentcache.Peer{persistentPeer}, nil).Times(1)
@@ -2346,7 +2346,7 @@ func TestScheduling_FindReplicatePersistentCacheHosts(t *testing.T) {
 			persistentCacheResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
 			persistentCacheResource.EXPECT().HostManager().Return(hostManager).AnyTimes()
 
-			task := newMockPersistentCacheTask(3, 100)
+			task := mockPersistentCacheTask(3, 100)
 			blocklist := set.NewSafeSet[string]()
 			mockParents, mockHosts := tc.mock(task, blocklist, taskManager.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT())
 			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)
@@ -2377,7 +2377,7 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 		{
 			name: "parent is in blocklist",
 			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
-				parent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("parent", mockHostIDC, false, 1000))
+				parent := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, mockPersistentCacheHost("parent", mockHostIDC, false, 1000))
 				blocklist.Add(parent.ID)
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
 				return nil
@@ -2391,7 +2391,7 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 		{
 			name: "parent shares the peer host",
 			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
-				parent := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, peer.Host)
+				parent := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, peer.Host)
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
 				return nil
 			},
@@ -2404,7 +2404,7 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 		{
 			name: "parent is bad node",
 			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
-				parent := newMockPersistentCachePeer(persistentcache.PeerStateFailed, true, peer.Task, newMockPersistentCacheHost("parent", mockHostIDC, false, 1000))
+				parent := mockPersistentCachePeer(persistentcache.PeerStateFailed, true, peer.Task, mockPersistentCacheHost("parent", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{parent}, nil).Times(1)
 				return nil
 			},
@@ -2417,8 +2417,8 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 		{
 			name: "candidate parents are sorted by affinity",
 			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
-				far := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("far", "other", false, 1000))
-				near := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("near", mockHostIDC, false, 1000))
+				far := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, mockPersistentCacheHost("far", "other", false, 1000))
+				near := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, mockPersistentCacheHost("near", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{far, near}, nil).Times(1)
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{}, errors.New("foo")).Times(1)
 				return []*persistentcache.Peer{near, far}
@@ -2432,8 +2432,8 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 		{
 			name: "candidate parents are trimmed to candidateParentLimit",
 			mock: func(peer *persistentcache.Peer, blocklist set.SafeSet[string], mp *persistentcache.MockPeerManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) []*persistentcache.Peer {
-				far := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("far", "other", false, 1000))
-				near := newMockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, newMockPersistentCacheHost("near", mockHostIDC, false, 1000))
+				far := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, mockPersistentCacheHost("far", "other", false, 1000))
+				near := mockPersistentCachePeer(persistentcache.PeerStateSucceeded, true, peer.Task, mockPersistentCacheHost("near", mockHostIDC, false, 1000))
 				mp.LoadAllByTaskID(gomock.Any(), peer.Task.ID).Return([]*persistentcache.Peer{far, near}, nil).Times(1)
 				md.GetSchedulerClusterConfig().Return(types.SchedulerClusterConfig{CandidateParentLimit: 1}, nil).Times(1)
 				return []*persistentcache.Peer{near}
@@ -2456,8 +2456,8 @@ func TestScheduling_FindCandidatePersistentCacheParents(t *testing.T) {
 			peerManager := persistentcache.NewMockPeerManager(ctl)
 			persistentCacheResource.EXPECT().PeerManager().Return(peerManager).AnyTimes()
 
-			task := newMockPersistentCacheTask(3, 100)
-			peer := newMockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, newMockPersistentCacheHost("peer", mockHostIDC, false, 1000))
+			task := mockPersistentCacheTask(3, 100)
+			peer := mockPersistentCachePeer(persistentcache.PeerStateRunning, false, task, mockPersistentCacheHost("peer", mockHostIDC, false, 1000))
 			blocklist := set.NewSafeSet[string]()
 			mockParents := tc.mock(peer, blocklist, peerManager.EXPECT(), dynconfig.EXPECT())
 			scheduling := New(mockSchedulerConfig, persistentResource, persistentCacheResource, dynconfig, mockPluginDir)

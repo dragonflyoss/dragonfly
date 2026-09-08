@@ -32,7 +32,7 @@ import (
 )
 
 func TestService_GetV1Preheat(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	job := models.Job{TaskID: "group-1", Type: internaljob.PreheatJob, State: machineryv1tasks.StateStarted, Args: models.JSONMap{}}
 	if err := s.db.Create(&job).Error; err != nil {
 		t.Fatal(err)

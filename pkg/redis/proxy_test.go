@@ -84,23 +84,6 @@ func mockDropFirstThenEcho(conn net.Conn, accepted int32) {
 	mockEcho(conn, accepted)
 }
 
-func mockRequest(t *testing.T, addr, request string) string {
-	conn := mockDial(t, addr)
-	defer conn.Close()
-	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := conn.Write([]byte(request)); err != nil {
-		t.Fatal(err)
-	}
-
-	response := make([]byte, len(request))
-	n, _ := io.ReadFull(conn, response)
-
-	return string(response[:n])
-}
-
 func TestProxy_Serve(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -160,7 +143,19 @@ func TestProxy_Serve(t *testing.T) {
 
 			responses := make([]string, 0, len(tc.requests))
 			for _, request := range tc.requests {
-				responses = append(responses, mockRequest(t, from, request))
+				conn := mockDial(t, from)
+				if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+					t.Fatal(err)
+				}
+
+				if _, err := conn.Write([]byte(request)); err != nil {
+					t.Fatal(err)
+				}
+
+				response := make([]byte, len(request))
+				n, _ := io.ReadFull(conn, response)
+				responses = append(responses, string(response[:n]))
+				conn.Close()
 			}
 
 			tc.expect(t, responses, backendConns.Load())

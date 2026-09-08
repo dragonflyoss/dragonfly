@@ -34,7 +34,7 @@ import (
 	pkggc "d7y.io/dragonfly/v2/pkg/gc"
 )
 
-func newGCDB(t *testing.T) *gorm.DB {
+func mockDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "gc.db")), &gorm.Config{
 		NamingStrategy:                           schema.NamingStrategy{SingularTable: true},
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -51,7 +51,7 @@ func newGCDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func seedGCConfig(t *testing.T, db *gorm.DB, gcConfig *models.GCConfig) {
+func mockGCConfig(t *testing.T, db *gorm.DB, gcConfig *models.GCConfig) {
 	value, err := json.Marshal(gcConfig)
 	if err != nil {
 		t.Fatal(err)
@@ -60,15 +60,6 @@ func seedGCConfig(t *testing.T, db *gorm.DB, gcConfig *models.GCConfig) {
 	if err := db.Create(&models.Config{Name: models.ConfigGC, Value: string(value)}).Error; err != nil {
 		t.Fatal(err)
 	}
-}
-
-func findGCJobs(t *testing.T, db *gorm.DB) []models.Job {
-	var jobs []models.Job
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	return jobs
 }
 
 func TestAudit_RunGC(t *testing.T) {
@@ -87,7 +78,9 @@ func TestAudit_RunGC(t *testing.T) {
 			expect: func(t *testing.T, db *gorm.DB, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, gorm.ErrRecordNotFound)
-				assert.Empty(findGCJobs(t, db))
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
+				assert.Empty(jobs)
 			},
 		},
 		{
@@ -108,7 +101,7 @@ func TestAudit_RunGC(t *testing.T) {
 			name: "audits older than the ttl are deleted and newer ones kept",
 			ctx:  context.Background(),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
 				if err := db.Create([]*models.Audit{
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-2 * time.Hour)}, ActorType: models.ActorTypeUser, ActorName: "old-1", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-90 * time.Minute)}, ActorType: models.ActorTypeUser, ActorName: "old-2", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
@@ -128,7 +121,8 @@ func TestAudit_RunGC(t *testing.T) {
 				assert.Equal("new-1", audits[0].ActorName)
 				assert.Equal("new-2", audits[1].ActorName)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal(AuditGCTaskID, jobs[0].TaskID)
 				assert.Equal(GCStateSuccess, jobs[0].State)
@@ -141,7 +135,7 @@ func TestAudit_RunGC(t *testing.T) {
 			name: "gc config without audit section falls back to the default ttl",
 			ctx:  context.Background(),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
 				if err := db.Create([]*models.Audit{
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCAuditTTL - time.Hour)}, ActorType: models.ActorTypeUser, ActorName: "old", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCAuditTTL + time.Hour)}, ActorType: models.ActorTypeUser, ActorName: "new", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
@@ -158,7 +152,8 @@ func TestAudit_RunGC(t *testing.T) {
 				assert.Len(audits, 1)
 				assert.Equal("new", audits[0].ActorName)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.EqualValues(1, jobs[0].Result["purged"])
 			},
@@ -167,13 +162,14 @@ func TestAudit_RunGC(t *testing.T) {
 			name: "task id and user id from context are recorded",
 			ctx:  context.WithValue(context.WithValue(context.Background(), pkggc.ContextKeyUserID, uint(7)), pkggc.ContextKeyTaskID, "task-audit"),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
 			},
 			expect: func(t *testing.T, db *gorm.DB, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal("task-audit", jobs[0].TaskID)
 				assert.Equal(uint(7), jobs[0].UserID)
@@ -185,7 +181,7 @@ func TestAudit_RunGC(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newGCDB(t)
+			db := mockDB(t)
 			tc.seed(t, db)
 
 			err := NewAuditGCTask(db).Runner.RunGC(tc.ctx)
@@ -210,14 +206,16 @@ func TestJob_RunGC(t *testing.T) {
 			expect: func(t *testing.T, db *gorm.DB, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, gorm.ErrRecordNotFound)
-				assert.Empty(findGCJobs(t, db))
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
+				assert.Empty(jobs)
 			},
 		},
 		{
 			name: "jobs older than the ttl are deleted with their cluster associations",
 			ctx:  context.Background(),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
 				if err := db.Create([]*models.SchedulerCluster{{Name: "sc-1", Config: models.JSONMap{}, ClientConfig: models.JSONMap{}, SeedClientConfig: models.JSONMap{}}}).Error; err != nil {
 					t.Fatal(err)
 				}
@@ -258,7 +256,8 @@ func TestJob_RunGC(t *testing.T) {
 				assert.Equal(int64(1), schedulerClusterLinks)
 				assert.Equal(int64(1), seedPeerClusterLinks)
 
-				gcJobs := findGCJobs(t, db)
+				var gcJobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&gcJobs).Error)
 				assert.Len(gcJobs, 1)
 				assert.Equal(JobGCTaskID, gcJobs[0].TaskID)
 				assert.Equal(GCStateSuccess, gcJobs[0].State)
@@ -269,7 +268,7 @@ func TestJob_RunGC(t *testing.T) {
 			name: "gc config without job section falls back to the default ttl",
 			ctx:  context.Background(),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
 				if err := db.Create([]*models.Job{
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCJobTTL - time.Hour)}, TaskID: "old-1", Type: "preheat", Args: models.JSONMap{}},
 					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCJobTTL + time.Hour)}, TaskID: "new-1", Type: "preheat", Args: models.JSONMap{}},
@@ -286,7 +285,8 @@ func TestJob_RunGC(t *testing.T) {
 				assert.Len(jobs, 1)
 				assert.Equal("new-1", jobs[0].TaskID)
 
-				gcJobs := findGCJobs(t, db)
+				var gcJobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&gcJobs).Error)
 				assert.Len(gcJobs, 1)
 				assert.EqualValues(1, gcJobs[0].Result["purged"])
 			},
@@ -295,13 +295,14 @@ func TestJob_RunGC(t *testing.T) {
 			name: "nothing to purge records a successful gc job",
 			ctx:  context.WithValue(context.Background(), pkggc.ContextKeyTaskID, "task-job"),
 			seed: func(t *testing.T, db *gorm.DB) {
-				seedGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
+				mockGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
 			},
 			expect: func(t *testing.T, db *gorm.DB, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				gcJobs := findGCJobs(t, db)
+				var gcJobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&gcJobs).Error)
 				assert.Len(gcJobs, 1)
 				assert.Equal("task-job", gcJobs[0].TaskID)
 				assert.Equal(GCStateSuccess, gcJobs[0].State)
@@ -312,7 +313,7 @@ func TestJob_RunGC(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newGCDB(t)
+			db := mockDB(t)
 			tc.seed(t, db)
 
 			err := NewJobGCTask(db).Runner.RunGC(tc.ctx)
@@ -355,7 +356,8 @@ func TestScheduler_RunGC(t *testing.T) {
 				assert.Equal("stale-active-without-config", schedulers[1].Hostname)
 				assert.Equal(models.SchedulerStateActive, schedulers[1].State)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal(SchedulerGCTaskID, jobs[0].TaskID)
 				assert.Equal(GCStateSuccess, jobs[0].State)
@@ -387,7 +389,8 @@ func TestScheduler_RunGC(t *testing.T) {
 				assert.Equal(models.SchedulerStateActive, schedulers[2].State)
 				assert.Equal(models.SchedulerStateActive, schedulers[3].State)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.EqualValues(0, jobs[0].Result["purged"])
 			},
@@ -400,7 +403,8 @@ func TestScheduler_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal("task-scheduler", jobs[0].TaskID)
 				assert.Equal(uint(3), jobs[0].UserID)
@@ -411,7 +415,7 @@ func TestScheduler_RunGC(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newGCDB(t)
+			db := mockDB(t)
 			tc.seed(t, db)
 
 			err := NewSchedulerGCTask(db).Runner.RunGC(tc.ctx)
@@ -451,7 +455,8 @@ func TestSeedPeer_RunGC(t *testing.T) {
 				assert.Equal("fresh-inactive", seedPeers[0].Hostname)
 				assert.Equal("stale-active", seedPeers[1].Hostname)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal(SeedPeerGCTaskID, jobs[0].TaskID)
 				assert.Equal(GCStateSuccess, jobs[0].State)
@@ -467,7 +472,8 @@ func TestSeedPeer_RunGC(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal("task-seed-peer", jobs[0].TaskID)
 				assert.Equal(uint(5), jobs[0].UserID)
@@ -479,7 +485,7 @@ func TestSeedPeer_RunGC(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newGCDB(t)
+			db := mockDB(t)
 			tc.seed(t, db)
 
 			err := NewSeedPeerGCTask(db).Runner.RunGC(tc.ctx)
@@ -502,7 +508,9 @@ func TestJobRecorder_Record(t *testing.T) {
 			expect: func(t *testing.T, db *gorm.DB, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
-				assert.Empty(findGCJobs(t, db))
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
+				assert.Empty(jobs)
 			},
 		},
 		{
@@ -513,7 +521,8 @@ func TestJobRecorder_Record(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal(GCStateSuccess, jobs[0].State)
 				assert.EqualValues(3, jobs[0].Result["purged"])
@@ -528,7 +537,8 @@ func TestJobRecorder_Record(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 
-				jobs := findGCJobs(t, db)
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
 				assert.Len(jobs, 1)
 				assert.Equal(GCStateFailure, jobs[0].State)
 				assert.EqualValues(2, jobs[0].Result["purged"])
@@ -539,7 +549,7 @@ func TestJobRecorder_Record(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newGCDB(t)
+			db := mockDB(t)
 			recorder := newJobRecorder(db)
 			if tc.init {
 				if err := recorder.Init(1, "task", models.JSONMap{"type": "test"}); err != nil {

@@ -71,7 +71,7 @@ func TestService_UpdateConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			config, err := s.UpdateConfig(context.Background(), id, tc.req)
@@ -117,7 +117,7 @@ func TestService_DestroyConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyConfig(context.Background(), id))
@@ -126,7 +126,7 @@ func TestService_DestroyConfig(t *testing.T) {
 }
 
 func TestService_GetConfigs(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	for _, req := range []types.CreateConfigRequest{
 		{Name: models.ConfigGC, Value: "v1", UserID: 1},
 		{Name: "feature", Value: "on", UserID: 1},

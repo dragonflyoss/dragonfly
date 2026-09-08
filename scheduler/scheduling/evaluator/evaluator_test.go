@@ -136,7 +136,7 @@ func TestEvaluator_IsBadPersistentParent(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEvaluatorDefault()
-			tc.expect(t, e.IsBadPersistentParent(newMockPersistentPeer("parent", tc.state, mockHostIDC, mockHostLocation)))
+			tc.expect(t, e.IsBadPersistentParent(mockPersistentPeer("parent", tc.state, mockHostIDC, mockHostLocation)))
 		})
 	}
 }
@@ -208,7 +208,7 @@ func TestEvaluator_IsBadPersistentCacheParent(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEvaluatorDefault()
-			tc.expect(t, e.IsBadPersistentCacheParent(newMockPersistentCachePeer("parent", tc.state, mockHostIDC, mockHostLocation)))
+			tc.expect(t, e.IsBadPersistentCacheParent(mockPersistentCachePeer("parent", tc.state, mockHostIDC, mockHostLocation)))
 		})
 	}
 }

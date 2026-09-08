@@ -30,7 +30,7 @@ import (
 )
 
 func TestPEMToCertPool(t *testing.T) {
-	_, pemCert, err := generateTestCertificate()
+	_, pemCert, err := mockCertificate()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestPEMToCertPool(t *testing.T) {
 }
 
 func TestDERToCertPool(t *testing.T) {
-	derCert, _, err := generateTestCertificate()
+	derCert, _, err := mockCertificate()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestDERToCertPool(t *testing.T) {
 	}
 }
 
-func generateTestCertificate() (derBytes []byte, pemBytes []byte, err error) {
+func mockCertificate() (derBytes []byte, pemBytes []byte, err error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, err

@@ -17,7 +17,6 @@
 package rpcserver
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -25,19 +24,13 @@ import (
 
 	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 
-	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
-
 	"d7y.io/dragonfly/v2/manager/cache"
 	"d7y.io/dragonfly/v2/manager/models"
-	"d7y.io/dragonfly/v2/manager/searcher"
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
@@ -91,15 +84,18 @@ const (
 	mockPeerIP          = "10.0.1.1"
 	mockUnknownHostname = "unknown"
 	mockUnknownIP       = "10.0.0.99"
-	mockIDC             = "idc-1"
-	mockLocation        = "location-1"
-	mockUpdatedIDC      = "idc-2"
-	mockUpdatedLocation = "location-2"
 	mockVersion         = "v2.0.0"
 	mockCommit          = "abc123"
 )
 
-func newTestDB(t *testing.T) *gorm.DB {
+var (
+	mockIDC             = "idc-1"
+	mockLocation        = "location-1"
+	mockUpdatedIDC      = "idc-2"
+	mockUpdatedLocation = "location-2"
+)
+
+func mockDB(t *testing.T) *gorm.DB {
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_foreign_keys=1", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
@@ -130,11 +126,6 @@ func newTestDB(t *testing.T) *gorm.DB {
 		t.Fatal(err)
 	}
 
-	seedTestDB(t, db)
-	return db
-}
-
-func seedTestDB(t *testing.T, db *gorm.DB) {
 	schedulerClusters := []models.SchedulerCluster{
 		{
 			Name:             mockSchedulerClusterName,
@@ -231,136 +222,13 @@ func seedTestDB(t *testing.T, db *gorm.DB) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
+
+	return db
 }
 
-func newTestCache() *cache.Cache {
+func mockCache() *cache.Cache {
 	return &cache.Cache{
 		Cache: cachev9.New(&cachev9.Options{LocalCache: cachev9.NewTinyLFU(1000, time.Minute)}),
 		TTL:   time.Minute,
 	}
-}
-
-func newTestServerV1(t *testing.T, sr searcher.Searcher) *managerServerV1 {
-	return &managerServerV1{db: newTestDB(t), cache: newTestCache(), searcher: sr}
-}
-
-func newTestServerV2(t *testing.T, sr searcher.Searcher) *managerServerV2 {
-	return &managerServerV2{db: newTestDB(t), cache: newTestCache(), searcher: sr}
-}
-
-func setCache(t *testing.T, c *cache.Cache, key string, value any) {
-	assert := assert.New(t)
-	assert.NoError(c.Set(&cachev9.Item{Key: key, Value: value}))
-}
-
-func countRows(t *testing.T, db *gorm.DB, model any, query any) int64 {
-	assert := assert.New(t)
-	var n int64
-	assert.NoError(db.Unscoped().Model(model).Where(query).Count(&n).Error)
-	return n
-}
-
-func countAllRows(t *testing.T, db *gorm.DB, model any) int64 {
-	assert := assert.New(t)
-	var n int64
-	assert.NoError(db.Unscoped().Model(model).Count(&n).Error)
-	return n
-}
-
-func findScheduler(t *testing.T, db *gorm.DB, hostname string) models.Scheduler {
-	assert := assert.New(t)
-	var scheduler models.Scheduler
-	assert.NoError(db.First(&scheduler, models.Scheduler{Hostname: hostname}).Error)
-	return scheduler
-}
-
-func findSeedPeer(t *testing.T, db *gorm.DB, hostname string) models.SeedPeer {
-	assert := assert.New(t)
-	var seedPeer models.SeedPeer
-	assert.NoError(db.First(&seedPeer, models.SeedPeer{Hostname: hostname}).Error)
-	return seedPeer
-}
-
-func hostnames[T interface{ GetHostname() string }](items []T) []string {
-	names := []string{}
-	for _, item := range items {
-		names = append(names, item.GetHostname())
-	}
-
-	return names
-}
-
-func schedulerHostnamesByCluster(clusters []models.SchedulerCluster) map[string][]string {
-	names := map[string][]string{}
-	for _, cluster := range clusters {
-		for _, scheduler := range cluster.Schedulers {
-			names[cluster.Name] = append(names[cluster.Name], scheduler.Hostname)
-		}
-	}
-
-	return names
-}
-
-func pickSchedulerCluster(name string) func(context.Context, []models.SchedulerCluster, string, string, map[string]string, *zap.SugaredLogger) ([]models.SchedulerCluster, error) {
-	return func(_ context.Context, clusters []models.SchedulerCluster, _, _ string, _ map[string]string, _ *zap.SugaredLogger) ([]models.SchedulerCluster, error) {
-		for _, cluster := range clusters {
-			if cluster.Name == name {
-				return []models.SchedulerCluster{cluster}, nil
-			}
-		}
-
-		return nil, fmt.Errorf("scheduler cluster %s not found", name)
-	}
-}
-
-func sourceState(db *gorm.DB, scheduler bool, hostname, ip string, clusterID uint) string {
-	if scheduler {
-		var scheduler models.Scheduler
-		if err := db.First(&scheduler, models.Scheduler{Hostname: hostname, IP: ip, SchedulerClusterID: clusterID}).Error; err != nil {
-			return err.Error()
-		}
-
-		return scheduler.State
-	}
-
-	var seedPeer models.SeedPeer
-	if err := db.First(&seedPeer, models.SeedPeer{Hostname: hostname, IP: ip, SeedPeerClusterID: clusterID}).Error; err != nil {
-		return err.Error()
-	}
-
-	return seedPeer.State
-}
-
-func ptr[T any](v T) *T {
-	return &v
-}
-
-type mockKeepAliveStream struct {
-	grpc.ServerStream
-	reqs    []*managerv2.KeepAliveRequest
-	err     error
-	observe func() string
-	states  []string
-}
-
-func (m *mockKeepAliveStream) Recv() (*managerv2.KeepAliveRequest, error) {
-	if m.observe != nil {
-		m.states = append(m.states, m.observe())
-	}
-
-	if len(m.reqs) == 0 {
-		return nil, m.err
-	}
-
-	req := m.reqs[0]
-	m.reqs = m.reqs[1:]
-	return req, nil
-}
-
-func (m *mockKeepAliveStream) SendAndClose(*emptypb.Empty) error {
-	return nil
-}
-
-func (m *mockKeepAliveStream) Context() context.Context {
-	return context.Background()
 }

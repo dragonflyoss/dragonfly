@@ -22,50 +22,21 @@ import (
 	"io"
 	"testing"
 
+	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/grpc"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	managerv1 "d7y.io/api/v2/pkg/apis/manager/v1"
+	managerv1mocks "d7y.io/api/v2/pkg/apis/manager/v1/mocks"
 
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
-
-type mockKeepAliveStreamV1 struct {
-	grpc.ServerStream
-	reqs    []*managerv1.KeepAliveRequest
-	err     error
-	observe func() string
-	states  []string
-}
-
-func (m *mockKeepAliveStreamV1) Recv() (*managerv1.KeepAliveRequest, error) {
-	if m.observe != nil {
-		m.states = append(m.states, m.observe())
-	}
-
-	if len(m.reqs) == 0 {
-		return nil, m.err
-	}
-
-	req := m.reqs[0]
-	m.reqs = m.reqs[1:]
-	return req, nil
-}
-
-func (m *mockKeepAliveStreamV1) SendAndClose(*emptypb.Empty) error {
-	return nil
-}
-
-func (m *mockKeepAliveStreamV1) Context() context.Context {
-	return context.Background()
-}
 
 func TestManagerServerV1_UpdateSeedPeer(t *testing.T) {
 	tests := []struct {
@@ -88,8 +59,11 @@ func TestManagerServerV1_UpdateSeedPeer(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.SeedPeer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(int64(1), countRows(t, s.db, &models.SeedPeer{}, models.SeedPeer{Hostname: mockNewHostname}))
-				seedPeer := findSeedPeer(t, s.db, mockNewHostname)
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.SeedPeer{}).Where(models.SeedPeer{Hostname: mockNewHostname}).Count(&count).Error)
+				assert.Equal(int64(1), count)
+				var seedPeer models.SeedPeer
+				assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockNewHostname}).Error)
 				assert.Equal(uint64(seedPeer.ID), resp.GetId())
 				assert.Equal(mockNewIP, seedPeer.IP)
 				assert.Equal(mockSeedPeerType, seedPeer.Type)
@@ -114,8 +88,11 @@ func TestManagerServerV1_UpdateSeedPeer(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.SeedPeer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(int64(1), countRows(t, s.db, &models.SeedPeer{}, models.SeedPeer{Hostname: mockActiveSeedPeerHostname}))
-				seedPeer := findSeedPeer(t, s.db, mockActiveSeedPeerHostname)
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.SeedPeer{}).Where(models.SeedPeer{Hostname: mockActiveSeedPeerHostname}).Count(&count).Error)
+				assert.Equal(int64(1), count)
+				var seedPeer models.SeedPeer
+				assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockActiveSeedPeerHostname}).Error)
 				assert.Equal(uint64(seedPeer.ID), resp.GetId())
 				assert.Equal(mockUpdatedSeedPeerPort, seedPeer.Port)
 			},
@@ -135,7 +112,8 @@ func TestManagerServerV1_UpdateSeedPeer(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.SeedPeer, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				seedPeer := findSeedPeer(t, s.db, mockInactiveSeedPeerHostname)
+				var seedPeer models.SeedPeer
+				assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname}).Error)
 				assert.Equal(uint64(seedPeer.ID), resp.GetId())
 				assert.Equal(mockUpdatedIDC, seedPeer.IDC)
 				assert.Equal(mockUpdatedLocation, seedPeer.Location)
@@ -156,15 +134,19 @@ func TestManagerServerV1_UpdateSeedPeer(t *testing.T) {
 				assert := assert.New(t)
 				assert.Nil(resp)
 				assert.Equal(codes.Internal, status.Code(err))
-				assert.Equal(int64(0), countRows(t, s.db, &models.SeedPeer{}, models.SeedPeer{Hostname: mockNewHostname}))
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.SeedPeer{}).Where(models.SeedPeer{Hostname: mockNewHostname}).Count(&count).Error)
+				assert.Equal(int64(0), count)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestServerV1(t, nil)
-			setCache(t, s.cache, pkgredis.MakeSeedPeerKeyInManager(uint(tc.req.SeedPeerClusterId), tc.req.Hostname, tc.req.Ip), &managerv1.SeedPeer{Hostname: mockCachedHostname})
+			s := &managerServerV1{db: mockDB(t), cache: mockCache()}
+			if err := s.cache.Set(&cachev9.Item{Key: pkgredis.MakeSeedPeerKeyInManager(uint(tc.req.SeedPeerClusterId), tc.req.Hostname, tc.req.Ip), Value: &managerv1.SeedPeer{Hostname: mockCachedHostname}}); err != nil {
+				t.Fatal(err)
+			}
 
 			resp, err := s.UpdateSeedPeer(context.Background(), tc.req)
 			tc.expect(t, s, resp, err)
@@ -191,8 +173,11 @@ func TestManagerServerV1_UpdateScheduler(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.Scheduler, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(int64(1), countRows(t, s.db, &models.Scheduler{}, models.Scheduler{Hostname: mockNewHostname}))
-				scheduler := findScheduler(t, s.db, mockNewHostname)
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.Scheduler{}).Where(models.Scheduler{Hostname: mockNewHostname}).Count(&count).Error)
+				assert.Equal(int64(1), count)
+				var scheduler models.Scheduler
+				assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockNewHostname}).Error)
 				assert.Equal(uint64(scheduler.ID), resp.GetId())
 				assert.Equal(mockNewIP, scheduler.IP)
 				assert.Equal(mockSchedulerPort, scheduler.Port)
@@ -215,8 +200,11 @@ func TestManagerServerV1_UpdateScheduler(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.Scheduler, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal(int64(1), countRows(t, s.db, &models.Scheduler{}, models.Scheduler{Hostname: mockActiveSchedulerHostname}))
-				scheduler := findScheduler(t, s.db, mockActiveSchedulerHostname)
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.Scheduler{}).Where(models.Scheduler{Hostname: mockActiveSchedulerHostname}).Count(&count).Error)
+				assert.Equal(int64(1), count)
+				var scheduler models.Scheduler
+				assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockActiveSchedulerHostname}).Error)
 				assert.Equal(uint64(scheduler.ID), resp.GetId())
 				assert.Equal(mockUpdatedSchedulerPort, scheduler.Port)
 				assert.Equal(models.SchedulerStateActive, scheduler.State)
@@ -235,7 +223,8 @@ func TestManagerServerV1_UpdateScheduler(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.Scheduler, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				scheduler := findScheduler(t, s.db, mockInactiveSchedulerHostname)
+				var scheduler models.Scheduler
+				assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname}).Error)
 				assert.Equal(uint64(scheduler.ID), resp.GetId())
 				assert.Equal(mockUpdatedIDC, scheduler.IDC)
 				assert.Equal(mockUpdatedLocation, scheduler.Location)
@@ -256,15 +245,19 @@ func TestManagerServerV1_UpdateScheduler(t *testing.T) {
 				assert := assert.New(t)
 				assert.Nil(resp)
 				assert.Equal(codes.Internal, status.Code(err))
-				assert.Equal(int64(0), countRows(t, s.db, &models.Scheduler{}, models.Scheduler{Hostname: mockNewHostname}))
+				var count int64
+				assert.NoError(s.db.Unscoped().Model(&models.Scheduler{}).Where(models.Scheduler{Hostname: mockNewHostname}).Count(&count).Error)
+				assert.Equal(int64(0), count)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestServerV1(t, nil)
-			setCache(t, s.cache, pkgredis.MakeSchedulerKeyInManager(uint(tc.req.SchedulerClusterId), tc.req.Hostname, tc.req.Ip), &managerv1.Scheduler{Hostname: mockCachedHostname})
+			s := &managerServerV1{db: mockDB(t), cache: mockCache()}
+			if err := s.cache.Set(&cachev9.Item{Key: pkgredis.MakeSchedulerKeyInManager(uint(tc.req.SchedulerClusterId), tc.req.Hostname, tc.req.Ip), Value: &managerv1.Scheduler{Hostname: mockCachedHostname}}); err != nil {
+				t.Fatal(err)
+			}
 
 			resp, err := s.UpdateScheduler(context.Background(), tc.req)
 			tc.expect(t, s, resp, err)
@@ -292,18 +285,28 @@ func TestManagerServerV1_ListSchedulers(t *testing.T) {
 			name: "forwards host info to searcher and returns active schedulers of the matched cluster",
 			mock: func(m *mocks.MockSearcherMockRecorder) {
 				m.FindSchedulerClusters(gomock.Any(), gomock.Any(), mockPeerIP, mockPeerHostname, hostInfo, gomock.Any()).
-					DoAndReturn(pickSchedulerCluster(mockSchedulerClusterName))
+					DoAndReturn(func(_ context.Context, clusters []models.SchedulerCluster, _, _ string, _ map[string]string, _ *zap.SugaredLogger) ([]models.SchedulerCluster, error) {
+						for _, cluster := range clusters {
+							if cluster.Name == mockSchedulerClusterName {
+								return []models.SchedulerCluster{cluster}, nil
+							}
+						}
+
+						return nil, errors.New("scheduler cluster not found")
+					})
 			},
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.ListSchedulersResponse, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal([]string{mockActiveSchedulerHostname}, hostnames(resp.GetSchedulers()))
+				assert.Len(resp.GetSchedulers(), 1)
 				for _, scheduler := range resp.GetSchedulers() {
+					assert.Equal(mockActiveSchedulerHostname, scheduler.GetHostname())
 					assert.Equal(models.SchedulerStateActive, scheduler.GetState())
 					assert.Equal(uint64(mockSchedulerClusterID), scheduler.GetSchedulerClusterId())
 					assert.JSONEq(mockDefaultFeaturesJSON, string(scheduler.GetFeatures()))
-					assert.Equal([]string{mockActiveSeedPeerHostname}, hostnames(scheduler.GetSeedPeers()))
+					assert.Len(scheduler.GetSeedPeers(), 1)
 					for _, seedPeer := range scheduler.GetSeedPeers() {
+						assert.Equal(mockActiveSeedPeerHostname, seedPeer.GetHostname())
 						assert.Equal(models.SeedPeerStateActive, seedPeer.GetState())
 						assert.Equal(uint64(mockSeedPeerClusterID), seedPeer.GetSeedPeerClusterId())
 					}
@@ -321,8 +324,13 @@ func TestManagerServerV1_ListSchedulers(t *testing.T) {
 			expect: func(t *testing.T, s *managerServerV1, resp *managerv1.ListSchedulersResponse, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Subset(hostnames(resp.GetSchedulers()), []string{mockActiveSchedulerHostname, mockSecondClusterSchedulerHostname})
-				assert.NotContains(hostnames(resp.GetSchedulers()), mockInactiveSchedulerHostname)
+				var hostnames []string
+				for _, scheduler := range resp.GetSchedulers() {
+					hostnames = append(hostnames, scheduler.GetHostname())
+				}
+
+				assert.Subset(hostnames, []string{mockActiveSchedulerHostname, mockSecondClusterSchedulerHostname})
+				assert.NotContains(hostnames, mockInactiveSchedulerHostname)
 				assert.True(s.cache.Exists(context.Background(), cacheKey))
 			},
 		},
@@ -346,7 +354,8 @@ func TestManagerServerV1_ListSchedulers(t *testing.T) {
 			expect: func(t *testing.T, _ *managerServerV1, resp *managerv1.ListSchedulersResponse, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal([]string{mockCachedHostname}, hostnames(resp.GetSchedulers()))
+				assert.Len(resp.GetSchedulers(), 1)
+				assert.Equal(mockCachedHostname, resp.GetSchedulers()[0].GetHostname())
 			},
 		},
 	}
@@ -357,9 +366,11 @@ func TestManagerServerV1_ListSchedulers(t *testing.T) {
 			ms := mocks.NewMockSearcher(ctl)
 			tc.mock(ms.EXPECT())
 
-			s := newTestServerV1(t, ms)
+			s := &managerServerV1{db: mockDB(t), cache: mockCache(), searcher: ms}
 			if tc.cached != nil {
-				setCache(t, s.cache, cacheKey, tc.cached)
+				if err := s.cache.Set(&cachev9.Item{Key: cacheKey, Value: tc.cached}); err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			resp, err := s.ListSchedulers(context.Background(), req)
@@ -383,19 +394,47 @@ func TestManagerServerV1_KeepAlive(t *testing.T) {
 	}
 	tests := []struct {
 		name   string
-		reqs   []*managerv1.KeepAliveRequest
-		err    error
+		mock   func(t *testing.T, s *managerServerV1, ms *managerv1mocks.MockManager_KeepAliveServerMockRecorder, states *[]string)
 		expect func(t *testing.T, s *managerServerV1, states []string, err error)
 	}{
 		{
 			name: "scheduler turns active on first message and inactive when stream closes",
-			reqs: []*managerv1.KeepAliveRequest{schedulerReq, schedulerReq},
-			err:  io.EOF,
+			mock: func(t *testing.T, s *managerServerV1, ms *managerv1mocks.MockManager_KeepAliveServerMockRecorder, states *[]string) {
+				if err := s.cache.Set(&cachev9.Item{Key: pkgredis.MakeSchedulerKeyInManager(mockSchedulerClusterID, mockInactiveSchedulerHostname, mockInactiveSchedulerIP), Value: &managerv1.Scheduler{Hostname: mockCachedHostname}}); err != nil {
+					t.Fatal(err)
+				}
+
+				ms.Context().Return(context.Background()).AnyTimes()
+				gomock.InOrder(
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var scheduler models.Scheduler
+						assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname, IP: mockInactiveSchedulerIP, SchedulerClusterID: mockSchedulerClusterID}).Error)
+						*states = append(*states, scheduler.State)
+						return schedulerReq, nil
+					}),
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var scheduler models.Scheduler
+						assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname, IP: mockInactiveSchedulerIP, SchedulerClusterID: mockSchedulerClusterID}).Error)
+						*states = append(*states, scheduler.State)
+						return schedulerReq, nil
+					}),
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var scheduler models.Scheduler
+						assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname, IP: mockInactiveSchedulerIP, SchedulerClusterID: mockSchedulerClusterID}).Error)
+						*states = append(*states, scheduler.State)
+						return nil, io.EOF
+					}),
+				)
+			},
 			expect: func(t *testing.T, s *managerServerV1, states []string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal([]string{models.SchedulerStateInactive, models.SchedulerStateActive, models.SchedulerStateActive}, states)
-				scheduler := findScheduler(t, s.db, mockInactiveSchedulerHostname)
+				var scheduler models.Scheduler
+				assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname}).Error)
 				assert.Equal(models.SchedulerStateInactive, scheduler.State)
 				assert.True(scheduler.LastKeepAliveAt.IsZero())
 				assert.False(s.cache.Exists(context.Background(), pkgredis.MakeSchedulerKeyInManager(mockSchedulerClusterID, mockInactiveSchedulerHostname, mockInactiveSchedulerIP)))
@@ -403,36 +442,79 @@ func TestManagerServerV1_KeepAlive(t *testing.T) {
 		},
 		{
 			name: "seed peer turns active on first message and inactive when stream closes",
-			reqs: []*managerv1.KeepAliveRequest{seedPeerReq},
-			err:  io.EOF,
+			mock: func(t *testing.T, s *managerServerV1, ms *managerv1mocks.MockManager_KeepAliveServerMockRecorder, states *[]string) {
+				if err := s.cache.Set(&cachev9.Item{Key: pkgredis.MakeSeedPeerKeyInManager(mockSeedPeerClusterID, mockInactiveSeedPeerHostname, mockInactiveSeedPeerIP), Value: &managerv1.SeedPeer{Hostname: mockCachedHostname}}); err != nil {
+					t.Fatal(err)
+				}
+
+				ms.Context().Return(context.Background()).AnyTimes()
+				gomock.InOrder(
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var seedPeer models.SeedPeer
+						assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname, IP: mockInactiveSeedPeerIP, SeedPeerClusterID: mockSeedPeerClusterID}).Error)
+						*states = append(*states, seedPeer.State)
+						return seedPeerReq, nil
+					}),
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var seedPeer models.SeedPeer
+						assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname, IP: mockInactiveSeedPeerIP, SeedPeerClusterID: mockSeedPeerClusterID}).Error)
+						*states = append(*states, seedPeer.State)
+						return nil, io.EOF
+					}),
+				)
+			},
 			expect: func(t *testing.T, s *managerServerV1, states []string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal([]string{models.SeedPeerStateInactive, models.SeedPeerStateActive}, states)
-				assert.Equal(models.SeedPeerStateInactive, findSeedPeer(t, s.db, mockInactiveSeedPeerHostname).State)
+				var seedPeer models.SeedPeer
+				assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname}).Error)
+				assert.Equal(models.SeedPeerStateInactive, seedPeer.State)
 				assert.False(s.cache.Exists(context.Background(), pkgredis.MakeSeedPeerKeyInManager(mockSeedPeerClusterID, mockInactiveSeedPeerHostname, mockInactiveSeedPeerIP)))
 			},
 		},
 		{
 			name: "stream failure marks seed peer inactive and returns unknown",
-			reqs: []*managerv1.KeepAliveRequest{seedPeerReq},
-			err:  errors.New("connection reset"),
+			mock: func(t *testing.T, s *managerServerV1, ms *managerv1mocks.MockManager_KeepAliveServerMockRecorder, states *[]string) {
+				ms.Context().Return(context.Background()).AnyTimes()
+				gomock.InOrder(
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var seedPeer models.SeedPeer
+						assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname, IP: mockInactiveSeedPeerIP, SeedPeerClusterID: mockSeedPeerClusterID}).Error)
+						*states = append(*states, seedPeer.State)
+						return seedPeerReq, nil
+					}),
+					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
+						assert := assert.New(t)
+						var seedPeer models.SeedPeer
+						assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname, IP: mockInactiveSeedPeerIP, SeedPeerClusterID: mockSeedPeerClusterID}).Error)
+						*states = append(*states, seedPeer.State)
+						return nil, errors.New("connection reset")
+					}),
+				)
+			},
 			expect: func(t *testing.T, s *managerServerV1, states []string, err error) {
 				assert := assert.New(t)
 				assert.Equal(codes.Unknown, status.Code(err))
 				assert.Equal([]string{models.SeedPeerStateInactive, models.SeedPeerStateActive}, states)
-				assert.Equal(models.SeedPeerStateInactive, findSeedPeer(t, s.db, mockInactiveSeedPeerHostname).State)
+				var seedPeer models.SeedPeer
+				assert.NoError(s.db.First(&seedPeer, models.SeedPeer{Hostname: mockInactiveSeedPeerHostname}).Error)
+				assert.Equal(models.SeedPeerStateInactive, seedPeer.State)
 			},
 		},
 		{
 			name: "unknown seed peer returns internal",
-			reqs: []*managerv1.KeepAliveRequest{{
-				SourceType: managerv1.SourceType_SEED_PEER_SOURCE,
-				Hostname:   mockUnknownHostname,
-				Ip:         mockUnknownIP,
-				ClusterId:  uint64(mockSeedPeerClusterID),
-			}},
-			err: io.EOF,
+			mock: func(_ *testing.T, _ *managerServerV1, ms *managerv1mocks.MockManager_KeepAliveServerMockRecorder, _ *[]string) {
+				ms.Recv().Return(&managerv1.KeepAliveRequest{
+					SourceType: managerv1.SourceType_SEED_PEER_SOURCE,
+					Hostname:   mockUnknownHostname,
+					Ip:         mockUnknownIP,
+					ClusterId:  uint64(mockSeedPeerClusterID),
+				}, nil)
+			},
 			expect: func(t *testing.T, _ *managerServerV1, _ []string, err error) {
 				assert := assert.New(t)
 				assert.Equal(codes.Internal, status.Code(err))
@@ -442,16 +524,14 @@ func TestManagerServerV1_KeepAlive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestServerV1(t, nil)
-			first := tc.reqs[0]
-			setCache(t, s.cache, pkgredis.MakeSchedulerKeyInManager(uint(first.ClusterId), first.Hostname, first.Ip), &managerv1.Scheduler{Hostname: mockCachedHostname})
-			setCache(t, s.cache, pkgredis.MakeSeedPeerKeyInManager(uint(first.ClusterId), first.Hostname, first.Ip), &managerv1.SeedPeer{Hostname: mockCachedHostname})
-			stream := &mockKeepAliveStreamV1{reqs: tc.reqs, err: tc.err, observe: func() string {
-				return sourceState(s.db, first.SourceType == managerv1.SourceType_SCHEDULER_SOURCE, first.Hostname, first.Ip, uint(first.ClusterId))
-			}}
+			ctl := gomock.NewController(t)
+			stream := managerv1mocks.NewMockManager_KeepAliveServer(ctl)
+			s := &managerServerV1{db: mockDB(t), cache: mockCache()}
+			var states []string
+			tc.mock(t, s, stream.EXPECT(), &states)
 
 			err := s.KeepAlive(stream)
-			tc.expect(t, s, stream.states, err)
+			tc.expect(t, s, states, err)
 		})
 	}
 }

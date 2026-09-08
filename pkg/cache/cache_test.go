@@ -33,9 +33,9 @@ var (
 	v4 = "yes"
 )
 
-type TestStruct struct {
+type mockStruct struct {
 	Num      int
-	Children []*TestStruct
+	Children []*mockStruct
 }
 
 func mockExpiredItem(c Cache, k string, x any) {
@@ -166,7 +166,7 @@ func TestCacheTimes(t *testing.T) {
 func TestStorePointerToStruct(t *testing.T) {
 	assert := assert.New(t)
 	c := New(DefaultExpiration, 0)
-	foo := &TestStruct{Num: 1}
+	foo := &mockStruct{Num: 1}
 	c.Set(v1, foo, DefaultExpiration)
 
 	x, found := c.Get(v1)
@@ -176,7 +176,7 @@ func TestStorePointerToStruct(t *testing.T) {
 	foo.Num++
 	y, found := c.Get(v1)
 	assert.True(found)
-	assert.Equal(&TestStruct{Num: 2}, y)
+	assert.Equal(&mockStruct{Num: 2}, y)
 }
 
 func TestScan(t *testing.T) {

@@ -32,7 +32,7 @@ import (
 	"d7y.io/dragonfly/v2/internal/dferrors"
 )
 
-type fakeClientStream struct {
+type mockClientStream struct {
 	grpc.ClientStream
 }
 
@@ -208,7 +208,7 @@ func TestConvertErrorUnaryClientInterceptor(t *testing.T) {
 
 func TestConvertErrorStreamClientInterceptor(t *testing.T) {
 	plainErr := errors.New("plain error")
-	stream := &fakeClientStream{}
+	stream := &mockClientStream{}
 
 	tests := []struct {
 		name        string

@@ -103,7 +103,7 @@ func TestService_CreateApplication(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			application, err := s.CreateApplication(context.Background(), tc.req)
@@ -161,7 +161,7 @@ func TestService_GetApplication(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			application, err := s.GetApplication(context.Background(), id)
@@ -242,7 +242,7 @@ func TestService_UpdateApplication(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			application, err := s.UpdateApplication(context.Background(), id, tc.req)
@@ -299,7 +299,7 @@ func TestService_GetApplications(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			user := mockUser(t, s.db, "foo")
 			for _, name := range []string{"app-1", "app-2", "app-3"} {
 				mockApplication(t, s.db, name, user.ID)
@@ -350,7 +350,7 @@ func TestService_DestroyApplication(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyApplication(context.Background(), id))

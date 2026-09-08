@@ -92,7 +92,7 @@ func TestService_SignUp(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			user, err := s.SignUp(context.Background(), tc.req)
@@ -102,7 +102,7 @@ func TestService_SignUp(t *testing.T) {
 }
 
 func TestService_SignIn(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	_, err := s.SignUp(context.Background(), mockSignUpRequest("foo", "foo@example.com"))
 	if err != nil {
 		t.Fatal(err)
@@ -209,7 +209,7 @@ func TestService_ResetPassword(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.ResetPassword(context.Background(), id, tc.req))
@@ -259,7 +259,7 @@ func TestService_UpdateUser(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			user, err := s.UpdateUser(context.Background(), id, tc.req)
@@ -269,7 +269,7 @@ func TestService_UpdateUser(t *testing.T) {
 }
 
 func TestService_GetUsers(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	for _, user := range []models.User{
 		{Name: "foo", Email: "foo@example.com", Location: "hangzhou", State: models.UserStateEnabled},
 		{Name: "bar", Email: "bar@example.com", Location: "hangzhou", State: models.UserStateDisabled},

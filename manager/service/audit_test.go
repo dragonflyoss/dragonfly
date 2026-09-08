@@ -29,7 +29,7 @@ import (
 )
 
 func TestService_AsyncCreateAudit(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	tests := []struct {
 		name   string
 		ctx    func() context.Context
@@ -76,7 +76,7 @@ func TestService_AsyncCreateAudit(t *testing.T) {
 }
 
 func TestService_GetAudits(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	for i, audit := range []models.Audit{
 		{ActorType: models.ActorTypeUser, ActorName: "foo", EventType: models.EventTypeAPI, Operation: http.MethodPost, State: models.AuditStateSuccess, Path: "/api/v1/jobs", StatusCode: http.StatusOK},

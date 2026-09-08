@@ -35,16 +35,17 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-type certFiles struct {
+type mockCertFiles struct {
 	caCertFile string
 	certFile   string
 	keyFile    string
 }
 
-func generateCertFiles(t *testing.T, dir string) certFiles {
-	assert := assert.New(t)
+func mockCertificates(t *testing.T, dir string) mockCertFiles {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	template := x509.Certificate{
 		SerialNumber:          big.NewInt(1),
@@ -59,33 +60,43 @@ func generateCertFiles(t *testing.T, dir string) certFiles {
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	assert.NoError(err)
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	assert.NoError(err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	files := certFiles{
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	files := mockCertFiles{
 		caCertFile: filepath.Join(dir, "ca.pem"),
 		certFile:   filepath.Join(dir, "cert.pem"),
 		keyFile:    filepath.Join(dir, "key.pem"),
 	}
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	assert.NoError(os.WriteFile(files.caCertFile, certPEM, 0600))
-	assert.NoError(os.WriteFile(files.certFile, certPEM, 0600))
-	assert.NoError(os.WriteFile(files.keyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes}), 0600))
-	return files
-}
+	if err := os.WriteFile(files.caCertFile, certPEM, 0600); err != nil {
+		t.Fatal(err)
+	}
 
-func writeFile(t *testing.T, dir, name string, content []byte) string {
-	assert := assert.New(t)
-	path := filepath.Join(dir, name)
-	assert.NoError(os.WriteFile(path, content, 0600))
-	return path
+	if err := os.WriteFile(files.certFile, certPEM, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(files.keyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes}), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	return files
 }
 
 func TestNewServerCredentials(t *testing.T) {
 	dir := t.TempDir()
-	files := generateCertFiles(t, dir)
-	invalidCAFile := writeFile(t, dir, "invalid-ca.pem", []byte("this is not a valid pem"))
+	files := mockCertificates(t, dir)
+	invalidCAFile := filepath.Join(dir, "invalid-ca.pem")
+	if err := os.WriteFile(invalidCAFile, []byte("this is not a valid pem"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name       string
@@ -161,8 +172,11 @@ func TestNewServerCredentials(t *testing.T) {
 
 func TestNewClientCredentials(t *testing.T) {
 	dir := t.TempDir()
-	files := generateCertFiles(t, dir)
-	invalidCAFile := writeFile(t, dir, "invalid-ca.pem", []byte("this is not a valid pem"))
+	files := mockCertificates(t, dir)
+	invalidCAFile := filepath.Join(dir, "invalid-ca.pem")
+	if err := os.WriteFile(invalidCAFile, []byte("this is not a valid pem"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name       string
@@ -237,8 +251,8 @@ func TestNewClientCredentials(t *testing.T) {
 }
 
 func TestCredentials_Handshake(t *testing.T) {
-	server := generateCertFiles(t, t.TempDir())
-	other := generateCertFiles(t, t.TempDir())
+	server := mockCertificates(t, t.TempDir())
+	other := mockCertificates(t, t.TempDir())
 	tests := []struct {
 		name         string
 		clientCAFile string

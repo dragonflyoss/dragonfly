@@ -118,7 +118,7 @@ func TestService_CreateCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			resp, err := s.CreateCluster(context.Background(), tc.req)
@@ -185,7 +185,7 @@ func TestService_DestroyCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, id, s.DestroyCluster(context.Background(), id))
@@ -283,7 +283,7 @@ func TestService_UpdateCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			resp, err := s.UpdateCluster(context.Background(), id, tc.req)
@@ -346,7 +346,7 @@ func TestService_GetCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			resp, err := s.GetCluster(context.Background(), id)
@@ -356,7 +356,7 @@ func TestService_GetCluster(t *testing.T) {
 }
 
 func TestService_GetClusters(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	for _, name := range []string{"foo", "bar", "baz"} {
 		mockCluster(t, s, name)
 	}

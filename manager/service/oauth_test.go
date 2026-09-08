@@ -41,7 +41,7 @@ func mockOauth(t *testing.T, db *gorm.DB, name, clientID string) models.Oauth {
 }
 
 func TestService_OauthSignin(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockOauth(t, s.db, "github", "github-client")
 	mockOauth(t, s.db, "google", "google-client")
 	mockOauth(t, s.db, "gitlab", "gitlab-client")
@@ -143,7 +143,7 @@ func TestService_UpdateOauth(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			oauth, err := s.UpdateOauth(context.Background(), id, tc.req)
@@ -186,7 +186,7 @@ func TestService_DestroyOauth(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyOauth(context.Background(), id))
@@ -195,7 +195,7 @@ func TestService_DestroyOauth(t *testing.T) {
 }
 
 func TestService_GetOauths(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockOauth(t, s.db, "github", "github-client")
 	mockOauth(t, s.db, "google", "google-client")
 

@@ -79,7 +79,7 @@ func TestService_DestroyPeer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyPeer(context.Background(), id))
@@ -88,7 +88,7 @@ func TestService_DestroyPeer(t *testing.T) {
 }
 
 func TestService_GetPeers(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	foo := mockSchedulerCluster(t, s.db, "foo")
 	bar := mockSchedulerCluster(t, s.db, "bar")
 	mockPeer(t, s.db, foo.ID, "peer-1", "normal", models.PeerStateActive)

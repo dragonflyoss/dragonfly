@@ -100,7 +100,7 @@ func TestService_CreatePersonalAccessToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			personalAccessToken, err := s.CreatePersonalAccessToken(context.Background(), tc.req)
@@ -168,7 +168,7 @@ func TestService_UpdatePersonalAccessToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			personalAccessToken, err := s.UpdatePersonalAccessToken(context.Background(), id, tc.req)
@@ -211,7 +211,7 @@ func TestService_DestroyPersonalAccessToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyPersonalAccessToken(context.Background(), id))
@@ -220,7 +220,7 @@ func TestService_DestroyPersonalAccessToken(t *testing.T) {
 }
 
 func TestService_GetPersonalAccessTokens(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	foo := mockUser(t, s.db, "foo")
 	bar := mockUser(t, s.db, "bar")
 	mockPersonalAccessToken(t, s.db, "foo-active", models.PersonalAccessTokenStateActive, foo.ID)

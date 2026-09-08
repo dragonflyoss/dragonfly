@@ -77,7 +77,7 @@ func TestService_DestroySeedPeerCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroySeedPeerCluster(context.Background(), id))
@@ -142,7 +142,7 @@ func TestService_UpdateSeedPeerCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			seedPeerCluster, err := s.UpdateSeedPeerCluster(context.Background(), id, tc.req)
@@ -152,7 +152,7 @@ func TestService_UpdateSeedPeerCluster(t *testing.T) {
 }
 
 func TestService_GetSeedPeerClusters(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	for _, name := range []string{"foo", "bar", "baz"} {
 		mockSeedPeerCluster(t, s.db, name)
 	}
@@ -258,7 +258,7 @@ func TestService_AddSeedPeerToSeedPeerCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			tc.expect(t, s, s.AddSeedPeerToSeedPeerCluster(context.Background(), tc.id, tc.seedPeerID))
@@ -327,7 +327,7 @@ func TestService_AddSchedulerClusterToSeedPeerCluster(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			tc.setup(t, s)
 
 			tc.expect(t, s, s.AddSchedulerClusterToSeedPeerCluster(context.Background(), tc.id, tc.schedulerClusterID))

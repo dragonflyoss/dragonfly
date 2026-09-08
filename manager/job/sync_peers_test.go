@@ -36,7 +36,7 @@ import (
 	resource "d7y.io/dragonfly/v2/scheduler/resource/standard"
 )
 
-func newSyncPeersDB(t *testing.T, peers []*models.Peer) *gorm.DB {
+func mockDB(t *testing.T, peers []*models.Peer) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "sync_peers.db")), &gorm.Config{
 		NamingStrategy:                           schema.NamingStrategy{SingularTable: true},
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -224,7 +224,7 @@ func TestSyncPeers_mergePeers(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := newSyncPeersDB(t, tc.peers)
+			db := mockDB(t, tc.peers)
 			s := &syncPeers{
 				config: &config.Config{Job: config.JobConfig{SyncPeers: config.SyncPeersConfig{BatchSize: 2}}},
 				db:     db,

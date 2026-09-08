@@ -50,30 +50,6 @@ func mockDAG(t *testing.T, ids []string, edges [][2]string) DAG[string] {
 	return d
 }
 
-func mockParentIDs(t *testing.T, d DAG[string], id string) []string {
-	vertex, err := d.GetVertex(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ids := make([]string, 0, vertex.Parents.Len())
-	for _, parent := range vertex.Parents.Values() {
-		ids = append(ids, parent.ID)
-	}
-
-	return ids
-}
-
-func mockDegrees(d DAG[string]) map[string][2]int {
-	degrees := make(map[string][2]int)
-	d.Range(func(id string, vertex *Vertex[string]) bool {
-		degrees[id] = [2]int{vertex.InDegree(), vertex.OutDegree()}
-		return true
-	})
-
-	return degrees
-}
-
 func TestDAG_New(t *testing.T) {
 	assert := assert.New(t)
 	d := NewDAG[string]()
@@ -484,10 +460,14 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Equal(map[string]struct{}{mockVertexEID: {}, mockVertexFID: {}, mockVertexGID: {}}, added)
-				assert.ElementsMatch([]string{mockVertexEID, mockVertexFID, mockVertexGID}, mockParentIDs(t, d, mockVertexHID))
+
+				vh, err := d.GetVertex(mockVertexHID)
+				assert.NoError(err)
+				assert.Equal(uint(3), vh.Parents.Len())
 				for _, id := range []string{mockVertexEID, mockVertexFID, mockVertexGID} {
 					vertex, err := d.GetVertex(id)
 					assert.NoError(err)
+					assert.True(vh.Parents.Contains(vertex))
 					assert.Equal(uint(1), vertex.Children.Len())
 				}
 			},
@@ -499,10 +479,13 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Equal(map[string]struct{}{mockVertexEID: {}}, added)
-				assert.Equal([]string{mockVertexEID}, mockParentIDs(t, d, mockVertexHID))
 
 				vh, err := d.GetVertex(mockVertexHID)
 				assert.NoError(err)
+				ve, err := d.GetVertex(mockVertexEID)
+				assert.NoError(err)
+				assert.Equal(uint(1), vh.Parents.Len())
+				assert.True(vh.Parents.Contains(ve))
 				assert.Equal(uint(0), vh.Children.Len())
 			},
 		},
@@ -513,7 +496,13 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Equal(map[string]struct{}{mockVertexEID: {}}, added)
-				assert.Equal([]string{mockVertexEID}, mockParentIDs(t, d, mockVertexHID))
+
+				vh, err := d.GetVertex(mockVertexHID)
+				assert.NoError(err)
+				ve, err := d.GetVertex(mockVertexEID)
+				assert.NoError(err)
+				assert.Equal(uint(1), vh.Parents.Len())
+				assert.True(vh.Parents.Contains(ve))
 			},
 		},
 		{
@@ -524,7 +513,13 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Equal(map[string]struct{}{mockVertexGID: {}}, added)
-				assert.Equal([]string{mockVertexGID}, mockParentIDs(t, d, mockVertexHID))
+
+				vh, err := d.GetVertex(mockVertexHID)
+				assert.NoError(err)
+				vg, err := d.GetVertex(mockVertexGID)
+				assert.NoError(err)
+				assert.Equal(uint(1), vh.Parents.Len())
+				assert.True(vh.Parents.Contains(vg))
 
 				ve, err := d.GetVertex(mockVertexEID)
 				assert.NoError(err)
@@ -543,10 +538,15 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Equal(map[string]struct{}{mockVertexFID: {}}, added)
-				assert.ElementsMatch([]string{mockVertexEID, mockVertexFID}, mockParentIDs(t, d, mockVertexHID))
 
+				vh, err := d.GetVertex(mockVertexHID)
+				assert.NoError(err)
 				ve, err := d.GetVertex(mockVertexEID)
 				assert.NoError(err)
+				vf, err := d.GetVertex(mockVertexFID)
+				assert.NoError(err)
+				assert.Equal(uint(2), vh.Parents.Len())
+				assert.True(vh.Parents.Contains(ve, vf))
 				assert.Equal(uint(1), ve.Children.Len())
 			},
 		},
@@ -571,7 +571,10 @@ func TestDAG_AddEdges(t *testing.T) {
 			expect: func(t *testing.T, d DAG[string], added map[string]struct{}) {
 				assert := assert.New(t)
 				assert.Empty(added)
-				assert.Empty(mockParentIDs(t, d, mockVertexHID))
+
+				vh, err := d.GetVertex(mockVertexHID)
+				assert.NoError(err)
+				assert.Equal(uint(0), vh.Parents.Len())
 			},
 		},
 	}
@@ -780,9 +783,20 @@ func TestDAG_CanAddEdges(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			d := mockDAG(t, []string{mockVertexEID, mockVertexFID, mockVertexGID, mockVertexHID}, tc.edges)
-			before := mockDegrees(d)
+			before := make(map[string][2]int)
+			d.Range(func(id string, vertex *Vertex[string]) bool {
+				before[id] = [2]int{vertex.InDegree(), vertex.OutDegree()}
+				return true
+			})
+
 			addable := d.CanAddEdges(tc.from, tc.to)
-			tc.expect(t, addable, before, mockDegrees(d))
+			after := make(map[string][2]int)
+			d.Range(func(id string, vertex *Vertex[string]) bool {
+				after[id] = [2]int{vertex.InDegree(), vertex.OutDegree()}
+				return true
+			})
+
+			tc.expect(t, addable, before, after)
 		})
 	}
 }

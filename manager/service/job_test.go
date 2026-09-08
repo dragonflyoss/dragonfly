@@ -39,7 +39,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/net/http"
 )
 
-func newTestInternalJob(backend backendsiface.Backend) *internaljob.Job {
+func mockInternalJob(backend backendsiface.Backend) *internaljob.Job {
 	server := &machinery.Server{}
 	server.SetBackend(backend)
 
@@ -60,11 +60,11 @@ func mockJobSchedulers(t *testing.T, db *gorm.DB) models.User {
 }
 
 func TestService_CreatePreheatJob(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	user := mockJobSchedulers(t, s.db)
 	ctrl := gomock.NewController(t)
 	mockPreheat := mocks.NewMockPreheat(ctrl)
-	s.job = &managerjob.Job{Job: newTestInternalJob(eager.New()), Preheat: mockPreheat}
+	s.job = &managerjob.Job{Job: mockInternalJob(eager.New()), Preheat: mockPreheat}
 
 	tests := []struct {
 		name   string
@@ -201,11 +201,11 @@ func TestService_CreatePreheatJob(t *testing.T) {
 }
 
 func TestService_CreateGetTaskJob(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 	ctrl := gomock.NewController(t)
 	mockTask := mocks.NewMockTask(ctrl)
-	s.job = &managerjob.Job{Job: newTestInternalJob(eager.New()), Task: mockTask}
+	s.job = &managerjob.Job{Job: mockInternalJob(eager.New()), Task: mockTask}
 
 	tests := []struct {
 		name   string
@@ -297,11 +297,11 @@ func TestService_CreateGetTaskJob(t *testing.T) {
 }
 
 func TestService_CreateDeleteTaskJob(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 	ctrl := gomock.NewController(t)
 	mockTask := mocks.NewMockTask(ctrl)
-	s.job = &managerjob.Job{Job: newTestInternalJob(eager.New()), Task: mockTask}
+	s.job = &managerjob.Job{Job: mockInternalJob(eager.New()), Task: mockTask}
 
 	tests := []struct {
 		name   string
@@ -361,11 +361,11 @@ func TestService_CreateDeleteTaskJob(t *testing.T) {
 }
 
 func TestService_CreateSyncPeersJob(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 	ctrl := gomock.NewController(t)
 	mockSyncPeers := mocks.NewMockSyncPeers(ctrl)
-	s.job = &managerjob.Job{Job: newTestInternalJob(eager.New()), SyncPeers: mockSyncPeers}
+	s.job = &managerjob.Job{Job: mockInternalJob(eager.New()), SyncPeers: mockSyncPeers}
 
 	tests := []struct {
 		name   string
@@ -477,7 +477,7 @@ func TestService_CreateGCJob(t *testing.T) {
 			mockGC := pkggc.NewMockGC(ctrl)
 			tc.mock(mockGC.EXPECT())
 
-			s := newTestService(t)
+			s := mockService(t)
 			s.gc = mockGC
 
 			job, err := s.CreateGCJob(tc.ctx(), tc.req)
@@ -487,7 +487,7 @@ func TestService_CreateGCJob(t *testing.T) {
 }
 
 func TestService_findSchedulerInClusters(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 
 	tests := []struct {
@@ -547,7 +547,7 @@ func TestService_findSchedulerInClusters(t *testing.T) {
 }
 
 func TestService_findAllSchedulersInClusters(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 
 	tests := []struct {
@@ -607,7 +607,7 @@ func TestService_findAllSchedulersInClusters(t *testing.T) {
 }
 
 func TestService_findAllCandidateSchedulersInClusters(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	mockJobSchedulers(t, s.db)
 
 	tests := []struct {
@@ -814,9 +814,9 @@ func TestService_pollingJob(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			s := newTestService(t)
+			s := mockService(t)
 			backend := eager.New()
-			s.job = &managerjob.Job{Job: newTestInternalJob(backend)}
+			s.job = &managerjob.Job{Job: mockInternalJob(backend)}
 			signature := &machineryv1tasks.Signature{UUID: "task-1", Name: internaljob.PreheatJob, GroupUUID: "group-1"}
 			tc.setup(t, backend, signature)
 
@@ -1022,7 +1022,7 @@ func TestService_GetJob(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			job, err := s.GetJob(context.Background(), id)
@@ -1086,7 +1086,7 @@ func TestService_UpdateJob(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			job, err := s.UpdateJob(context.Background(), id, tc.req)
@@ -1132,7 +1132,7 @@ func TestService_DestroyJob(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			tc.expect(t, s, s.DestroyJob(context.Background(), id))
@@ -1141,7 +1141,7 @@ func TestService_DestroyJob(t *testing.T) {
 }
 
 func TestService_GetJobs(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	user := mockUser(t, s.db, "foo")
 	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	for i, job := range []models.Job{

@@ -71,7 +71,7 @@ func TestService_UpdateSeedPeer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newTestService(t)
+			s := mockService(t)
 			id := tc.setup(t, s)
 
 			seedPeer, err := s.UpdateSeedPeer(context.Background(), id, tc.req)
@@ -81,7 +81,7 @@ func TestService_UpdateSeedPeer(t *testing.T) {
 }
 
 func TestService_GetSeedPeers(t *testing.T) {
-	s := newTestService(t)
+	s := mockService(t)
 	foo := mockSeedPeerCluster(t, s.db, "foo")
 	bar := mockSeedPeerCluster(t, s.db, "bar")
 	mockSeedPeer(t, s.db, foo.ID, "seed-peer-1")

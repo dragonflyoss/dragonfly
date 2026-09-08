@@ -28,12 +28,12 @@ import (
 	"gorm.io/gorm/utils/tests"
 )
 
-type namedDialector struct {
+type mockDialector struct {
 	tests.DummyDialector
 	name string
 }
 
-func (d namedDialector) Name() string {
+func (d mockDialector) Name() string {
 	return d.name
 }
 
@@ -403,7 +403,7 @@ func TestJSONMap_GormDBDataType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := &gorm.DB{Config: &gorm.Config{Dialector: namedDialector{name: tc.dialect}}}
+			db := &gorm.DB{Config: &gorm.Config{Dialector: mockDialector{name: tc.dialect}}}
 			tc.expect(t, JSONMap{}.GormDBDataType(db, nil))
 		})
 	}
@@ -687,7 +687,7 @@ func TestArray_GormDBDataType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := &gorm.DB{Config: &gorm.Config{Dialector: namedDialector{name: tc.dialect}}}
+			db := &gorm.DB{Config: &gorm.Config{Dialector: mockDialector{name: tc.dialect}}}
 			tc.expect(t, Array{}.GormDBDataType(db, nil))
 		})
 	}

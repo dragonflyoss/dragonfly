@@ -35,7 +35,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/types"
 )
 
-func newPersonalAccessTokenDB(t *testing.T) *gorm.DB {
+func mockPersonalAccessTokenDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "pat.db")), &gorm.Config{
 		NamingStrategy:                           schema.NamingStrategy{SingularTable: true},
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -82,7 +82,7 @@ func mockPersonalAccessTokenRouter(db *gorm.DB) *gin.Engine {
 
 func TestPersonalAccessToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := mockPersonalAccessTokenRouter(newPersonalAccessTokenDB(t))
+	router := mockPersonalAccessTokenRouter(mockPersonalAccessTokenDB(t))
 
 	tests := []struct {
 		name          string
