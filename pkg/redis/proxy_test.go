@@ -17,6 +17,7 @@
 package redis
 
 import (
+	"context"
 	"io"
 	"net"
 	"sync"
@@ -49,54 +50,92 @@ func mockDial(t *testing.T, addr string) net.Conn {
 		}
 
 		if time.Now().After(deadline) {
-			t.Fatalf("dial %s: %v", addr, err)
+			t.Fatal(err)
 		}
 
 		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-func mockServeEchoBackend(listener net.Listener, accepted *atomic.Int32) {
+func mockServeBackend(listener net.Listener, accepted *atomic.Int32, handle func(conn net.Conn, accepted int32)) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return
 		}
 
-		accepted.Add(1)
-		go func() {
-			defer conn.Close()
-			buf := make([]byte, len(mockRedisRequest))
-			n, _ := io.ReadFull(conn, buf)
-			_, _ = conn.Write(buf[:n])
-		}()
+		go handle(conn, accepted.Add(1))
 	}
+}
+
+func mockEcho(conn net.Conn, _ int32) {
+	defer conn.Close()
+	buf := make([]byte, len(mockRedisRequest))
+	n, _ := io.ReadFull(conn, buf)
+	_, _ = conn.Write(buf[:n])
+}
+
+func mockDropFirstThenEcho(conn net.Conn, accepted int32) {
+	if accepted == 1 {
+		conn.Close()
+		return
+	}
+
+	mockEcho(conn, accepted)
+}
+
+func mockRequest(t *testing.T, addr, request string) string {
+	conn := mockDial(t, addr)
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := conn.Write([]byte(request)); err != nil {
+		t.Fatal(err)
+	}
+
+	response := make([]byte, len(request))
+	n, _ := io.ReadFull(conn, response)
+
+	return string(response[:n])
 }
 
 func TestProxy_Serve(t *testing.T) {
 	tests := []struct {
-		name    string
-		request string
-		expect  func(t *testing.T, response []byte, err error, backendConns int32)
+		name     string
+		backend  func(conn net.Conn, accepted int32)
+		requests []string
+		expect   func(t *testing.T, responses []string, backendConns int32)
 	}{
 		{
-			name:    "redis protocol request is forwarded to the backend and its response returned",
-			request: mockRedisRequest,
-			expect: func(t *testing.T, response []byte, err error, backendConns int32) {
+			name:     "redis protocol request is forwarded to the backend and its response returned",
+			backend:  mockEcho,
+			requests: []string{mockRedisRequest},
+			expect: func(t *testing.T, responses []string, backendConns int32) {
 				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Equal(mockRedisRequest, string(response))
+				assert.Equal([]string{mockRedisRequest}, responses)
 				assert.Equal(int32(1), backendConns)
 			},
 		},
 		{
-			name:    "non redis protocol request is closed without dialing the backend",
-			request: "GET / HTTP/1.1\r\n",
-			expect: func(t *testing.T, response []byte, err error, backendConns int32) {
+			name:     "non redis protocol request is closed without dialing the backend",
+			backend:  mockEcho,
+			requests: []string{"GET / HTTP/1.1\r\n"},
+			expect: func(t *testing.T, responses []string, backendConns int32) {
 				assert := assert.New(t)
-				assert.Error(err)
-				assert.Empty(response)
+				assert.Equal([]string{""}, responses)
 				assert.Equal(int32(0), backendConns)
+			},
+		},
+		{
+			name:     "connection dropped by the backend does not stop the proxy",
+			backend:  mockDropFirstThenEcho,
+			requests: []string{mockRedisRequest, mockRedisRequest},
+			expect: func(t *testing.T, responses []string, backendConns int32) {
+				assert := assert.New(t)
+				assert.Equal([]string{"", mockRedisRequest}, responses)
+				assert.Equal(int32(2), backendConns)
 			},
 		},
 	}
@@ -112,35 +151,79 @@ func TestProxy_Serve(t *testing.T) {
 			defer backend.Close()
 
 			var backendConns atomic.Int32
-			go mockServeEchoBackend(backend, &backendConns)
+			go mockServeBackend(backend, &backendConns, tc.backend)
 
 			from := mockFreeAddr(t)
 			p := NewProxy(from, backend.Addr().String())
 			served := make(chan error, 1)
 			go func() { served <- p.Serve() }()
 
-			conn := mockDial(t, from)
-			defer conn.Close()
-			if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
-				t.Fatal(err)
+			responses := make([]string, 0, len(tc.requests))
+			for _, request := range tc.requests {
+				responses = append(responses, mockRequest(t, from, request))
 			}
 
-			if _, err := conn.Write([]byte(tc.request)); err != nil {
-				t.Fatal(err)
-			}
-
-			response := make([]byte, len(tc.request))
-			n, err := io.ReadFull(conn, response)
-			tc.expect(t, response[:n], err, backendConns.Load())
+			tc.expect(t, responses, backendConns.Load())
 
 			p.Stop()
-			mockDial(t, from).Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
 			select {
 			case err := <-served:
 				assert.NoError(err)
-			case <-time.After(5 * time.Second):
-				t.Fatal("proxy did not stop serving after Stop and a wake-up connection")
+			case <-ctx.Done():
+				assert.NoError(ctx.Err())
 			}
+		})
+	}
+}
+
+func TestProxy_Stop(t *testing.T) {
+	tests := []struct {
+		name   string
+		serve  func(t *testing.T, p Proxy, from string) error
+		expect func(t *testing.T, err error)
+	}{
+		{
+			name: "stop before serve returns immediately",
+			serve: func(t *testing.T, p Proxy, from string) error {
+				p.Stop()
+				return p.Serve()
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "stop while serving unblocks accept without a new connection",
+			serve: func(t *testing.T, p Proxy, from string) error {
+				served := make(chan error, 1)
+				go func() { served <- p.Serve() }()
+				mockDial(t, from).Close()
+
+				p.Stop()
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				select {
+				case err := <-served:
+					return err
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			from := mockFreeAddr(t)
+			p := NewProxy(from, "127.0.0.1:0")
+			tc.expect(t, tc.serve(t, p, from))
 		})
 	}
 }

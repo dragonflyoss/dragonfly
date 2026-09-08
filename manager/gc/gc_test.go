@@ -138,6 +138,32 @@ func TestAudit_RunGC(t *testing.T) {
 			},
 		},
 		{
+			name: "gc config without audit section falls back to the default ttl",
+			ctx:  context.Background(),
+			seed: func(t *testing.T, db *gorm.DB) {
+				seedGCConfig(t, db, &models.GCConfig{Job: &models.GCJobConfig{TTL: time.Hour}})
+				if err := db.Create([]*models.Audit{
+					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCAuditTTL - time.Hour)}, ActorType: models.ActorTypeUser, ActorName: "old", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
+					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCAuditTTL + time.Hour)}, ActorType: models.ActorTypeUser, ActorName: "new", EventType: models.EventTypeAPI, Operation: "GET", State: models.AuditStateSuccess},
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+			},
+			expect: func(t *testing.T, db *gorm.DB, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+
+				var audits []models.Audit
+				assert.NoError(db.Find(&audits).Error)
+				assert.Len(audits, 1)
+				assert.Equal("new", audits[0].ActorName)
+
+				jobs := findGCJobs(t, db)
+				assert.Len(jobs, 1)
+				assert.EqualValues(1, jobs[0].Result["purged"])
+			},
+		},
+		{
 			name: "task id and user id from context are recorded",
 			ctx:  context.WithValue(context.WithValue(context.Background(), pkggc.ContextKeyUserID, uint(7)), pkggc.ContextKeyTaskID, "task-audit"),
 			seed: func(t *testing.T, db *gorm.DB) {
@@ -236,6 +262,32 @@ func TestJob_RunGC(t *testing.T) {
 				assert.Len(gcJobs, 1)
 				assert.Equal(JobGCTaskID, gcJobs[0].TaskID)
 				assert.Equal(GCStateSuccess, gcJobs[0].State)
+				assert.EqualValues(1, gcJobs[0].Result["purged"])
+			},
+		},
+		{
+			name: "gc config without job section falls back to the default ttl",
+			ctx:  context.Background(),
+			seed: func(t *testing.T, db *gorm.DB) {
+				seedGCConfig(t, db, &models.GCConfig{Audit: &models.GCAuditConfig{TTL: time.Hour}})
+				if err := db.Create([]*models.Job{
+					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCJobTTL - time.Hour)}, TaskID: "old-1", Type: "preheat", Args: models.JSONMap{}},
+					{BaseModel: models.BaseModel{CreatedAt: now.Add(-models.DefaultGCJobTTL + time.Hour)}, TaskID: "new-1", Type: "preheat", Args: models.JSONMap{}},
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+			},
+			expect: func(t *testing.T, db *gorm.DB, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+
+				var jobs []models.Job
+				assert.NoError(db.Where("type = ?", "preheat").Find(&jobs).Error)
+				assert.Len(jobs, 1)
+				assert.Equal("new-1", jobs[0].TaskID)
+
+				gcJobs := findGCJobs(t, db)
+				assert.Len(gcJobs, 1)
 				assert.EqualValues(1, gcJobs[0].Result["purged"])
 			},
 		},

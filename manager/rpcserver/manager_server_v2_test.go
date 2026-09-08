@@ -256,6 +256,26 @@ func TestManagerServerV2_UpdateSeedPeer(t *testing.T) {
 			},
 		},
 		{
+			name: "changed port updates the existing row instead of violating the unique index",
+			req: &managerv2.UpdateSeedPeerRequest{
+				Hostname:          mockActiveSeedPeerHostname,
+				Ip:                mockActiveSeedPeerIP,
+				Type:              mockSeedPeerType,
+				Port:              mockUpdatedSeedPeerPort,
+				DownloadPort:      mockSeedPeerDownloadPort,
+				SeedPeerClusterId: uint64(mockSeedPeerClusterID),
+			},
+			expect: func(t *testing.T, s *managerServerV2, resp *managerv2.SeedPeer, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(int64(1), countRows(t, s.db, &models.SeedPeer{}, models.SeedPeer{Hostname: mockActiveSeedPeerHostname}))
+				seedPeer := findSeedPeer(t, s.db, mockActiveSeedPeerHostname)
+				assert.Equal(uint64(seedPeer.ID), resp.GetId())
+				assert.Equal(mockUpdatedSeedPeerPort, seedPeer.Port)
+				assert.Equal(mockUpdatedSeedPeerPort, resp.GetPort())
+			},
+		},
+		{
 			name: "unknown cluster returns internal and creates nothing",
 			req: &managerv2.UpdateSeedPeerRequest{
 				Hostname:          mockNewHostname,
@@ -487,6 +507,24 @@ func TestManagerServerV2_UpdateScheduler(t *testing.T) {
 				assert.WithinDuration(time.Now(), scheduler.LastKeepAliveAt, time.Minute)
 				assert.JSONEq(`["preheat"]`, string(resp.GetFeatures()))
 				assert.False(s.cache.Exists(context.Background(), pkgredis.MakeSchedulerKeyInManager(mockSchedulerClusterID, mockInactiveSchedulerHostname, mockInactiveSchedulerIP)))
+			},
+		},
+		{
+			name: "changed port updates the existing row instead of violating the unique index",
+			req: &managerv2.UpdateSchedulerRequest{
+				Hostname:           mockActiveSchedulerHostname,
+				Ip:                 mockActiveSchedulerIP,
+				Port:               mockUpdatedSchedulerPort,
+				SchedulerClusterId: uint64(mockSchedulerClusterID),
+			},
+			expect: func(t *testing.T, s *managerServerV2, resp *managerv2.Scheduler, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(int64(1), countRows(t, s.db, &models.Scheduler{}, models.Scheduler{Hostname: mockActiveSchedulerHostname}))
+				scheduler := findScheduler(t, s.db, mockActiveSchedulerHostname)
+				assert.Equal(uint64(scheduler.ID), resp.GetId())
+				assert.Equal(mockUpdatedSchedulerPort, scheduler.Port)
+				assert.Equal(mockUpdatedSchedulerPort, resp.GetPort())
 			},
 		},
 		{

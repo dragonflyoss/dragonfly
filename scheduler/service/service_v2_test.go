@@ -6394,7 +6394,7 @@ func TestServiceV2_UploadPersistentTaskFailed(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *persistent.Peer, err error) {
 				assert := assert.New(t)
-				assert.ErrorIs(err, status.Error(codes.Internal, "event Succeeded inappropriate in current state Pending"))
+				assert.ErrorIs(err, status.Error(codes.Internal, "event Failed inappropriate in current state Pending"))
 				assert.Equal(persistent.PeerStateFailed, peer.FSM.Current())
 				assert.Equal(persistent.TaskStatePending, peer.Task.FSM.Current())
 			},
@@ -6414,11 +6414,11 @@ func TestServiceV2_UploadPersistentTaskFailed(t *testing.T) {
 			expect: func(t *testing.T, peer *persistent.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.Internal, "bar"))
-				assert.Equal(persistent.TaskStateSucceeded, peer.Task.FSM.Current())
+				assert.Equal(persistent.TaskStateFailed, peer.Task.FSM.Current())
 			},
 		},
 		{
-			name: "peer failed and task marked succeeded",
+			name: "peer failed and task marked failed",
 			mock: func(peer *persistent.Peer, taskManager persistent.TaskManager, peerManager persistent.PeerManager, mpr *persistent.MockResourceMockRecorder, mpt *persistent.MockTaskManagerMockRecorder, mpp *persistent.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mpr.PeerManager().Return(peerManager).Times(1),
@@ -6433,7 +6433,7 @@ func TestServiceV2_UploadPersistentTaskFailed(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(persistent.PeerStateFailed, peer.FSM.Current())
-				assert.Equal(persistent.TaskStateSucceeded, peer.Task.FSM.Current())
+				assert.Equal(persistent.TaskStateFailed, peer.Task.FSM.Current())
 			},
 		},
 	}
@@ -8528,7 +8528,7 @@ func TestServiceV2_UploadPersistentCacheTaskFailed(t *testing.T) {
 			},
 			expect: func(t *testing.T, peer *persistentcache.Peer, err error) {
 				assert := assert.New(t)
-				assert.ErrorIs(err, status.Error(codes.Internal, "event Succeeded inappropriate in current state Pending"))
+				assert.ErrorIs(err, status.Error(codes.Internal, "event Failed inappropriate in current state Pending"))
 				assert.Equal(persistentcache.PeerStateFailed, peer.FSM.Current())
 				assert.Equal(persistentcache.TaskStatePending, peer.Task.FSM.Current())
 			},
@@ -8548,11 +8548,11 @@ func TestServiceV2_UploadPersistentCacheTaskFailed(t *testing.T) {
 			expect: func(t *testing.T, peer *persistentcache.Peer, err error) {
 				assert := assert.New(t)
 				assert.ErrorIs(err, status.Error(codes.Internal, "bar"))
-				assert.Equal(persistentcache.TaskStateSucceeded, peer.Task.FSM.Current())
+				assert.Equal(persistentcache.TaskStateFailed, peer.Task.FSM.Current())
 			},
 		},
 		{
-			name: "peer failed and task marked succeeded",
+			name: "peer failed and task marked failed",
 			mock: func(peer *persistentcache.Peer, taskManager persistentcache.TaskManager, peerManager persistentcache.PeerManager, mpr *persistentcache.MockResourceMockRecorder, mpt *persistentcache.MockTaskManagerMockRecorder, mpp *persistentcache.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mpr.PeerManager().Return(peerManager).Times(1),
@@ -8567,7 +8567,7 @@ func TestServiceV2_UploadPersistentCacheTaskFailed(t *testing.T) {
 				assert := assert.New(t)
 				assert.NoError(err)
 				assert.Equal(persistentcache.PeerStateFailed, peer.FSM.Current())
-				assert.Equal(persistentcache.TaskStateSucceeded, peer.Task.FSM.Current())
+				assert.Equal(persistentcache.TaskStateFailed, peer.Task.FSM.Current())
 			},
 		},
 	}
