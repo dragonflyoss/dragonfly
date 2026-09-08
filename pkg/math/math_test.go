@@ -29,88 +29,112 @@ func TestSafeSubAtomicUint64(t *testing.T) {
 		name    string
 		initial uint64
 		delta   uint64
-		expect  uint64
+		expect  func(t *testing.T, counter *atomic.Uint64)
 	}{
 		{
 			name:    "delta less than counter",
 			initial: 100,
 			delta:   40,
-			expect:  60,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(60), counter.Load())
+			},
 		},
 		{
 			name:    "delta equals counter",
 			initial: 100,
 			delta:   100,
-			expect:  0,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(0), counter.Load())
+			},
 		},
 		{
 			name:    "delta greater than counter clamps to zero",
 			initial: 40,
 			delta:   100,
-			expect:  0,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(0), counter.Load())
+			},
 		},
 		{
 			name:    "zero delta",
 			initial: 100,
 			delta:   0,
-			expect:  100,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(100), counter.Load())
+			},
 		},
 		{
 			name:    "zero counter",
 			initial: 0,
 			delta:   100,
-			expect:  0,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(0), counter.Load())
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			counter := new(atomic.Uint64)
-			counter.Store(tt.initial)
+			counter.Store(tc.initial)
 
-			SafeSubAtomicUint64(counter, tt.delta)
-			assert.New(t).Equal(tt.expect, counter.Load())
+			SafeSubAtomicUint64(counter, tc.delta)
+			tc.expect(t, counter)
 		})
 	}
 }
 
 func TestSafeSubAtomicUint64_Concurrent(t *testing.T) {
-	const (
-		goroutines = 100
-		delta      = 3
-	)
-
-	counter := new(atomic.Uint64)
-	counter.Store(goroutines * delta)
-
-	var wg sync.WaitGroup
-	wg.Add(goroutines)
-	for range goroutines {
-		go func() {
-			defer wg.Done()
-			SafeSubAtomicUint64(counter, delta)
-		}()
-	}
-	wg.Wait()
-
-	assert.New(t).Equal(uint64(0), counter.Load())
-}
-
-func TestSafeSubAtomicUint64_ConcurrentClampsToZero(t *testing.T) {
 	const goroutines = 100
 
-	counter := new(atomic.Uint64)
-	counter.Store(50)
-
-	var wg sync.WaitGroup
-	wg.Add(goroutines)
-	for range goroutines {
-		go func() {
-			defer wg.Done()
-			SafeSubAtomicUint64(counter, 3)
-		}()
+	tests := []struct {
+		name    string
+		initial uint64
+		delta   uint64
+		expect  func(t *testing.T, counter *atomic.Uint64)
+	}{
+		{
+			name:    "deltas sum to counter",
+			initial: goroutines * 3,
+			delta:   3,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(0), counter.Load())
+			},
+		},
+		{
+			name:    "deltas exceed counter clamps to zero",
+			initial: 50,
+			delta:   3,
+			expect: func(t *testing.T, counter *atomic.Uint64) {
+				assert := assert.New(t)
+				assert.Equal(uint64(0), counter.Load())
+			},
+		},
 	}
-	wg.Wait()
 
-	assert.New(t).Equal(uint64(0), counter.Load())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			counter := new(atomic.Uint64)
+			counter.Store(tc.initial)
+
+			var wg sync.WaitGroup
+			wg.Add(goroutines)
+			for range goroutines {
+				go func() {
+					defer wg.Done()
+					SafeSubAtomicUint64(counter, tc.delta)
+				}()
+			}
+
+			wg.Wait()
+
+			tc.expect(t, counter)
+		})
+	}
 }

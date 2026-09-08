@@ -23,14 +23,15 @@ import (
 )
 
 func TestDigest_String(t *testing.T) {
-	assert.Equal(t, New(AlgorithmMD5, "5d41402abc4b2a76b9719d911017c592").String(), "md5:5d41402abc4b2a76b9719d911017c592")
+	assert := assert.New(t)
+	assert.Equal("md5:5d41402abc4b2a76b9719d911017c592", New(AlgorithmMD5, "5d41402abc4b2a76b9719d911017c592").String())
 }
 
 func TestDigest_Parse(t *testing.T) {
 	tests := []struct {
 		name   string
 		value  string
-		expect func(t *testing.T, digest *Digest, err error)
+		expect func(t *testing.T, d *Digest, err error)
 	}{
 		{
 			name:  "sha1 digest",
@@ -38,7 +39,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(d, New(AlgorithmSHA1, "7df059597099bb7dcf25d2a9aedfaf4465f72d8d"))
+				assert.Equal(New(AlgorithmSHA1, "7df059597099bb7dcf25d2a9aedfaf4465f72d8d"), d)
 			},
 		},
 		{
@@ -47,6 +48,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -55,7 +57,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(d, New(AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"))
+				assert.Equal(New(AlgorithmSHA256, "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"), d)
 			},
 		},
 		{
@@ -64,6 +66,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -72,7 +75,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(d, New(AlgorithmSHA512, "dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557"))
+				assert.Equal(New(AlgorithmSHA512, "dc6b68d13b8cf959644b935f1192b02c71aa7a5cf653bd43b4480fa89eec8d4d3f16a2278ec8c3b40ab1fdb233b3173a78fd83590d6f739e0c9e8ff56c282557"), d)
 			},
 		},
 		{
@@ -81,6 +84,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -89,7 +93,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(d, New(AlgorithmMD5, "5d41402abc4b2a76b9719d911017c592"))
+				assert.Equal(New(AlgorithmMD5, "5d41402abc4b2a76b9719d911017c592"), d)
 			},
 		},
 		{
@@ -98,6 +102,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -106,6 +111,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -114,6 +120,7 @@ func TestDigest_Parse(t *testing.T) {
 			expect: func(t *testing.T, d *Digest, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(d)
 			},
 		},
 		{
@@ -137,12 +144,12 @@ func TestDigest_Parse(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			d, err := Parse(tc.value)
-
 			tc.expect(t, d, err)
 		})
 	}
 }
 
 func TestDigest_SHA256FromStrings(t *testing.T) {
-	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", SHA256FromStrings("hello"))
+	assert := assert.New(t)
+	assert.Equal("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", SHA256FromStrings("hello"))
 }

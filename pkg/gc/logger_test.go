@@ -26,30 +26,43 @@ import (
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
-func TestGCLogger_Infof(t *testing.T) {
-	core, logs := observer.New(zap.InfoLevel)
-	original := logger.CoreLogger
-	logger.SetCoreLogger(zap.New(core).Sugar())
-	defer logger.SetCoreLogger(original)
+func TestGCLogger(t *testing.T) {
+	tests := []struct {
+		name   string
+		log    func(gl *gcLogger)
+		expect func(t *testing.T, entries []observer.LoggedEntry)
+	}{
+		{
+			name: "Infof logs at info level",
+			log:  func(gl *gcLogger) { gl.Infof("run %s gc task success, latency: %s", "task", "1s") },
+			expect: func(t *testing.T, entries []observer.LoggedEntry) {
+				assert := assert.New(t)
+				assert.Len(entries, 1)
+				assert.Equal("run task gc task success, latency: 1s", entries[0].Message)
+				assert.Equal(zap.InfoLevel, entries[0].Level)
+			},
+		},
+		{
+			name: "Errorf logs at error level",
+			log:  func(gl *gcLogger) { gl.Errorf("run %s gc task failed: %s", "task", "timeout") },
+			expect: func(t *testing.T, entries []observer.LoggedEntry) {
+				assert := assert.New(t)
+				assert.Len(entries, 1)
+				assert.Equal("run task gc task failed: timeout", entries[0].Message)
+				assert.Equal(zap.ErrorLevel, entries[0].Level)
+			},
+		},
+	}
 
-	gl := &gcLogger{}
-	gl.Infof("run %s gc task success, latency: %s", "task", "1s")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			core, logs := observer.New(zap.InfoLevel)
+			original := logger.CoreLogger
+			logger.SetCoreLogger(zap.New(core).Sugar())
+			defer logger.SetCoreLogger(original)
 
-	entries := logs.All()
-	assert.Len(t, entries, 1)
-	assert.Equal(t, "run task gc task success, latency: 1s", entries[0].Message)
-}
-
-func TestGCLogger_Errorf(t *testing.T) {
-	core, logs := observer.New(zap.InfoLevel)
-	original := logger.CoreLogger
-	logger.SetCoreLogger(zap.New(core).Sugar())
-	defer logger.SetCoreLogger(original)
-
-	gl := &gcLogger{}
-	gl.Errorf("run %s gc task failed: %s", "task", "timeout")
-
-	entries := logs.All()
-	assert.Len(t, entries, 1)
-	assert.Equal(t, "run task gc task failed: timeout", entries[0].Message)
+			tc.log(&gcLogger{})
+			tc.expect(t, logs.All())
+		})
+	}
 }

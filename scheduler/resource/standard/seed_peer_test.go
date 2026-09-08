@@ -18,22 +18,36 @@ package standard
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	gomock "go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
+	cdnsystemv1 "d7y.io/api/v2/pkg/apis/cdnsystem/v1"
+	cdnsystemv1mocks "d7y.io/api/v2/pkg/apis/cdnsystem/v1/mocks"
+	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 	dfdaemonv2 "d7y.io/api/v2/pkg/apis/dfdaemon/v2"
+	dfdaemonv2mocks "d7y.io/api/v2/pkg/apis/dfdaemon/v2/mocks"
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
+
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/pkg/gc"
+	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
+	"d7y.io/dragonfly/v2/pkg/rpc/common"
 	dfdaemonclientmocks "d7y.io/dragonfly/v2/pkg/rpc/dfdaemon/client/mocks"
 )
 
@@ -43,7 +57,7 @@ func mockSeedHost(port int32) *Host {
 		port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 }
 
-func mockSeedHostServer(t *testing.T) *Host {
+func mockSeedHostServer(t *testing.T, register func(svr *grpc.Server)) *Host {
 	t.Helper()
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
@@ -52,10 +66,10 @@ func mockSeedHostServer(t *testing.T) *Host {
 	}
 
 	svr := grpc.NewServer()
-	healthpb.RegisterHealthServer(svr, health.NewServer())
+	register(svr)
 	go func() {
 		if err := svr.Serve(lis); err != nil {
-			logger.Errorf("failed to serve the health service: %v", err)
+			logger.Errorf("failed to serve the seed host: %v", err)
 		}
 	}()
 	t.Cleanup(svr.Stop)
@@ -88,7 +102,7 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 			name: "new seed peer",
 			expect: func(t *testing.T, s SeedPeer) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(s).Elem().Name(), "seedPeer")
+				assert.Equal("seedPeer", reflect.TypeOf(s).Elem().Name())
 			},
 		},
 	}
@@ -116,7 +130,9 @@ func TestSeedPeer_refresh(t *testing.T) {
 		{
 			name: "refresh healthy seed peer",
 			hosts: func(t *testing.T) []*Host {
-				return []*Host{mockSeedHostServer(t)}
+				return []*Host{mockSeedHostServer(t, func(svr *grpc.Server) {
+					healthpb.RegisterHealthServer(svr, health.NewServer())
+				})}
 			},
 			mock: func(m *MockHostManagerMockRecorder, hosts []*Host) {
 				m.LoadAllSeeds().Return(hosts)
@@ -145,7 +161,7 @@ func TestSeedPeer_refresh(t *testing.T) {
 				assert.False(seedPeer.HasAvailable())
 
 				_, err := seedPeer.Select(context.Background(), mockTaskID)
-				assert.EqualError(err, "no available seed peer")
+				assert.Error(err)
 			},
 		},
 		{
@@ -158,8 +174,9 @@ func TestSeedPeer_refresh(t *testing.T) {
 			},
 			expect: func(t *testing.T, seedPeer *seedPeer, hosts []*Host) {
 				assert := assert.New(t)
-				mockAddr := "127.0.0.1:4000"
-				seedPeer.hosts.Store(mockAddr, &Host{})
+				mockHost := mockSeedHost(4000)
+				mockAddr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(mockAddr, mockHost)
 				seedPeer.hashring.Add(mockAddr)
 
 				seedPeer.refresh(context.Background())
@@ -168,7 +185,7 @@ func TestSeedPeer_refresh(t *testing.T) {
 				assert.False(seedPeer.HasAvailable())
 
 				_, err := seedPeer.Select(context.Background(), mockTaskID)
-				assert.EqualError(err, "no available seed peer")
+				assert.Error(err)
 			},
 		},
 		{
@@ -190,12 +207,12 @@ func TestSeedPeer_refresh(t *testing.T) {
 				}()
 
 				go func() {
+					assert := assert.New(t)
 					defer wg.Done()
 					for range 100 {
 						seedPeer.HasAvailable()
-						if _, err := seedPeer.Select(context.Background(), mockTaskID); err == nil {
-							assert.Fail(t, "select should fail when no seed peer is available")
-						}
+						_, err := seedPeer.Select(context.Background(), mockTaskID)
+						assert.Error(err)
 					}
 				}()
 
@@ -222,16 +239,42 @@ func TestSeedPeer_refresh(t *testing.T) {
 	}
 }
 
-func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
+func TestSeedPeer_Select(t *testing.T) {
 	tests := []struct {
 		name   string
-		expect func(t *testing.T, err error)
+		expect func(t *testing.T, seedPeer *seedPeer, mockHost *Host)
 	}{
 		{
-			name: "trigger download task failed",
-			expect: func(t *testing.T, err error) {
+			name: "no available seed peer",
+			expect: func(t *testing.T, seedPeer *seedPeer, mockHost *Host) {
 				assert := assert.New(t)
-				assert.EqualError(err, "no available seed peer")
+				_, err := seedPeer.Select(context.Background(), mockTaskID)
+				assert.Error(err)
+				assert.False(seedPeer.HasAvailable())
+			},
+		},
+		{
+			name: "select seed peer by task id",
+			expect: func(t *testing.T, seedPeer *seedPeer, mockHost *Host) {
+				assert := assert.New(t)
+				addr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
+				host, err := seedPeer.Select(context.Background(), mockTaskID)
+				assert.NoError(err)
+				assert.Same(mockHost, host)
+				assert.True(seedPeer.HasAvailable())
+			},
+		},
+		{
+			name: "hashring member has no host",
+			expect: func(t *testing.T, seedPeer *seedPeer, mockHost *Host) {
+				assert := assert.New(t)
+				addr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hashring.Add(addr)
+				_, err := seedPeer.Select(context.Background(), mockTaskID)
+				assert.Error(err)
+				assert.True(seedPeer.HasAvailable())
 			},
 		},
 	}
@@ -244,7 +287,104 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool)
+			seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+			tc.expect(t, seedPeer, mockSeedHost(mockRawSeedHost.Port))
+		})
+	}
+}
+
+func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
+	tests := []struct {
+		name      string
+		available bool
+		mock      func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string)
+		expect    func(t *testing.T, err error)
+	}{
+		{
+			name:      "no available seed peer",
+			available: false,
+			mock: func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string) {
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:      "get client from pool failed",
+			available: true,
+			mock: func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string) {
+				clientPool.EXPECT().Get(addr).Return(nil, errors.New("foo")).Times(1)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:      "download task failed",
+			available: true,
+			mock: func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string) {
+				clientPool.EXPECT().Get(addr).Return(client, nil).Times(1)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:      "receive from download task stream failed",
+			available: true,
+			mock: func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string) {
+				clientPool.EXPECT().Get(addr).Return(client, nil).Times(1)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
+				stream.EXPECT().Recv().Return(nil, errors.New("foo")).Times(1)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name:      "download task completes at end of stream",
+			available: true,
+			mock: func(clientPool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient, addr string) {
+				clientPool.EXPECT().Get(addr).Return(client, nil).Times(1)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
+				gomock.InOrder(
+					stream.EXPECT().Recv().Return(&dfdaemonv2.DownloadTaskResponse{}, nil).Times(1),
+					stream.EXPECT().Recv().Return(nil, io.EOF).Times(1),
+				)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			hostManager := NewMockHostManager(ctl)
+			peerManager := NewMockPeerManager(ctl)
+			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
+			client := dfdaemonclientmocks.NewMockClient(ctl)
+			stream := dfdaemonv2mocks.NewMockDfdaemonUpload_DownloadTaskClient(ctl)
+
+			seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+			var addr string
+			if tc.available {
+				mockHost := mockSeedHost(mockRawSeedHost.Port)
+				addr = net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
+			}
+
+			tc.mock(clientPool, client, stream, addr)
+
 			tc.expect(t, seedPeer.TriggerDownloadTask(context.Background(), mockTaskID, &dfdaemonv2.DownloadTaskRequest{}))
 		})
 	}
@@ -252,14 +392,227 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 
 func TestSeedPeer_TriggerTask(t *testing.T) {
 	tests := []struct {
-		name   string
-		expect func(t *testing.T, peer *Peer, result *schedulerv1.PeerResult, err error)
+		name       string
+		rg         *nethttp.Range
+		available  bool
+		hostStored bool
+		peerStored bool
+		mock       func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host)
+		expect     func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error)
 	}{
 		{
-			name: "start obtain seed stream failed",
-			expect: func(t *testing.T, peer *Peer, result *schedulerv1.PeerResult, err error) {
+			name:      "start obtain seed stream failed",
+			available: false,
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "no available seed peer")
+				assert.Error(err)
+				assert.Nil(peer)
+				assert.Nil(result)
+			},
+		},
+		{
+			name:       "obtain seeds failed",
+			available:  true,
+			hostStored: true,
+			mock: func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host) {
+				ms.ObtainSeeds(gomock.Any(), gomock.Any()).Return(status.Error(codes.Internal, "foo")).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(peer)
+				assert.Nil(result)
+				_, loaded := peerManager.Load(mockSeedPeerID)
+				assert.False(loaded)
+			},
+		},
+		{
+			name:       "seed host is not found in host manager",
+			available:  true,
+			hostStored: false,
+			mock: func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host) {
+				ms.ObtainSeeds(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *cdnsystemv1.SeedRequest, stream cdnsystemv1.Seeder_ObtainSeedsServer) error {
+					return stream.Send(&cdnsystemv1.PieceSeed{
+						HostId:    mockHost.ID,
+						PeerId:    mockSeedPeerID,
+						PieceInfo: &commonv1.PieceInfo{PieceNum: common.BeginOfPiece},
+					})
+				}).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(peer)
+				assert.Nil(result)
+				_, loaded := peerManager.Load(mockSeedPeerID)
+				assert.False(loaded)
+			},
+		},
+		{
+			name:       "trigger task with range stores the seed peer and its pieces",
+			rg:         &nethttp.Range{Start: 0, Length: 10},
+			available:  true,
+			hostStored: true,
+			mock: func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host) {
+				ms.ObtainSeeds(gomock.Cond(func(req *cdnsystemv1.SeedRequest) bool {
+					return req.TaskId == mockTaskID &&
+						req.Url == mockTaskURL &&
+						req.UrlMeta.Tag == mockTaskTag &&
+						req.UrlMeta.Application == mockTaskApplication &&
+						req.UrlMeta.Filter == "bar" &&
+						req.UrlMeta.Digest == mockTaskDigest.String() &&
+						req.UrlMeta.Range == "0-9" &&
+						req.UrlMeta.Priority == commonv1.Priority_LEVEL0
+				}), gomock.Any()).DoAndReturn(func(_ *cdnsystemv1.SeedRequest, stream cdnsystemv1.Seeder_ObtainSeedsServer) error {
+					for _, pieceSeed := range []*cdnsystemv1.PieceSeed{
+						{
+							HostId:    mockHost.ID,
+							PeerId:    mockSeedPeerID,
+							PieceInfo: &commonv1.PieceInfo{PieceNum: common.BeginOfPiece},
+						},
+						{
+							HostId: mockHost.ID,
+							PeerId: mockSeedPeerID,
+							PieceInfo: &commonv1.PieceInfo{
+								PieceNum:     0,
+								RangeStart:   0,
+								RangeSize:    100,
+								PieceMd5:     mockPieceDigest.Encoded,
+								DownloadCost: 10,
+							},
+						},
+						{
+							HostId: mockHost.ID,
+							PeerId: mockSeedPeerID,
+							Reuse:  true,
+							PieceInfo: &commonv1.PieceInfo{
+								PieceNum:     1,
+								RangeStart:   100,
+								RangeSize:    50,
+								DownloadCost: 20,
+							},
+						},
+						{
+							HostId:          mockHost.ID,
+							PeerId:          mockSeedPeerID,
+							Done:            true,
+							TotalPieceCount: 2,
+							ContentLength:   150,
+						},
+					} {
+						if err := stream.Send(pieceSeed); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				}).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(int32(2), result.TotalPieceCount)
+				assert.Equal(int64(150), result.ContentLength)
+				assert.Equal(mockSeedPeerID, peer.ID)
+				assert.Equal(mockSeedHostID, peer.Host.ID)
+				assert.EqualValues(&nethttp.Range{Start: 0, Length: 10}, peer.Range)
+				assert.Equal(PeerStateRunning, peer.FSM.Current())
+				assert.True(peer.FinishedPieces.Test(0))
+				assert.True(peer.FinishedPieces.Test(1))
+				assert.Equal([]time.Duration{10 * time.Millisecond, 20 * time.Millisecond}, peer.PieceCosts())
+
+				storedPeer, loaded := peerManager.Load(mockSeedPeerID)
+				assert.True(loaded)
+				assert.Same(peer, storedPeer)
+
+				piece, loaded := mockTask.LoadPiece(0)
+				assert.True(loaded)
+				assert.Equal(uint64(0), piece.Offset)
+				assert.Equal(uint64(100), piece.Length)
+				assert.Equal(mockPieceDigest, piece.Digest)
+				assert.Equal(commonv2.TrafficType_BACK_TO_SOURCE, piece.TrafficType)
+				assert.Equal(10*time.Millisecond, piece.Cost)
+
+				piece, loaded = mockTask.LoadPiece(1)
+				assert.True(loaded)
+				assert.Equal(uint64(100), piece.Offset)
+				assert.Equal(uint64(50), piece.Length)
+				assert.Nil(piece.Digest)
+				assert.Equal(commonv2.TrafficType_BACK_TO_SOURCE, piece.TrafficType)
+				assert.Equal(20*time.Millisecond, piece.Cost)
+			},
+		},
+		{
+			name:       "trigger task reuses the seed peer stored in peer manager",
+			available:  true,
+			hostStored: true,
+			peerStored: true,
+			mock: func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host) {
+				ms.ObtainSeeds(gomock.Cond(func(req *cdnsystemv1.SeedRequest) bool {
+					return req.TaskId == mockTaskID && req.UrlMeta.Range == ""
+				}), gomock.Any()).DoAndReturn(func(_ *cdnsystemv1.SeedRequest, stream cdnsystemv1.Seeder_ObtainSeedsServer) error {
+					for _, pieceSeed := range []*cdnsystemv1.PieceSeed{
+						{
+							HostId:    mockHost.ID,
+							PeerId:    mockSeedPeerID,
+							PieceInfo: &commonv1.PieceInfo{PieceNum: common.BeginOfPiece},
+						},
+						{
+							HostId:          mockHost.ID,
+							PeerId:          mockSeedPeerID,
+							Done:            true,
+							TotalPieceCount: 1,
+							ContentLength:   100,
+						},
+					} {
+						if err := stream.Send(pieceSeed); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				}).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(int32(1), result.TotalPieceCount)
+				assert.Equal(int64(100), result.ContentLength)
+				assert.Nil(peer.Range)
+				assert.Equal(PeerStateRunning, peer.FSM.Current())
+				assert.Empty(peer.PieceCosts())
+
+				storedPeer, loaded := peerManager.Load(mockSeedPeerID)
+				assert.True(loaded)
+				assert.Same(storedPeer, peer)
+			},
+		},
+		{
+			name:       "stream failed after seed peer is initialized",
+			available:  true,
+			hostStored: true,
+			mock: func(ms *cdnsystemv1mocks.MockSeederServerMockRecorder, mockHost *Host) {
+				ms.ObtainSeeds(gomock.Any(), gomock.Any()).DoAndReturn(func(_ *cdnsystemv1.SeedRequest, stream cdnsystemv1.Seeder_ObtainSeedsServer) error {
+					if err := stream.Send(&cdnsystemv1.PieceSeed{
+						HostId:    mockHost.ID,
+						PeerId:    mockSeedPeerID,
+						PieceInfo: &commonv1.PieceInfo{PieceNum: common.BeginOfPiece},
+					}); err != nil {
+						return err
+					}
+
+					return status.Error(codes.Internal, "foo")
+				}).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockTask *Task, peer *Peer, result *schedulerv1.PeerResult, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(peer)
+				assert.Nil(result)
+
+				storedPeer, loaded := peerManager.Load(mockSeedPeerID)
+				assert.True(loaded)
+				assert.Equal(PeerStateFailed, storedPeer.FSM.Current())
 			},
 		},
 	}
@@ -268,14 +621,49 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
-			hostManager := NewMockHostManager(ctl)
-			peerManager := NewMockPeerManager(ctl)
+			gc := gc.NewMockGC(ctl)
+			gc.EXPECT().Add(gomock.Any()).Return(nil).Times(2)
+			seeder := cdnsystemv1mocks.NewMockSeederServer(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool)
+			hostManager, err := newHostManager(mockHostGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			peerManager, err := newPeerManager(mockPeerGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			mockHost := mockSeedHostServer(t, func(svr *grpc.Server) {
+				cdnsystemv1.RegisterSeederServer(svr, seeder)
+			})
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			peer, result, err := seedPeer.TriggerTask(context.Background(), nil, mockTask)
-			tc.expect(t, peer, result, err)
+			if tc.hostStored {
+				hostManager.Store(mockHost)
+			}
+
+			if tc.peerStored {
+				mockSeedPeer := NewPeer(mockSeedPeerID, mockTask, mockHost)
+				mockSeedPeer.FSM.SetState(PeerStateReceivedNormal)
+				peerManager.Store(mockSeedPeer)
+			}
+
+			seedPeer := newSeedPeer(peerManager, hostManager, clientPool,
+				grpc.WithTransportCredentials(insecure.NewCredentials())).(*seedPeer)
+			if tc.available {
+				addr := net.JoinHostPort(mockHost.IP, strconv.Itoa(int(mockHost.Port)))
+				seedPeer.hosts.Store(addr, mockHost)
+				seedPeer.hashring.Add(addr)
+			}
+
+			if tc.mock != nil {
+				tc.mock(seeder.EXPECT(), mockHost)
+			}
+
+			peer, result, err := seedPeer.TriggerTask(context.Background(), tc.rg, mockTask)
+			tc.expect(t, peerManager, mockTask, peer, result, err)
 		})
 	}
 }

@@ -23,7 +23,8 @@ import (
 )
 
 func TestExternalIPv6(t *testing.T) {
+	assert := assert.New(t)
 	ip, err := externalIPv6()
-	assert.Nil(t, err)
-	assert.NotEmpty(t, ip)
+	assert.NoError(err)
+	assert.NotEmpty(ip)
 }

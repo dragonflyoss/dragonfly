@@ -30,6 +30,7 @@ import (
 
 	"d7y.io/dragonfly/v2/pkg/container/set"
 	"d7y.io/dragonfly/v2/pkg/gc"
+	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
@@ -52,7 +53,8 @@ func TestHostManager_newHostManager(t *testing.T) {
 			},
 			expect: func(t *testing.T, hostManager HostManager, err error) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(hostManager).Elem().Name(), "hostManager")
+				assert.NoError(err)
+				assert.Equal("hostManager", reflect.TypeOf(hostManager).Elem().Name())
 			},
 		},
 		{
@@ -62,7 +64,7 @@ func TestHostManager_newHostManager(t *testing.T) {
 			},
 			expect: func(t *testing.T, hostManager HostManager, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 	}
@@ -95,8 +97,8 @@ func TestHostManager_Load(t *testing.T) {
 				assert := assert.New(t)
 				hostManager.Store(mockHost)
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 		{
@@ -107,7 +109,7 @@ func TestHostManager_Load(t *testing.T) {
 			expect: func(t *testing.T, hostManager HostManager, mockHost *Host) {
 				assert := assert.New(t)
 				_, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -120,8 +122,8 @@ func TestHostManager_Load(t *testing.T) {
 				mockHost.ID = ""
 				hostManager.Store(mockHost)
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 	}
@@ -161,8 +163,8 @@ func TestHostManager_Store(t *testing.T) {
 				assert := assert.New(t)
 				hostManager.Store(mockHost)
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 		{
@@ -175,8 +177,8 @@ func TestHostManager_Store(t *testing.T) {
 				mockHost.ID = ""
 				hostManager.Store(mockHost)
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 	}
@@ -216,8 +218,8 @@ func TestHostManager_LoadOrStore(t *testing.T) {
 				assert := assert.New(t)
 				hostManager.Store(mockHost)
 				host, loaded := hostManager.LoadOrStore(mockHost)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 		{
@@ -228,8 +230,9 @@ func TestHostManager_LoadOrStore(t *testing.T) {
 			expect: func(t *testing.T, hostManager HostManager, mockHost *Host) {
 				assert := assert.New(t)
 				host, loaded := hostManager.LoadOrStore(mockHost)
-				assert.Equal(loaded, false)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.False(loaded)
+				assert.Equal(mockHost.ID, host.ID)
+				assert.Len(hostManager.LoadAllNormals(), 1)
 			},
 		},
 	}
@@ -270,7 +273,8 @@ func TestHostManager_Delete(t *testing.T) {
 				hostManager.Store(mockHost)
 				hostManager.Delete(mockHost.ID)
 				_, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
+				assert.Empty(hostManager.LoadAllNormals())
 			},
 		},
 		{
@@ -284,7 +288,7 @@ func TestHostManager_Delete(t *testing.T) {
 				hostManager.Store(mockHost)
 				hostManager.Delete(mockHost.ID)
 				_, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 	}
@@ -305,6 +309,182 @@ func TestHostManager_Delete(t *testing.T) {
 			}
 
 			tc.expect(t, hostManager, mockHost)
+		})
+	}
+}
+
+func TestHostManager_Range(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, hostManager HostManager, mockHost *Host, mockSeedHost *Host)
+	}{
+		{
+			name: "range visits every host",
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockSeedHost *Host) {
+				assert := assert.New(t)
+				var ids []string
+				hostManager.Range(func(_, value any) bool {
+					ids = append(ids, value.(*Host).ID)
+					return true
+				})
+
+				assert.ElementsMatch([]string{mockHost.ID, mockSeedHost.ID}, ids)
+			},
+		},
+		{
+			name: "range stops when f returns false",
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockSeedHost *Host) {
+				assert := assert.New(t)
+				var ids []string
+				hostManager.Range(func(_, value any) bool {
+					ids = append(ids, value.(*Host).ID)
+					return false
+				})
+
+				assert.Len(ids, 1)
+			},
+		},
+		{
+			name: "range normals visits only normal hosts",
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockSeedHost *Host) {
+				assert := assert.New(t)
+				var ids []string
+				hostManager.RangeNormals(func(_, value any) bool {
+					ids = append(ids, value.(*Host).ID)
+					return true
+				})
+
+				assert.Equal([]string{mockHost.ID}, ids)
+			},
+		},
+		{
+			name: "range seeds visits only seed hosts",
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockSeedHost *Host) {
+				assert := assert.New(t)
+				var ids []string
+				hostManager.RangeSeeds(func(_, value any) bool {
+					ids = append(ids, value.(*Host).ID)
+					return true
+				})
+
+				assert.Equal([]string{mockSeedHost.ID}, ids)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			gc := gc.NewMockGC(ctl)
+			gc.EXPECT().Add(gomock.Any()).Return(nil).Times(1)
+
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			mockSeedHost := NewHost(
+				mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
+				mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
+			hostManager, err := newHostManager(mockHostGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			hostManager.Store(mockHost)
+			hostManager.Store(mockSeedHost)
+			tc.expect(t, hostManager, mockHost, mockSeedHost)
+		})
+	}
+}
+
+func TestHostManager_LoadAll(t *testing.T) {
+	tests := []struct {
+		name   string
+		hosts  []*Host
+		expect func(t *testing.T, hostManager HostManager, hosts []*Host)
+	}{
+		{
+			name:  "map is empty",
+			hosts: []*Host{},
+			expect: func(t *testing.T, hostManager HostManager, hosts []*Host) {
+				assert := assert.New(t)
+				assert.Equal(0, hostManager.Len())
+				assert.Empty(hostManager.LoadAll())
+				assert.Empty(hostManager.LoadAllNormals())
+				assert.Empty(hostManager.LoadAllSeeds())
+			},
+		},
+		{
+			name: "normal and seed hosts are grouped by type",
+			hosts: []*Host{
+				NewHost(
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type),
+				NewHost(
+					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
+					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type),
+			},
+			expect: func(t *testing.T, hostManager HostManager, hosts []*Host) {
+				assert := assert.New(t)
+				assert.Equal(2, hostManager.Len())
+				assert.ElementsMatch(hosts, hostManager.LoadAll())
+				assert.Equal([]*Host{hosts[0]}, hostManager.LoadAllNormals())
+				assert.Equal([]*Host{hosts[1]}, hostManager.LoadAllSeeds())
+			},
+		},
+		{
+			name: "host with unknown type is stored only in the all map",
+			hosts: []*Host{
+				NewHost(
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, types.HostType(100)),
+			},
+			expect: func(t *testing.T, hostManager HostManager, hosts []*Host) {
+				assert := assert.New(t)
+				assert.Equal(1, hostManager.Len())
+				assert.Equal(hosts, hostManager.LoadAll())
+				assert.Empty(hostManager.LoadAllNormals())
+				assert.Empty(hostManager.LoadAllSeeds())
+			},
+		},
+		{
+			name: "deleted host is removed from every map",
+			hosts: []*Host{
+				NewHost(
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type),
+				NewHost(
+					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
+					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type),
+			},
+			expect: func(t *testing.T, hostManager HostManager, hosts []*Host) {
+				assert := assert.New(t)
+				hostManager.Delete(hosts[1].ID)
+				assert.Equal(1, hostManager.Len())
+				assert.Equal([]*Host{hosts[0]}, hostManager.LoadAll())
+				assert.Equal([]*Host{hosts[0]}, hostManager.LoadAllNormals())
+				assert.Empty(hostManager.LoadAllSeeds())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			gc := gc.NewMockGC(ctl)
+			gc.EXPECT().Add(gomock.Any()).Return(nil).Times(1)
+
+			hostManager, err := newHostManager(mockHostGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, host := range tc.hosts {
+				hostManager.Store(host)
+			}
+
+			tc.expect(t, hostManager, tc.hosts)
 		})
 	}
 }
@@ -338,7 +518,8 @@ func TestHostManager_LoadRandom(t *testing.T) {
 				blocklist := set.NewSafeSet[string]()
 				blocklist.Add(mockRawSeedHost.ID)
 				h := hm.LoadRandom(2, blocklist)
-				assert.Equal(len(h), 1)
+				assert.Len(h, 1)
+				assert.Equal(mockRawHost.ID, h[0].ID)
 			},
 		},
 		{
@@ -362,8 +543,7 @@ func TestHostManager_LoadRandom(t *testing.T) {
 
 				blocklist := set.NewSafeSet[string]()
 				blocklist.Add(mockRawSeedHost.ID)
-				h := hm.LoadRandom(0, blocklist)
-				assert.Equal(len(h), 0)
+				assert.Empty(hm.LoadRandom(0, blocklist))
 			},
 		},
 		{
@@ -380,8 +560,7 @@ func TestHostManager_LoadRandom(t *testing.T) {
 
 				blocklist := set.NewSafeSet[string]()
 				blocklist.Add(mockRawSeedHost.ID)
-				h := hm.LoadRandom(1, blocklist)
-				assert.Equal(len(h), 0)
+				assert.Empty(hm.LoadRandom(1, blocklist))
 			},
 		},
 		{
@@ -405,8 +584,29 @@ func TestHostManager_LoadRandom(t *testing.T) {
 
 				blocklist := set.NewSafeSet[string]()
 				blocklist.Add(mockRawSeedHost.ID)
-				h := hm.LoadRandom(3, blocklist)
-				assert.Equal(len(h), 1)
+				assert.Len(hm.LoadRandom(3, blocklist), 1)
+			},
+		},
+		{
+			name: "load random hosts stops at the requested number",
+			hosts: []*Host{
+				NewHost(
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type),
+				NewHost(
+					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
+					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type),
+			},
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, hm HostManager, hosts []*Host) {
+				assert := assert.New(t)
+				for _, host := range hosts {
+					hm.Store(host)
+				}
+
+				assert.Len(hm.LoadRandom(1, set.NewSafeSet[string]()), 1)
 			},
 		},
 	}
@@ -447,8 +647,8 @@ func TestHostManager_RunGC(t *testing.T) {
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 		{
@@ -466,8 +666,8 @@ func TestHostManager_RunGC(t *testing.T) {
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockHost.ID, host.ID)
 			},
 		},
 		{
@@ -485,8 +685,46 @@ func TestHostManager_RunGC(t *testing.T) {
 				assert.NoError(err)
 
 				host, loaded := hostManager.Load(mockSeedHost.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(host.ID, mockSeedHost.ID)
+				assert.True(loaded)
+				assert.Equal(mockSeedHost.ID, host.ID)
+			},
+		},
+		{
+			name: "host with zero announce interval is never reclaimed",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockHost.UpdatedAt.Store(time.Now().Add(-time.Hour))
+				hostManager.Store(mockHost)
+				mockHost.StorePeer(mockPeer)
+				err := hostManager.RunGC(context.Background())
+				assert.NoError(err)
+
+				_, loaded := hostManager.Load(mockHost.ID)
+				assert.True(loaded)
+				assert.True(mockPeer.FSM.Is(PeerStatePending))
+			},
+		},
+		{
+			name: "host elapsed is within twice the announce interval",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockHost.AnnounceInterval = time.Hour
+				mockHost.UpdatedAt.Store(time.Now().Add(-time.Hour))
+				hostManager.Store(mockHost)
+				mockHost.StorePeer(mockPeer)
+				err := hostManager.RunGC(context.Background())
+				assert.NoError(err)
+
+				_, loaded := hostManager.Load(mockHost.ID)
+				assert.True(loaded)
+				assert.Len(hostManager.LoadAllNormals(), 1)
+				assert.True(mockPeer.FSM.Is(PeerStatePending))
 			},
 		},
 		{
@@ -509,7 +747,31 @@ func TestHostManager_RunGC(t *testing.T) {
 				})
 
 				_, loaded := hostManager.Load(mockHost.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
+				assert.Empty(hostManager.LoadAllNormals())
+			},
+		},
+		{
+			name: "seed host elapsed exceeds twice the announce interval",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, hostManager HostManager, mockHost *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockSeedHost := NewHost(
+					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
+					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type,
+					WithAnnounceInterval(1*time.Microsecond))
+				mockSeedPeer := NewPeer(mockSeedPeerID, mockPeer.Task, mockSeedHost)
+				hostManager.Store(mockSeedHost)
+				mockSeedHost.StorePeer(mockSeedPeer)
+				err := hostManager.RunGC(context.Background())
+				assert.NoError(err)
+
+				assert.True(mockSeedPeer.FSM.Is(PeerStateLeave))
+				_, loaded := hostManager.Load(mockSeedHost.ID)
+				assert.False(loaded)
+				assert.Empty(hostManager.LoadAllSeeds())
 			},
 		},
 	}

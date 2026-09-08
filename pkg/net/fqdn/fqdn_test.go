@@ -23,6 +23,6 @@ import (
 )
 
 func TestFQDNHostname(t *testing.T) {
-	fqdn := fqdnHostname()
-	assert.NotEmpty(t, fqdn)
+	assert := assert.New(t)
+	assert.NotEmpty(fqdnHostname())
 }

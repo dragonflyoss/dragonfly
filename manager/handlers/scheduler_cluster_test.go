@@ -57,6 +57,7 @@ var (
 		   "name": "foo",
 		   "seed_peer_cluster_id": 2
 		}`
+
 	mockSchedulerClusterModel = &models.SchedulerCluster{
 		BaseModel:    mockBaseModel,
 		Name:         "foo",
@@ -73,6 +74,7 @@ var (
 			},
 		}},
 	}
+
 	mockUnmarshalSchedulerClusterModel = &models.SchedulerCluster{
 		BaseModel:    mockBaseModel,
 		Name:         "foo",
@@ -136,6 +138,7 @@ func TestHandlers_CreateSchedulerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -180,6 +183,7 @@ func TestHandlers_DestroySchedulerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -237,6 +241,7 @@ func TestHandlers_UpdateSchedulerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -285,6 +290,7 @@ func TestHandlers_GetSchedulerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -336,6 +342,7 @@ func TestHandlers_GetSchedulerClusters(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -380,6 +387,7 @@ func TestHandlers_AddSchedulerToSchedulerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

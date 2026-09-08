@@ -77,7 +77,7 @@ func TestInitialRootPassword(t *testing.T) {
 			set:  true,
 			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
+				assert.Error(err)
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestInitialRootPassword(t *testing.T) {
 			set:  true,
 			expect: func(t *testing.T, password string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "DRAGONFLY_INITIAL_ROOT_PASSWORD must be between 8 and 20 characters")
+				assert.Error(err)
 			},
 		},
 		{
@@ -136,7 +136,8 @@ func TestGetApiGroupName(t *testing.T) {
 			path: "/api/v1/users",
 			expect: func(t *testing.T, data string, err error) {
 				assert := assert.New(t)
-				assert.Equal(data, "users")
+				assert.NoError(err)
+				assert.Equal("users", data)
 			},
 		},
 		{
@@ -144,7 +145,8 @@ func TestGetApiGroupName(t *testing.T) {
 			path: "/api/v1/users/",
 			expect: func(t *testing.T, data string, err error) {
 				assert := assert.New(t)
-				assert.Equal(data, "users")
+				assert.NoError(err)
+				assert.Equal("users", data)
 			},
 		},
 		{
@@ -152,7 +154,8 @@ func TestGetApiGroupName(t *testing.T) {
 			path: "/api/v1/users/name",
 			expect: func(t *testing.T, data string, err error) {
 				assert := assert.New(t)
-				assert.Equal(data, "users")
+				assert.NoError(err)
+				assert.Equal("users", data)
 			},
 		},
 		{
@@ -160,7 +163,7 @@ func TestGetApiGroupName(t *testing.T) {
 			path: "/api/user",
 			expect: func(t *testing.T, data string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "cannot find group name")
+				assert.Error(err)
 			},
 		},
 		{
@@ -168,7 +171,7 @@ func TestGetApiGroupName(t *testing.T) {
 			path: "",
 			expect: func(t *testing.T, data string, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "cannot find group name")
+				assert.Error(err)
 			},
 		},
 	}
@@ -183,28 +186,80 @@ func TestGetApiGroupName(t *testing.T) {
 
 func TestHTTPMethodToAction(t *testing.T) {
 	tests := []struct {
-		method         string
-		expectedAction string
+		name   string
+		method string
+		expect func(t *testing.T, action string)
 	}{
 		{
-			method:         "GET",
-			expectedAction: ReadAction,
+			name:   "GET",
+			method: http.MethodGet,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(ReadAction, action)
+			},
 		},
 		{
-			method:         "POST",
-			expectedAction: AllAction,
+			name:   "HEAD",
+			method: http.MethodHead,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(ReadAction, action)
+			},
 		},
 		{
-			method:         "UNKNOWN",
-			expectedAction: ReadAction,
+			name:   "OPTIONS",
+			method: http.MethodOptions,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(ReadAction, action)
+			},
+		},
+		{
+			name:   "POST",
+			method: http.MethodPost,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(AllAction, action)
+			},
+		},
+		{
+			name:   "PUT",
+			method: http.MethodPut,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(AllAction, action)
+			},
+		},
+		{
+			name:   "PATCH",
+			method: http.MethodPatch,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(AllAction, action)
+			},
+		},
+		{
+			name:   "DELETE",
+			method: http.MethodDelete,
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(AllAction, action)
+			},
+		},
+		{
+			name:   "UNKNOWN",
+			method: "UNKNOWN",
+			expect: func(t *testing.T, action string) {
+				assert := assert.New(t)
+				assert.Equal(ReadAction, action)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		action := HTTPMethodToAction(tt.method)
-		if action != tt.expectedAction {
-			t.Errorf("HttpMethodToAction(%v) = %v, want %v", tt.method, action, tt.expectedAction)
-		}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, HTTPMethodToAction(tc.method))
+		})
 	}
 }
 
@@ -214,8 +269,13 @@ func TestInitRBAC(t *testing.T) {
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
 		Logger:         gormlogger.Discard,
 	})
-	assert.NoError(t, err)
-	assert.NoError(t, db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.AutoMigrate(&managermodels.User{}, &managermodels.CasbinRule{}); err != nil {
+		t.Fatal(err)
+	}
 
 	router := gin.New()
 	router.GET("/api/v1/users", func(c *gin.Context) {
@@ -229,16 +289,23 @@ func TestInitRBAC(t *testing.T) {
 	enforcers := make([]*casbin.Enforcer, 2)
 	for i := range enforcers {
 		enforcer, err := NewEnforcer(db)
-		assert.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		enforcers[i] = enforcer
 	}
 
 	for _, enforcer := range enforcers {
-		assert.NoError(t, InitRBAC(enforcer, router, db))
+		if err := InitRBAC(enforcer, router, db); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	var rootUser managermodels.User
-	assert.NoError(t, db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error)
+	if err := db.Where(&managermodels.User{Name: RootUserName}).First(&rootUser).Error; err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name     string

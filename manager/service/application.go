@@ -71,7 +71,7 @@ func (s *service) UpdateApplication(ctx context.Context, id uint, json types.Upd
 	}
 
 	application := models.Application{}
-	if err := s.db.WithContext(ctx).Preload("User").First(&application, id).Updates(models.Application{
+	if err := s.db.WithContext(ctx).First(&application, id).Updates(models.Application{
 		Name:     json.Name,
 		URL:      json.URL,
 		BIO:      json.BIO,
@@ -86,7 +86,7 @@ func (s *service) UpdateApplication(ctx context.Context, id uint, json types.Upd
 
 func (s *service) GetApplication(ctx context.Context, id uint) (*models.Application, error) {
 	application := models.Application{}
-	if err := s.db.WithContext(ctx).Preload("User").First(&application, id).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&application, id).Error; err != nil {
 		return nil, err
 	}
 
@@ -96,7 +96,7 @@ func (s *service) GetApplication(ctx context.Context, id uint) (*models.Applicat
 func (s *service) GetApplications(ctx context.Context, q types.GetApplicationsQuery) ([]models.Application, int64, error) {
 	var count int64
 	applications := []models.Application{}
-	if err := s.db.WithContext(ctx).Scopes(models.Paginate(q.Page, q.PerPage)).Preload("User").Find(&applications).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
+	if err := s.db.WithContext(ctx).Scopes(models.Paginate(q.Page, q.PerPage)).Find(&applications).Limit(-1).Offset(-1).Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 

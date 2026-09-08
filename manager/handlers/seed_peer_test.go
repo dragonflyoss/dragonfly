@@ -42,6 +42,7 @@ var (
 		   "seed_peer_cluster_id": 2,
 		   "type": "super"
 		}`
+
 	mockCreateSeedPeerRequest = types.CreateSeedPeerRequest{
 		Hostname:          "foo",
 		Type:              "super",
@@ -50,6 +51,7 @@ var (
 		DownloadPort:      8001,
 		SeedPeerClusterID: 2,
 	}
+
 	mockUpdateSeedPeerRequest = types.UpdateSeedPeerRequest{
 		Type:              "super",
 		IP:                "127.0.0.1",
@@ -57,6 +59,7 @@ var (
 		DownloadPort:      8001,
 		SeedPeerClusterID: 2,
 	}
+
 	mockSeedPeerModel = &models.SeedPeer{
 		Hostname:          "foo",
 		Type:              "super",
@@ -111,6 +114,7 @@ func TestHandlers_CreateSeedPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -155,6 +159,7 @@ func TestHandlers_DestroySeedPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -212,6 +217,7 @@ func TestHandlers_UpdateSeedPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -260,6 +266,7 @@ func TestHandlers_GetSeedPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -311,6 +318,7 @@ func TestHandlers_GetSeedPeers(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

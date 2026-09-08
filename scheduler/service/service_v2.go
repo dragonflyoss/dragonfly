@@ -3147,7 +3147,7 @@ func (v *V2) UploadPersistentTaskFailed(ctx context.Context, req *schedulerv2.Up
 	}
 
 	// Handle task with peer failed request, load task and update it.
-	if err := peer.Task.FSM.Event(ctx, persistent.TaskEventSucceeded); err != nil {
+	if err := peer.Task.FSM.Event(ctx, persistent.TaskEventFailed); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -4354,7 +4354,7 @@ func (v *V2) UploadPersistentCacheTaskFailed(ctx context.Context, req *scheduler
 	}
 
 	// Handle task with peer failed request, load task and update it.
-	if err := peer.Task.FSM.Event(ctx, persistentcache.TaskEventSucceeded); err != nil {
+	if err := peer.Task.FSM.Event(ctx, persistentcache.TaskEventFailed); err != nil {
 		log.Errorf("task fsm event failed: %s", err.Error())
 		return status.Error(codes.Internal, err.Error())
 	}

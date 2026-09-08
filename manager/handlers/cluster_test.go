@@ -48,6 +48,7 @@ var (
 				"load_limit": 1
 			}
 		}`
+
 	mockCreateClusterResponse = &types.CreateClusterResponse{
 		ID:                     2,
 		Name:                   "foo",
@@ -59,6 +60,7 @@ var (
 		SeedPeerClusterConfig:  mockSeedPeerClusterConfig,
 		PeerClusterConfig:      mockPeerClusterConfig,
 	}
+
 	mockUpdateClusterResponse = &types.UpdateClusterResponse{
 		ID:                     2,
 		Name:                   "foo",
@@ -70,6 +72,7 @@ var (
 		SeedPeerClusterConfig:  mockSeedPeerClusterConfig,
 		PeerClusterConfig:      mockPeerClusterConfig,
 	}
+
 	mockGetClusterResponse = &types.GetClusterResponse{
 		ID:                     2,
 		Name:                   "foo",
@@ -81,13 +84,16 @@ var (
 		SeedPeerClusterConfig:  mockSeedPeerClusterConfig,
 		PeerClusterConfig:      mockPeerClusterConfig,
 	}
+
 	mockSchedulerClusterConfig = &types.SchedulerClusterConfig{
 		CandidateParentLimit: 1,
 		FilterParentLimit:    10,
 	}
+
 	mockSeedPeerClusterConfig = &types.SeedPeerClusterConfig{
 		LoadLimit: 1,
 	}
+
 	mockPeerClusterConfig = &types.SchedulerClusterClientConfig{
 		LoadLimit: 1,
 	}
@@ -137,6 +143,7 @@ func TestHandlers_CreateCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -181,6 +188,7 @@ func TestHandlers_DestroyCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -238,6 +246,7 @@ func TestHandlers_UpdateCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -286,6 +295,7 @@ func TestHandlers_GetCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -338,6 +348,7 @@ func TestHandlers_GetClusters(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

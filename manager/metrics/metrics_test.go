@@ -20,23 +20,19 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
 	"d7y.io/dragonfly/v2/manager/config"
 )
 
 func TestNew(t *testing.T) {
+	assert := assert.New(t)
 	cfg := &config.MetricsConfig{
 		Addr: "localhost:8080",
 	}
-	svr := grpc.NewServer()
-	server := New(cfg, svr)
 
-	if server.Addr != cfg.Addr {
-		t.Errorf("expected server.Addr to be %s, but got %s", cfg.Addr, server.Addr)
-	}
-
-	if _, ok := server.Handler.(*http.ServeMux); !ok {
-		t.Errorf("expected server.Handler to be a *http.ServeMux, but got %T", server.Handler)
-	}
+	server := New(cfg, grpc.NewServer())
+	assert.Equal(cfg.Addr, server.Addr)
+	assert.IsType(&http.ServeMux{}, server.Handler)
 }

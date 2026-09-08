@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
 )
@@ -40,7 +41,8 @@ var (
 	mockGetPersistentCacheQuery               = fmt.Sprintf("scheduler_cluster_id=%d", mockSchedulerClusterID)
 	mockGetPersistentCachesQuery              = fmt.Sprintf("scheduler_cluster_id=%d", mockSchedulerClusterID)
 	mockGetPersistentCachesQueryWithPage      = fmt.Sprintf("scheduler_cluster_id=%d&page=1&per_page=10", mockSchedulerClusterID)
-	mockPersistentCacheTask                   = types.PersistentCacheTask{
+
+	mockPersistentCacheTask = types.PersistentCacheTask{
 		ID:                     mockPersistentCacheTaskID,
 		PersistentReplicaCount: 3,
 		Tag:                    "v1.0.0",
@@ -53,11 +55,13 @@ var (
 		CreatedAt:              time.Now(),
 		UpdatedAt:              time.Now(),
 	}
+
 	mockPersistentCacheTasks = []types.PersistentCacheTask{mockPersistentCacheTask}
 )
 
 func mockPersistentCacheTaskRouter(h *Handlers) *gin.Engine {
 	r := gin.Default()
+	r.Use(middlewares.Error())
 	apiv1 := r.Group("/api/v1")
 	task := apiv1.Group("/persistent-cache-tasks")
 	task.DELETE(":id", h.DestroyPersistentCacheTask)
@@ -102,7 +106,19 @@ func TestHandlers_DestroyPersistentCacheTask(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/persistent-cache-tasks/"+mockPersistentCacheTaskID+"?"+mockDestroyPersistentCacheQuery, nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DestroyPersistentCacheTask(gomock.Any(), gomock.Eq(mockSchedulerClusterID), gomock.Eq(mockPersistentCacheTaskID)).Return(errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -150,7 +166,19 @@ func TestHandlers_GetPersistentCacheTask(t *testing.T) {
 				assert.Equal(mockPersistentCacheTaskID, task.ID)
 			},
 		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/persistent-cache-tasks/"+mockPersistentCacheTaskID+"?"+mockGetPersistentCacheQuery, nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.GetPersistentCacheTask(gomock.Any(), gomock.Eq(mockSchedulerClusterID), gomock.Eq(mockPersistentCacheTaskID)).Return(types.PersistentCacheTask{}, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -216,6 +244,7 @@ func TestHandlers_GetPersistentCacheTasks(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

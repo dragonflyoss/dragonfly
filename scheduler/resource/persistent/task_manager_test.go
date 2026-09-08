@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -32,389 +33,472 @@ import (
 	"d7y.io/dragonfly/v2/scheduler/config"
 )
 
-func TestTaskManager_Load(t *testing.T) {
-	type args struct {
-		taskID string
+const mockInvalidFieldValue = "invalid"
+
+var (
+	mockTaskManagerConfig = &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}}
+
+	mockTask = NewTask("task1", "url", "region", "endpoint", TaskStateSucceeded, 2, 2048, 2, 5*time.Minute, time.Now().Add(-time.Minute), time.Now(), logger.WithTaskID("task1"))
+)
+
+func mockRawTaskFields(taskID string) map[string]string {
+	return map[string]string{
+		"id":                       taskID,
+		"url":                      mockTask.URL,
+		"object_storage_region":    mockTask.ObjectStorageRegion,
+		"object_storage_endpoint":  mockTask.ObjectStorageEndpoint,
+		"state":                    mockTask.FSM.Current(),
+		"persistent_replica_count": strconv.FormatUint(mockTask.PersistentReplicaCount, 10),
+		"content_length":           strconv.FormatUint(mockTask.ContentLength, 10),
+		"total_piece_count":        strconv.FormatUint(uint64(mockTask.TotalPieceCount), 10),
+		"ttl":                      strconv.FormatInt(mockTask.TTL.Nanoseconds(), 10),
+		"created_at":               mockTask.CreatedAt.Format(time.RFC3339),
+		"updated_at":               mockTask.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func matchScriptArgs(expected, actual []any) error {
+	for i := range expected {
+		if i == 1 || expected[i] == nil {
+			continue
+		}
+
+		if !reflect.DeepEqual(expected[i], actual[i]) {
+			return fmt.Errorf("script arg %d: expected %v, got %v", i, expected[i], actual[i])
+		}
 	}
 
+	return nil
+}
+
+func mockStoreTaskScript(mock redismock.ClientMock) *redismock.ExpectedCmd {
+	return mock.CustomMatch(matchScriptArgs).ExpectEvalSha("", []string{pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)},
+		mockTask.ID,
+		mockTask.URL,
+		mockTask.ObjectStorageRegion,
+		mockTask.ObjectStorageEndpoint,
+		mockTask.PersistentReplicaCount,
+		mockTask.ContentLength,
+		mockTask.TotalPieceCount,
+		mockTask.FSM.Current(),
+		mockTask.CreatedAt.Format(time.RFC3339),
+		mockTask.UpdatedAt.Format(time.RFC3339),
+		mockTask.TTL.Nanoseconds(),
+		nil,
+	)
+}
+
+func TestTaskManager_Load(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           args
-		mockRedis      func(mock redismock.ClientMock)
-		expectedTask   *Task
-		expectedLoaded bool
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, task *Task, loaded bool)
 	}{
 		{
 			name: "redis error",
-			args: args{
-				taskID: "foo",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetErr(errors.New("redis error"))
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "foo"),
-				).SetErr(errors.New("redis error"))
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
 			},
-			expectedTask:   nil,
-			expectedLoaded: false,
 		},
 		{
-			name: "empty map from redis (not found)",
-			args: args{
-				taskID: "notfound",
+			name: "task not found",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(map[string]string{})
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "notfound"),
-				).SetVal(map[string]string{})
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
 			},
-			expectedTask:   nil,
-			expectedLoaded: false,
 		},
 		{
-			name: "parsing error on persistent_replica_count",
-			args: args{
-				taskID: "badreplica",
+			name: "invalid persistent_replica_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["persistent_replica_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "badreplica"),
-				).SetVal(map[string]string{
-					"id":                       "badreplica",
-					"persistent_replica_count": "not_a_number",
-				})
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
 			},
-			expectedTask:   nil,
-			expectedLoaded: false,
 		},
 		{
-			name: "parsing error on piece_length",
-			args: args{
-				taskID: "badpiece",
+			name: "invalid content_length value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["content_length"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "badpiece"),
-				).SetVal(map[string]string{
-					"id":           "badpiece",
-					"piece_length": "x",
-				})
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
 			},
-			expectedTask:   nil,
-			expectedLoaded: false,
 		},
 		{
-			name: "parsing error on created_at",
-			args: args{
-				taskID: "badtime",
+			name: "invalid total_piece_count value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["total_piece_count"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "badtime"),
-				).SetVal(map[string]string{
-					"id":         "badtime",
-					"created_at": "invalid_time",
-				})
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
 			},
-			expectedTask:   nil,
-			expectedLoaded: false,
+		},
+		{
+			name: "invalid ttl value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["ttl"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
+			},
+		},
+		{
+			name: "invalid created_at value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["created_at"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
+			},
+		},
+		{
+			name: "invalid updated_at value",
+			mock: func(mock redismock.ClientMock) {
+				fields := mockRawTaskFields(mockTask.ID)
+				fields["updated_at"] = mockInvalidFieldValue
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(fields)
+			},
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.False(loaded)
+				assert.Nil(task)
+			},
 		},
 		{
 			name: "successful load",
-			args: args{
-				taskID: "goodtask",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(mockRawTaskFields(mockTask.ID))
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mockData := map[string]string{
-					"id":                       "goodtask",
-					"tag":                      "tag_value",
-					"application":              "app_value",
-					"state":                    TaskStateSucceeded,
-					"persistent_replica_count": "2",
-					"piece_length":             "1024",
-					"content_length":           "2048",
-					"total_piece_count":        "2",
-					"ttl":                      strconv.FormatInt((time.Second * 300).Nanoseconds(), 10),
-					"created_at":               time.Now().Format(time.RFC3339),
-					"updated_at":               time.Now().Format(time.RFC3339),
-				}
-				mock.ExpectHGetAll(
-					pkgredis.MakePersistentTaskKeyInScheduler(42, "goodtask"),
-				).SetVal(mockData)
+			expect: func(t *testing.T, task *Task, loaded bool) {
+				assert := assert.New(t)
+				assert.True(loaded)
+				assert.Equal(mockTask.ID, task.ID)
+				assert.Equal(mockTask.URL, task.URL)
+				assert.Equal(mockTask.ObjectStorageRegion, task.ObjectStorageRegion)
+				assert.Equal(mockTask.ObjectStorageEndpoint, task.ObjectStorageEndpoint)
+				assert.Equal(mockTask.PersistentReplicaCount, task.PersistentReplicaCount)
+				assert.Equal(mockTask.ContentLength, task.ContentLength)
+				assert.Equal(mockTask.TotalPieceCount, task.TotalPieceCount)
+				assert.Equal(mockTask.TTL, task.TTL)
+				assert.Equal(mockTask.FSM.Current(), task.FSM.Current())
+				assert.Equal(mockTask.CreatedAt.Format(time.RFC3339), task.CreatedAt.Format(time.RFC3339))
+				assert.Equal(mockTask.UpdatedAt.Format(time.RFC3339), task.UpdatedAt.Format(time.RFC3339))
+				assert.NotNil(task.Log)
 			},
-			expectedTask:   NewTask("goodtask", "url", "key", "secret", TaskStateSucceeded, 2, 2048, 2, 5*time.Minute, time.Now(), time.Now(), logger.WithTaskID("goodtask")),
-			expectedLoaded: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			tm := &taskManager{
-				config: &config.Config{
-					Manager: config.ManagerConfig{
-						SchedulerClusterID: 42,
-					},
-				},
-				rdb: rdb,
-			}
-
-			got, loaded := tm.Load(context.Background(), tt.args.taskID)
-			assert.Equal(t, tt.expectedLoaded, loaded)
-
-			if tt.expectedLoaded {
-				assert.NotNil(t, got)
-				assert.Equal(t, tt.expectedTask.ID, got.ID)
-				assert.Equal(t, tt.expectedTask.PersistentReplicaCount, got.PersistentReplicaCount)
-				assert.Equal(t, tt.expectedTask.ContentLength, got.ContentLength)
-				assert.Equal(t, tt.expectedTask.TotalPieceCount, got.TotalPieceCount)
-				assert.Equal(t, tt.expectedTask.FSM.Current(), got.FSM.Current())
-			} else {
-				assert.Nil(t, got)
-			}
-
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("unmet redis expectations: %v", err)
-			}
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
+			task, loaded := tm.Load(context.Background(), mockTask.ID)
+			tc.expect(t, task, loaded)
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestTaskManager_LoadCurrentReplicaCount(t *testing.T) {
-	type args struct {
-		taskID string
-	}
-
 	tests := []struct {
-		name          string
-		args          args
-		mockRedis     func(mock redismock.ClientMock)
-		expectedCount uint64
-		expectedErr   bool
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, count uint64, err error)
 	}{
 		{
 			name: "redis error",
-			args: args{
-				taskID: "foo",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSCard(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(42, mockTask.ID)).SetErr(errors.New("redis error"))
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSCard(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(42, "foo")).SetErr(errors.New("redis error"))
+			expect: func(t *testing.T, count uint64, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Zero(count)
 			},
-			expectedCount: 0,
-			expectedErr:   true,
 		},
 		{
 			name: "successful count",
-			args: args{
-				taskID: "bar",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSCard(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(42, mockTask.ID)).SetVal(5)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSCard(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(42, "bar")).SetVal(5)
+			expect: func(t *testing.T, count uint64, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(uint64(5), count)
 			},
-			expectedCount: 5,
-			expectedErr:   false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			tm := &taskManager{
-				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
-				rdb:    rdb,
-			}
-
-			cnt, err := tm.LoadCurrentReplicaCount(context.Background(), tt.args.taskID)
-			assert.Equal(t, tt.expectedCount, cnt)
-			assert.Equal(t, tt.expectedErr, err != nil, "error mismatch")
-			assert.NoError(t, mock.ExpectationsWereMet())
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
+			count, err := tm.LoadCurrentReplicaCount(context.Background(), mockTask.ID)
+			tc.expect(t, count, err)
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestTaskManager_LoadCurrentPersistentReplicaCount(t *testing.T) {
-	type args struct {
-		taskID string
-	}
-
 	tests := []struct {
-		name          string
-		args          args
-		mockRedis     func(mock redismock.ClientMock)
-		expectedCount uint64
-		expectedErr   bool
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, count uint64, err error)
 	}{
 		{
 			name: "redis error",
-			args: args{
-				taskID: "foo",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSCard(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(42, mockTask.ID)).SetErr(errors.New("redis error"))
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSCard(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(42, "foo")).SetErr(errors.New("redis error"))
+			expect: func(t *testing.T, count uint64, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Zero(count)
 			},
-			expectedCount: 0,
-			expectedErr:   true,
 		},
 		{
 			name: "successful count",
-			args: args{
-				taskID: "bar",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectSCard(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(42, mockTask.ID)).SetVal(5)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectSCard(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(42, "bar")).SetVal(5)
+			expect: func(t *testing.T, count uint64, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(uint64(5), count)
 			},
-			expectedCount: 5,
-			expectedErr:   false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			tm := &taskManager{
-				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
-				rdb:    rdb,
-			}
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
+			count, err := tm.LoadCurrentPersistentReplicaCount(context.Background(), mockTask.ID)
+			tc.expect(t, count, err)
+			assert.NoError(mock.ExpectationsWereMet())
+		})
+	}
+}
 
-			cnt, err := tm.LoadCurrentPersistentReplicaCount(context.Background(), tt.args.taskID)
-			assert.Equal(t, tt.expectedCount, cnt)
-			assert.Equal(t, tt.expectedErr, err != nil, "error mismatch")
-			assert.NoError(t, mock.ExpectationsWereMet())
+func TestTaskManager_Store(t *testing.T) {
+	tests := []struct {
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, err error)
+	}{
+		{
+			name: "store succeeds",
+			mock: func(mock redismock.ClientMock) {
+				mockStoreTaskScript(mock).SetVal(true)
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "redis error",
+			mock: func(mock redismock.ClientMock) {
+				mockStoreTaskScript(mock).SetErr(errors.New("redis error"))
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			rdb, mock := redismock.NewClientMock()
+			tc.mock(mock)
+
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
+			tc.expect(t, tm.Store(context.Background(), mockTask))
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestTaskManager_Delete(t *testing.T) {
-	type args struct {
-		taskID string
-	}
-
 	tests := []struct {
-		name        string
-		args        args
-		mockRedis   func(mock redismock.ClientMock)
-		expectedErr bool
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, err error)
 	}{
 		{
-			name: "delete success",
-			args: args{
-				taskID: "delete-success",
+			name: "delete succeeds",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectDel(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetVal(1)
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectDel(pkgredis.MakePersistentTaskKeyInScheduler(42, "delete-success")).SetVal(1)
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
 			},
-			expectedErr: false,
 		},
 		{
-			name: "delete error",
-			args: args{
-				taskID: "delete-error",
+			name: "redis error",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectDel(pkgredis.MakePersistentTaskKeyInScheduler(42, mockTask.ID)).SetErr(errors.New("delete error"))
 			},
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectDel(pkgredis.MakePersistentTaskKeyInScheduler(42, "delete-error")).SetErr(errors.New("delete error"))
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
 			},
-			expectedErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			tm := &taskManager{
-				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
-				rdb:    rdb,
-			}
-
-			err := tm.Delete(context.Background(), tt.args.taskID)
-			assert.Equal(t, tt.expectedErr, err != nil, "error mismatch")
-			assert.NoError(t, mock.ExpectationsWereMet())
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
+			tc.expect(t, tm.Delete(context.Background(), mockTask.ID))
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }
 
 func TestTaskManager_LoadAll(t *testing.T) {
+	prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentTasksInScheduler(42))
 	tests := []struct {
-		name        string
-		mockRedis   func(mock redismock.ClientMock)
-		expectedErr bool
-		expectedLen int
+		name   string
+		mock   func(mock redismock.ClientMock)
+		expect func(t *testing.T, tasks []*Task, err error)
 	}{
 		{
 			name: "scan error",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentTasksInScheduler(42)), 10).SetErr(errors.New("scan error"))
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetErr(errors.New("scan error"))
 			},
-			expectedErr: true,
-			expectedLen: 0,
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(tasks)
+			},
 		},
 		{
-			name: "invalid task key",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:", pkgredis.MakePersistentTasksInScheduler(42))}, 0)
+			name: "invalid task key is skipped",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetVal([]string{prefix}, 0)
 			},
-			expectedErr: false,
-			expectedLen: 0,
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(tasks)
+			},
 		},
 		{
-			name: "load task error",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:task1", pkgredis.MakePersistentTasksInScheduler(42))}, 0)
+			name: "task that fails to load is skipped",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetVal([]string{prefix + "task1"}, 0)
 				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task1")).SetErr(errors.New("load error"))
 			},
-			expectedErr: false,
-			expectedLen: 0,
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(tasks)
+			},
+		},
+		{
+			name: "task keys with peer set suffixes resolve to one task",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetVal([]string{prefix + "task1:persistent-cache-peers", prefix + "task1:persistent-peers", prefix + "task1"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task1")).SetVal(mockRawTaskFields("task1"))
+			},
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(tasks, 1)
+				assert.Equal("task1", tasks[0].ID)
+			},
 		},
 		{
 			name: "successful load all",
-			mockRedis: func(mock redismock.ClientMock) {
-				mock.ExpectScan(0, fmt.Sprintf("%s:*", pkgredis.MakePersistentTasksInScheduler(42)), 10).SetVal([]string{fmt.Sprintf("%s:task1", pkgredis.MakePersistentTasksInScheduler(42)), fmt.Sprintf("%s:task2", pkgredis.MakePersistentTasksInScheduler(42))}, 0)
-				mockData := map[string]string{
-					"id":                       "task1",
-					"tag":                      "tag_value",
-					"application":              "app_value",
-					"state":                    TaskStateSucceeded,
-					"persistent_replica_count": "2",
-					"piece_length":             "1024",
-					"content_length":           "2048",
-					"total_piece_count":        "2",
-					"ttl":                      strconv.FormatInt((time.Second * 300).Nanoseconds(), 10),
-					"created_at":               time.Now().Format(time.RFC3339),
-					"updated_at":               time.Now().Format(time.RFC3339),
-				}
-				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task1")).SetVal(mockData)
-				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task2")).SetVal(mockData)
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetVal([]string{prefix + "task1", prefix + "task2"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task1")).SetVal(mockRawTaskFields("task1"))
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task2")).SetVal(mockRawTaskFields("task2"))
 			},
-			expectedErr: false,
-			expectedLen: 2,
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(tasks, 2)
+				assert.Equal("task1", tasks[0].ID)
+				assert.Equal("task2", tasks[1].ID)
+			},
+		},
+		{
+			name: "keys spanning multiple scan cursors are all loaded",
+			mock: func(mock redismock.ClientMock) {
+				mock.ExpectScan(0, prefix+"*", 10).SetVal([]string{prefix + "task1"}, 7)
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task1")).SetVal(mockRawTaskFields("task1"))
+				mock.ExpectScan(7, prefix+"*", 10).SetVal([]string{prefix + "task2"}, 0)
+				mock.ExpectHGetAll(pkgredis.MakePersistentTaskKeyInScheduler(42, "task2")).SetVal(mockRawTaskFields("task2"))
+			},
+			expect: func(t *testing.T, tasks []*Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(tasks, 2)
+				assert.Equal("task1", tasks[0].ID)
+				assert.Equal("task2", tasks[1].ID)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			tt.mockRedis(mock)
+			tc.mock(mock)
 
-			tm := &taskManager{
-				config: &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}},
-				rdb:    rdb,
-			}
-
+			tm := &taskManager{config: mockTaskManagerConfig, rdb: rdb}
 			tasks, err := tm.LoadAll(context.Background())
-			if tt.expectedErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Len(t, tasks, tt.expectedLen)
-			}
-
-			assert.NoError(t, mock.ExpectationsWereMet())
+			tc.expect(t, tasks, err)
+			assert.NoError(mock.ExpectationsWereMet())
 		})
 	}
 }

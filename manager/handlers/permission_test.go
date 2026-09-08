@@ -57,10 +57,11 @@ func TestHandlers_GetPermissions(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `[{"object":"object","action":"action"}]`)
+				assert.Equal(`[{"object":"object","action":"action"}]`, w.Body.String())
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

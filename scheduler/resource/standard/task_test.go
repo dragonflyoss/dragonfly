@@ -17,10 +17,12 @@
 package standard
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/looplab/fsm"
 	"github.com/stretchr/testify/assert"
 	gomock "go.uber.org/mock/gomock"
 
@@ -70,50 +72,53 @@ func TestTask_NewTask(t *testing.T) {
 			options: []TaskOption{},
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
-				assert.Equal(task.ID, mockTaskID)
-				assert.Equal(task.Type, commonv2.TaskType_STANDARD)
-				assert.Equal(task.URL, mockTaskURL)
+				assert.Equal(mockTaskID, task.ID)
+				assert.Equal(commonv2.TaskType_STANDARD, task.Type)
+				assert.Equal(mockTaskURL, task.URL)
 				assert.Nil(task.Digest)
-				assert.Equal(task.Tag, mockTaskTag)
-				assert.Equal(task.Application, mockTaskApplication)
-				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
-				assert.EqualValues(task.Header, mockTaskHeader)
+				assert.Equal(mockTaskTag, task.Tag)
+				assert.Equal(mockTaskApplication, task.Application)
+				assert.EqualValues(mockTaskFilteredQueryParams, task.FilteredQueryParams)
+				assert.EqualValues(mockTaskHeader, task.Header)
 				assert.Empty(task.DirectPiece)
-				assert.Equal(task.ContentLength.Load(), int64(-1))
-				assert.Equal(task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(task.BackToSourceLimit.Load(), int32(200))
-				assert.Equal(task.BackToSourcePeers.Len(), uint(0))
-				assert.Equal(task.FSM.Current(), TaskStatePending)
+				assert.Equal(int64(-1), task.ContentLength.Load())
+				assert.Equal(uint64(0), task.PieceLength)
+				assert.Equal(int32(0), task.TotalPieceCount.Load())
+				assert.Equal(int32(200), task.BackToSourceLimit.Load())
+				assert.Equal(uint(0), task.BackToSourcePeers.Len())
+				assert.Equal(TaskStatePending, task.FSM.Current())
 				assert.Empty(task.Pieces)
-				assert.Equal(task.PeerCount(), 0)
-				assert.NotEqual(task.CreatedAt.Load(), 0)
-				assert.NotEqual(task.UpdatedAt.Load(), 0)
+				assert.Equal(0, task.PeerCount())
+				assert.Equal(int32(0), task.PeerFailedCount.Load())
+				assert.NotEmpty(task.CreatedAt.Load())
+				assert.NotEmpty(task.UpdatedAt.Load())
 				assert.NotNil(task.Log)
 			},
 		},
 		{
 			name:    "new task with piece length",
-			options: []TaskOption{},
+			options: []TaskOption{WithPieceLength(mockTaskPieceLength)},
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
-				assert.Equal(task.ID, mockTaskID)
-				assert.Equal(task.Type, commonv2.TaskType_STANDARD)
-				assert.Equal(task.URL, mockTaskURL)
+				assert.Equal(mockTaskID, task.ID)
+				assert.Equal(commonv2.TaskType_STANDARD, task.Type)
+				assert.Equal(mockTaskURL, task.URL)
 				assert.Nil(task.Digest)
-				assert.Equal(task.Tag, mockTaskTag)
-				assert.Equal(task.Application, mockTaskApplication)
-				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
-				assert.EqualValues(task.Header, mockTaskHeader)
+				assert.Equal(mockTaskTag, task.Tag)
+				assert.Equal(mockTaskApplication, task.Application)
+				assert.EqualValues(mockTaskFilteredQueryParams, task.FilteredQueryParams)
+				assert.EqualValues(mockTaskHeader, task.Header)
 				assert.Empty(task.DirectPiece)
-				assert.Equal(task.ContentLength.Load(), int64(-1))
-				assert.Equal(task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(task.BackToSourceLimit.Load(), int32(200))
-				assert.Equal(task.BackToSourcePeers.Len(), uint(0))
-				assert.Equal(task.FSM.Current(), TaskStatePending)
+				assert.Equal(int64(-1), task.ContentLength.Load())
+				assert.Equal(mockTaskPieceLength, task.PieceLength)
+				assert.Equal(int32(0), task.TotalPieceCount.Load())
+				assert.Equal(int32(200), task.BackToSourceLimit.Load())
+				assert.Equal(uint(0), task.BackToSourcePeers.Len())
+				assert.Equal(TaskStatePending, task.FSM.Current())
 				assert.Empty(task.Pieces)
-				assert.Equal(task.PeerCount(), 0)
-				assert.NotEqual(task.CreatedAt.Load(), 0)
-				assert.NotEqual(task.UpdatedAt.Load(), 0)
+				assert.Equal(0, task.PeerCount())
+				assert.NotEmpty(task.CreatedAt.Load())
+				assert.NotEmpty(task.UpdatedAt.Load())
 				assert.NotNil(task.Log)
 			},
 		},
@@ -122,24 +127,24 @@ func TestTask_NewTask(t *testing.T) {
 			options: []TaskOption{WithDigest(mockTaskDigest)},
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
-				assert.Equal(task.ID, mockTaskID)
-				assert.Equal(task.Type, commonv2.TaskType_STANDARD)
-				assert.Equal(task.URL, mockTaskURL)
-				assert.EqualValues(task.Digest, mockTaskDigest)
-				assert.Equal(task.Tag, mockTaskTag)
-				assert.Equal(task.Application, mockTaskApplication)
-				assert.EqualValues(task.FilteredQueryParams, mockTaskFilteredQueryParams)
-				assert.EqualValues(task.Header, mockTaskHeader)
+				assert.Equal(mockTaskID, task.ID)
+				assert.Equal(commonv2.TaskType_STANDARD, task.Type)
+				assert.Equal(mockTaskURL, task.URL)
+				assert.EqualValues(mockTaskDigest, task.Digest)
+				assert.Equal(mockTaskTag, task.Tag)
+				assert.Equal(mockTaskApplication, task.Application)
+				assert.EqualValues(mockTaskFilteredQueryParams, task.FilteredQueryParams)
+				assert.EqualValues(mockTaskHeader, task.Header)
 				assert.Empty(task.DirectPiece)
-				assert.Equal(task.ContentLength.Load(), int64(-1))
-				assert.Equal(task.TotalPieceCount.Load(), int32(0))
-				assert.Equal(task.BackToSourceLimit.Load(), int32(200))
-				assert.Equal(task.BackToSourcePeers.Len(), uint(0))
-				assert.Equal(task.FSM.Current(), TaskStatePending)
+				assert.Equal(int64(-1), task.ContentLength.Load())
+				assert.Equal(int32(0), task.TotalPieceCount.Load())
+				assert.Equal(int32(200), task.BackToSourceLimit.Load())
+				assert.Equal(uint(0), task.BackToSourcePeers.Len())
+				assert.Equal(TaskStatePending, task.FSM.Current())
 				assert.Empty(task.Pieces)
-				assert.Equal(task.PeerCount(), 0)
-				assert.NotEqual(task.CreatedAt.Load(), 0)
-				assert.NotEqual(task.UpdatedAt.Load(), 0)
+				assert.Equal(0, task.PeerCount())
+				assert.NotEmpty(task.CreatedAt.Load())
+				assert.NotEmpty(task.UpdatedAt.Load())
 				assert.NotNil(task.Log)
 			},
 		},
@@ -148,6 +153,155 @@ func TestTask_NewTask(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, tc.options...))
+		})
+	}
+}
+
+func TestTask_FSMEvent(t *testing.T) {
+	tests := []struct {
+		name   string
+		state  string
+		event  string
+		expect func(t *testing.T, task *Task, err error)
+	}{
+		{
+			name:  "download from pending",
+			state: TaskStatePending,
+			event: TaskEventDownload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateRunning, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download from succeeded",
+			state: TaskStateSucceeded,
+			event: TaskEventDownload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateRunning, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download from failed",
+			state: TaskStateFailed,
+			event: TaskEventDownload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateRunning, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download from leave",
+			state: TaskStateLeave,
+			event: TaskEventDownload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateRunning, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download succeeded from running",
+			state: TaskStateRunning,
+			event: TaskEventDownloadSucceeded,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download succeeded from failed",
+			state: TaskStateFailed,
+			event: TaskEventDownloadSucceeded,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download failed from running",
+			state: TaskStateRunning,
+			event: TaskEventDownloadFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateFailed, task.FSM.Current())
+			},
+		},
+		{
+			name:  "leave from succeeded",
+			state: TaskStateSucceeded,
+			event: TaskEventLeave,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateLeave, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download from running is rejected",
+			state: TaskStateRunning,
+			event: TaskEventDownload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateRunning, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download succeeded from pending is rejected",
+			state: TaskStatePending,
+			event: TaskEventDownloadSucceeded,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStatePending, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download failed from pending is rejected",
+			state: TaskStatePending,
+			event: TaskEventDownloadFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStatePending, task.FSM.Current())
+			},
+		},
+		{
+			name:  "download failed from succeeded is rejected",
+			state: TaskStateSucceeded,
+			event: TaskEventDownloadFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+		{
+			name:  "leave from leave is rejected",
+			state: TaskStateLeave,
+			event: TaskEventLeave,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateLeave, task.FSM.Current())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
+			task.FSM.SetState(tc.state)
+
+			tc.expect(t, task, task.FSM.Event(context.Background(), tc.event))
 		})
 	}
 }
@@ -163,8 +317,8 @@ func TestTask_LoadPeer(t *testing.T) {
 			peerID: mockPeerID,
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				assert.True(loaded)
+				assert.Equal(mockPeerID, peer.ID)
 			},
 		},
 		{
@@ -172,7 +326,7 @@ func TestTask_LoadPeer(t *testing.T) {
 			peerID: idgen.PeerID(),
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -180,7 +334,7 @@ func TestTask_LoadPeer(t *testing.T) {
 			peerID: "",
 			expect: func(t *testing.T, peer *Peer, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 	}
@@ -208,6 +362,7 @@ func TestTask_LoadRandomPeers(t *testing.T) {
 		{
 			name: "load random peers",
 			expect: func(t *testing.T, task *Task, host *Host) {
+				assert := assert.New(t)
 				mockPeerE := NewPeer(idgen.PeerID(), task, host)
 				mockPeerF := NewPeer(idgen.PeerID(), task, host)
 				mockPeerG := NewPeer(idgen.PeerID(), task, host)
@@ -218,38 +373,21 @@ func TestTask_LoadRandomPeers(t *testing.T) {
 				task.StorePeer(mockPeerG)
 				task.StorePeer(mockPeerH)
 
-				assert := assert.New(t)
-				peers := task.LoadRandomPeers(0)
-				assert.Equal(len(peers), 0)
-
-				peers = task.LoadRandomPeers(1)
-				assert.Equal(len(peers), 1)
-
-				peers = task.LoadRandomPeers(2)
-				assert.Equal(len(peers), 2)
-
-				peers = task.LoadRandomPeers(3)
-				assert.Equal(len(peers), 3)
-
-				peers = task.LoadRandomPeers(4)
-				assert.Equal(len(peers), 4)
-
-				peers = task.LoadRandomPeers(5)
-				assert.Equal(len(peers), 4)
+				assert.Empty(task.LoadRandomPeers(0))
+				assert.Len(task.LoadRandomPeers(1), 1)
+				assert.Len(task.LoadRandomPeers(2), 2)
+				assert.Len(task.LoadRandomPeers(3), 3)
+				assert.Len(task.LoadRandomPeers(4), 4)
+				assert.Len(task.LoadRandomPeers(5), 4)
 			},
 		},
 		{
 			name: "load empty peers",
 			expect: func(t *testing.T, task *Task, host *Host) {
 				assert := assert.New(t)
-				peers := task.LoadRandomPeers(0)
-				assert.Equal(len(peers), 0)
-
-				peers = task.LoadRandomPeers(1)
-				assert.Equal(len(peers), 0)
-
-				peers = task.LoadRandomPeers(2)
-				assert.Equal(len(peers), 0)
+				assert.Empty(task.LoadRandomPeers(0))
+				assert.Empty(task.LoadRandomPeers(1))
+				assert.Empty(task.LoadRandomPeers(2))
 			},
 		},
 	}
@@ -266,28 +404,147 @@ func TestTask_LoadRandomPeers(t *testing.T) {
 	}
 }
 
+func TestTask_LoadPeers(t *testing.T) {
+	tests := []struct {
+		name      string
+		peerCount int
+		expect    func(t *testing.T, peerIDs []string, peers []*Peer)
+	}{
+		{
+			name:      "task has no peers",
+			peerCount: 0,
+			expect: func(t *testing.T, peerIDs []string, peers []*Peer) {
+				assert := assert.New(t)
+				assert.Empty(peers)
+			},
+		},
+		{
+			name:      "task has peers",
+			peerCount: 3,
+			expect: func(t *testing.T, peerIDs []string, peers []*Peer) {
+				assert := assert.New(t)
+				assert.Len(peers, 3)
+				var ids []string
+				for _, peer := range peers {
+					ids = append(ids, peer.ID)
+				}
+
+				assert.ElementsMatch(peerIDs, ids)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
+
+			var peerIDs []string
+			for range tc.peerCount {
+				peer := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(peer)
+				peerIDs = append(peerIDs, peer.ID)
+			}
+
+			tc.expect(t, peerIDs, task.LoadPeers())
+		})
+	}
+}
+
+func TestTask_LoadFinishedPeers(t *testing.T) {
+	tests := []struct {
+		name   string
+		states []string
+		expect func(t *testing.T, finishedPeers []*Peer)
+	}{
+		{
+			name:   "task has no peers",
+			states: []string{},
+			expect: func(t *testing.T, finishedPeers []*Peer) {
+				assert := assert.New(t)
+				assert.Empty(finishedPeers)
+			},
+		},
+		{
+			name:   "task has no finished peers",
+			states: []string{PeerStatePending, PeerStateReceivedNormal, PeerStateRunning, PeerStateBackToSource},
+			expect: func(t *testing.T, finishedPeers []*Peer) {
+				assert := assert.New(t)
+				assert.Empty(finishedPeers)
+			},
+		},
+		{
+			name:   "only succeeded, failed and left peers are finished",
+			states: []string{PeerStatePending, PeerStateRunning, PeerStateBackToSource, PeerStateSucceeded, PeerStateFailed, PeerStateLeave},
+			expect: func(t *testing.T, finishedPeers []*Peer) {
+				assert := assert.New(t)
+				var states []string
+				for _, peer := range finishedPeers {
+					states = append(states, peer.FSM.Current())
+				}
+
+				assert.ElementsMatch([]string{PeerStateSucceeded, PeerStateFailed, PeerStateLeave}, states)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
+			for _, state := range tc.states {
+				peer := NewPeer(idgen.PeerID(), task, mockHost)
+				peer.FSM.SetState(state)
+				task.StorePeer(peer)
+			}
+
+			tc.expect(t, task.LoadFinishedPeers())
+		})
+	}
+}
+
 func TestTask_StorePeer(t *testing.T) {
 	tests := []struct {
 		name   string
 		peerID string
-		expect func(t *testing.T, peer *Peer, loaded bool)
+		expect func(t *testing.T, task *Task, mockPeer *Peer)
 	}{
 		{
 			name:   "store peer",
 			peerID: mockPeerID,
-			expect: func(t *testing.T, peer *Peer, loaded bool) {
+			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				peer, loaded := task.LoadPeer(mockPeerID)
+				assert.True(loaded)
+				assert.Equal(mockPeerID, peer.ID)
+				assert.Equal(1, task.PeerCount())
 			},
 		},
 		{
 			name:   "store key is empty",
 			peerID: "",
-			expect: func(t *testing.T, peer *Peer, loaded bool) {
+			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, "")
+				peer, loaded := task.LoadPeer("")
+				assert.True(loaded)
+				assert.Equal("", peer.ID)
+				assert.Equal(1, task.PeerCount())
+			},
+		},
+		{
+			name:   "store peer with duplicate id keeps the first peer",
+			peerID: mockPeerID,
+			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+				assert := assert.New(t)
+				task.StorePeer(NewPeer(mockPeerID, task, mockPeer.Host))
+				peer, loaded := task.LoadPeer(mockPeerID)
+				assert.True(loaded)
+				assert.Same(mockPeer, peer)
+				assert.Equal(1, task.PeerCount())
 			},
 		},
 	}
@@ -301,8 +558,7 @@ func TestTask_StorePeer(t *testing.T) {
 			mockPeer := NewPeer(tc.peerID, task, mockHost)
 
 			task.StorePeer(mockPeer)
-			peer, loaded := task.LoadPeer(tc.peerID)
-			tc.expect(t, peer, loaded)
+			tc.expect(t, task, mockPeer)
 		})
 	}
 }
@@ -310,26 +566,59 @@ func TestTask_StorePeer(t *testing.T) {
 func TestTask_DeletePeer(t *testing.T) {
 	tests := []struct {
 		name   string
-		peerID string
-		expect func(t *testing.T, task *Task)
+		expect func(t *testing.T, task *Task, mockHost *Host, mockPeer *Peer)
 	}{
 		{
-			name:   "delete peer",
-			peerID: mockPeerID,
-			expect: func(t *testing.T, task *Task) {
+			name: "delete peer",
+			expect: func(t *testing.T, task *Task, mockHost *Host, mockPeer *Peer) {
 				assert := assert.New(t)
-				_, loaded := task.LoadPeer(mockPeerID)
-				assert.Equal(loaded, false)
+				task.StorePeer(mockPeer)
+				task.DeletePeer(mockPeer.ID)
+				_, loaded := task.LoadPeer(mockPeer.ID)
+				assert.False(loaded)
+				assert.Equal(0, task.PeerCount())
 			},
 		},
 		{
-			name:   "delete key is empty",
-			peerID: "",
-			expect: func(t *testing.T, task *Task) {
+			name: "delete key is empty",
+			expect: func(t *testing.T, task *Task, mockHost *Host, mockPeer *Peer) {
 				assert := assert.New(t)
-				peer, loaded := task.LoadPeer(mockPeerID)
-				assert.Equal(loaded, true)
-				assert.Equal(peer.ID, mockPeerID)
+				task.StorePeer(mockPeer)
+				task.DeletePeer("")
+				peer, loaded := task.LoadPeer(mockPeer.ID)
+				assert.True(loaded)
+				assert.Equal(mockPeer.ID, peer.ID)
+				assert.Equal(1, task.PeerCount())
+			},
+		},
+		{
+			name: "delete peer releases the upload load of its parents and children",
+			expect: func(t *testing.T, task *Task, mockHost *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerG := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+				task.StorePeer(mockPeerF)
+				task.StorePeer(mockPeerG)
+				if err := task.AddPeerEdge(mockPeerE, mockPeerF); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := task.AddPeerEdge(mockPeerF, mockPeerG); err != nil {
+					t.Fatal(err)
+				}
+
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+
+				task.DeletePeer(mockPeerF.ID)
+				_, loaded := task.LoadPeer(mockPeerF.ID)
+				assert.False(loaded)
+				assert.Equal(2, task.PeerCount())
+				assert.Empty(mockPeerE.Children())
+				assert.Empty(mockPeerG.Parents())
+				assert.Equal(int32(0), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
 			},
 		},
 	}
@@ -342,9 +631,7 @@ func TestTask_DeletePeer(t *testing.T) {
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
 
-			task.StorePeer(mockPeer)
-			task.DeletePeer(tc.peerID)
-			tc.expect(t, task)
+			tc.expect(t, task, mockHost, mockPeer)
 		})
 	}
 }
@@ -358,7 +645,7 @@ func TestTask_PeerCount(t *testing.T) {
 			name: "task has no peers",
 			expect: func(t *testing.T, mockPeer *Peer, task *Task) {
 				assert := assert.New(t)
-				assert.Equal(task.PeerCount(), 0)
+				assert.Equal(0, task.PeerCount())
 			},
 		},
 		{
@@ -366,9 +653,9 @@ func TestTask_PeerCount(t *testing.T) {
 			expect: func(t *testing.T, mockPeer *Peer, task *Task) {
 				assert := assert.New(t)
 				task.StorePeer(mockPeer)
-				assert.Equal(task.PeerCount(), 1)
+				assert.Equal(1, task.PeerCount())
 				task.DeletePeer(mockPeer.ID)
-				assert.Equal(task.PeerCount(), 0)
+				assert.Equal(0, task.PeerCount())
 			},
 		},
 	}
@@ -408,25 +695,25 @@ func TestTask_AddPeerEdge(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerF, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(mockPeerF.Children()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerF.Children()[0].ID)
+				assert.Equal(mockPeerF.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerE)
 				assert.Error(err)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 			},
 		},
 		{
@@ -446,27 +733,166 @@ func TestTask_AddPeerEdge(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerE, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerE.Children()), 2)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerE.Children(), 2)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerF.Parents()), 2)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(3))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerF.Parents(), 2)
+				assert.Equal(mockPeerF.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(3), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
+			},
+		},
+		{
+			name: "add peer edge accumulates bandwidth, piece count and content length on the parent host",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				task.PieceLength = 1024
+				task.ContentLength.Store(4096)
+				mockParent := NewPeer(idgen.PeerID(), task, mockHost)
+				mockChild := NewPeer(idgen.PeerID(), task, mockHost, WithConcurrentPieceCount(4))
+				task.StorePeer(mockParent)
+				task.StorePeer(mockChild)
+
+				err := task.AddPeerEdge(mockParent, mockChild)
+				assert.NoError(err)
+				assert.Equal(uint64(1024*4*8), mockHost.TxBandwidth.Load())
+				assert.Equal(uint64(4), mockHost.ConcurrentUploadPieceCount.Load())
+				assert.Equal(uint64(4096), mockHost.UploadContentLength.Load())
+			},
+		},
+		{
+			name: "add peer edge with unknown content length does not count upload content length",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				task.PieceLength = 1024
+				mockParent := NewPeer(idgen.PeerID(), task, mockHost)
+				mockChild := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockParent)
+				task.StorePeer(mockChild)
+
+				err := task.AddPeerEdge(mockParent, mockChild)
+				assert.NoError(err)
+				assert.Equal(uint64(1024*8*8), mockHost.TxBandwidth.Load())
+				assert.Equal(uint64(8), mockHost.ConcurrentUploadPieceCount.Load())
+				assert.Equal(uint64(0), mockHost.UploadContentLength.Load())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
+
+			tc.expect(t, mockHost, task)
+		})
+	}
+}
+
+func TestTask_AddPeerEdges(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, mockHost *Host, task *Task)
+	}{
+		{
+			name: "add edges from multiple parents",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				task.PieceLength = 1024
+				task.ContentLength.Store(4096)
+				mockParentE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockParentF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockChild := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockParentE)
+				task.StorePeer(mockParentF)
+				task.StorePeer(mockChild)
+
+				added := task.AddPeerEdges([]*Peer{mockParentE, mockParentF}, mockChild)
+				var addedIDs []string
+				for _, peer := range added {
+					addedIDs = append(addedIDs, peer.ID)
+				}
+
+				assert.ElementsMatch([]string{mockParentE.ID, mockParentF.ID}, addedIDs)
+				assert.Len(mockChild.Parents(), 2)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(uint64(2*1024*8*8), mockHost.TxBandwidth.Load())
+				assert.Equal(uint64(2*8), mockHost.ConcurrentUploadPieceCount.Load())
+				assert.Equal(uint64(2*4096), mockHost.UploadContentLength.Load())
+			},
+		},
+		{
+			name: "skip parents with an existing edge, the child itself and parents that would create a cycle",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerG := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+				task.StorePeer(mockPeerF)
+				task.StorePeer(mockPeerG)
+				if err := task.AddPeerEdge(mockPeerE, mockPeerF); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := task.AddPeerEdge(mockPeerF, mockPeerG); err != nil {
+					t.Fatal(err)
+				}
+
+				added := task.AddPeerEdges([]*Peer{mockPeerE, mockPeerF, mockPeerG}, mockPeerF)
+				assert.Empty(added)
+				assert.Len(mockPeerF.Parents(), 1)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+			},
+		},
+		{
+			name: "skip parents that are not stored in task",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockParentE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockParentF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockChild := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockParentE)
+				task.StorePeer(mockChild)
+
+				added := task.AddPeerEdges([]*Peer{mockParentE, mockParentF}, mockChild)
+				assert.Len(added, 1)
+				assert.Equal(mockParentE.ID, added[0].ID)
+				assert.Len(mockChild.Parents(), 1)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+			},
+		},
+		{
+			name: "child is not stored in task",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockParent := NewPeer(idgen.PeerID(), task, mockHost)
+				mockChild := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockParent)
+
+				added := task.AddPeerEdges([]*Peer{mockParent}, mockChild)
+				assert.Empty(added)
+				assert.Equal(int32(0), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(0), mockHost.UploadCount.Load())
 			},
 		},
 	}
@@ -492,8 +918,7 @@ func TestTask_DeletePeerInEdges(t *testing.T) {
 			name: "delete peer inedges failed",
 			expect: func(t *testing.T, mockHost *Host, task *Task) {
 				assert := assert.New(t)
-				err := task.DeletePeerInEdges(mockPeerID)
-				assert.Error(err)
+				assert.Error(task.DeletePeerInEdges(mockPeerID))
 			},
 		},
 		{
@@ -517,60 +942,60 @@ func TestTask_DeletePeerInEdges(t *testing.T) {
 				)
 				err = task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerE, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerE.Children()), 2)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerE.Children(), 2)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerF.Parents()), 2)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(3))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerF.Parents(), 2)
+				assert.Equal(mockPeerF.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(3), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerInEdges(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerE.Children()), 2)
-				assert.Equal(len(mockPeerF.Parents()), 2)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(3))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerE.Children(), 2)
+				assert.Len(mockPeerF.Parents(), 2)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(mockPeerF.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(3), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerInEdges(mockPeerF.ID)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerInEdges(mockPeerG.ID)
 				assert.NoError(err)
 				degree, err = task.PeerDegree(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
+				assert.Equal(0, degree)
 				degree, err = task.PeerDegree(mockPeerF.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
+				assert.Equal(0, degree)
 				degree, err = task.PeerDegree(mockPeerG.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(0, degree)
+				assert.Equal(int32(0), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 			},
 		},
 	}
@@ -596,8 +1021,7 @@ func TestTask_DeletePeerOutEdges(t *testing.T) {
 			name: "delete peer outedges failed",
 			expect: func(t *testing.T, mockHost *Host, task *Task) {
 				assert := assert.New(t)
-				err := task.DeletePeerOutEdges(mockPeerID)
-				assert.Error(err)
+				assert.Error(task.DeletePeerOutEdges(mockPeerID))
 			},
 		},
 		{
@@ -621,58 +1045,58 @@ func TestTask_DeletePeerOutEdges(t *testing.T) {
 				)
 				err = task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerE, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerE.Children()), 2)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerE.Children(), 2)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerF.Parents()), 2)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(3))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerF.Parents(), 2)
+				assert.Equal(mockPeerF.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(3), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerOutEdges(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerF.Parents()), 1)
-				assert.Equal(len(mockPeerG.Parents()), 0)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerF.Parents(), 1)
+				assert.Empty(mockPeerG.Parents())
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerOutEdges(mockPeerF.ID)
 				assert.NoError(err)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(mockPeerF.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.DeletePeerOutEdges(mockPeerG.ID)
 				assert.NoError(err)
 				degree, err = task.PeerDegree(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
+				assert.Equal(0, degree)
 				degree, err = task.PeerDegree(mockPeerF.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
+				assert.Equal(0, degree)
 				degree, err = task.PeerDegree(mockPeerG.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 0)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(mockHost.UploadCount.Load(), int64(3))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(0, degree)
+				assert.Equal(int32(0), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(3), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 			},
 		},
 		{
@@ -698,19 +1122,19 @@ func TestTask_DeletePeerOutEdges(t *testing.T) {
 				assert.NoError(err)
 				err = task.AddPeerEdge(mockParent, mockChildF)
 				assert.NoError(err)
-				assert.Equal(mockHost.TxBandwidth.Load(), uint64(1024*8*8+1024*1*8))
-				assert.Equal(mockHost.ConcurrentUploadPieceCount.Load(), uint64(9))
-				assert.Equal(mockHost.UploadContentLength.Load(), uint64(2*4096))
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
+				assert.Equal(uint64(1024*8*8+1024*1*8), mockHost.TxBandwidth.Load())
+				assert.Equal(uint64(9), mockHost.ConcurrentUploadPieceCount.Load())
+				assert.Equal(uint64(2*4096), mockHost.UploadContentLength.Load())
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
 
 				err = task.DeletePeerOutEdges(mockParent.ID)
 				assert.NoError(err)
-				assert.Equal(mockHost.TxBandwidth.Load(), uint64(0))
-				assert.Equal(mockHost.ConcurrentUploadPieceCount.Load(), uint64(0))
-				assert.Equal(mockHost.UploadContentLength.Load(), uint64(0))
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(0))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
+				assert.Equal(uint64(0), mockHost.TxBandwidth.Load())
+				assert.Equal(uint64(0), mockHost.ConcurrentUploadPieceCount.Load())
+				assert.Equal(uint64(0), mockHost.UploadContentLength.Load())
+				assert.Equal(int32(0), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
 			},
 		},
 	}
@@ -749,19 +1173,19 @@ func TestTask_CanAddPeerEdge(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerF, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(mockPeerF.Children()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerF.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerF.Children()[0].ID)
+				assert.Equal(mockPeerF.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				assert.False(task.CanAddPeerEdge(mockPeerG.ID, mockPeerE.ID))
 			},
@@ -783,21 +1207,106 @@ func TestTask_CanAddPeerEdge(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerE, mockPeerG)
 				assert.NoError(err)
-				assert.Equal(len(mockPeerE.Children()), 2)
-				assert.Equal(mockPeerG.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Len(mockPeerE.Children(), 2)
+				assert.Equal(mockPeerE.ID, mockPeerG.Parents()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				assert.True(task.CanAddPeerEdge(mockPeerG.ID, mockPeerF.ID))
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHost := NewHost(
+				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
+
+			tc.expect(t, mockHost, task)
+		})
+	}
+}
+
+func TestTask_CanAddPeerEdges(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, mockHost *Host, task *Task)
+	}{
+		{
+			name: "all candidates can add edge",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerG := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+				task.StorePeer(mockPeerF)
+				task.StorePeer(mockPeerG)
+
+				assert.Equal(map[string]struct{}{mockPeerE.ID: {}, mockPeerF.ID: {}}, task.CanAddPeerEdges([]string{mockPeerE.ID, mockPeerF.ID}, mockPeerG.ID))
+			},
+		},
+		{
+			name: "candidates with an existing edge, the child itself and unknown peers are filtered",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerG := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+				task.StorePeer(mockPeerF)
+				task.StorePeer(mockPeerG)
+				if err := task.AddPeerEdge(mockPeerE, mockPeerF); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := task.AddPeerEdge(mockPeerF, mockPeerG); err != nil {
+					t.Fatal(err)
+				}
+
+				assert.Equal(map[string]struct{}{mockPeerE.ID: {}}, task.CanAddPeerEdges([]string{mockPeerE.ID, mockPeerF.ID, mockPeerG.ID, idgen.PeerID()}, mockPeerG.ID))
+			},
+		},
+		{
+			name: "candidates that would create a cycle are filtered",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerF := NewPeer(idgen.PeerID(), task, mockHost)
+				mockPeerG := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+				task.StorePeer(mockPeerF)
+				task.StorePeer(mockPeerG)
+				if err := task.AddPeerEdge(mockPeerE, mockPeerF); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := task.AddPeerEdge(mockPeerF, mockPeerG); err != nil {
+					t.Fatal(err)
+				}
+
+				assert.Empty(task.CanAddPeerEdges([]string{mockPeerF.ID, mockPeerG.ID}, mockPeerE.ID))
+			},
+		},
+		{
+			name: "child is not stored in task",
+			expect: func(t *testing.T, mockHost *Host, task *Task) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeerE)
+
+				assert.Empty(task.CanAddPeerEdges([]string{mockPeerE.ID}, idgen.PeerID()))
 			},
 		},
 	}
@@ -844,23 +1353,23 @@ func TestTask_PeerDegree(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerE)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Parents()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerE.Parents()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				degree, err := task.PeerDegree(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 2)
+				assert.Equal(2, degree)
 			},
 		},
 	}
@@ -907,23 +1416,23 @@ func TestTask_PeerInDegree(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerE)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Parents()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerE.Parents()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				degree, err := task.PeerInDegree(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 1)
+				assert.Equal(1, degree)
 			},
 		},
 	}
@@ -970,23 +1479,23 @@ func TestTask_PeerOutDegree(t *testing.T) {
 
 				err := task.AddPeerEdge(mockPeerE, mockPeerF)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Children()[0].ID, mockPeerF.ID)
-				assert.Equal(mockPeerF.Parents()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(1))
-				assert.Equal(mockHost.UploadCount.Load(), int64(1))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerF.ID, mockPeerE.Children()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerF.Parents()[0].ID)
+				assert.Equal(int32(1), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(1), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				err = task.AddPeerEdge(mockPeerG, mockPeerE)
 				assert.NoError(err)
-				assert.Equal(mockPeerE.Parents()[0].ID, mockPeerG.ID)
-				assert.Equal(mockPeerG.Children()[0].ID, mockPeerE.ID)
-				assert.Equal(mockHost.ConcurrentUploadCount.Load(), int32(2))
-				assert.Equal(mockHost.UploadCount.Load(), int64(2))
-				assert.Equal(mockHost.PeerCount.Load(), int32(3))
+				assert.Equal(mockPeerG.ID, mockPeerE.Parents()[0].ID)
+				assert.Equal(mockPeerE.ID, mockPeerG.Children()[0].ID)
+				assert.Equal(int32(2), mockHost.ConcurrentUploadCount.Load())
+				assert.Equal(int64(2), mockHost.UploadCount.Load())
+				assert.Equal(int32(3), mockHost.PeerCount.Load())
 
 				degree, err := task.PeerOutDegree(mockPeerE.ID)
 				assert.NoError(err)
-				assert.Equal(degree, 1)
+				assert.Equal(1, degree)
 			},
 		},
 	}
@@ -1005,70 +1514,92 @@ func TestTask_PeerOutDegree(t *testing.T) {
 
 func TestTask_HasAvailablePeer(t *testing.T) {
 	tests := []struct {
-		name   string
-		expect func(t *testing.T, task *Task, mockPeer *Peer)
+		name    string
+		state   string
+		hostID  string
+		blocked bool
+		expect  func(t *testing.T, hasAvailablePeer bool)
 	}{
 		{
-			name: "blocklist includes peer",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:    "blocklist includes peer",
+			state:   PeerStateSucceeded,
+			hostID:  "",
+			blocked: true,
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				mockPeer.FSM.SetState(PeerStatePending)
-				task.StorePeer(mockPeer)
-
-				blocklist := set.NewSafeSet[string]()
-				blocklist.Add(mockPeer.ID)
-				assert.Equal(task.HasAvailablePeer("", blocklist), false)
+				assert.False(hasAvailablePeer)
 			},
 		},
 		{
-			name: "host id is equal to the peer's host id",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:   "host id is equal to the peer's host id",
+			state:  PeerStateSucceeded,
+			hostID: mockHostID,
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				mockPeer.FSM.SetState(PeerStateSucceeded)
-				task.StorePeer(mockPeer)
-
-				blocklist := set.NewSafeSet[string]()
-				assert.Equal(task.HasAvailablePeer(mockPeer.Host.ID, blocklist), false)
+				assert.False(hasAvailablePeer)
 			},
 		},
 		{
-			name: "peer state is PeerStateSucceeded",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:   "peer state is PeerStateSucceeded",
+			state:  PeerStateSucceeded,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				task.StorePeer(mockPeer)
-				mockPeer.ID = idgen.PeerID()
-				mockPeer.FSM.SetState(PeerStateSucceeded)
-				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
+				assert.True(hasAvailablePeer)
 			},
 		},
 		{
-			name: "peer state is PeerStateRunning",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:   "peer state is PeerStateRunning",
+			state:  PeerStateRunning,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				task.StorePeer(mockPeer)
-				mockPeer.ID = idgen.PeerID()
-				mockPeer.FSM.SetState(PeerStateRunning)
-				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
+				assert.True(hasAvailablePeer)
 			},
 		},
 		{
-			name: "peer state is PeerStateBackToSource",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:   "peer state is PeerStateBackToSource",
+			state:  PeerStateBackToSource,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				task.StorePeer(mockPeer)
-				mockPeer.ID = idgen.PeerID()
-				mockPeer.FSM.SetState(PeerStateBackToSource)
-				task.StorePeer(mockPeer)
-				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), true)
+				assert.True(hasAvailablePeer)
 			},
 		},
 		{
-			name: "peer does not exist",
-			expect: func(t *testing.T, task *Task, mockPeer *Peer) {
+			name:   "peer state is PeerStatePending",
+			state:  PeerStatePending,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
 				assert := assert.New(t)
-				assert.Equal(task.HasAvailablePeer("", set.NewSafeSet[string]()), false)
+				assert.False(hasAvailablePeer)
+			},
+		},
+		{
+			name:   "peer state is PeerStateFailed",
+			state:  PeerStateFailed,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
+				assert := assert.New(t)
+				assert.False(hasAvailablePeer)
+			},
+		},
+		{
+			name:   "peer state is PeerStateLeave",
+			state:  PeerStateLeave,
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
+				assert := assert.New(t)
+				assert.False(hasAvailablePeer)
+			},
+		},
+		{
+			name:   "peer does not exist",
+			state:  "",
+			hostID: "",
+			expect: func(t *testing.T, hasAvailablePeer bool) {
+				assert := assert.New(t)
+				assert.False(hasAvailablePeer)
 			},
 		},
 	}
@@ -1080,8 +1611,17 @@ func TestTask_HasAvailablePeer(t *testing.T) {
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
+			if tc.state != "" {
+				mockPeer.FSM.SetState(tc.state)
+				task.StorePeer(mockPeer)
+			}
 
-			tc.expect(t, task, mockPeer)
+			blocklist := set.NewSafeSet[string]()
+			if tc.blocked {
+				blocklist.Add(mockPeer.ID)
+			}
+
+			tc.expect(t, task.HasAvailablePeer(tc.hostID, blocklist))
 		})
 	}
 }
@@ -1099,7 +1639,7 @@ func TestTask_LoadSeedPeer(t *testing.T) {
 				task.StorePeer(mockSeedPeer)
 				peer, loaded := task.LoadSeedPeer()
 				assert.True(loaded)
-				assert.Equal(peer.ID, mockSeedPeer.ID)
+				assert.Equal(mockSeedPeer.ID, peer.ID)
 			},
 		},
 		{
@@ -1115,7 +1655,7 @@ func TestTask_LoadSeedPeer(t *testing.T) {
 
 				peer, loaded := task.LoadSeedPeer()
 				assert.True(loaded)
-				assert.Equal(peer.ID, mockSeedPeer.ID)
+				assert.Equal(mockSeedPeer.ID, peer.ID)
 			},
 		},
 		{
@@ -1234,15 +1774,15 @@ func TestTask_LoadPiece(t *testing.T) {
 			pieceNumber: mockPiece.Number,
 			expect: func(t *testing.T, piece *Piece, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.EqualValues(piece.Digest, mockPiece.Digest)
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.Equal(piece.CreatedAt, mockPiece.CreatedAt)
+				assert.True(loaded)
+				assert.Equal(mockPiece.Number, piece.Number)
+				assert.Equal(mockPiece.ParentID, piece.ParentID)
+				assert.Equal(mockPiece.Offset, piece.Offset)
+				assert.Equal(mockPiece.Length, piece.Length)
+				assert.EqualValues(mockPiece.Digest, piece.Digest)
+				assert.Equal(mockPiece.TrafficType, piece.TrafficType)
+				assert.Equal(mockPiece.Cost, piece.Cost)
+				assert.Equal(mockPiece.CreatedAt, piece.CreatedAt)
 			},
 		},
 		{
@@ -1251,7 +1791,7 @@ func TestTask_LoadPiece(t *testing.T) {
 			pieceNumber: 2,
 			expect: func(t *testing.T, piece *Piece, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -1260,7 +1800,7 @@ func TestTask_LoadPiece(t *testing.T) {
 			pieceNumber: 0,
 			expect: func(t *testing.T, piece *Piece, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 	}
@@ -1289,15 +1829,15 @@ func TestTask_StorePiece(t *testing.T) {
 			pieceNumber: mockPiece.Number,
 			expect: func(t *testing.T, piece *Piece, loaded bool) {
 				assert := assert.New(t)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
-				assert.Equal(piece.ParentID, mockPiece.ParentID)
-				assert.Equal(piece.Offset, mockPiece.Offset)
-				assert.Equal(piece.Length, mockPiece.Length)
-				assert.EqualValues(piece.Digest, mockPiece.Digest)
-				assert.Equal(piece.TrafficType, mockPiece.TrafficType)
-				assert.Equal(piece.Cost, mockPiece.Cost)
-				assert.Equal(piece.CreatedAt, mockPiece.CreatedAt)
+				assert.True(loaded)
+				assert.Equal(mockPiece.Number, piece.Number)
+				assert.Equal(mockPiece.ParentID, piece.ParentID)
+				assert.Equal(mockPiece.Offset, piece.Offset)
+				assert.Equal(mockPiece.Length, piece.Length)
+				assert.EqualValues(mockPiece.Digest, piece.Digest)
+				assert.Equal(mockPiece.TrafficType, piece.TrafficType)
+				assert.Equal(mockPiece.Cost, piece.Cost)
+				assert.Equal(mockPiece.CreatedAt, piece.CreatedAt)
 			},
 		},
 	}
@@ -1327,7 +1867,7 @@ func TestTask_DeletePiece(t *testing.T) {
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
 				_, loaded := task.LoadPiece(mockPiece.Number)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -1337,8 +1877,8 @@ func TestTask_DeletePiece(t *testing.T) {
 			expect: func(t *testing.T, task *Task) {
 				assert := assert.New(t)
 				piece, loaded := task.LoadPiece(mockPiece.Number)
-				assert.Equal(loaded, true)
-				assert.Equal(piece.Number, mockPiece.Number)
+				assert.True(loaded)
+				assert.Equal(mockPiece.Number, piece.Number)
 			},
 		},
 	}
@@ -1359,66 +1899,60 @@ func TestTask_SizeScope(t *testing.T) {
 		name            string
 		contentLength   int64
 		totalPieceCount int32
-		expect          func(t *testing.T, task *Task)
+		expect          func(t *testing.T, sizeScope commonv2.SizeScope)
 	}{
 		{
 			name:            "scope size is tiny",
 			contentLength:   TinyFileSize,
 			totalPieceCount: 1,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_TINY)
+				assert.Equal(commonv2.SizeScope_TINY, sizeScope)
 			},
 		},
 		{
 			name:            "scope size is empty",
 			contentLength:   0,
 			totalPieceCount: 0,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_EMPTY)
+				assert.Equal(commonv2.SizeScope_EMPTY, sizeScope)
 			},
 		},
 		{
 			name:            "scope size is small",
 			contentLength:   TinyFileSize + 1,
 			totalPieceCount: 1,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_SMALL)
+				assert.Equal(commonv2.SizeScope_SMALL, sizeScope)
 			},
 		},
 		{
 			name:            "scope size is normal",
 			contentLength:   TinyFileSize + 1,
 			totalPieceCount: 2,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_NORMAL)
+				assert.Equal(commonv2.SizeScope_NORMAL, sizeScope)
 			},
 		},
 		{
 			name:            "invalid content length",
 			contentLength:   -1,
 			totalPieceCount: 2,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_UNKNOW)
+				assert.Equal(commonv2.SizeScope_UNKNOW, sizeScope)
 			},
 		},
 		{
 			name:            "invalid total piece count",
 			contentLength:   TinyFileSize + 1,
 			totalPieceCount: -1,
-			expect: func(t *testing.T, task *Task) {
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
 				assert := assert.New(t)
-				sizeScope := task.SizeScope()
-				assert.Equal(sizeScope, commonv2.SizeScope_UNKNOW)
+				assert.Equal(commonv2.SizeScope_UNKNOW, sizeScope)
 			},
 		},
 	}
@@ -1428,7 +1962,7 @@ func TestTask_SizeScope(t *testing.T) {
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			task.ContentLength.Store(tc.contentLength)
 			task.TotalPieceCount.Store(tc.totalPieceCount)
-			tc.expect(t, task)
+			tc.expect(t, task.SizeScope())
 		})
 	}
 }
@@ -1436,82 +1970,117 @@ func TestTask_SizeScope(t *testing.T) {
 func TestTask_CanBackToSource(t *testing.T) {
 	tests := []struct {
 		name              string
+		typ               commonv2.TaskType
 		backToSourceLimit int32
-		run               func(t *testing.T, task *Task)
+		backToSourcePeers int
+		expect            func(t *testing.T, canBackToSource bool)
 	}{
 		{
 			name:              "task can back-to-source",
+			typ:               commonv2.TaskType_STANDARD,
 			backToSourceLimit: 1,
-			run: func(t *testing.T, task *Task) {
+			backToSourcePeers: 0,
+			expect: func(t *testing.T, canBackToSource bool) {
 				assert := assert.New(t)
-				assert.Equal(task.CanBackToSource(), true)
+				assert.True(canBackToSource)
 			},
 		},
 		{
 			name:              "task can not back-to-source",
+			typ:               commonv2.TaskType_STANDARD,
 			backToSourceLimit: -1,
-			run: func(t *testing.T, task *Task) {
+			backToSourcePeers: 0,
+			expect: func(t *testing.T, canBackToSource bool) {
 				assert := assert.New(t)
-				assert.Equal(task.CanBackToSource(), false)
+				assert.False(canBackToSource)
+			},
+		},
+		{
+			name:              "back-to-source peers reach the limit",
+			typ:               commonv2.TaskType_STANDARD,
+			backToSourceLimit: 1,
+			backToSourcePeers: 1,
+			expect: func(t *testing.T, canBackToSource bool) {
+				assert := assert.New(t)
+				assert.True(canBackToSource)
+			},
+		},
+		{
+			name:              "back-to-source peers exceed the limit",
+			typ:               commonv2.TaskType_STANDARD,
+			backToSourceLimit: 1,
+			backToSourcePeers: 2,
+			expect: func(t *testing.T, canBackToSource bool) {
+				assert := assert.New(t)
+				assert.False(canBackToSource)
 			},
 		},
 		{
 			name:              "task can back-to-source and task type is PERSISTENT",
+			typ:               commonv2.TaskType_PERSISTENT,
 			backToSourceLimit: 1,
-			run: func(t *testing.T, task *Task) {
+			backToSourcePeers: 0,
+			expect: func(t *testing.T, canBackToSource bool) {
 				assert := assert.New(t)
-				task.Type = commonv2.TaskType_PERSISTENT
-				assert.Equal(task.CanBackToSource(), true)
+				assert.True(canBackToSource)
 			},
 		},
 		{
 			name:              "task type is PERSISTENT_CACHE",
+			typ:               commonv2.TaskType_PERSISTENT_CACHE,
 			backToSourceLimit: 1,
-			run: func(t *testing.T, task *Task) {
+			backToSourcePeers: 0,
+			expect: func(t *testing.T, canBackToSource bool) {
 				assert := assert.New(t)
-				task.Type = commonv2.TaskType_PERSISTENT_CACHE
-				assert.Equal(task.CanBackToSource(), false)
+				assert.False(canBackToSource)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, tc.backToSourceLimit)
-			tc.run(t, task)
+			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, tc.typ, mockTaskFilteredQueryParams, mockTaskHeader, tc.backToSourceLimit)
+			for range tc.backToSourcePeers {
+				task.BackToSourcePeers.Add(idgen.PeerID())
+			}
+
+			tc.expect(t, task.CanBackToSource())
 		})
 	}
 }
 
 func TestTask_CanReuseDirectPiece(t *testing.T) {
 	tests := []struct {
-		name   string
-		expect func(t *testing.T, task *Task)
+		name          string
+		directPiece   []byte
+		contentLength int64
+		expect        func(t *testing.T, canReuseDirectPiece bool)
 	}{
 		{
-			name: "task can reuse direct piece",
-			expect: func(t *testing.T, task *Task) {
+			name:          "task can reuse direct piece",
+			directPiece:   []byte{1},
+			contentLength: 1,
+			expect: func(t *testing.T, canReuseDirectPiece bool) {
 				assert := assert.New(t)
-				task.DirectPiece = []byte{1}
-				task.ContentLength.Store(1)
-				assert.Equal(task.CanReuseDirectPiece(), true)
+				assert.True(canReuseDirectPiece)
 			},
 		},
 		{
-			name: "direct piece is empty",
-			expect: func(t *testing.T, task *Task) {
+			name:          "direct piece is empty",
+			directPiece:   []byte{},
+			contentLength: 1,
+			expect: func(t *testing.T, canReuseDirectPiece bool) {
 				assert := assert.New(t)
-				task.ContentLength.Store(1)
-				assert.Equal(task.CanReuseDirectPiece(), false)
+				assert.False(canReuseDirectPiece)
 			},
 		},
 		{
-			name: "content length is error",
-			expect: func(t *testing.T, task *Task) {
+			name:          "content length is error",
+			directPiece:   []byte{1},
+			contentLength: 2,
+			expect: func(t *testing.T, canReuseDirectPiece bool) {
 				assert := assert.New(t)
-				task.DirectPiece = []byte{1}
-				task.ContentLength.Store(2)
-				assert.Equal(task.CanReuseDirectPiece(), false)
+				assert.False(canReuseDirectPiece)
 			},
 		},
 	}
@@ -1519,71 +2088,71 @@ func TestTask_CanReuseDirectPiece(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
-			tc.expect(t, task)
+			task.DirectPiece = tc.directPiece
+			task.ContentLength.Store(tc.contentLength)
+			tc.expect(t, task.CanReuseDirectPiece())
 		})
 	}
 }
 
 func TestTask_ReportPieceResultToPeers(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder)
+		name   string
+		state  string
+		event  string
+		mock   func(ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder)
+		expect func(t *testing.T, mockPeer *Peer)
 	}{
 		{
-			name: "peer state is PeerStatePending",
-			run: func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
-				mockPeer.FSM.SetState(PeerStatePending)
-				task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, PeerEventDownloadFailed)
-
+			name:  "peer state is PeerStatePending",
+			state: PeerStatePending,
+			event: PeerEventDownloadFailed,
+			expect: func(t *testing.T, mockPeer *Peer) {
 				assert := assert.New(t)
 				assert.True(mockPeer.FSM.Is(PeerStatePending))
 			},
 		},
 		{
-			name: "peer state is PeerStateRunning and stream is empty",
-			run: func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
-				mockPeer.FSM.SetState(PeerStateRunning)
-				task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, PeerEventDownloadFailed)
-
+			name:  "peer state is PeerStateRunning and stream is empty",
+			state: PeerStateRunning,
+			event: PeerEventDownloadFailed,
+			expect: func(t *testing.T, mockPeer *Peer) {
 				assert := assert.New(t)
 				assert.True(mockPeer.FSM.Is(PeerStateRunning))
 			},
 		},
 		{
-			name: "peer state is PeerStateRunning and stream sending failed",
-			run: func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
-				mockPeer.FSM.SetState(PeerStateRunning)
-				mockPeer.StoreReportPieceResultStream(stream)
+			name:  "peer state is PeerStateRunning and stream sending failed",
+			state: PeerStateRunning,
+			event: PeerEventDownloadFailed,
+			mock: func(ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
 				ms.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError})).Return(errors.New("foo")).Times(1)
-
-				task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, PeerEventDownloadFailed)
-
+			},
+			expect: func(t *testing.T, mockPeer *Peer) {
 				assert := assert.New(t)
 				assert.True(mockPeer.FSM.Is(PeerStateRunning))
 			},
 		},
 		{
-			name: "peer state is PeerStateRunning and state changing failed",
-			run: func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
-				mockPeer.FSM.SetState(PeerStateRunning)
-				mockPeer.StoreReportPieceResultStream(stream)
-				ms.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError})).Return(errors.New("foo")).Times(1)
-
-				task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, PeerEventDownloadFailed)
-
-				assert := assert.New(t)
-				assert.True(mockPeer.FSM.Is(PeerStateRunning))
-			},
-		},
-		{
-			name: "peer state is PeerStateRunning and report peer successfully",
-			run: func(t *testing.T, task *Task, mockPeer *Peer, stream schedulerv1.Scheduler_ReportPieceResultServer, ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
-				mockPeer.FSM.SetState(PeerStateRunning)
-				mockPeer.StoreReportPieceResultStream(stream)
+			name:  "peer state is PeerStateRunning and state changing failed",
+			state: PeerStateRunning,
+			event: PeerEventRegisterNormal,
+			mock: func(ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
 				ms.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError})).Return(nil).Times(1)
-
-				task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, PeerEventDownloadFailed)
-
+			},
+			expect: func(t *testing.T, mockPeer *Peer) {
+				assert := assert.New(t)
+				assert.True(mockPeer.FSM.Is(PeerStateRunning))
+			},
+		},
+		{
+			name:  "peer state is PeerStateRunning and report peer successfully",
+			state: PeerStateRunning,
+			event: PeerEventDownloadFailed,
+			mock: func(ms *v1mocks.MockScheduler_ReportPieceResultServerMockRecorder) {
+				ms.Send(gomock.Eq(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError})).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, mockPeer *Peer) {
 				assert := assert.New(t)
 				assert.True(mockPeer.FSM.Is(PeerStateFailed))
 			},
@@ -1602,7 +2171,14 @@ func TestTask_ReportPieceResultToPeers(t *testing.T) {
 			task := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			mockPeer := NewPeer(mockPeerID, task, mockHost)
 			task.StorePeer(mockPeer)
-			tc.run(t, task, mockPeer, stream, stream.EXPECT())
+			mockPeer.FSM.SetState(tc.state)
+			if tc.mock != nil {
+				mockPeer.StoreReportPieceResultStream(stream)
+				tc.mock(stream.EXPECT())
+			}
+
+			task.ReportPieceResultToPeers(&schedulerv1.PeerPacket{Code: commonv1.Code_SchedTaskStatusError}, tc.event)
+			tc.expect(t, mockPeer)
 		})
 	}
 }

@@ -45,6 +45,7 @@ func Test_IsEnabled(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, IsEnabled(tc.addrs))
@@ -63,7 +64,7 @@ func Test_MakeNamespaceKeyInManager(t *testing.T) {
 			namespace: "namespace",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:namespace")
+				assert.Equal("manager:namespace", s)
 			},
 		},
 		{
@@ -71,10 +72,11 @@ func Test_MakeNamespaceKeyInManager(t *testing.T) {
 			namespace: "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:")
+				assert.Equal("manager:", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeNamespaceKeyInManager(tc.namespace))
@@ -95,7 +97,7 @@ func Test_MakeKeyInManager(t *testing.T) {
 			id:        "foo",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:namespace:foo")
+				assert.Equal("manager:namespace:foo", s)
 			},
 		},
 		{
@@ -104,7 +106,7 @@ func Test_MakeKeyInManager(t *testing.T) {
 			id:        "foo",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager::foo")
+				assert.Equal("manager::foo", s)
 			},
 		},
 		{
@@ -113,7 +115,7 @@ func Test_MakeKeyInManager(t *testing.T) {
 			id:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:namespace:")
+				assert.Equal("manager:namespace:", s)
 			},
 		},
 		{
@@ -122,10 +124,11 @@ func Test_MakeKeyInManager(t *testing.T) {
 			id:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager::")
+				assert.Equal("manager::", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeKeyInManager(tc.namespace, tc.id))
@@ -148,7 +151,7 @@ func Test_MakeSeedPeerKeyInManager(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:seed-peers:1-foo-127.0.0.1")
+				assert.Equal("manager:seed-peers:1-foo-127.0.0.1", s)
 			},
 		},
 		{
@@ -158,7 +161,7 @@ func Test_MakeSeedPeerKeyInManager(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:seed-peers:1--127.0.0.1")
+				assert.Equal("manager:seed-peers:1--127.0.0.1", s)
 			},
 		},
 		{
@@ -168,7 +171,7 @@ func Test_MakeSeedPeerKeyInManager(t *testing.T) {
 			ip:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:seed-peers:1-bar-")
+				assert.Equal("manager:seed-peers:1-bar-", s)
 			},
 		},
 		{
@@ -178,10 +181,11 @@ func Test_MakeSeedPeerKeyInManager(t *testing.T) {
 			ip:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:seed-peers:1--")
+				assert.Equal("manager:seed-peers:1--", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeSeedPeerKeyInManager(tc.clusterID, tc.hostname, tc.ip))
@@ -204,7 +208,7 @@ func Test_MakeSchedulerKeyInManager(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:schedulers:1-bar-127.0.0.1")
+				assert.Equal("manager:schedulers:1-bar-127.0.0.1", s)
 			},
 		},
 		{
@@ -214,7 +218,7 @@ func Test_MakeSchedulerKeyInManager(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:schedulers:1--127.0.0.1")
+				assert.Equal("manager:schedulers:1--127.0.0.1", s)
 			},
 		},
 		{
@@ -224,7 +228,7 @@ func Test_MakeSchedulerKeyInManager(t *testing.T) {
 			ip:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:schedulers:1-bar-")
+				assert.Equal("manager:schedulers:1-bar-", s)
 			},
 		},
 		{
@@ -234,10 +238,11 @@ func Test_MakeSchedulerKeyInManager(t *testing.T) {
 			ip:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:schedulers:1--")
+				assert.Equal("manager:schedulers:1--", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeSchedulerKeyInManager(tc.clusterID, tc.hostname, tc.ip))
@@ -258,7 +263,7 @@ func Test_MakeSeedPeersKeyForPeerInManager(t *testing.T) {
 			ip:       "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:bar-127.0.0.1:seed-peers")
+				assert.Equal("manager:peers:bar-127.0.0.1:seed-peers", s)
 			},
 		},
 		{
@@ -267,7 +272,7 @@ func Test_MakeSeedPeersKeyForPeerInManager(t *testing.T) {
 			ip:       "127.0.0.1",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:-127.0.0.1:seed-peers")
+				assert.Equal("manager:peers:-127.0.0.1:seed-peers", s)
 			},
 		},
 		{
@@ -276,7 +281,7 @@ func Test_MakeSeedPeersKeyForPeerInManager(t *testing.T) {
 			ip:       "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:bar-:seed-peers")
+				assert.Equal("manager:peers:bar-:seed-peers", s)
 			},
 		},
 		{
@@ -285,10 +290,11 @@ func Test_MakeSeedPeersKeyForPeerInManager(t *testing.T) {
 			ip:       "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:-:seed-peers")
+				assert.Equal("manager:peers:-:seed-peers", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeSeedPeersKeyForPeerInManager(tc.hostname, tc.ip))
@@ -311,7 +317,7 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 			version:  "0.1.0",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:bar-127.0.0.1-0.1.0:schedulers")
+				assert.Equal("manager:peers:bar-127.0.0.1-0.1.0:schedulers", s)
 			},
 		},
 		{
@@ -321,7 +327,7 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 			version:  "0.1.0",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:-127.0.0.1-0.1.0:schedulers")
+				assert.Equal("manager:peers:-127.0.0.1-0.1.0:schedulers", s)
 			},
 		},
 		{
@@ -331,7 +337,7 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 			version:  "0.1.0",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:bar--0.1.0:schedulers")
+				assert.Equal("manager:peers:bar--0.1.0:schedulers", s)
 			},
 		},
 		{
@@ -341,7 +347,7 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 			version:  "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:bar-127.0.0.1-:schedulers")
+				assert.Equal("manager:peers:bar-127.0.0.1-:schedulers", s)
 			},
 		},
 		{
@@ -351,10 +357,11 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 			version:  "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "manager:peers:--:schedulers")
+				assert.Equal("manager:peers:--:schedulers", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeSchedulersKeyForPeerInManager(tc.hostname, tc.ip, tc.version))
@@ -363,23 +370,8 @@ func Test_MakeSchedulersKeyForPeerInManager(t *testing.T) {
 }
 
 func Test_MakeApplicationsKeyInManager(t *testing.T) {
-	tests := []struct {
-		name   string
-		expect func(t *testing.T, s string)
-	}{
-		{
-			name: "make applications key in manager",
-			expect: func(t *testing.T, s string) {
-				assert := assert.New(t)
-				assert.Equal(s, "manager:applications")
-			},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, MakeApplicationsKeyInManager())
-		})
-	}
+	assert := assert.New(t)
+	assert.Equal("manager:applications", MakeApplicationsKeyInManager())
 }
 
 func Test_MakeNamespaceKeyInScheduler(t *testing.T) {
@@ -393,7 +385,7 @@ func Test_MakeNamespaceKeyInScheduler(t *testing.T) {
 			namespace: "baz",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler:baz")
+				assert.Equal("scheduler:baz", s)
 			},
 		},
 		{
@@ -401,10 +393,11 @@ func Test_MakeNamespaceKeyInScheduler(t *testing.T) {
 			namespace: "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler:")
+				assert.Equal("scheduler:", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeNamespaceKeyInScheduler(tc.namespace))
@@ -425,7 +418,7 @@ func Test_MakeKeyInScheduler(t *testing.T) {
 			id:        "id",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler:bas:id")
+				assert.Equal("scheduler:bas:id", s)
 			},
 		},
 		{
@@ -434,7 +427,7 @@ func Test_MakeKeyInScheduler(t *testing.T) {
 			id:        "id",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler::id")
+				assert.Equal("scheduler::id", s)
 			},
 		},
 		{
@@ -443,7 +436,7 @@ func Test_MakeKeyInScheduler(t *testing.T) {
 			id:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler:bas:")
+				assert.Equal("scheduler:bas:", s)
 			},
 		},
 		{
@@ -452,10 +445,11 @@ func Test_MakeKeyInScheduler(t *testing.T) {
 			id:        "",
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "scheduler::")
+				assert.Equal("scheduler::", s)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, MakeKeyInScheduler(tc.namespace, tc.id))

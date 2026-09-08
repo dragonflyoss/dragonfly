@@ -18,6 +18,7 @@ package redis
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -35,6 +36,8 @@ type proxy struct {
 	to        string
 	done      chan struct{}
 	closeOnce sync.Once
+	mu        sync.Mutex
+	listener  net.Listener
 }
 
 // NewProxy creates a new proxy instance for redirecting traffic to redis.
@@ -46,7 +49,7 @@ func NewProxy(from string, to string) Proxy {
 	}
 }
 
-// Serve starts the proxy server and listens for incoming connections.
+// Serve starts the proxy server and listens for incoming connections until Stop is called.
 func (p *proxy) Serve() error {
 	listener, err := net.Listen("tcp", p.from)
 	if err != nil {
@@ -54,25 +57,47 @@ func (p *proxy) Serve() error {
 	}
 	defer listener.Close()
 
+	p.mu.Lock()
+	select {
+	case <-p.done:
+		p.mu.Unlock()
+		return nil
+	default:
+	}
+	p.listener = listener
+	p.mu.Unlock()
+
 	for {
-		select {
-		case <-p.done:
-			return nil
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				logger.Errorf("error accepting conn: %v", err)
-			} else {
-				go p.handleConn(conn)
+		conn, err := listener.Accept()
+		if err != nil {
+			select {
+			case <-p.done:
+				return nil
+			default:
 			}
+
+			if errors.Is(err, net.ErrClosed) {
+				return err
+			}
+
+			logger.Errorf("error accepting conn: %v", err)
+			continue
 		}
+
+		go p.handleConn(conn)
 	}
 }
 
-// Stop stops the proxy server and closes all connections.
+// Stop stops the proxy server and unblocks Serve by closing the listener.
 func (p *proxy) Stop() {
 	p.closeOnce.Do(func() {
 		close(p.done)
+
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.listener != nil {
+			p.listener.Close()
+		}
 	})
 }
 
@@ -95,38 +120,20 @@ func (p *proxy) handleConn(conn net.Conn) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	go p.copy(rConn, conn, wg)
-	go p.copyReader(reader, rConn, wg)
+	go p.copy(conn, rConn, wg)
+	go p.copy(rConn, reader, wg)
 	wg.Wait()
 }
 
-// copy copies data from one connection to another.
-func (p *proxy) copy(from, to net.Conn, wg *sync.WaitGroup) {
+// copy copies data from src to dst and closes dst when src is drained or fails,
+// so the opposite direction of the same connection unblocks. A failure only
+// affects this connection; the proxy keeps serving others.
+func (p *proxy) copy(dst net.Conn, src io.Reader, wg *sync.WaitGroup) {
 	defer wg.Done()
-	select {
-	case <-p.done:
-		return
-	default:
-		if _, err := io.Copy(to, from); err != nil {
-			logger.Errorf("error copying from %s to %s: %v", from.RemoteAddr(), to.RemoteAddr(), err)
-			p.Stop()
-			return
-		}
-	}
-}
+	defer dst.Close()
 
-// copyReader copies data from a reader to a connection.
-func (p *proxy) copyReader(from io.Reader, to net.Conn, wg *sync.WaitGroup) {
-	defer wg.Done()
-	select {
-	case <-p.done:
-		return
-	default:
-		if _, err := io.Copy(to, from); err != nil {
-			logger.Errorf("error copying to %s: %v", to.RemoteAddr(), err)
-			p.Stop()
-			return
-		}
+	if _, err := io.Copy(dst, src); err != nil && !errors.Is(err, net.ErrClosed) {
+		logger.Errorf("error copying to %s: %v", dst.RemoteAddr(), err)
 	}
 }
 

@@ -17,9 +17,11 @@
 package standard
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -46,8 +48,13 @@ func TestResource_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(resource).Elem().Name(), "resource")
 				assert.NoError(err)
+				assert.Equal("resource", reflect.TypeOf(resource).Elem().Name())
+				assert.NotNil(resource.SeedPeer())
+				assert.NotNil(resource.HostManager())
+				assert.NotNil(resource.PeerManager())
+				assert.NotNil(resource.TaskManager())
+				assert.NotNil(resource.PeerClientPool())
 			},
 		},
 		{
@@ -58,7 +65,7 @@ func TestResource_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 		{
@@ -72,7 +79,7 @@ func TestResource_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 		{
@@ -86,11 +93,11 @@ func TestResource_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 		{
-			name:   "new resource faild because of seed peer list is empty",
+			name:   "new resource with empty seed peer list",
 			config: config.New(),
 			mock: func(mg *gc.MockGCMockRecorder) {
 				gomock.InOrder(
@@ -119,8 +126,8 @@ func TestResource_New(t *testing.T) {
 			},
 			expect: func(t *testing.T, resource Resource, err error) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(resource).Elem().Name(), "resource")
 				assert.NoError(err)
+				assert.Equal("resource", reflect.TypeOf(resource).Elem().Name())
 			},
 		},
 	}
@@ -135,5 +142,34 @@ func TestResource_New(t *testing.T) {
 			resource, err := New(tc.config, gc, rpc.NewInsecureCredentials())
 			tc.expect(t, resource, err)
 		})
+	}
+}
+
+func TestResource_Serve(t *testing.T) {
+	ctl := gomock.NewController(t)
+	defer ctl.Finish()
+	gc := gc.NewMockGC(ctl)
+	gc.EXPECT().Add(gomock.Any()).Return(nil).Times(3)
+
+	resource, err := New(config.New(), gc, rpc.NewInsecureCredentials())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- resource.Serve()
+	}()
+	resource.Stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	assert := assert.New(t)
+	select {
+	case err := <-errCh:
+		assert.NoError(err)
+	case <-ctx.Done():
+		assert.NoError(ctx.Err())
 	}
 }

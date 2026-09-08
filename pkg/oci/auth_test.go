@@ -26,8 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewAuthClientWithIssuedToken(t *testing.T) {
-	assert := assert.New(t)
+func TestNewAuthClient(t *testing.T) {
 	ref := &Reference{
 		Scheme:     "http",
 		Registry:   "127.0.0.1:1",
@@ -35,22 +34,39 @@ func TestNewAuthClientWithIssuedToken(t *testing.T) {
 		Reference:  "latest",
 	}
 
-	client, err := NewAuthClient(ref, &http.Client{}, "", "", WithIssuedToken("Bearer issued-token"))
-	assert.NoError(err)
-	assert.Equal("Bearer issued-token", client.AuthToken())
-}
-
-func TestNewAuthClientUnreachableRegistry(t *testing.T) {
-	assert := assert.New(t)
-	ref := &Reference{
-		Scheme:     "http",
-		Registry:   "127.0.0.1:1",
-		Repository: "library/nginx",
-		Reference:  "latest",
+	tests := []struct {
+		name       string
+		httpClient *http.Client
+		opts       []Option
+		expect     func(t *testing.T, client *AuthClient, err error)
+	}{
+		{
+			name:       "issued token skips registry ping",
+			httpClient: &http.Client{},
+			opts:       []Option{WithIssuedToken("Bearer issued-token")},
+			expect: func(t *testing.T, client *AuthClient, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("Bearer issued-token", client.AuthToken())
+			},
+		},
+		{
+			name:       "unreachable registry",
+			httpClient: &http.Client{Transport: http.DefaultTransport},
+			expect: func(t *testing.T, client *AuthClient, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(client)
+			},
+		},
 	}
 
-	_, err := NewAuthClient(ref, &http.Client{Transport: http.DefaultTransport}, "", "")
-	assert.Error(err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client, err := NewAuthClient(ref, tc.httpClient, "", "", tc.opts...)
+			tc.expect(t, client, err)
+		})
+	}
 }
 
 func TestAuthClientTokenChallenge(t *testing.T) {

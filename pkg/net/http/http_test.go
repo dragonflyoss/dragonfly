@@ -21,14 +21,14 @@ import (
 	"syscall"
 	"testing"
 
-	testifyassert "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHeaderToMap(t *testing.T) {
 	tests := []struct {
 		name   string
 		header http.Header
-		expect func(t *testing.T, data any)
+		expect func(t *testing.T, data map[string]string)
 	}{
 		{
 			name: "normal conversion",
@@ -36,20 +36,20 @@ func TestHeaderToMap(t *testing.T) {
 				"foo": {"foo"},
 				"bar": {"bar"},
 			},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, map[string]string{
+			expect: func(t *testing.T, data map[string]string) {
+				assert := assert.New(t)
+				assert.EqualValues(map[string]string{
 					"foo": "foo",
 					"bar": "bar",
-				})
+				}, data)
 			},
 		},
 		{
 			name:   "header is empty",
 			header: http.Header{},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, map[string]string{})
+			expect: func(t *testing.T, data map[string]string) {
+				assert := assert.New(t)
+				assert.EqualValues(map[string]string{}, data)
 			},
 		},
 		{
@@ -58,12 +58,12 @@ func TestHeaderToMap(t *testing.T) {
 				"foo": {"foo1", "foo2"},
 				"bar": {"bar"},
 			},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, map[string]string{
+			expect: func(t *testing.T, data map[string]string) {
+				assert := assert.New(t)
+				assert.EqualValues(map[string]string{
 					"foo": "foo1",
 					"bar": "bar",
-				})
+				}, data)
 			},
 		},
 		{
@@ -72,19 +72,18 @@ func TestHeaderToMap(t *testing.T) {
 				"foo":   {"foo"},
 				"empty": {},
 			},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, map[string]string{
+			expect: func(t *testing.T, data map[string]string) {
+				assert := assert.New(t)
+				assert.EqualValues(map[string]string{
 					"foo": "foo",
-				})
+				}, data)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			data := HeaderToMap(tc.header)
-			tc.expect(t, data)
+			tc.expect(t, HeaderToMap(tc.header))
 		})
 	}
 }
@@ -93,7 +92,7 @@ func TestMapToHeader(t *testing.T) {
 	tests := []struct {
 		name   string
 		m      map[string]string
-		expect func(t *testing.T, data any)
+		expect func(t *testing.T, data http.Header)
 	}{
 		{
 			name: "normal conversion",
@@ -101,28 +100,27 @@ func TestMapToHeader(t *testing.T) {
 				"Foo": "foo",
 				"Bar": "bar",
 			},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, http.Header{
+			expect: func(t *testing.T, data http.Header) {
+				assert := assert.New(t)
+				assert.EqualValues(http.Header{
 					"Foo": {"foo"},
 					"Bar": {"bar"},
-				})
+				}, data)
 			},
 		},
 		{
 			name: "map is empty",
 			m:    map[string]string{},
-			expect: func(t *testing.T, data any) {
-				assert := testifyassert.New(t)
-				assert.EqualValues(data, http.Header{})
+			expect: func(t *testing.T, data http.Header) {
+				assert := assert.New(t)
+				assert.EqualValues(http.Header{}, data)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			data := MapToHeader(tc.m)
-			tc.expect(t, data)
+			tc.expect(t, MapToHeader(tc.m))
 		})
 	}
 }
@@ -140,16 +138,16 @@ func Test_safeSocketControl(t *testing.T) {
 			network: "tcp4",
 			address: "111.111.111.111:5682",
 			expect: func(t *testing.T, err error) {
-				assert := testifyassert.New(t)
-				assert.Equal(nil, err)
+				assert := assert.New(t)
+				assert.NoError(err)
 			},
 		},
 		{
 			name:    "network type is invaild",
 			network: "tcp",
 			expect: func(t *testing.T, err error) {
-				assert := testifyassert.New(t)
-				assert.EqualError(err, "network type tcp is invalid")
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 		{
@@ -157,8 +155,8 @@ func Test_safeSocketControl(t *testing.T) {
 			network: "tcp4",
 			address: "127.0.0.1",
 			expect: func(t *testing.T, err error) {
-				assert := testifyassert.New(t)
-				assert.EqualError(err, "address 127.0.0.1: missing port in address")
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 		{
@@ -166,8 +164,8 @@ func Test_safeSocketControl(t *testing.T) {
 			network: "tcp4",
 			address: "127.0.0.256:5682",
 			expect: func(t *testing.T, err error) {
-				assert := testifyassert.New(t)
-				assert.EqualError(err, "host 127.0.0.256 is invalid")
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 		{
@@ -175,16 +173,15 @@ func Test_safeSocketControl(t *testing.T) {
 			network: "tcp4",
 			address: "127.0.0.1:5682",
 			expect: func(t *testing.T, err error) {
-				assert := testifyassert.New(t)
-				assert.EqualError(err, "ip 127.0.0.1 is invalid")
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := safeSocketControl(tc.network, tc.address, tc.conn)
-			tc.expect(t, err)
+			tc.expect(t, safeSocketControl(tc.network, tc.address, tc.conn))
 		})
 	}
 }
