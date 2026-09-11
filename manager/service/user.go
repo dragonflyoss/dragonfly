@@ -95,7 +95,7 @@ func (s *service) ResetPassword(ctx context.Context, id uint, json types.ResetPa
 		return err
 	}
 
-	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(json.NewPassword), bcrypt.MinCost)
+	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(json.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (s *service) ResetPassword(ctx context.Context, id uint, json types.ResetPa
 }
 
 func (s *service) SignUp(ctx context.Context, json types.SignUpRequest) (*models.User, error) {
-	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(json.Password), bcrypt.MinCost)
+	encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(json.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
