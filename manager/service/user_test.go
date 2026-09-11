@@ -59,6 +59,10 @@ func TestService_SignUp(t *testing.T) {
 				assert.NotEqual("dragonfly", user.EncryptedPassword)
 				assert.NoError(bcrypt.CompareHashAndPassword([]byte(user.EncryptedPassword), []byte("dragonfly")))
 
+				cost, err := bcrypt.Cost([]byte(user.EncryptedPassword))
+				assert.NoError(err)
+				assert.GreaterOrEqual(cost, bcrypt.DefaultCost)
+
 				roles, err := s.enforcer.GetRolesForUser(fmt.Sprint(user.ID))
 				assert.NoError(err)
 				assert.Equal([]string{rbac.GuestRole}, roles)
