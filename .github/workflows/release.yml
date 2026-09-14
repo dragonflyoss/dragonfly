@@ -12,7 +12,7 @@ jobs:
   goreleaser:
     permissions:
       contents: write
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: cncf-ubuntu-24-96-x86
     timeout-minutes: 60
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
@@ -70,7 +70,7 @@ jobs:
     needs: [goreleaser, provenance]
     permissions:
       contents: write
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: cncf-ubuntu-24-96-x86
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

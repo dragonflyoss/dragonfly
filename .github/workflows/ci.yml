@@ -17,7 +17,7 @@ jobs:
   test:
     name: Test
     timeout-minutes: 60
-    runs-on: oracle-vm-16cpu-64gb-x86-64
+    runs-on: cncf-ubuntu-16-64-x86
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -57,7 +57,7 @@ jobs:
   build:
     name: Build
     timeout-minutes: 20
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: cncf-ubuntu-24-96-x86
     needs: [test]
     steps:
       - name: Check out code
