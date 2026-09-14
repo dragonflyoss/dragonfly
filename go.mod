@@ -1,6 +1,6 @@
 module d7y.io/dragonfly/v2
 
-go 1.25.0
+go 1.26.0
 
 require (
 	d7y.io/api/v2 v2.3.8
@@ -62,7 +62,7 @@ require (
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
 	golang.org/x/time v0.14.0
