@@ -22,9 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
@@ -45,6 +47,45 @@ func TestRateLimiterInterceptor_Limit(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 	assert.False(limiter.Limit())
+}
+
+func TestAllButHealth(t *testing.T) {
+	tests := []struct {
+		name       string
+		fullMethod string
+		expect     func(t *testing.T, matched bool)
+	}{
+		{
+			name:       "health check is not matched",
+			fullMethod: healthpb.Health_Check_FullMethodName,
+			expect: func(t *testing.T, matched bool) {
+				assert := assert.New(t)
+				assert.False(matched)
+			},
+		},
+		{
+			name:       "health watch is not matched",
+			fullMethod: healthpb.Health_Watch_FullMethodName,
+			expect: func(t *testing.T, matched bool) {
+				assert := assert.New(t)
+				assert.False(matched)
+			},
+		},
+		{
+			name:       "scheduler method is matched",
+			fullMethod: "/scheduler.v2.Scheduler/AnnounceHost",
+			expect: func(t *testing.T, matched bool) {
+				assert := assert.New(t)
+				assert.True(matched)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, AllButHealth(context.Background(), interceptors.NewServerCallMeta(tc.fullMethod, nil, nil)))
+		})
+	}
 }
 
 func TestConvertErrorUnaryServerInterceptor(t *testing.T) {
