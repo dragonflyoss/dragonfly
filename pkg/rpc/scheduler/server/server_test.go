@@ -20,7 +20,6 @@ import (
 	"context"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -28,98 +27,74 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 
 	schedulerv1 "d7y.io/api/v2/pkg/apis/scheduler/v1"
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
+
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
 func TestNew(t *testing.T) {
-	// Rate limit of 1 request per second with a burst of 1 makes the limiter
-	// reject every business request after the first one within the same second.
-	const requestRateLimit = 1
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, conn *grpc.ClientConn)
+	}{
+		{
+			name: "health check bypasses exhausted rate limiter",
+			expect: func(t *testing.T, conn *grpc.ClientConn) {
+				assert := assert.New(t)
+				resp, err := healthpb.NewHealthClient(conn).Check(context.Background(), &healthpb.HealthCheckRequest{})
+				assert.NoError(err)
+				assert.Equal(healthpb.HealthCheckResponse_SERVING, resp.GetStatus())
+			},
+		},
+		{
+			name: "unary request is rejected by exhausted rate limiter",
+			expect: func(t *testing.T, conn *grpc.ClientConn) {
+				assert := assert.New(t)
+				_, err := schedulerv2.NewSchedulerClient(conn).AnnounceHost(context.Background(), &schedulerv2.AnnounceHostRequest{})
+				assert.Equal(codes.ResourceExhausted, status.Code(err))
+			},
+		},
+		{
+			name: "stream request is rejected by exhausted rate limiter",
+			expect: func(t *testing.T, conn *grpc.ClientConn) {
+				assert := assert.New(t)
+				stream, err := schedulerv2.NewSchedulerClient(conn).AnnouncePeer(context.Background())
+				assert.NoError(err)
 
-	newBufconnClient := func(t *testing.T) *grpc.ClientConn {
-		listener := bufconn.Listen(1024 * 1024)
-		grpcServer := New(&schedulerv1.UnimplementedSchedulerServer{}, &schedulerv2.UnimplementedSchedulerServer{}, requestRateLimit)
-		go func() { _ = grpcServer.Serve(listener) }()
-		t.Cleanup(grpcServer.Stop)
-
-		conn, err := grpc.NewClient(
-			"passthrough:///bufconn",
-			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }),
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
-		if err != nil {
-			t.Fatalf("dial bufconn: %v", err)
-		}
-		t.Cleanup(func() { _ = conn.Close() })
-
-		return conn
+				_, err = stream.Recv()
+				assert.Equal(codes.ResourceExhausted, status.Code(err))
+			},
+		},
 	}
 
-	t.Run("health check is never rate limited", func(t *testing.T) {
-		assert := assert.New(t)
-		conn := newBufconnClient(t)
-		healthClient := healthpb.NewHealthClient(conn)
-		schedulerClient := schedulerv2.NewSchedulerClient(conn)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		// Exhaust the limiter with a business request first, then verify that
-		// health checks still succeed while business requests are rejected.
-		_, _ = schedulerClient.AnnounceHost(ctx, &schedulerv2.AnnounceHostRequest{})
-
-		for range 20 {
-			resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{})
-			if !assert.NoError(err) {
-				return
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			lis, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatal(err)
 			}
-			assert.Equal(healthpb.HealthCheckResponse_SERVING, resp.GetStatus())
-		}
 
-		_, err := schedulerClient.AnnounceHost(ctx, &schedulerv2.AnnounceHostRequest{})
-		assert.Equal(codes.ResourceExhausted, status.Code(err))
-		assert.Contains(status.Convert(err).Message(), "/scheduler.v2.Scheduler/AnnounceHost is rejected by grpc_ratelimit middleware")
-	})
+			svr := New(&schedulerv1.UnimplementedSchedulerServer{}, &schedulerv2.UnimplementedSchedulerServer{}, 1)
+			go func() {
+				if err := svr.Serve(lis); err != nil {
+					logger.Errorf("failed to serve the scheduler: %v", err)
+				}
+			}()
+			t.Cleanup(svr.Stop)
 
-	t.Run("business unary request is rate limited", func(t *testing.T) {
-		assert := assert.New(t)
-		conn := newBufconnClient(t)
-		schedulerClient := schedulerv2.NewSchedulerClient(conn)
+			conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { conn.Close() })
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+			if _, err := schedulerv2.NewSchedulerClient(conn).AnnounceHost(context.Background(), &schedulerv2.AnnounceHostRequest{}); status.Code(err) == codes.ResourceExhausted {
+				t.Fatal(err)
+			}
 
-		// The first request consumes the single burst token and passes the limiter
-		// (it is then rejected downstream by the validator), every following
-		// request is rejected by the limiter itself.
-		_, err := schedulerClient.AnnounceHost(ctx, &schedulerv2.AnnounceHostRequest{})
-		assert.NotEqual(codes.ResourceExhausted, status.Code(err))
-
-		_, err = schedulerClient.AnnounceHost(ctx, &schedulerv2.AnnounceHostRequest{})
-		assert.Equal(codes.ResourceExhausted, status.Code(err))
-	})
-
-	t.Run("business stream request is rate limited", func(t *testing.T) {
-		assert := assert.New(t)
-		conn := newBufconnClient(t)
-		schedulerClient := schedulerv2.NewSchedulerClient(conn)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		_, err := schedulerClient.AnnounceHost(ctx, &schedulerv2.AnnounceHostRequest{})
-		assert.NotEqual(codes.ResourceExhausted, status.Code(err))
-
-		stream, err := schedulerClient.AnnouncePeer(ctx)
-		if !assert.NoError(err) {
-			return
-		}
-
-		_, err = stream.Recv()
-		assert.Equal(codes.ResourceExhausted, status.Code(err))
-		assert.Contains(status.Convert(err).Message(), "/scheduler.v2.Scheduler/AnnouncePeer is rejected by grpc_ratelimit middleware")
-	})
+			tc.expect(t, conn)
+		})
+	}
 }

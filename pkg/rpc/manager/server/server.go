@@ -22,7 +22,9 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -68,14 +70,14 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 			MaxConnectionAgeGrace: DefaultMaxConnectionAgeGrace,
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			rpc.RateLimitUnaryServerInterceptor(limiter),
+			selector.UnaryServerInterceptor(grpc_ratelimit.UnaryServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
 			grpc_prometheus.UnaryServerInterceptor,
 			grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
 			grpc_validator.UnaryServerInterceptor(),
 			grpc_recovery.UnaryServerInterceptor(),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			rpc.RateLimitStreamServerInterceptor(limiter),
+			selector.StreamServerInterceptor(grpc_ratelimit.StreamServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
 			grpc_prometheus.StreamServerInterceptor,
 			grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
 			grpc_validator.StreamServerInterceptor(),
