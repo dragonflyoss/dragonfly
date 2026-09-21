@@ -18,12 +18,20 @@ package rpc
 
 import (
 	"context"
+	"strings"
 
+	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 
 	"d7y.io/dragonfly/v2/internal/dferrors"
 )
+
+// healthCheckMethodPrefix is the full method prefix of the standard gRPC health
+// checking service (grpc.health.v1.Health). Health requests bypass rate limiting,
+// otherwise kubelet probes and client-side health checks fail whenever the server
+// sheds business traffic, turning a transient overload into pod restarts.
+const healthCheckMethodPrefix = "/grpc.health.v1.Health/"
 
 // RateLimiterInterceptor is the interface for ratelimit interceptor.
 type RateLimiterInterceptor struct {
@@ -41,6 +49,36 @@ func NewRateLimiterInterceptor(qps float64, burst int64) *RateLimiterInterceptor
 // Limit is the predicate which limits the requests.
 func (r *RateLimiterInterceptor) Limit() bool {
 	return !r.limiter.Allow()
+}
+
+func isHealthCheckMethod(fullMethod string) bool {
+	return strings.HasPrefix(fullMethod, healthCheckMethodPrefix)
+}
+
+// RateLimitUnaryServerInterceptor wraps the upstream grpc_ratelimit unary server interceptor
+// and lets gRPC health checking requests bypass it.
+func RateLimitUnaryServerInterceptor(limiter grpc_ratelimit.Limiter) grpc.UnaryServerInterceptor {
+	rateLimit := grpc_ratelimit.UnaryServerInterceptor(limiter)
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if isHealthCheckMethod(info.FullMethod) {
+			return handler(ctx, req)
+		}
+
+		return rateLimit(ctx, req, info, handler)
+	}
+}
+
+// RateLimitStreamServerInterceptor wraps the upstream grpc_ratelimit stream server interceptor
+// and lets gRPC health checking requests bypass it.
+func RateLimitStreamServerInterceptor(limiter grpc_ratelimit.Limiter) grpc.StreamServerInterceptor {
+	rateLimit := grpc_ratelimit.StreamServerInterceptor(limiter)
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if isHealthCheckMethod(info.FullMethod) {
+			return handler(srv, ss)
+		}
+
+		return rateLimit(srv, ss, info, handler)
+	}
 }
 
 // ConvertErrorUnaryServerInterceptor returns a new unary server interceptor that convert error when trigger custom error.

@@ -47,6 +47,160 @@ func TestRateLimiterInterceptor_Limit(t *testing.T) {
 	assert.False(limiter.Limit())
 }
 
+// fakeLimiter is a Limiter whose decision is fixed and which records how many times it was consulted.
+type fakeLimiter struct {
+	limited bool
+	calls   int
+}
+
+func (f *fakeLimiter) Limit() bool {
+	f.calls++
+	return f.limited
+}
+
+func TestRateLimitUnaryServerInterceptor(t *testing.T) {
+	tests := []struct {
+		name       string
+		limited    bool
+		fullMethod string
+		expect     func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int)
+	}{
+		{
+			name:       "business method is allowed when not limited",
+			limited:    false,
+			fullMethod: "/scheduler.v2.Scheduler/AnnounceHost",
+			expect: func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("resp", resp)
+				assert.Equal(1, limiterCalls)
+				assert.Equal(1, handlerCalls)
+			},
+		},
+		{
+			name:       "business method is rejected when limited",
+			limited:    true,
+			fullMethod: "/scheduler.v2.Scheduler/AnnounceHost",
+			expect: func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Equal(codes.ResourceExhausted, status.Code(err))
+				assert.Equal("/scheduler.v2.Scheduler/AnnounceHost is rejected by grpc_ratelimit middleware, please retry later.", status.Convert(err).Message())
+				assert.Equal(1, limiterCalls)
+				assert.Equal(0, handlerCalls)
+			},
+		},
+		{
+			name:       "health check bypasses limiter when limited",
+			limited:    true,
+			fullMethod: "/grpc.health.v1.Health/Check",
+			expect: func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("resp", resp)
+				assert.Equal(0, limiterCalls)
+				assert.Equal(1, handlerCalls)
+			},
+		},
+		{
+			name:       "health list bypasses limiter when limited",
+			limited:    true,
+			fullMethod: "/grpc.health.v1.Health/List",
+			expect: func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("resp", resp)
+				assert.Equal(0, limiterCalls)
+				assert.Equal(1, handlerCalls)
+			},
+		},
+		{
+			name:       "method with health-like suffix but different service is limited",
+			limited:    true,
+			fullMethod: "/scheduler.v2.Scheduler/Check",
+			expect: func(t *testing.T, resp any, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Equal(codes.ResourceExhausted, status.Code(err))
+				assert.Equal(1, limiterCalls)
+				assert.Equal(0, handlerCalls)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			limiter := &fakeLimiter{limited: tc.limited}
+			handlerCalls := 0
+			handler := func(ctx context.Context, req any) (any, error) {
+				handlerCalls++
+				return "resp", nil
+			}
+
+			resp, err := RateLimitUnaryServerInterceptor(limiter)(context.Background(), "req", &grpc.UnaryServerInfo{FullMethod: tc.fullMethod}, handler)
+			tc.expect(t, resp, err, limiter.calls, handlerCalls)
+		})
+	}
+}
+
+func TestRateLimitStreamServerInterceptor(t *testing.T) {
+	tests := []struct {
+		name       string
+		limited    bool
+		fullMethod string
+		expect     func(t *testing.T, err error, limiterCalls int, handlerCalls int)
+	}{
+		{
+			name:       "business stream is allowed when not limited",
+			limited:    false,
+			fullMethod: "/scheduler.v2.Scheduler/AnnouncePeer",
+			expect: func(t *testing.T, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(1, limiterCalls)
+				assert.Equal(1, handlerCalls)
+			},
+		},
+		{
+			name:       "business stream is rejected when limited",
+			limited:    true,
+			fullMethod: "/scheduler.v2.Scheduler/AnnouncePeer",
+			expect: func(t *testing.T, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.Equal(codes.ResourceExhausted, status.Code(err))
+				assert.Equal("/scheduler.v2.Scheduler/AnnouncePeer is rejected by grpc_ratelimit middleware, please retry later.", status.Convert(err).Message())
+				assert.Equal(1, limiterCalls)
+				assert.Equal(0, handlerCalls)
+			},
+		},
+		{
+			name:       "health watch bypasses limiter when limited",
+			limited:    true,
+			fullMethod: "/grpc.health.v1.Health/Watch",
+			expect: func(t *testing.T, err error, limiterCalls int, handlerCalls int) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(0, limiterCalls)
+				assert.Equal(1, handlerCalls)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			limiter := &fakeLimiter{limited: tc.limited}
+			handlerCalls := 0
+			handler := func(srv any, stream grpc.ServerStream) error {
+				handlerCalls++
+				return nil
+			}
+
+			err := RateLimitStreamServerInterceptor(limiter)("srv", nil, &grpc.StreamServerInfo{FullMethod: tc.fullMethod}, handler)
+			tc.expect(t, err, limiter.calls, handlerCalls)
+		})
+	}
+}
+
 func TestConvertErrorUnaryServerInterceptor(t *testing.T) {
 	plainErr := errors.New("plain error")
 

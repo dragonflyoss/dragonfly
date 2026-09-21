@@ -22,7 +22,6 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -69,7 +68,7 @@ func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedu
 			MaxConnectionAgeGrace: DefaultMaxConnectionAgeGrace,
 		}),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_ratelimit.UnaryServerInterceptor(limiter),
+			rpc.RateLimitUnaryServerInterceptor(limiter),
 			rpc.ConvertErrorUnaryServerInterceptor,
 			grpc_prometheus.UnaryServerInterceptor,
 			grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
@@ -77,7 +76,7 @@ func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedu
 			grpc_recovery.UnaryServerInterceptor(),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpc_ratelimit.StreamServerInterceptor(limiter),
+			rpc.RateLimitStreamServerInterceptor(limiter),
 			rpc.ConvertErrorStreamServerInterceptor,
 			grpc_prometheus.StreamServerInterceptor,
 			grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
