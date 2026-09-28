@@ -24,6 +24,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -222,9 +223,12 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 		}
 
 		peer.Log.Info("send NormalTaskResponse")
-		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
+		rawResponse := &schedulerv2.AnnouncePeerResponse{
 			Response: constructSuccessNormalTaskResponse(addedParents),
-		}); err != nil {
+		}
+		clonedResponse := proto.Clone(rawResponse).(*schedulerv2.AnnouncePeerResponse)
+
+		if err := stream.Send(clonedResponse); err != nil {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 				err = fmt.Errorf("peer deletes inedges failed: %w", err)
 				peer.Log.Error(err)
