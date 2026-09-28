@@ -155,7 +155,7 @@ func listenWithCustomBacklogWithOps(network, address string, ops listenerOps) (n
 	}
 
 	if err := ops.setsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
-		ops.close(fd)
+		_ = ops.close(fd)
 		return nil, fmt.Errorf("set SO_REUSEADDR failed: %w", err)
 	}
 
@@ -171,18 +171,20 @@ func listenWithCustomBacklogWithOps(network, address string, ops listenerOps) (n
 	}
 
 	if err := ops.bind(fd, sa); err != nil {
-		ops.close(fd)
+		_ = ops.close(fd)
 		return nil, fmt.Errorf("socket bind failed to %s: %w", address, err)
 	}
 
 	backlog := getSystemSomaxconn()
 	if err := ops.listen(fd, backlog); err != nil {
-		ops.close(fd)
+		_ = ops.close(fd)
 		return nil, fmt.Errorf("socket listen with backlog %d failed: %w", backlog, err)
 	}
 
 	file := os.NewFile(uintptr(fd), "grpc_scheduler_listener")
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	return ops.fileListener(file)
 }
 
@@ -339,7 +341,9 @@ func (s *Server) Serve() error {
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %s", err.Error())
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 
 	// Started GRPC server.
 	logger.Infof("started grpc server at %s://%s", listener.Addr().Network(), listener.Addr().String())

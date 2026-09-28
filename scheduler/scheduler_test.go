@@ -61,7 +61,9 @@ func TestListenWithCustomBacklog(t *testing.T) {
 	if !assert.NotNil(t, listener) {
 		return
 	}
-	defer listener.Close()
+	defer func() {
+		_ = listener.Close()
+	}()
 
 	address, ok := listener.Addr().(*net.TCPAddr)
 	if assert.True(t, ok) {
