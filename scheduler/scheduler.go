@@ -96,8 +96,12 @@ type Server struct {
 // getSystemSomaxconn reads the net.core.somaxconn limit on Linux systems.
 // Returns 4096 as a default fallback if reading fails or target OS is not Linux.
 func getSystemSomaxconn() int {
+	return getSystemSomaxconnFrom(os.ReadFile)
+}
+
+func getSystemSomaxconnFrom(readFile func(string) ([]byte, error)) int {
 	defaultBacklog := 4096
-	data, err := os.ReadFile("/proc/sys/net/core/somaxconn")
+	data, err := readFile("/proc/sys/net/core/somaxconn")
 	if err != nil {
 		return defaultBacklog
 	}
@@ -108,9 +112,33 @@ func getSystemSomaxconn() int {
 	return val
 }
 
+type listenerOps struct {
+	socket        func(int, int, int) (int, error)
+	setsockoptInt func(int, int, int, int) error
+	bind          func(int, unix.Sockaddr) error
+	listen        func(int, int) error
+	close         func(int) error
+	fileListener  func(*os.File) (net.Listener, error)
+}
+
+func defaultListenerOps() listenerOps {
+	return listenerOps{
+		socket:        unix.Socket,
+		setsockoptInt: unix.SetsockoptInt,
+		bind:          unix.Bind,
+		listen:        unix.Listen,
+		close:         unix.Close,
+		fileListener:  net.FileListener,
+	}
+}
+
 // listenWithCustomBacklog bypasses the Go runtime 4096 backlog limit
 // by making raw syscalls directly to the Linux kernel socket layer.
 func listenWithCustomBacklog(network, address string) (net.Listener, error) {
+	return listenWithCustomBacklogWithOps(network, address, defaultListenerOps())
+}
+
+func listenWithCustomBacklogWithOps(network, address string, ops listenerOps) (net.Listener, error) {
 	tcpAddr, err := net.ResolveTCPAddr(network, address)
 	if err != nil {
 		return nil, fmt.Errorf("resolve tcp addr failed: %w", err)
@@ -121,13 +149,13 @@ func listenWithCustomBacklog(network, address string) (net.Listener, error) {
 		family = unix.AF_INET6
 	}
 
-	fd, err := unix.Socket(family, unix.SOCK_STREAM, unix.IPPROTO_TCP)
+	fd, err := ops.socket(family, unix.SOCK_STREAM, unix.IPPROTO_TCP)
 	if err != nil {
 		return nil, fmt.Errorf("create raw socket failed: %w", err)
 	}
 
-	if err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
-		unix.Close(fd)
+	if err := ops.setsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
+		ops.close(fd)
 		return nil, fmt.Errorf("set SO_REUSEADDR failed: %w", err)
 	}
 
@@ -142,20 +170,20 @@ func listenWithCustomBacklog(network, address string) (net.Listener, error) {
 		sa = sa6
 	}
 
-	if err := unix.Bind(fd, sa); err != nil {
-		unix.Close(fd)
+	if err := ops.bind(fd, sa); err != nil {
+		ops.close(fd)
 		return nil, fmt.Errorf("socket bind failed to %s: %w", address, err)
 	}
 
 	backlog := getSystemSomaxconn()
-	if err := unix.Listen(fd, backlog); err != nil {
-		unix.Close(fd)
+	if err := ops.listen(fd, backlog); err != nil {
+		ops.close(fd)
 		return nil, fmt.Errorf("socket listen with backlog %d failed: %w", backlog, err)
 	}
 
 	file := os.NewFile(uintptr(fd), "grpc_scheduler_listener")
 	defer file.Close()
-	return net.FileListener(file)
+	return ops.fileListener(file)
 }
 
 // New creates a new scheduler server.

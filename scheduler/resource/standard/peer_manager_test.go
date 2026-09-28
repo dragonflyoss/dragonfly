@@ -25,9 +25,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/gc"
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -479,6 +482,27 @@ func TestPeerManager_Range(t *testing.T) {
 			tc.expect(t, peerManager, mockPeer, mockSeedPeer)
 		})
 	}
+}
+
+func TestLogFsmError(t *testing.T) {
+	mockHost := NewHost(
+		mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
+		mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+	mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
+	mockPeer := NewPeer(mockPeerID, mockTask, mockHost)
+
+	core, logs := observer.New(zap.InfoLevel)
+	original := logger.CoreLogger
+	logger.SetCoreLogger(zap.New(core).Sugar())
+	defer logger.SetCoreLogger(original)
+
+	logFsmError(mockPeer, errors.New("event Leave inappropriate in current state Leave"))
+	logFsmError(mockPeer, errors.New("event Download inappropriate in current state Pending"))
+
+	entries := logs.All()
+	assert.Len(t, entries, 2)
+	assert.Equal(t, zap.InfoLevel, entries[0].Level)
+	assert.Equal(t, zap.ErrorLevel, entries[1].Level)
 }
 
 func TestPeerManager_RunGC(t *testing.T) {
