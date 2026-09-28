@@ -556,6 +556,17 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 			continue
 		}
 
+		// Skip candidates that cannot accept another upload.
+		if candidateParent.Host.FreeUploadCount() <= 0 {
+			peer.Log.Debugf("parent %s host %s is not selected because its free upload is empty, upload limit is %d, upload count is %d",
+				candidateParent.ID,
+				candidateParent.Host.ID,
+				candidateParent.Host.ConcurrentUploadLimit.Load(),
+				candidateParent.Host.ConcurrentUploadCount.Load(),
+			)
+			continue
+		}
+
 		prefilteredParents = append(prefilteredParents, candidateParent)
 		prefilteredParentIDs = append(prefilteredParentIDs, candidateParent.ID)
 	}
