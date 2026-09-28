@@ -18,14 +18,18 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -87,6 +91,71 @@ type Server struct {
 
 	// GC service.
 	gc gc.GC
+}
+
+// getSystemSomaxconn reads the net.core.somaxconn limit on Linux systems.
+// Returns 4096 as a default fallback if reading fails or target OS is not Linux.
+func getSystemSomaxconn() int {
+	defaultBacklog := 4096
+	data, err := os.ReadFile("/proc/sys/net/core/somaxconn")
+	if err != nil {
+		return defaultBacklog
+	}
+	val, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || val <= 0 {
+		return defaultBacklog
+	}
+	return val
+}
+
+// listenWithCustomBacklog bypasses the Go runtime 4096 backlog limit
+// by making raw syscalls directly to the Linux kernel socket layer.
+func listenWithCustomBacklog(network, address string) (net.Listener, error) {
+	tcpAddr, err := net.ResolveTCPAddr(network, address)
+	if err != nil {
+		return nil, fmt.Errorf("resolve tcp addr failed: %w", err)
+	}
+
+	family := unix.AF_INET
+	if tcpAddr.IP.To4() == nil && tcpAddr.IP != nil {
+		family = unix.AF_INET6
+	}
+
+	fd, err := unix.Socket(family, unix.SOCK_STREAM, unix.IPPROTO_TCP)
+	if err != nil {
+		return nil, fmt.Errorf("create raw socket failed: %w", err)
+	}
+
+	if err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("set SO_REUSEADDR failed: %w", err)
+	}
+
+	var sa unix.Sockaddr
+	if family == unix.AF_INET {
+		sa4 := &unix.SockaddrInet4{Port: tcpAddr.Port}
+		copy(sa4.Addr[:], tcpAddr.IP.To4())
+		sa = sa4
+	} else {
+		sa6 := &unix.SockaddrInet6{Port: tcpAddr.Port}
+		copy(sa6.Addr[:], tcpAddr.IP.To16())
+		sa = sa6
+	}
+
+	if err := unix.Bind(fd, sa); err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("socket bind failed to %s: %w", address, err)
+	}
+
+	backlog := getSystemSomaxconn()
+	if err := unix.Listen(fd, backlog); err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("socket listen with backlog %d failed: %w", backlog, err)
+	}
+
+	file := os.NewFile(uintptr(fd), "grpc_scheduler_listener")
+	defer file.Close()
+	return net.FileListener(file)
 }
 
 // New creates a new scheduler server.
@@ -238,7 +307,7 @@ func (s *Server) Serve() error {
 		logger.Info("resource start successfully")
 	}()
 
-	listener, err := net.Listen("tcp", net.JoinHostPort(s.config.Server.ListenIP.String(), strconv.Itoa(s.config.Server.Port)))
+	listener, err := listenWithCustomBacklog("tcp", net.JoinHostPort(s.config.Server.ListenIP.String(), strconv.Itoa(s.config.Server.Port)))
 	if err != nil {
 		logger.Fatalf("net listener failed to start: %s", err.Error())
 	}
