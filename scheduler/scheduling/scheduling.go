@@ -24,6 +24,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -222,9 +223,12 @@ func (s *scheduling) ScheduleCandidateParents(ctx context.Context, peer *standar
 		}
 
 		peer.Log.Info("send NormalTaskResponse")
-		if err := stream.Send(&schedulerv2.AnnouncePeerResponse{
+		rawResponse := &schedulerv2.AnnouncePeerResponse{
 			Response: constructSuccessNormalTaskResponse(addedParents),
-		}); err != nil {
+		}
+		clonedResponse := proto.Clone(rawResponse).(*schedulerv2.AnnouncePeerResponse)
+
+		if err := stream.Send(clonedResponse); err != nil {
 			if err := peer.Task.DeletePeerInEdges(peer.ID); err != nil {
 				err = fmt.Errorf("peer deletes inedges failed: %w", err)
 				peer.Log.Error(err)
@@ -549,6 +553,17 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 		// Skip if candidate is deemed a bad parent by the evaluator.
 		if s.evaluator.IsBadParent(candidateParent) {
 			peer.Log.Debugf("parent %s host %s is not selected because it is bad node", candidateParent.ID, candidateParent.Host.ID)
+			continue
+		}
+
+		// Skip candidates that cannot accept another upload.
+		if candidateParent.Host.FreeUploadCount() <= 0 {
+			peer.Log.Debugf("parent %s host %s is not selected because its free upload is empty, upload limit is %d, upload count is %d",
+				candidateParent.ID,
+				candidateParent.Host.ID,
+				candidateParent.Host.ConcurrentUploadLimit.Load(),
+				candidateParent.Host.ConcurrentUploadCount.Load(),
+			)
 			continue
 		}
 
