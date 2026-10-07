@@ -497,6 +497,36 @@ func (s *scheduling) FindParentAndCandidateParents(ctx context.Context, peer *st
 	return candidateParents, true
 }
 
+// candidateHasRequestedPiece reports whether a candidate has at least one piece
+// covered by the requesting peer's range. Full-file requests retain the existing
+// optimistic candidate selection because their requested piece set is not bounded
+// by a range at scheduling time.
+func candidateHasRequestedPiece(peer, candidateParent *standard.Peer) bool {
+	if peer.Range == nil || peer.Range.Length <= 0 || peer.Task.PieceLength == 0 || peer.Range.Start < 0 {
+		return true
+	}
+
+	start := uint64(peer.Range.Start)
+	length := uint64(peer.Range.Length)
+	end := start + length - 1
+	if end < start {
+		return true
+	}
+
+	firstPiece := start / peer.Task.PieceLength
+	lastPiece := end / peer.Task.PieceLength
+	for pieceNumber := firstPiece; pieceNumber <= lastPiece; pieceNumber++ {
+		if candidateParent.FinishedPieces.Test(uint(pieceNumber)) {
+			return true
+		}
+		if pieceNumber == lastPiece {
+			break
+		}
+	}
+
+	return false
+}
+
 // filterCandidateParents selects eligible candidate parent peers from a random sample of peers.
 // It applies multiple filters: blocklist exclusion, shared disable check, host uniqueness,
 // DAG presence, state validation for normal hosts, bad parent exclusion, and edge feasibility.
@@ -547,6 +577,14 @@ func (s *scheduling) filterCandidateParents(peer *standard.Peer, blocklist set.S
 			!candidateParent.FSM.Is(standard.PeerStateSucceeded) {
 			peer.Log.Debugf("parent %s host %s is not selected, because its download state is %d %d %s",
 				candidateParent.ID, candidateParent.Host.ID, inDegree, int(candidateParent.Host.Type), candidateParent.FSM.Current())
+			continue
+		}
+
+		// Skip candidates that do not have any piece requested by this ranged peer.
+		// A peer participating in the same task is not proof that it has the
+		// particular piece requested by this independent range request.
+		if !candidateHasRequestedPiece(peer, candidateParent) {
+			peer.Log.Debugf("parent %s host %s is not selected because it does not have a requested piece", candidateParent.ID, candidateParent.Host.ID)
 			continue
 		}
 
