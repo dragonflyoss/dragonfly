@@ -33,6 +33,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
 
 // tracer is a global tracer for job.
@@ -71,13 +72,10 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 		return nil, err
 	}
 
-	broker := redisURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BrokerDB)
-	backend := redisURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BackendDB)
-
 	server, err := machinery.NewServer(&machineryv1config.Config{
-		Broker:          broker,
+		Broker:          pkgredis.FormatURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BrokerDB),
 		DefaultQueue:    queue.String(),
-		ResultBackend:   backend,
+		ResultBackend:   pkgredis.FormatURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BackendDB),
 		ResultsExpireIn: DefaultResultsExpireIn,
 		Redis: &machineryv1config.RedisConfig{
 			MasterName:             cfg.MasterName,

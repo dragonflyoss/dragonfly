@@ -19,8 +19,84 @@ package redis
 import (
 	"testing"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
+
+func Test_FormatURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		addrs    []string
+		username string
+		password string
+		db       int
+		expect   func(t *testing.T, rawURL string)
+	}{
+		{
+			name:     "username and password",
+			addrs:    []string{"127.0.0.1:6379"},
+			username: "foo",
+			password: "bar",
+			db:       1,
+			expect: func(t *testing.T, rawURL string) {
+				assert := assert.New(t)
+				assert.Equal("redis://foo:bar@127.0.0.1:6379/1", rawURL)
+			},
+		},
+		{
+			name:     "password only",
+			addrs:    []string{"127.0.0.1:6379"},
+			password: "bar",
+			db:       1,
+			expect: func(t *testing.T, rawURL string) {
+				assert := assert.New(t)
+				assert.Equal("redis://:bar@127.0.0.1:6379/1", rawURL)
+			},
+		},
+		{
+			name:  "without credentials",
+			addrs: []string{"127.0.0.1:6379"},
+			db:    0,
+			expect: func(t *testing.T, rawURL string) {
+				assert := assert.New(t)
+				assert.Equal("redis://127.0.0.1:6379/0", rawURL)
+			},
+		},
+		{
+			name:     "multiple addresses",
+			addrs:    []string{"sentinel-1:26379", "sentinel-2:26379"},
+			username: "foo",
+			password: "bar",
+			db:       2,
+			expect: func(t *testing.T, rawURL string) {
+				assert := assert.New(t)
+				assert.Equal("redis://foo:bar@sentinel-1:26379,sentinel-2:26379/2", rawURL)
+			},
+		},
+		{
+			name:     "credentials with spaces and reserved characters round trip",
+			addrs:    []string{"127.0.0.1:6379"},
+			username: "worker +:@",
+			password: "test @:/%+",
+			db:       11,
+			expect: func(t *testing.T, rawURL string) {
+				assert := assert.New(t)
+				options, err := redis.ParseURL(rawURL)
+				assert.NoError(err)
+				assert.Equal("127.0.0.1:6379", options.Addr)
+				assert.Equal("worker +:@", options.Username)
+				assert.Equal("test @:/%+", options.Password)
+				assert.Equal(11, options.DB)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, FormatURL(tc.addrs, tc.username, tc.password, tc.db))
+		})
+	}
+}
 
 func Test_IsEnabled(t *testing.T) {
 	tests := []struct {
