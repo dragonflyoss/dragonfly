@@ -98,7 +98,7 @@ func newPeerManager(cfg *config.Config, rdb redis.UniversalClient, taskManager T
 // Load returns persistent peer by a key.
 func (p *peerManager) Load(ctx context.Context, peerID string) (*Peer, bool) {
 	log := logger.WithPeerID(peerID)
-	rawPeer, err := p.rdb.HGetAll(ctx, pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID)).Result()
+	rawPeer, err := p.rdb.HGetAll(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID))).Result()
 	if err != nil {
 		log.Errorf("getting peer failed from redis: %v", err)
 		return nil, false
@@ -259,10 +259,10 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.ID),
-		pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
-		pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
-		pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
+		p.schedulerKey(pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.ID)),
+		p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID)),
+		p.schedulerKey(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID)),
+		p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID)),
 	}
 
 	// Prepare arguments.
@@ -342,10 +342,10 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID),
-		pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
-		pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID),
-		pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID),
+		p.schedulerKey(pkgredis.MakePersistentCachePeerKeyForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peerID)),
+		p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID)),
+		p.schedulerKey(pkgredis.MakePersistentPeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, peer.Task.ID)),
+		p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, peer.Host.ID)),
 	}
 
 	// Prepare arguments.
@@ -381,7 +381,7 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 		// For example, if {prefix} is "scheduler:scheduler-clusters:{1}:persistent-cache-peers-for-persistent-task:", keys could be:
 		// "{prefix}{peerID1}", "{prefix}{peerID2}", "{prefix}{peerID3}", ...
 		// Scan all keys with prefix.
-		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCachePeersForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID))
+		prefix := fmt.Sprintf("%s:", p.schedulerKey(pkgredis.MakePersistentCachePeersForPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID)))
 		peerKeys, cursor, err = pkgredis.ScanSchedulerKeys(ctx, p.rdb, cursor, fmt.Sprintf("%s*", prefix), 10)
 		if err != nil {
 			logger.Errorf("scan tasks failed: %v", err)
@@ -421,7 +421,7 @@ func (p *peerManager) LoadAll(ctx context.Context) ([]*Peer, error) {
 // LoadAllByTaskID returns all persistent peers by task id.
 func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Peer, error) {
 	log := logger.WithTaskID(taskID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID))).Result()
 	if err != nil {
 		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
@@ -444,7 +444,7 @@ func (p *peerManager) LoadAllByTaskID(ctx context.Context, taskID string) ([]*Pe
 // LoadAllIDsByTaskID returns all peer ids by task id.
 func (p *peerManager) LoadAllIDsByTaskID(ctx context.Context, taskID string) ([]string, error) {
 	log := logger.WithTaskID(taskID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID))).Result()
 	if err != nil {
 		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
@@ -456,7 +456,7 @@ func (p *peerManager) LoadAllIDsByTaskID(ctx context.Context, taskID string) ([]
 // LoadPersistentAllByTaskID returns all persistent peers by task id.
 func (p *peerManager) LoadPersistentAllByTaskID(ctx context.Context, taskID string) ([]*Peer, error) {
 	log := logger.WithTaskID(taskID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentTaskInScheduler(p.config.Manager.SchedulerClusterID, taskID))).Result()
 	if err != nil {
 		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
@@ -498,7 +498,7 @@ func (p *peerManager) DeleteAllByTaskID(ctx context.Context, taskID string) erro
 // LoadAllByHostID returns all persistent peers by host id.
 func (p *peerManager) LoadAllByHostID(ctx context.Context, hostID string) ([]*Peer, error) {
 	log := logger.WithHostID(hostID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, hostID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, hostID))).Result()
 	if err != nil {
 		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
@@ -521,7 +521,7 @@ func (p *peerManager) LoadAllByHostID(ctx context.Context, hostID string) ([]*Pe
 // LoadAllIDsByHostID returns all persistent peers by host id.
 func (p *peerManager) LoadAllIDsByHostID(ctx context.Context, hostID string) ([]string, error) {
 	log := logger.WithHostID(hostID)
-	peerIDs, err := p.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, hostID)).Result()
+	peerIDs, err := p.rdb.SMembers(ctx, p.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentHostInScheduler(p.config.Manager.SchedulerClusterID, hostID))).Result()
 	if err != nil {
 		log.Errorf("get peer ids failed: %v", err)
 		return nil, err
@@ -547,4 +547,8 @@ func (p *peerManager) DeleteAllByHostID(ctx context.Context, hostID string) erro
 	}
 
 	return nil
+}
+
+func (p *peerManager) schedulerKey(key string) string {
+	return pkgredis.SchedulerKey(key, p.config.Database.Redis.ClusterKeyHashTag)
 }

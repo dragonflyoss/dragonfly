@@ -70,7 +70,7 @@ func newTaskManager(cfg *config.Config, rdb redis.UniversalClient) TaskManager {
 // Load returns persistent cache task by a key.
 func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 	log := logger.WithTaskID(taskID)
-	rawTask, err := t.rdb.HGetAll(ctx, pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	rawTask, err := t.rdb.HGetAll(ctx, t.schedulerKey(pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, taskID))).Result()
 	if err != nil {
 		log.Errorf("getting task failed from redis: %v", err)
 		return nil, false
@@ -142,13 +142,13 @@ func (t *taskManager) Load(ctx context.Context, taskID string) (*Task, bool) {
 
 // LoadCurrentReplicaCount returns current replica count of the persistent cache task.
 func (t *taskManager) LoadCurrentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
-	count, err := t.rdb.SCard(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	count, err := t.rdb.SCard(ctx, t.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID))).Result()
 	return uint64(count), err
 }
 
 // LoadCurrentPersistentReplicaCount returns current persistent replica count of the persistent cache task.
 func (t *taskManager) LoadCurrentPersistentReplicaCount(ctx context.Context, taskID string) (uint64, error) {
-	count, err := t.rdb.SCard(ctx, pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	count, err := t.rdb.SCard(ctx, t.schedulerKey(pkgredis.MakePersistentPeersOfPersistentCacheTaskInScheduler(t.config.Manager.SchedulerClusterID, taskID))).Result()
 	return uint64(count), err
 }
 
@@ -202,7 +202,7 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID),
+		t.schedulerKey(pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, task.ID)),
 	}
 
 	// Prepare arguments.
@@ -232,7 +232,7 @@ return true
 
 // Delete deletes persistent cache task by a key.
 func (t *taskManager) Delete(ctx context.Context, taskID string) error {
-	_, err := t.rdb.Del(ctx, pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, taskID)).Result()
+	_, err := t.rdb.Del(ctx, t.schedulerKey(pkgredis.MakePersistentCacheTaskKeyInScheduler(t.config.Manager.SchedulerClusterID, taskID))).Result()
 	return err
 }
 
@@ -257,7 +257,7 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 		// - "{prefix}{taskID}"
 		//
 		// Purpose: Scan all keys starting with {prefix}.
-		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID))
+		prefix := fmt.Sprintf("%s:", t.schedulerKey(pkgredis.MakePersistentCacheTasksInScheduler(t.config.Manager.SchedulerClusterID)))
 		taskKeys, cursor, err = pkgredis.ScanSchedulerKeys(ctx, t.rdb, cursor, fmt.Sprintf("%s*", prefix), 10)
 		if err != nil {
 			logger.Error("scan tasks failed")
@@ -307,4 +307,8 @@ func (t *taskManager) LoadAll(ctx context.Context) ([]*Task, error) {
 	}
 
 	return tasks, nil
+}
+
+func (t *taskManager) schedulerKey(key string) string {
+	return pkgredis.SchedulerKey(key, t.config.Database.Redis.ClusterKeyHashTag)
 }
