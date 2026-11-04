@@ -87,6 +87,9 @@ type ServerConfig struct {
 	// TLS server configuration.
 	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 
+	// Auth is the token authentication configuration of the gRPC server.
+	Auth GRPCAuthConfig `yaml:"auth" mapstructure:"auth"`
+
 	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
 	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
 	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
@@ -119,6 +122,27 @@ type GRPCTLSServerConfig struct {
 
 	// Key is the file path of server key for mTLS.
 	Key string `yaml:"key" mapstructure:"key"`
+}
+
+// GRPCAuthConfig is the token (JWT) authentication configuration of the gRPC
+// server. It is disabled by default so that existing deployments keep working.
+type GRPCAuthConfig struct {
+	// Enabled enables token authentication for gRPC requests.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+
+	// Secret is the HMAC signing key shared by all components. Authentication
+	// refuses to start when it is enabled and the secret is empty.
+	Secret string `yaml:"secret" mapstructure:"secret"`
+
+	// Issuer is the expected "iss" claim of tokens.
+	Issuer string `yaml:"issuer" mapstructure:"issuer"`
+
+	// TokenTTL is the time to live of tokens issued by clients.
+	TokenTTL time.Duration `yaml:"tokenTTL" mapstructure:"tokenTTL"`
+
+	// SkippedMethods are the fully-qualified gRPC methods that bypass
+	// authentication. The health checking service is always skipped.
+	SkippedMethods []string `yaml:"skippedMethods" mapstructure:"skippedMethods"`
 }
 
 type SchedulerConfig struct {
@@ -344,9 +368,16 @@ func New() *Config {
 			},
 		},
 		Server: ServerConfig{
-			Port:             DefaultServerPort,
-			AdvertisePort:    DefaultServerAdvertisePort,
-			Host:             fqdn.FQDNHostname,
+			Port:          DefaultServerPort,
+			AdvertisePort: DefaultServerAdvertisePort,
+			Host:          fqdn.FQDNHostname,
+			Auth: GRPCAuthConfig{
+				Enabled:        false,
+				Secret:         "",
+				Issuer:         DefaultServerAuthIssuer,
+				TokenTTL:       DefaultServerAuthTokenTTL,
+				SkippedMethods: []string{},
+			},
 			RequestRateLimit: DefaultServerRequestRateLimit,
 			LogLevel:         "info",
 			LogMaxSize:       DefaultLogRotateMaxSize,
@@ -439,6 +470,20 @@ func (cfg *Config) Validate() error {
 
 		if cfg.Server.TLS.Key == "" {
 			return errors.New("server tls requires parameter key")
+		}
+	}
+
+	if cfg.Server.Auth.Enabled {
+		if cfg.Server.Auth.Secret == "" {
+			return errors.New("server auth requires parameter secret")
+		}
+
+		if cfg.Server.Auth.Issuer == "" {
+			return errors.New("server auth requires parameter issuer")
+		}
+
+		if cfg.Server.Auth.TokenTTL <= 0 {
+			return errors.New("server auth requires parameter tokenTTL")
 		}
 	}
 

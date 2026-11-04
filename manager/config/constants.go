@@ -48,6 +48,12 @@ const (
 	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
 	DefaultServerGRPCRequestRateLimit = 4000
 
+	// DefaultServerGRPCAuthIssuer is the default issuer of gRPC authentication tokens.
+	DefaultServerGRPCAuthIssuer = "dragonfly"
+
+	// DefaultServerGRPCAuthTokenTTL is the default time to live of gRPC authentication tokens.
+	DefaultServerGRPCAuthTokenTTL = 24 * time.Hour
+
 	// DefaultRESTAddr is default address for rest server.
 	DefaultRESTAddr = ":8080"
 )
