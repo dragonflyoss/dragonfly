@@ -20,13 +20,14 @@ import (
 	"context"
 	"fmt"
 
-	"d7y.io/dragonfly/v2/internal/injector"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"d7y.io/dragonfly/v2/internal/injector"
 )
 
 // nolint:unused
