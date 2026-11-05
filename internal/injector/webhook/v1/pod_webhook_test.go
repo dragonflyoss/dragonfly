@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"d7y.io/dragonfly/v2/internal/injector"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
@@ -30,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"d7y.io/dragonfly/v2/internal/injector"
 )
 
 // mockInjector is a mock implementation of the Injector interface for testing purposes.
