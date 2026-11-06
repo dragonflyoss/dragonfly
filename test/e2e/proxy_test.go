@@ -64,14 +64,14 @@ var _ = Describe("Download Using Proxy", func() {
 		})
 	})
 
-	Context("10MiB file", func() {
+	Context("100MiB file", func() {
 		var (
 			testFile *util.File
 			err      error
 		)
 
 		BeforeEach(func() {
-			testFile, err = util.GetFileServer().GenerateFile(util.FileSize10MiB)
+			testFile, err = util.GetFileServer().GenerateFile(util.FileSize100MiB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile).NotTo(BeNil())
 		})
