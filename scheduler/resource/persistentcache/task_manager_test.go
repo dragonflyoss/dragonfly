@@ -515,3 +515,25 @@ func TestTaskManager_LoadAll(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskManagerKeyFormat(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		enabled bool
+		key     string
+	}{
+		{"legacy", false, "scheduler:scheduler-clusters:42:persistent-cache-tasks:task"},
+		{"tagged", true, "scheduler:scheduler-clusters:{42}:persistent-cache-tasks:task"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rdb, mock := redismock.NewClientMock()
+			cfg := &config.Config{Manager: config.ManagerConfig{SchedulerClusterID: 42}}
+			cfg.Database.Redis.ClusterKeyHashTag = tc.enabled
+			manager := newTaskManager(cfg, rdb)
+			mock.ExpectHGetAll(tc.key).SetVal(map[string]string{})
+			_, loaded := manager.Load(context.Background(), "task")
+			assert.False(t, loaded)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}

@@ -34,7 +34,7 @@ import (
 
 // DestroyPersistentCacheTask deletes a persistent cache task from Redis based on query parameters.
 func (s *service) DestroyPersistentCacheTask(ctx context.Context, schedulerClusterID uint, id string) error {
-	return s.rdb.Del(ctx, pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, id)).Err()
+	return s.rdb.Del(ctx, s.schedulerKey(pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, id))).Err()
 }
 
 // GetPersistentCacheTask retrieves a persistent cache task from Redis based on query parameters.
@@ -77,8 +77,8 @@ func (s *service) loadAllTasks(ctx context.Context, schedulerClusterID uint) ([]
 		// - "{prefix}{taskID}"
 		//
 		// Purpose: Scan all keys starting with {prefix}.
-		prefix := fmt.Sprintf("%s:", pkgredis.MakePersistentCacheTasksInScheduler(schedulerClusterID))
-		taskKeys, cursor, err = s.rdb.Scan(ctx, cursor, fmt.Sprintf("%s*", prefix), 10).Result()
+		prefix := fmt.Sprintf("%s:", s.schedulerKey(pkgredis.MakePersistentCacheTasksInScheduler(schedulerClusterID)))
+		taskKeys, cursor, err = pkgredis.ScanSchedulerKeys(ctx, s.rdb, cursor, fmt.Sprintf("%s*", prefix), 10)
 		if err != nil {
 			logger.Error("scan tasks failed")
 			return nil, err
@@ -131,7 +131,7 @@ func (s *service) loadAllTasks(ctx context.Context, schedulerClusterID uint) ([]
 
 // loadTask loads a task from Redis based on the provided key.
 func (s *service) loadTask(ctx context.Context, schedulerClusterID uint, id string) (types.PersistentCacheTask, error) {
-	taskKey := pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, id)
+	taskKey := s.schedulerKey(pkgredis.MakePersistentCacheTaskKeyInScheduler(schedulerClusterID, id))
 	rawTask, err := s.rdb.HGetAll(ctx, taskKey).Result()
 	if err != nil {
 		return types.PersistentCacheTask{}, err
@@ -208,7 +208,7 @@ func (s *service) loadTask(ctx context.Context, schedulerClusterID uint, id stri
 // loadAllPeersByTaskID loads all peers associated with a task ID from Redis.
 func (s *service) loadAllPeersByTaskID(ctx context.Context, schedulerClusterID uint, taskID string) ([]*types.PersistentCachePeer, error) {
 	var peers []*types.PersistentCachePeer
-	peerIDs, err := s.rdb.SMembers(ctx, pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(schedulerClusterID, taskID)).Result()
+	peerIDs, err := s.rdb.SMembers(ctx, s.schedulerKey(pkgredis.MakePersistentCachePeersOfPersistentCacheTaskInScheduler(schedulerClusterID, taskID))).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (s *service) loadAllPeersByTaskID(ctx context.Context, schedulerClusterID u
 
 // loadPeer loads a peer from Redis based on the provided key.
 func (s *service) loadPeer(ctx context.Context, schedulerClusterID uint, id string) (*types.PersistentCachePeer, error) {
-	peerKey := pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(schedulerClusterID, id)
+	peerKey := s.schedulerKey(pkgredis.MakePersistentCachePeerKeyForPersistentCacheTaskInScheduler(schedulerClusterID, id))
 	rawPeer, err := s.rdb.HGetAll(ctx, peerKey).Result()
 	if err != nil {
 		return nil, err
@@ -295,7 +295,7 @@ func (s *service) loadPeer(ctx context.Context, schedulerClusterID uint, id stri
 
 // loadHost loads a host from Redis based on the provided key.
 func (s *service) loadHost(ctx context.Context, schedulerClusterID uint, id string) (*types.PersistentCacheHost, error) {
-	hostKey := pkgredis.MakePersistentCacheHostKeyInScheduler(schedulerClusterID, id)
+	hostKey := s.schedulerKey(pkgredis.MakePersistentCacheHostKeyInScheduler(schedulerClusterID, id))
 	rawHost, err := s.rdb.HGetAll(ctx, hostKey).Result()
 	if err != nil {
 		return nil, err
@@ -589,4 +589,8 @@ func (s *service) loadHost(ctx context.Context, schedulerClusterID uint, id stri
 	}
 	host.UpdatedAt = updatedAt
 	return host, nil
+}
+
+func (s *service) schedulerKey(key string) string {
+	return pkgredis.SchedulerKey(key, s.config.Database.Redis.ClusterKeyHashTag)
 }
