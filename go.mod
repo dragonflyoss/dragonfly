@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	d7y.io/api/v2 v2.3.8
-	d7y.io/hashring v0.2.0
+	d7y.io/hashring v0.3.0
 	github.com/Showmax/go-fqdn v1.0.0
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/appleboy/gin-jwt/v2 v2.10.3
