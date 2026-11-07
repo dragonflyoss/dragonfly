@@ -19,6 +19,7 @@ package rpcserver
 import (
 	"google.golang.org/grpc"
 
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -38,10 +39,25 @@ func New(
 	job job.Job,
 	dynconfig config.DynconfigInterface,
 	opts ...grpc.ServerOption,
-) *grpc.Server {
-	return server.New(
+) (*grpc.Server, error) {
+	// Initialize the token manager when gRPC token authentication is enabled.
+	var tokenManager *auth.TokenManager
+	if cfg.Server.Auth.Enabled {
+		var err error
+		tokenManager, err = auth.NewTokenManager(auth.Config{
+			Key:    cfg.Server.Auth.Secret,
+			Issuer: cfg.Server.Auth.Issuer,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return server.NewWithAuth(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
 		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
 		cfg.Server.RequestRateLimit,
-		opts...)
+		tokenManager,
+		cfg.Server.Auth.SkippedMethods,
+		opts...), nil
 }

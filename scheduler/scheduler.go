@@ -35,6 +35,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/gc"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/scheduler/announcer"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -185,7 +186,10 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 			return nil, err
 		}
 	}
-	s.grpcServer = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
+	s.grpcServer, err = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
+	if err != nil {
+		return nil, err
+	}
 
 	// Initialize metrics server if metrics is enabled.
 	if cfg.Metrics.Enable {
@@ -312,9 +316,30 @@ func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2
 		return nil, err
 	}
 
-	return managerclient.GetV2ByAddr(ctx, *cfg.Manager.Addr,
+	opts := []grpc.DialOption{
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-		grpc.WithTransportCredentials(clientTransportCredentials))
+		grpc.WithTransportCredentials(clientTransportCredentials),
+	}
+
+	// Attach a token issued by this scheduler to every call to the manager when
+	// gRPC token authentication is enabled. All components must share the same
+	// secret and issuer.
+	if cfg.Server.Auth.Enabled {
+		tokenManager, err := auth.NewTokenManager(auth.Config{
+			Key:    cfg.Server.Auth.Secret,
+			Issuer: cfg.Server.Auth.Issuer,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(opts,
+			grpc.WithChainUnaryInterceptor(auth.NewUnaryClientInterceptor(tokenManager, "scheduler", cfg.Server.Auth.TokenTTL)),
+			grpc.WithChainStreamInterceptor(auth.NewStreamClientInterceptor(tokenManager, "scheduler", cfg.Server.Auth.TokenTTL)),
+		)
+	}
+
+	return managerclient.GetV2ByAddr(ctx, *cfg.Manager.Addr, opts...)
 }
 
 // newRedisClient returns a new redis client. If redis is not enabled, it

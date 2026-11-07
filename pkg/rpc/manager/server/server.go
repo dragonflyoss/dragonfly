@@ -40,6 +40,7 @@ import (
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/pkg/rpc"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 )
 
 const (
@@ -51,11 +52,45 @@ const (
 
 	// DefaultMaxConnectionAgeGrace is default max connection age grace of grpc keepalive.
 	DefaultMaxConnectionAgeGrace = 5 * time.Minute
+
+	// HealthCheckServicePrefix is the gRPC health checking service prefix. It is
+	// always exempt from token authentication so that probes keep working.
+	HealthCheckServicePrefix = "/grpc.health.v1.Health/"
 )
 
-// New returns grpc server instance and register service on grpc server.
+// New returns grpc server instance and register service on grpc server. Token
+// authentication is disabled; use NewWithAuth to enable it.
 func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, opts ...grpc.ServerOption) *grpc.Server {
+	return NewWithAuth(managerServerV1, managerServerV2, requestRateLimit, nil, nil, opts...)
+}
+
+// NewWithAuth returns grpc server instance with token authentication enabled
+// when tm is not nil. Methods in skippedMethods and the gRPC health checking
+// service bypass authentication.
+func NewWithAuth(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.ManagerServer, requestRateLimit float64, tm *auth.TokenManager, skippedMethods []string, opts ...grpc.ServerOption) *grpc.Server {
 	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
+
+	unaryInterceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
+	streamInterceptors := make([]grpc.StreamServerInterceptor, 0, 6)
+	if tm != nil {
+		methods := append(append([]string{}, skippedMethods...), HealthCheckServicePrefix)
+		unaryInterceptors = append(unaryInterceptors, auth.UnaryServerInterceptor(tm, methods...))
+		streamInterceptors = append(streamInterceptors, auth.StreamServerInterceptor(tm, methods...))
+	}
+	unaryInterceptors = append(unaryInterceptors,
+		selector.UnaryServerInterceptor(grpc_ratelimit.UnaryServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
+		grpc_prometheus.UnaryServerInterceptor,
+		grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
+		grpc_validator.UnaryServerInterceptor(),
+		grpc_recovery.UnaryServerInterceptor(),
+	)
+	streamInterceptors = append(streamInterceptors,
+		selector.StreamServerInterceptor(grpc_ratelimit.StreamServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
+		grpc_prometheus.StreamServerInterceptor,
+		grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
+		grpc_validator.StreamServerInterceptor(),
+		grpc_recovery.StreamServerInterceptor(),
+	)
 
 	grpcServer := grpc.NewServer(append([]grpc.ServerOption{
 		grpc.MaxRecvMsgSize(math.MaxInt32),
@@ -69,20 +104,8 @@ func New(managerServerV1 managerv1.ManagerServer, managerServerV2 managerv2.Mana
 			MaxConnectionAge:      DefaultMaxConnectionAge,
 			MaxConnectionAgeGrace: DefaultMaxConnectionAgeGrace,
 		}),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			selector.UnaryServerInterceptor(grpc_ratelimit.UnaryServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
-			grpc_prometheus.UnaryServerInterceptor,
-			grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
-			grpc_validator.UnaryServerInterceptor(),
-			grpc_recovery.UnaryServerInterceptor(),
-		)),
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			selector.StreamServerInterceptor(grpc_ratelimit.StreamServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
-			grpc_prometheus.StreamServerInterceptor,
-			grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
-			grpc_validator.StreamServerInterceptor(),
-			grpc_recovery.StreamServerInterceptor(),
-		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streamInterceptors...)),
 	}, opts...)...)
 
 	// Register servers on v1 version of the grpc server.

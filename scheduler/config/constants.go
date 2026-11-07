@@ -47,6 +47,12 @@ const (
 	// DefaultServerRequestRateLimit is the default number of requests per second for the gRPC server.
 	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
 	DefaultServerRequestRateLimit = 4000
+
+	// DefaultServerAuthIssuer is the default issuer of gRPC authentication tokens.
+	DefaultServerAuthIssuer = "dragonfly"
+
+	// DefaultServerAuthTokenTTL is the default time to live of gRPC authentication tokens.
+	DefaultServerAuthTokenTTL = 24 * time.Hour
 )
 
 const (
