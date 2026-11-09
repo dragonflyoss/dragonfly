@@ -19,7 +19,6 @@ package auth
 import (
 	"context"
 	"strings"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -162,11 +161,12 @@ func AppendTokenToOutgoingContext(ctx context.Context, token string) context.Con
 	return metadata.AppendToOutgoingContext(ctx, MetadataKey, BearerPrefix+token)
 }
 
-// NewUnaryClientInterceptor returns a unary client interceptor that issues a
-// short-lived token for subject and attaches it to every outgoing call.
-func NewUnaryClientInterceptor(tm *TokenManager, subject string, ttl time.Duration) grpc.UnaryClientInterceptor {
+// NewUnaryClientInterceptor returns a unary client interceptor that attaches
+// the provider's token to every outgoing call. The token is issued once and
+// cached until it approaches expiry; see TokenProvider.
+func NewUnaryClientInterceptor(provider *TokenProvider) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		token, err := tm.IssueToken(subject, ttl)
+		token, err := provider.Token()
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to issue token: %v", err)
 		}
@@ -175,11 +175,12 @@ func NewUnaryClientInterceptor(tm *TokenManager, subject string, ttl time.Durati
 	}
 }
 
-// NewStreamClientInterceptor returns a stream client interceptor that issues a
-// short-lived token for subject and attaches it to every outgoing stream.
-func NewStreamClientInterceptor(tm *TokenManager, subject string, ttl time.Duration) grpc.StreamClientInterceptor {
+// NewStreamClientInterceptor returns a stream client interceptor that attaches
+// the provider's token to every outgoing stream. The token is issued once and
+// cached until it approaches expiry; see TokenProvider.
+func NewStreamClientInterceptor(provider *TokenProvider) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		token, err := tm.IssueToken(subject, ttl)
+		token, err := provider.Token()
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to issue token: %v", err)
 		}

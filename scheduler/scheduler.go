@@ -323,7 +323,8 @@ func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2
 
 	// Attach a token issued by this scheduler to every call to the manager when
 	// gRPC token authentication is enabled. All components must share the same
-	// secret and issuer.
+	// secret and issuer. The token is cached by the TokenProvider and re-issued
+	// only when it approaches expiry instead of per call.
 	if cfg.Server.Auth.Enabled {
 		tokenManager, err := auth.NewTokenManager(auth.Config{
 			Key:    cfg.Server.Auth.Secret,
@@ -333,9 +334,10 @@ func newManagerClient(ctx context.Context, cfg *config.Config) (managerclient.V2
 			return nil, err
 		}
 
+		tokenProvider := auth.NewTokenProvider(tokenManager, "scheduler", cfg.Server.Auth.TokenTTL)
 		opts = append(opts,
-			grpc.WithChainUnaryInterceptor(auth.NewUnaryClientInterceptor(tokenManager, "scheduler", cfg.Server.Auth.TokenTTL)),
-			grpc.WithChainStreamInterceptor(auth.NewStreamClientInterceptor(tokenManager, "scheduler", cfg.Server.Auth.TokenTTL)),
+			grpc.WithChainUnaryInterceptor(auth.NewUnaryClientInterceptor(tokenProvider)),
+			grpc.WithChainStreamInterceptor(auth.NewStreamClientInterceptor(tokenProvider)),
 		)
 	}
 
