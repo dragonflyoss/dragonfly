@@ -1,0 +1,103 @@
+manager:
+  enable: true
+  image:
+    repository: dragonflyoss/manager
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: '0'
+      memory: '0'
+    limits:
+      cpu: '1'
+      memory: '2Gi'
+  extraVolumeMounts:
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
+  extraVolumes:
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
+  metrics:
+    enable: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+      grpc:
+        auth:
+          enabled: true
+          secret: 'e2e-test-grpc-auth-secret'
+          issuer: 'dragonfly'
+          tokenTTL: 1h
+    cache:
+      redis:
+        ttl: 5s
+      local:
+        ttl: 3s
+    job:
+      rateLimit:
+        fillInterval: 1m
+        capacity: 100
+        quantum: 100
+
+scheduler:
+  image:
+    repository: dragonflyoss/scheduler
+    tag: latest
+  replicas: 3
+  resources:
+    requests:
+      cpu: '0'
+      memory: '0'
+    limits:
+      cpu: '2'
+      memory: '4Gi'
+  extraVolumeMounts:
+    - name: logs
+      mountPath: '/var/log/'
+    - name: artifact
+      mountPath: /tmp/artifact
+  extraVolumes:
+    - name: logs
+      emptyDir: {}
+    - name: artifact
+      hostPath:
+        path: /tmp/artifact
+  metrics:
+    enable: true
+    enableHost: true
+  config:
+    console: false
+    server:
+      logLevel: debug
+      auth:
+        enabled: true
+        secret: 'e2e-test-grpc-auth-secret'
+        issuer: 'dragonfly'
+        tokenTTL: 1h
+    scheduler:
+      algorithm: default
+      retryBackToSourceLimit: 7
+      retryLimit: 15
+      retryInterval: 1s
+      gc:
+        hostGCInterval: 2m
+    dynconfig:
+      refreshInterval: 5s
+
+seedClient:
+  enable: false
+
+client:
+  enable: false
+
+mysql:
+  enable: true
+
+redis:
+  enable: true
