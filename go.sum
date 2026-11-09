@@ -55,8 +55,6 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 d7y.io/api/v2 v2.3.8 h1:v2ur2xA5WspWhyy73t7qTZrRMvxir/hNzlSM2QCif4E=
 d7y.io/api/v2 v2.3.8/go.mod h1:dkwb6hCIWdijpAOZmdqszAPlXWS7cO41+Av9IvmOTHo=
-d7y.io/hashring v0.2.0 h1:Cv+BtZnMnKk8xkWovOFoUpUGb4mdId0Tcgv1nE6TWZc=
-d7y.io/hashring v0.2.0/go.mod h1:NY2/+76/hCcBzcTEJiqJG2AX0gzlSq+YJJgSJyZWd1c=
 d7y.io/hashring v0.3.0 h1:qGIkSNa/g6hSFYV2mBE+mZU16NzzMiCKobti072ACL0=
 d7y.io/hashring v0.3.0/go.mod h1:NY2/+76/hCcBzcTEJiqJG2AX0gzlSq+YJJgSJyZWd1c=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
@@ -86,8 +84,8 @@ github.com/appleboy/gin-jwt/v2 v2.10.3 h1:KNcPC+XPRNpuoBh+j+rgs5bQxN+SwG/0tHbIqp
 github.com/appleboy/gin-jwt/v2 v2.10.3/go.mod h1:LDUaQ8mF2W6LyXIbd5wqlV2SFebuyYs4RDwqMNgpsp8=
 github.com/appleboy/gofight/v2 v2.1.2 h1:VOy3jow4vIK8BRQJoC/I9muxyYlJ2yb9ht2hZoS3rf4=
 github.com/appleboy/gofight/v2 v2.1.2/go.mod h1:frW+U1QZEdDgixycTj4CygQ48yLTUhplt43+Wczp3rw=
-github.com/avast/retry-go/v5 v5.0.0 h1:kf1Qc2UsTZ4qq8elDymqfbISvkyMuhgRxuJqX2NHP7k=
-github.com/avast/retry-go/v5 v5.0.0/go.mod h1://d+usmKWio1agtZfS1H/ltTqwtIfBnRq9zEwjc3eH8=
+github.com/avast/retry-go/v5 v5.1.1 h1:xinK2CJs8zMswWeFFSYeqBbqx9RskWDDdzybrFrz4Q8=
+github.com/avast/retry-go/v5 v5.1.1/go.mod h1:kb/MOVQOBAxjo+kIre6StLXJro2ZPAQh5IO/6wICTjI=
 github.com/aws/aws-sdk-go v1.37.16/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/aws/aws-sdk-go v1.55.8 h1:JRmEUbU52aJQZ2AjX4q4Wu7t4uZjOu71uyNmaWlUkJQ=
 github.com/aws/aws-sdk-go v1.55.8/go.mod h1:ZkViS9AqA6otK+JBBNH2++sx1sgxrPKcSzPPvQkUtXk=
