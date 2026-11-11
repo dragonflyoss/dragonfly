@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -4526,7 +4527,7 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		Headers:                     req.GetHeader(),
 		Username:                    req.GetUsername(),
 		Password:                    req.GetPassword(),
-		Platform:                    req.GetPlatform(),
+		Platform:                    req.Platform,
 		Scope:                       req.GetScope(),
 		IPs:                         req.GetIps(),
 		Percentage:                  req.Percentage,
@@ -4542,28 +4543,33 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
 	}
 
-	if len(layers) != 1 {
-		return status.Errorf(codes.InvalidArgument, "expected exactly one layer, got %d", len(layers))
+	if len(layers) == 0 {
+		return status.Error(codes.InvalidArgument, "expected at least one layer, got 0")
 	}
 
-	preheatRequest := &internaljob.PreheatRequest{
-		URLs:                        layers[0].URLs,
-		PieceLength:                 req.PieceLength,
-		Tag:                         req.GetTag(),
-		Application:                 req.GetApplication(),
-		FilteredQueryParams:         idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
-		Headers:                     layers[0].Headers,
-		Priority:                    int32(req.GetPriority()),
-		Scope:                       req.GetScope(),
-		IPs:                         req.GetIps(),
-		Percentage:                  req.Percentage,
-		Count:                       req.Count,
-		ConcurrentTaskCount:         req.GetConcurrentTaskCount(),
-		ConcurrentPeerCount:         req.GetConcurrentPeerCount(),
-		CertificateChain:            req.GetCertificateChain(),
-		InsecureSkipVerify:          req.GetInsecureSkipVerify(),
-		Timeout:                     req.GetTimeout().AsDuration(),
-		EnableTaskIDBasedBlobDigest: req.GetEnableTaskIdBasedBlobDigest(),
+	// Each preheat request preheats the layers of one platform of the image.
+	preheatRequests := make([]*internaljob.PreheatRequest, 0, len(layers))
+	for _, layer := range layers {
+		preheatRequests = append(preheatRequests, &internaljob.PreheatRequest{
+			URLs:                        layer.URLs,
+			PieceLength:                 req.PieceLength,
+			Tag:                         req.GetTag(),
+			Application:                 req.GetApplication(),
+			FilteredQueryParams:         idgen.FormatFilteredQueryParams(req.GetFilteredQueryParams()),
+			Headers:                     layer.Headers,
+			Priority:                    int32(req.GetPriority()),
+			Scope:                       req.GetScope(),
+			IPs:                         req.GetIps(),
+			Percentage:                  req.Percentage,
+			Count:                       req.Count,
+			ConcurrentTaskCount:         req.GetConcurrentTaskCount(),
+			ConcurrentPeerCount:         req.GetConcurrentPeerCount(),
+			CertificateChain:            req.GetCertificateChain(),
+			InsecureSkipVerify:          req.GetInsecureSkipVerify(),
+			Timeout:                     req.GetTimeout().AsDuration(),
+			EnableTaskIDBasedBlobDigest: req.GetEnableTaskIdBasedBlobDigest(),
+			Image:                       layer.Image,
+		})
 	}
 
 	switch req.Scope {
@@ -4573,13 +4579,15 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 			defer cancel()
 
 			log.Info("preheat single seed peer")
-			resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
-			if err != nil {
-				log.Errorf("preheat single seed peer failed: %s", err.Error())
-				return
-			}
+			for _, preheatRequest := range preheatRequests {
+				resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
+				if err != nil {
+					log.Errorf("preheat single seed peer failed: %s", err.Error())
+					continue
+				}
 
-			log.Infof("preheat single seed peer finished, response: %#v", resp)
+				log.Infof("preheat single seed peer finished, response: %#v", resp)
+			}
 		}()
 	case managertypes.AllSeedPeersScope:
 		go func() {
@@ -4587,13 +4595,15 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 			defer cancel()
 
 			log.Info("preheat all seed peers")
-			resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
-			if err != nil {
-				log.Errorf("preheat all seed peers failed: %s", err.Error())
-				return
-			}
+			for _, preheatRequest := range preheatRequests {
+				resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
+				if err != nil {
+					log.Errorf("preheat all seed peers failed: %s", err.Error())
+					continue
+				}
 
-			log.Infof("preheat all seed peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+				log.Infof("preheat all seed peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+			}
 		}()
 	case managertypes.AllPeersScope:
 		go func() {
@@ -4601,13 +4611,15 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 			defer cancel()
 
 			log.Info("preheat all peers")
-			resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
-			if err != nil {
-				log.Errorf("preheat all peers failed: %s", err.Error())
-				return
-			}
+			for _, preheatRequest := range preheatRequests {
+				resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
+				if err != nil {
+					log.Errorf("preheat all peers failed: %s", err.Error())
+					continue
+				}
 
-			log.Infof("preheat all peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+				log.Infof("preheat all peers finished, success count: %d, failed count: %d", len(resp.SuccessTasks), len(resp.FailureTasks))
+			}
 		}()
 	default:
 		return status.Errorf(codes.InvalidArgument, "unsupported preheat scope: %s", req.Scope)
@@ -4665,7 +4677,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 		Headers:             req.GetHeader(),
 		Username:            req.GetUsername(),
 		Password:            req.GetPassword(),
-		Platform:            req.GetPlatform(),
+		Platform:            req.Platform,
 		ConcurrentPeerCount: req.GetConcurrentPeerCount(),
 		Timeout:             req.GetTimeout().AsDuration(),
 		RootCAs:             certPool,
@@ -4675,12 +4687,22 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
 	}
 
-	if len(layers) != 1 {
-		return nil, status.Errorf(codes.InvalidArgument, "expected exactly one layer, got %d", len(layers))
+	if len(layers) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "expected at least one layer, got 0")
+	}
+
+	// Collect the layers of all the platforms, the layer shared by the platforms is stated once.
+	var urls []string
+	for _, layer := range layers {
+		for _, url := range layer.URLs {
+			if !slices.Contains(urls, url) {
+				urls = append(urls, url)
+			}
+		}
 	}
 
 	resp := &schedulerv2.StatImageResponse{
-		Image: &schedulerv2.Image{Layers: make([]*schedulerv2.Layer, 0, len(layers[0].URLs))},
+		Image: &schedulerv2.Image{Layers: make([]*schedulerv2.Layer, 0, len(urls))},
 		Peers: make([]*schedulerv2.PeerImage, 0),
 	}
 
@@ -4693,8 +4715,8 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	scope := req.GetScope()
 	enableTaskIDBasedBlobDigest := req.GetEnableTaskIdBasedBlobDigest()
 
-	taskIDs := make(map[string]string, len(layers[0].URLs))
-	for _, url := range layers[0].URLs {
+	taskIDs := make(map[string]string, len(urls))
+	for _, url := range urls {
 		taskID, err := idgen.TaskIDV2(url, pieceLength, tag, application, filteredQueryParams, "", enableTaskIDBasedBlobDigest)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "failed to generate task id for layer %s: %s", url, err)
@@ -4707,7 +4729,7 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 	peers := map[string]*schedulerv2.PeerImage{}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(req.GetConcurrentLayerCount()))
-	for _, url := range layers[0].URLs {
+	for _, url := range urls {
 		resp.Image.Layers = append(resp.Image.Layers, &schedulerv2.Layer{Url: url})
 		eg.Go(func() error {
 			taskID := taskIDs[url]

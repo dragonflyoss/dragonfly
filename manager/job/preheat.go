@@ -103,7 +103,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			Headers:                     json.Headers,
 			Username:                    json.Username,
 			Password:                    json.Password,
-			Platform:                    json.Platform,
+			Platform:                    &json.Platform,
 			Scope:                       json.Scope,
 			IPs:                         json.IPs,
 			Percentage:                  json.Percentage,

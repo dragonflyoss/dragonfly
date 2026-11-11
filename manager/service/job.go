@@ -320,7 +320,7 @@ func (s *service) createPreheatRequestsByManifestURL(ctx context.Context, json t
 		Headers:             json.Args.Headers,
 		Username:            json.Args.Username,
 		Password:            json.Args.Password,
-		Platform:            json.Args.Platform,
+		Platform:            &json.Args.Platform,
 		RootCAs:             certPool,
 		InsecureSkipVerify:  s.config.Job.Preheat.TLS.InsecureSkipVerify,
 	})

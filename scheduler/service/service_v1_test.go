@@ -89,6 +89,7 @@ var (
 	mockTaskApplication                = "foo"
 	mockTaskFilteredQueryParams        = []string{"bar"}
 	mockTaskHeader                     = map[string]string{"Content-Length": "100", "Range": "bytes=0-99"}
+	mockImagePlatform                  = "linux/amd64"
 	mockHostID                         = idgen.HostID("127.0.0.1", "foo", false)
 	mockSeedHostID                     = idgen.HostID("127.0.0.1", "bar", true)
 	mockHostLocation                   = "bas"

@@ -401,6 +401,7 @@ func (j *job) preheatV2SingleSeedPeerByURL(ctx context.Context, url string, req 
 			OutputPath:                  req.OutputPath,
 			EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 			SchedulingPolicy:            commonv2.SchedulingPolicy_ALWAYS,
+			Image:                       req.Image,
 		}})
 	if err != nil {
 		log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -508,6 +509,7 @@ func (j *job) PreheatAllSeedPeers(ctx context.Context, req *internaljob.PreheatR
 							OutputPath:                  req.OutputPath,
 							EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 							SchedulingPolicy:            commonv2.SchedulingPolicy_ALWAYS,
+							Image:                       req.Image,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
@@ -738,6 +740,7 @@ func (j *job) PreheatAllPeers(ctx context.Context, req *internaljob.PreheatReque
 							OutputPath:                  req.OutputPath,
 							EnableTaskIdBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
 							SchedulingPolicy:            commonv2.SchedulingPolicy_ALWAYS,
+							Image:                       req.Image,
 						}})
 					if err != nil {
 						log.Errorf("[preheat]: preheat failed: %s", err.Error())
