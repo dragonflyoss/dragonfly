@@ -9063,9 +9063,17 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 						},
 					}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}, preheatRequest.URLs)
 						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Equal(&mockImagePlatform, preheatRequest.Image.Platform)
 						wg.Done()
-					}).Return(nil, nil).Times(2),
+					}).Return(nil, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}, preheatRequest.URLs)
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Nil(preheatRequest.Image.Platform)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
 				)
 
 				assert.NoError(svc.PreheatImage(context.Background(), req))

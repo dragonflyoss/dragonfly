@@ -53,7 +53,10 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
+				assert.Len(layers, 1)
 				assert.Len(layers[0].URLs, 2)
+				assert.Equal("registry-1.docker.io/dragonflyoss/busybox:1.35.0", layers[0].Image.GetReference())
+				assert.Nil(layers[0].Image.Platform)
 			},
 		},
 		{
@@ -69,7 +72,31 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
+				assert.Len(layers, 1)
 				assert.Len(layers[0].URLs, 5)
+				assert.Equal("registry-1.docker.io/dragonflyoss/scheduler:v2.1.0", layers[0].Image.GetReference())
+				assert.Equal(mockPlatform, layers[0].Image.GetPlatform())
+			},
+		},
+		{
+			name: "get image layers of all platforms",
+			req: &ManifestRequest{
+				URL:                "https://registry-1.docker.io/v2/dragonflyoss/client/manifests/v1.5.12",
+				Username:           username,
+				Password:           password,
+				Timeout:            30 * time.Second,
+				InsecureSkipVerify: true,
+			},
+			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(layers, 3)
+				assert.Len(layers[0].URLs, 9)
+				assert.Equal("linux/amd64", layers[0].Image.GetPlatform())
+				assert.Len(layers[1].URLs, 9)
+				assert.Equal("linux/arm64", layers[1].Image.GetPlatform())
+				assert.Len(layers[2].URLs, 3)
+				assert.Equal("unknown/unknown", layers[2].Image.GetPlatform())
 			},
 		},
 	}

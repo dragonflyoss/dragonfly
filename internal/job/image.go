@@ -28,6 +28,7 @@ import (
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
 
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/config"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 	pkgoci "d7y.io/dragonfly/v2/pkg/oci"
@@ -172,39 +173,50 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 	// image and the platform to delete the image.
 	var preheatRequests []*PreheatRequest
 	for _, manifest := range manifests {
-		// Append the layers to the preheat request of the platform.
-		if i := slices.IndexFunc(preheatRequests, func(preheatRequest *PreheatRequest) bool {
+		if index := slices.IndexFunc(preheatRequests, func(preheatRequest *PreheatRequest) bool {
 			return preheatRequest.Image.GetPlatform() == manifest.Platform
-		}); i >= 0 {
-			preheatRequests[i].URLs = append(preheatRequests[i].URLs, manifest.BlobURLs...)
+		}); index >= 0 {
+			for _, url := range manifest.BlobURLs {
+				if !slices.Contains(preheatRequests[index].URLs, url) {
+					preheatRequests[index].URLs = append(preheatRequests[index].URLs, url)
+				}
+			}
+
 			continue
 		}
 
-		image := &commonv2.Image{Reference: ref.String()}
-		if manifest.Platform != "" {
-			image.Platform = &manifest.Platform
+		preheatRequest := &PreheatRequest{
+			URLs:                        manifest.BlobURLs,
+			PieceLength:                 req.PieceLength,
+			Tag:                         req.Tag,
+			Application:                 req.Application,
+			FilteredQueryParams:         req.FilteredQueryParams,
+			Headers:                     nethttp.HeaderToMap(header),
+			Scope:                       req.Scope,
+			IPs:                         req.IPs,
+			Percentage:                  req.Percentage,
+			Count:                       req.Count,
+			ConcurrentTaskCount:         req.ConcurrentTaskCount,
+			ConcurrentPeerCount:         req.ConcurrentPeerCount,
+			CertificateChain:            certificateChain,
+			InsecureSkipVerify:          req.InsecureSkipVerify,
+			Timeout:                     req.Timeout,
+			EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
+			Image:                       &commonv2.Image{Reference: ref.String()},
 		}
 
-		preheatRequests = append(preheatRequests, &PreheatRequest{
-			URLs:                manifest.BlobURLs,
-			PieceLength:         req.PieceLength,
-			Tag:                 req.Tag,
-			Application:         req.Application,
-			FilteredQueryParams: req.FilteredQueryParams,
-			Headers:             nethttp.HeaderToMap(header),
-			Scope:               req.Scope,
-			IPs:                 req.IPs,
-			Percentage:          req.Percentage,
-			Count:               req.Count,
-			ConcurrentTaskCount: req.ConcurrentTaskCount,
-			ConcurrentPeerCount: req.ConcurrentPeerCount,
-			CertificateChain:    certificateChain,
-			InsecureSkipVerify:  req.InsecureSkipVerify,
-			Timeout:             req.Timeout,
+		if manifest.Platform != "" {
+			preheatRequest.Image.Platform = &manifest.Platform
+		}
 
-			EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
-			Image:                       image,
-		})
+		preheatRequests = append(preheatRequests, preheatRequest)
+	}
+
+	if err := ref.Validate(); err != nil {
+		logger.Warnf("preheat without the image, the image reference %s is invalid: %s", ref.String(), err.Error())
+		for _, preheatRequest := range preheatRequests {
+			preheatRequest.Image = nil
+		}
 	}
 
 	return preheatRequests, nil

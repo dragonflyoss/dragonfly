@@ -430,7 +430,7 @@ func TestResolveAllPlatforms(t *testing.T) {
 				"size": %d,
 				"digest": "%s",
 				"platform": {
-					"architecture": "arm64",
+					"architecture": "aarch64",
 					"os": "linux",
 					"variant": "v8"
 				}

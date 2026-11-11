@@ -124,6 +124,73 @@ func TestReference_String(t *testing.T) {
 	}
 }
 
+func TestReference_Validate(t *testing.T) {
+	tests := []struct {
+		name   string
+		ref    *Reference
+		expect func(t *testing.T, err error)
+	}{
+		{
+			name: "reference with tag",
+			ref: &Reference{
+				Scheme:     "https",
+				Registry:   "registry.example.com",
+				Repository: "library/nginx",
+				Reference:  "latest",
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "reference with digest",
+			ref: &Reference{
+				Scheme:     "http",
+				Registry:   "localhost:5000",
+				Repository: "myrepo",
+				Reference:  "sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
+			name: "repository with uppercase",
+			ref: &Reference{
+				Scheme:     "https",
+				Registry:   "registry.example.com",
+				Repository: "Library/Nginx",
+				Reference:  "latest",
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+		{
+			name: "registry with underscore",
+			ref: &Reference{
+				Scheme:     "https",
+				Registry:   "my_registry:5000",
+				Repository: "library/nginx",
+				Reference:  "latest",
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, tc.ref.Validate())
+		})
+	}
+}
+
 func TestReferenceURLs(t *testing.T) {
 	assert := assert.New(t)
 	ref := &Reference{

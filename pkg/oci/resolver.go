@@ -116,8 +116,9 @@ func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, heade
 
 			// Set the platform of the image index entry to the manifests resolved from it.
 			if desc.Platform.OS != "" && desc.Platform.Architecture != "" {
+				platform := platforms.Normalize(specs.Platform{OS: desc.Platform.OS, Architecture: desc.Platform.Architecture})
 				for _, child := range children {
-					child.Platform = fmt.Sprintf("%s/%s", desc.Platform.OS, desc.Platform.Architecture)
+					child.Platform = fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
 				}
 			}
 
