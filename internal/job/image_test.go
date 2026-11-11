@@ -25,6 +25,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	mockPlatform = "linux/amd64"
+)
+
 func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 	username := os.Getenv("DOCKER_USERNAME")
 	password := os.Getenv("DOCKER_PASSWORD")
@@ -56,7 +60,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 			name: "get image layers with multi arch image layers",
 			req: &ManifestRequest{
 				URL:                "https://registry-1.docker.io/v2/dragonflyoss/scheduler/manifests/v2.1.0",
-				Platform:           "linux/amd64",
+				Platform:           &mockPlatform,
 				Username:           username,
 				Password:           password,
 				Timeout:            30 * time.Second,

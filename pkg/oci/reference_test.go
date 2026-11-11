@@ -70,6 +70,60 @@ func TestParseManifestURL(t *testing.T) {
 	}
 }
 
+func TestReference_String(t *testing.T) {
+	tests := []struct {
+		name   string
+		ref    *Reference
+		expect func(t *testing.T, s string)
+	}{
+		{
+			name: "reference with tag",
+			ref: &Reference{
+				Scheme:     "https",
+				Registry:   "registry.example.com",
+				Repository: "library/nginx",
+				Reference:  "latest",
+			},
+			expect: func(t *testing.T, s string) {
+				assert := assert.New(t)
+				assert.Equal("registry.example.com/library/nginx:latest", s)
+			},
+		},
+		{
+			name: "reference with digest",
+			ref: &Reference{
+				Scheme:     "http",
+				Registry:   "localhost:5000",
+				Repository: "myrepo",
+				Reference:  "sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
+			},
+			expect: func(t *testing.T, s string) {
+				assert := assert.New(t)
+				assert.Equal("localhost:5000/myrepo@sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e", s)
+			},
+		},
+		{
+			name: "reference with query",
+			ref: &Reference{
+				Scheme:     "https",
+				Registry:   "registry.example.com",
+				Repository: "library/nginx",
+				Reference:  "latest?ns=docker.io",
+			},
+			expect: func(t *testing.T, s string) {
+				assert := assert.New(t)
+				assert.Equal("registry.example.com/library/nginx:latest", s)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.expect(t, tc.ref.String())
+		})
+	}
+}
+
 func TestReferenceURLs(t *testing.T) {
 	assert := assert.New(t)
 	ref := &Reference{

@@ -19,6 +19,7 @@ package oci
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -32,14 +33,28 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// ResolveManifests fetches and resolves container image manifests from a registry for a specified platform.
+// Manifest is the manifest resolved from the image.
+type Manifest struct {
+	// URL is the manifest url referenced by the digest of the manifest.
+	URL string
+
+	// Platform is the platform that the manifest is resolved for in the format "os/arch".
+	// It is empty when all the platforms are resolved and the image is not a multi-platform
+	// image index.
+	Platform string
+
+	// BlobURLs is the blob urls (config and layers) of the manifest.
+	BlobURLs []string
+}
+
+// ResolveManifests fetches and resolves container image manifests from a registry by the platform matcher.
 // It constructs an HTTP request to retrieve the manifest, handles authentication via headers, and processes the response
-// to return manifests matching the given platform, along with the manifest urls referenced by the digests of the
-// matched platform manifests, excluding the manifest list (image index) itself.
-func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, header http.Header, platform specs.Platform) ([]distribution.Manifest, []string, error) {
+// to return the manifests matched by the matcher with the manifest urls referenced by their digests and their blob urls,
+// excluding the manifest list (image index) itself.
+func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, header http.Header, matcher platforms.Matcher) ([]*Manifest, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.ManifestURL(), nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Set header from the user request.
@@ -56,57 +71,68 @@ func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, heade
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Handle response.
 	if resp.StatusCode == http.StatusNotModified {
-		return nil, nil, distribution.ErrManifestNotModified
+		return nil, distribution.ErrManifestNotModified
 	} else if !registryclient.SuccessStatus(resp.StatusCode) {
-		return nil, nil, registryclient.HandleErrorResponse(resp)
+		return nil, registryclient.HandleErrorResponse(resp)
 	}
 
 	ctHeader := resp.Header.Get("Content-Type")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	manifest, desc, err := distribution.UnmarshalManifest(ctHeader, body)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	switch v := manifest.(type) {
 	case *schema1.SignedManifest, *schema2.DeserializedManifest, *ocischema.DeserializedManifest:
 		digestRef := *ref
 		digestRef.Reference = desc.Digest.String()
-		return []distribution.Manifest{v}, []string{digestRef.ManifestURL()}, nil
-	case *manifestlist.DeserializedManifestList:
-		var result []distribution.Manifest
-		var manifestURLs []string
-		for _, desc := range filterManifests(v.Manifests, platform) {
-			ref.Reference = desc.Digest.String()
-			manifests, childManifestURLs, err := c.ResolveManifests(ctx, ref, header.Clone(), platform)
-			if err != nil {
-				return nil, nil, err
-			}
 
-			result = append(result, manifests...)
-			manifestURLs = append(manifestURLs, childManifestURLs...)
+		var blobURLs []string
+		for _, blob := range v.References() {
+			blobURLs = append(blobURLs, ref.BlobURL(blob.Digest.String()))
 		}
 
-		return result, manifestURLs, nil
+		return []*Manifest{{URL: digestRef.ManifestURL(), BlobURLs: blobURLs}}, nil
+	case *manifestlist.DeserializedManifestList:
+		var manifests []*Manifest
+		for _, desc := range c.filterManifests(v.Manifests, matcher) {
+			digestRef := *ref
+			digestRef.Reference = desc.Digest.String()
+			children, err := c.ResolveManifests(ctx, &digestRef, header.Clone(), matcher)
+			if err != nil {
+				return nil, err
+			}
+
+			// Set the platform of the image index entry to the manifests resolved from it.
+			if desc.Platform.OS != "" && desc.Platform.Architecture != "" {
+				for _, child := range children {
+					child.Platform = fmt.Sprintf("%s/%s", desc.Platform.OS, desc.Platform.Architecture)
+				}
+			}
+
+			manifests = append(manifests, children...)
+		}
+
+		return manifests, nil
 	}
 
-	return nil, nil, errors.New("unknown manifest type")
+	return nil, errors.New("unknown manifest type")
 }
 
 // filterManifests filters a list of manifest descriptors to return only those
-// matching the specified platform, using the containerd platform matcher.
-func filterManifests(manifests []manifestlist.ManifestDescriptor, platform specs.Platform) []manifestlist.ManifestDescriptor {
-	matcher := platforms.Only(platform)
+// matched by the containerd platform matcher.
+func (c *AuthClient) filterManifests(manifests []manifestlist.ManifestDescriptor, matcher platforms.Matcher) []manifestlist.ManifestDescriptor {
 	var matches []manifestlist.ManifestDescriptor
 	for _, desc := range manifests {
 		if matcher.Match(specs.Platform{
