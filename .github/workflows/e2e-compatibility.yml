@@ -54,7 +54,7 @@ jobs:
             skip: 'Manager|Rate Limit|Dfcache|Preheat and Delete Image Using Scheduler'
           - mode: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
-            skip: 'Rate Limit|Preheat and Delete Image Using Scheduler|DeleteImage with Manager'
+            skip: 'Rate Limit|Preheat and Delete Image Using Scheduler'
 
     steps:
       - name: Free Disk Space (Ubuntu)
