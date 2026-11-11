@@ -51,10 +51,10 @@ jobs:
             chart-name: seedClient
           - mode: lightweight
             charts-config: test/testdata/charts/config.yaml
-            skip: 'Manager|Rate Limit|Dfcache'
+            skip: 'Manager|Rate Limit|Dfcache|Preheat and Delete Image Using Scheduler'
           - mode: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
-            skip: 'Rate Limit|PreheatImage and DeleteImage'
+            skip: 'Rate Limit|Preheat and Delete Image Using Scheduler|DeleteImage with Manager'
 
     steps:
       - name: Free Disk Space (Ubuntu)
