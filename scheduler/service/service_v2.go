@@ -658,7 +658,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 			options...,
 		)
 
-		v.resource.HostManager().Store(host)
+		host, _ = v.resource.HostManager().LoadOrStore(host)
 		host.Log.Infof("announce new host: %#v", req)
 	} else {
 		// Host already exists and updates properties.
@@ -1328,7 +1328,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if req.GetDownload().GetMetadataOnly() {
 		// Handle task with peer register request.
 		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 				// Collect RegisterPeerFailureCount metrics.
 				metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 					peer.Host.Type.Name()).Inc()
@@ -1426,7 +1426,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 
 	// Handle task with peer register request.
 	if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 			// Collect RegisterPeerFailureCount metrics.
 			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 				peer.Host.Type.Name()).Inc()
@@ -1875,7 +1875,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		task.ContentLength.Store(int64(download.GetActualContentLength()))
 		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
-		v.resource.TaskManager().Store(task)
+		task, _ = v.resource.TaskManager().LoadOrStore(task)
 	} else {
 		task.URL = download.GetUrl()
 		task.FilteredQueryParams = download.GetFilteredQueryParams()
@@ -1895,7 +1895,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 		}
 
 		peer = standard.NewPeer(peerID, task, host, options...)
-		v.resource.PeerManager().Store(peer)
+		peer, _ = v.resource.PeerManager().LoadOrStore(peer)
 	}
 
 	return host, task, peer, nil
