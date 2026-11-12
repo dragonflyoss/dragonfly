@@ -51,6 +51,7 @@ type PreheatRequest struct {
 	Hdfs                        *v2.HDFS          `json:"hdfs" validate:"omitempty"`
 	OutputPath                  *string           `json:"output_path" validate:"omitempty"`
 	EnableTaskIDBasedBlobDigest bool              `json:"enable_task_id_based_blob_digest" validate:"omitempty"`
+	Image                       *v2.Image         `json:"image" validate:"omitempty"`
 }
 
 // PreheatResponse defines the response parameters for preheating.

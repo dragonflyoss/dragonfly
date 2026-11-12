@@ -19,12 +19,13 @@ package oci
 import (
 	"testing"
 
+	"github.com/containerd/platforms"
 	"github.com/docker/distribution/manifest/manifestlist"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFilterManifests(t *testing.T) {
+func TestAuthClient_filterManifests(t *testing.T) {
 	manifests := []manifestlist.ManifestDescriptor{
 		{Platform: manifestlist.PlatformSpec{OS: "linux", Architecture: "amd64"}},
 		{Platform: manifestlist.PlatformSpec{OS: "linux", Architecture: "arm64", Variant: "v8"}},
@@ -32,13 +33,13 @@ func TestFilterManifests(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		platform specs.Platform
-		expect   func(t *testing.T, matches []manifestlist.ManifestDescriptor)
+		name    string
+		matcher platforms.Matcher
+		expect  func(t *testing.T, matches []manifestlist.ManifestDescriptor)
 	}{
 		{
-			name:     "match linux/amd64",
-			platform: specs.Platform{OS: "linux", Architecture: "amd64"},
+			name:    "match linux/amd64",
+			matcher: platforms.OnlyStrict(specs.Platform{OS: "linux", Architecture: "amd64"}),
 			expect: func(t *testing.T, matches []manifestlist.ManifestDescriptor) {
 				assert := assert.New(t)
 				assert.Len(matches, 1)
@@ -47,8 +48,8 @@ func TestFilterManifests(t *testing.T) {
 			},
 		},
 		{
-			name:     "match linux/arm64 with variant",
-			platform: specs.Platform{OS: "linux", Architecture: "arm64"},
+			name:    "match linux/arm64 with variant",
+			matcher: platforms.OnlyStrict(specs.Platform{OS: "linux", Architecture: "arm64"}),
 			expect: func(t *testing.T, matches []manifestlist.ManifestDescriptor) {
 				assert := assert.New(t)
 				assert.Len(matches, 1)
@@ -56,18 +57,27 @@ func TestFilterManifests(t *testing.T) {
 			},
 		},
 		{
-			name:     "no match",
-			platform: specs.Platform{OS: "linux", Architecture: "riscv64"},
+			name:    "no match",
+			matcher: platforms.OnlyStrict(specs.Platform{OS: "linux", Architecture: "riscv64"}),
 			expect: func(t *testing.T, matches []manifestlist.ManifestDescriptor) {
 				assert := assert.New(t)
 				assert.Empty(matches)
+			},
+		},
+		{
+			name:    "match all platforms",
+			matcher: platforms.All,
+			expect: func(t *testing.T, matches []manifestlist.ManifestDescriptor) {
+				assert := assert.New(t)
+				assert.Len(matches, 3)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.expect(t, filterManifests(manifests, tc.platform))
+			client := &AuthClient{}
+			tc.expect(t, client.filterManifests(manifests, tc.matcher))
 		})
 	}
 }

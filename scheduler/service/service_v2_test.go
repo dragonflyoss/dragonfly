@@ -8928,7 +8928,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				assert := assert.New(t)
 				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 
-				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Errorf(codes.InvalidArgument, "expected exactly one layer, got 0"))
+				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Error(codes.InvalidArgument, "expected at least one layer, got 0"))
 			},
 		},
 		{
@@ -9000,6 +9000,78 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
 						assert.True(preheatRequest.EnableTaskIDBasedBlobDigest)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer with platform",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:      "https://example.com/v2/image/manifesat/latest",
+				Scope:    managertypes.SingleSeedPeerScope,
+				Platform: &mockImagePlatform,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Equal(&mockImagePlatform, manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{{
+						URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+						Image: &commonv2.Image{Reference: "example.com/image:latest", Platform: &mockImagePlatform},
+					}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Equal(mockImagePlatform, preheatRequest.Image.GetPlatform())
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer with all platforms",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:   "https://example.com/v2/image/manifesat/latest",
+				Scope: managertypes.SingleSeedPeerScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Nil(manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{
+						{
+							URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+							Image: &commonv2.Image{Reference: "example.com/image:latest", Platform: &mockImagePlatform},
+						},
+						{
+							URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"},
+							Image: &commonv2.Image{Reference: "example.com/image:latest"},
+						},
+					}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}, preheatRequest.URLs)
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Equal(&mockImagePlatform, preheatRequest.Image.Platform)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}, preheatRequest.URLs)
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Nil(preheatRequest.Image.Platform)
 						wg.Done()
 					}).Return(nil, nil).Times(1),
 				)
@@ -9173,7 +9245,7 @@ func TestServiceV2_StatImage(t *testing.T) {
 				resp, err := svc.StatImage(context.Background(), req)
 				assert := assert.New(t)
 				assert.Nil(resp)
-				assert.ErrorIs(err, status.Errorf(codes.InvalidArgument, "expected exactly one layer, got 0"))
+				assert.ErrorIs(err, status.Error(codes.InvalidArgument, "expected at least one layer, got 0"))
 			},
 		},
 		{
@@ -9391,6 +9463,35 @@ func TestServiceV2_StatImage(t *testing.T) {
 				assert.Len(resp.Peers, 2)
 				assert.Len(resp.Peers[0].CachedLayers, 2)
 				assert.Len(resp.Peers[1].CachedLayers, 2)
+			},
+		},
+		{
+			name: "stat layers of all platforms",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Nil(manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{
+						{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}},
+						{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}},
+					}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert.NoError(err)
+				assert.Len(resp.Image.Layers, 2)
+				assert.Len(resp.Peers, 1)
+				assert.Len(resp.Peers[0].CachedLayers, 2)
 			},
 		},
 		{
