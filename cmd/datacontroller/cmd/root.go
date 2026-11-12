@@ -1,0 +1,125 @@
+/*
+ *     Copyright 2026 The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path"
+
+	"github.com/spf13/cobra"
+
+	"d7y.io/dragonfly/v2/cmd/dependency"
+	"d7y.io/dragonfly/v2/datacontroller"
+	"d7y.io/dragonfly/v2/datacontroller/config"
+	logger "d7y.io/dragonfly/v2/internal/dflog"
+	"d7y.io/dragonfly/v2/pkg/dfpath"
+	"d7y.io/dragonfly/v2/pkg/types"
+	"d7y.io/dragonfly/v2/version"
+)
+
+var (
+	cfg *config.Config
+)
+
+// rootCmd represents the datacontroller command when called without any subcommands.
+var rootCmd = &cobra.Command{
+	Use:   types.DataControllerName,
+	Short: "The Kubernetes data lifecycle controller of dragonfly.",
+	Long: `datacontroller is a Kubernetes controller that manages Dataset and
+DataLifecyclePolicy resources: it distributes the declared data into the
+Dragonfly P2P network through the manager, keeps it warm, verifies it and
+purges it when it expires or is deleted.`,
+	Args:              cobra.NoArgs,
+	DisableAutoGenTag: true,
+	SilenceUsage:      true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Convert config.
+		if err := cfg.Convert(); err != nil {
+			return err
+		}
+
+		// Validate config.
+		if err := cfg.Validate(); err != nil {
+			return err
+		}
+
+		// Initialize dfpath.
+		d, err := initDfpath(&cfg.Server)
+		if err != nil {
+			return err
+		}
+
+		rotateConfig := logger.LogRotateConfig{
+			MaxSize:    cfg.Server.LogMaxSize,
+			MaxAge:     cfg.Server.LogMaxAge,
+			MaxBackups: cfg.Server.LogMaxBackups}
+
+		// Initialize logger.
+		if err := logger.InitDataController(cfg.Server.LogLevel, cfg.Console, d.LogDir(), rotateConfig); err != nil {
+			return fmt.Errorf("init data controller logger: %w", err)
+		}
+		logger.RedirectStdoutAndStderr(cfg.Console, path.Join(d.LogDir(), types.DataControllerName))
+
+		return runDataController(ctx, cancel)
+	},
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		logger.Error(err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	// Initialize default data controller config.
+	cfg = config.New()
+
+	// Initialize command and config.
+	dependency.InitCommandAndConfig(rootCmd, true, cfg)
+}
+
+// initDfpath initializes dfpath.
+func initDfpath(cfg *config.ServerConfig) (dfpath.Dfpath, error) {
+	var options []dfpath.Option
+	if cfg.LogDir != "" {
+		options = append(options, dfpath.WithLogDir(cfg.LogDir))
+	}
+
+	return dfpath.New(options...)
+}
+
+func runDataController(ctx context.Context, cancel context.CancelFunc) error {
+	logger.Infof("version:\n%s", version.Version())
+	shutdown := dependency.InitMonitor(ctx, cfg.PProfPort, cfg.Tracing)
+	defer shutdown()
+
+	svr, err := datacontroller.New(cfg)
+	if err != nil {
+		return err
+	}
+
+	dependency.SetupQuitSignalHandler(cancel)
+	return svr.Serve(ctx)
+}

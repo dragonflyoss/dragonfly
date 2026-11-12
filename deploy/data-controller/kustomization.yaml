@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - crds/data.d7y.io_datasets.yaml
+  - crds/data.d7y.io_datalifecyclepolicies.yaml
+  - rbac/serviceaccount.yaml
+  - rbac/role.yaml
+  - rbac/clusterrolebinding.yaml
+  - rbac/leader-election-role.yaml
+  - configmap.yaml
+  - secret.yaml
+  - deployment.yaml

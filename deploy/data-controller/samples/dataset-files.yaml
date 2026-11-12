@@ -1,0 +1,30 @@
+# Keep a set of model files warm on every seed peer, re-distribute them every 6 hours,
+# check every hour that they are still present and purge them from the peers when the
+# Dataset is deleted.
+apiVersion: data.d7y.io/v1alpha1
+kind: Dataset
+metadata:
+  name: llm-weights
+  namespace: default
+  labels:
+    tier: hot
+spec:
+  sources:
+    - name: weights
+      type: file
+      urls:
+        - https://models.example.com/llama/model-00001-of-00002.safetensors
+        - https://models.example.com/llama/model-00002-of-00002.safetensors
+      tag: v3
+      application: inference
+      pieceLength: 16777216
+  distribution:
+    scope: all_seed_peers
+    concurrentTaskCount: 4
+    concurrentPeerCount: 100
+    timeout: 45m
+    retryLimit: 3
+  lifecycle:
+    refreshInterval: 6h
+    verifyInterval: 1h
+    deletionPolicy: Purge

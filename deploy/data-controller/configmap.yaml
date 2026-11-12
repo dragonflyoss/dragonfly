@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dragonfly-datacontroller
+  namespace: dragonfly-system
+data:
+  datacontroller.yaml: |
+    console: true
+    server:
+      logLevel: info
+    manager:
+      # Base URL of the Dragonfly manager REST API.
+      endpoint: http://dragonfly-manager.dragonfly-system.svc.cluster.local:8080
+      # The personal access token is read from the mounted Secret; it needs the "job" scope.
+      tokenFile: /etc/dragonfly/manager/token
+      requestTimeout: 30s
+    controller:
+      leaderElection: true
+      healthProbeAddr: ":8001"
+      maxConcurrentReconciles: 4
+      pollInterval: 15s
+      resyncInterval: 10m
+      retryBackoff: 30s
+      maxRetryBackoff: 10m
+    metrics:
+      enable: true
+      addr: ":8000"
