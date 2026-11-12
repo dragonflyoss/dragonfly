@@ -4484,18 +4484,22 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4634,18 +4638,22 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 // all peers to collect the image's download state across the network.
 // The response includes both layer information and the status on each peer.
 func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.AllPeersScope
 	}
 
-	if req.ConcurrentLayerCount == nil {
+	if req.GetConcurrentLayerCount() == 0 {
 		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
 		req.ConcurrentLayerCount = &concurrentLayerCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4798,18 +4806,22 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatFile(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4938,9 +4950,13 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 // all peers to collect the file's download state across the network.
 // The response includes the file status on each peer.
 func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatFile(req.Url)
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}

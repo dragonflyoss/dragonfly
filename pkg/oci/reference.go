@@ -28,7 +28,7 @@ import (
 )
 
 // manifestURLRegexp is the regular expression for parsing manifest urls.
-var manifestURLRegexp = regexp.MustCompile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
+var manifestURLRegexp = regexp.MustCompile("^(.*)://(.*?)/v2/(.*)/manifests/(.*)")
 
 // Reference is the set of registry coordinates of an image, following the
 // naming of the OCI distribution spec.
