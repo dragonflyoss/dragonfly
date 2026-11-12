@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dragonfly-injector
+  namespace: dragonfly-system
+  labels:
+    app.kubernetes.io/name: dragonfly-injector
+    app.kubernetes.io/part-of: dragonfly
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dragonfly-injector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dragonfly-injector
+        app.kubernetes.io/part-of: dragonfly
+    spec:
+      serviceAccountName: dragonfly-injector
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: injector
+          image: dragonflyoss/injector:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/dragonfly/bin/injector"]
+          args:
+            - --health-probe-bind-address=:8081
+            - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --metrics-bind-address=0
+          ports:
+            - name: webhook
+              containerPort: 9443
+              protocol: TCP
+            - name: probes
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probes
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: webhook-cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+            - name: config
+              mountPath: /etc/dragonfly
+              readOnly: true
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: dragonfly-injector-webhook-cert
+        - name: config
+          configMap:
+            name: dragonfly-injector-config
+      terminationGracePeriodSeconds: 10
