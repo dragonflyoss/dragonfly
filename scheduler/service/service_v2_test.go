@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -1119,7 +1120,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *schedulerv2.AnnounceHostRequest
-		run  func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder)
+		run  func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder)
 	}{
 		{
 			name: "host not found",
@@ -1192,14 +1193,14 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				assert := assert.New(t)
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{LoadLimit: 10}, nil).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1226,7 +1227,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1353,14 +1355,14 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				assert := assert.New(t)
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{}, errors.New("foo")).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1387,7 +1389,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1514,7 +1517,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{LoadLimit: 10}, nil).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
@@ -1674,7 +1677,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{}, errors.New("foo")).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
@@ -1834,14 +1837,14 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				assert := assert.New(t)
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{LoadLimit: 10}, nil).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1868,7 +1871,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1971,7 +1975,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 				},
 				Interval: durationpb.New(5 * time.Minute),
 			},
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				assert := assert.New(t)
 				gomock.InOrder(
 					md.GetSchedulerClusterClientConfig().Return(managertypes.SchedulerClusterClientConfig{}, errors.New("foo")).Times(1),
@@ -2037,16 +2041,18 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 		{
 			name: "host not found and host type is HostTypeSuperSeed uses seed peer cluster load limit",
 			req:  mockAnnounceHostRequest(pkgtypes.HostTypeSuperSeed),
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				assert := assert.New(t)
 				gomock.InOrder(
 					md.GetSeedPeerClusterConfig().Return(managertypes.SeedPeerClusterConfig{LoadLimit: 20}, nil).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Cond(func(host *standard.Host) bool {
+					mh.LoadOrStore(gomock.Cond(func(host *standard.Host) bool {
 						return host.Type == pkgtypes.HostTypeSuperSeed && host.ConcurrentUploadLimit.Load() == 20
-					})).Return().Times(1),
+					})).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) { return host, false }).Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					msp.Store(gomock.Cond(func(host *standard.Host) bool { return host.Type == pkgtypes.HostTypeSuperSeed })).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -2063,11 +2069,13 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 		{
 			name: "host already exists and host type is HostTypeSuperSeed with seed peer cluster config error keeps default limit",
 			req:  mockAnnounceHostRequest(pkgtypes.HostTypeSuperSeed),
-			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
+			run: func(t *testing.T, svc *V2, req *schedulerv2.AnnounceHostRequest, host *standard.Host, persistentHost *persistent.Host, persistentCacheHost *persistentcache.Host, hostManager standard.HostManager, persistentHostManager persistent.HostManager, persistentCacheHostManager persistentcache.HostManager, seedPeer standard.SeedPeer, mr *standard.MockResourceMockRecorder, mpr *persistent.MockResourceMockRecorder, mpcr *persistentcache.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder, msp *standard.MockSeedPeerMockRecorder, md *configmocks.MockDynconfigInterfaceMockRecorder) {
 				gomock.InOrder(
 					md.GetSeedPeerClusterConfig().Return(managertypes.SeedPeerClusterConfig{}, errors.New("foo")).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					msp.Store(gomock.Eq(host)).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(persistentHost, true).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -2103,6 +2111,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 			hostManager := standard.NewMockHostManager(ctl)
 			persistentHostManager := persistent.NewMockHostManager(ctl)
 			persistentCacheHostManager := persistentcache.NewMockHostManager(ctl)
+			seedPeer := standard.NewMockSeedPeer(ctl)
 			host := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
@@ -2121,7 +2130,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentResource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
-			tc.run(t, svc, tc.req, host, persistentHost, persistentCacheHost, hostManager, persistentHostManager, persistentCacheHostManager, resource.EXPECT(), persistentResource.EXPECT(), persistentCacheResource.EXPECT(), hostManager.EXPECT(), persistentHostManager.EXPECT(), persistentCacheHostManager.EXPECT(), dynconfig.EXPECT())
+			tc.run(t, svc, tc.req, host, persistentHost, persistentCacheHost, hostManager, persistentHostManager, persistentCacheHostManager, seedPeer, resource.EXPECT(), persistentResource.EXPECT(), persistentCacheResource.EXPECT(), hostManager.EXPECT(), persistentHostManager.EXPECT(), persistentCacheHostManager.EXPECT(), seedPeer.EXPECT(), dynconfig.EXPECT())
 		})
 	}
 }
@@ -2397,7 +2406,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 			mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 			mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-			ms *schedulingmocks.MockSchedulingMockRecorder)
+			ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder)
 		expect func(t *testing.T, peer *standard.Peer, err error)
 	}{
 		{
@@ -2408,7 +2417,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
@@ -2427,7 +2436,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
@@ -2451,6 +2460,40 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			},
 		},
 		{
+			name: "host type is HostTypeSuperSeed and seed peer is deleted from hashring",
+			mock: func(wg *sync.WaitGroup, host *standard.Host, mockPeer *standard.Peer, persistentPeer *persistent.Peer, persistentCachePeer *persistentcache.Peer,
+				peerManager standard.PeerManager, hostManager standard.HostManager, persistentPeerManager persistent.PeerManager, persistentHostManager persistent.HostManager,
+				persistentCachePeerManager persistentcache.PeerManager, persistentCacheHostManager persistentcache.HostManager,
+				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
+				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
+				host.Type = pkgtypes.HostTypeSuperSeed
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Any()).Return(host, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.DeleteAllByHostID(gomock.Any()).Times(1),
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Delete(gomock.Any()).Return().Times(1),
+					mr.SeedPeer().Return(seedPeer).Times(1),
+					msp.Delete(gomock.Eq(host)).Times(1),
+					mpr.PeerManager().Return(persistentPeerManager).Times(1),
+					mpp.LoadAllByHostID(gomock.Any(), gomock.Eq(mockHostID)).Return(nil, nil).Times(1),
+					mpr.HostManager().Return(persistentHostManager).Times(1),
+					mph.Delete(gomock.Any(), gomock.Eq(mockHostID)).Return(nil).Times(1),
+					mpcr.PeerManager().Return(persistentCachePeerManager).Times(1),
+					mpcp.LoadAllByHostID(gomock.Any(), gomock.Eq(mockHostID)).Return(nil, nil).Times(1),
+					mpcr.HostManager().Return(persistentCacheHostManager).Times(1),
+					mpch.Delete(gomock.Any(), gomock.Eq(mockHostID)).Return(nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, peer *standard.Peer, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+			},
+		},
+		{
 			name: "peer leaves succeeded",
 			mock: func(wg *sync.WaitGroup, host *standard.Host, mockPeer *standard.Peer, persistentPeer *persistent.Peer, persistentCachePeer *persistentcache.Peer,
 				peerManager standard.PeerManager, hostManager standard.HostManager, persistentPeerManager persistent.PeerManager, persistentHostManager persistent.HostManager,
@@ -2458,7 +2501,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				host.Peers.Store(mockPeer.ID, mockPeer)
 				mockPeer.FSM.SetState(standard.PeerStatePending)
 				gomock.InOrder(
@@ -2491,7 +2534,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				wg.Add(2)
 				persistentPeer.FSM.SetState(persistent.PeerStateSucceeded)
 				persistentCachePeer.FSM.SetState(persistentcache.PeerStateSucceeded)
@@ -2531,7 +2574,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
@@ -2558,7 +2601,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 				mr *standard.MockResourceMockRecorder, mp *standard.MockPeerManagerMockRecorder, mh *standard.MockHostManagerMockRecorder,
 				mpr *persistent.MockResourceMockRecorder, mpp *persistent.MockPeerManagerMockRecorder, mph *persistent.MockHostManagerMockRecorder,
 				mpcr *persistentcache.MockResourceMockRecorder, mpcp *persistentcache.MockPeerManagerMockRecorder, mpch *persistentcache.MockHostManagerMockRecorder,
-				ms *schedulingmocks.MockSchedulingMockRecorder) {
+				ms *schedulingmocks.MockSchedulingMockRecorder, seedPeer standard.SeedPeer, msp *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(host, true).Times(1),
@@ -2601,6 +2644,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			persistentPeerManager := persistent.NewMockPeerManager(ctl)
 			persistentCacheHostManager := persistentcache.NewMockHostManager(ctl)
 			persistentCachePeerManager := persistentcache.NewMockPeerManager(ctl)
+			seedPeer := standard.NewMockSeedPeer(ctl)
 			host := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
@@ -2615,7 +2659,7 @@ func TestServiceV2_DeleteHost(t *testing.T) {
 			var wg sync.WaitGroup
 			tc.mock(&wg, host, mockPeer, persistentPeer, persistentCachePeer, peerManager, hostManager, persistentPeerManager, persistentHostManager, persistentCachePeerManager, persistentCacheHostManager,
 				resource.EXPECT(), peerManager.EXPECT(), hostManager.EXPECT(), persistentResource.EXPECT(), persistentPeerManager.EXPECT(), persistentHostManager.EXPECT(),
-				persistentCacheResource.EXPECT(), persistentCachePeerManager.EXPECT(), persistentCacheHostManager.EXPECT(), scheduling.EXPECT())
+				persistentCacheResource.EXPECT(), persistentCachePeerManager.EXPECT(), persistentCacheHostManager.EXPECT(), scheduling.EXPECT(), seedPeer, seedPeer.EXPECT())
 			err := svc.DeleteHost(context.Background(), &schedulerv2.DeleteHostRequest{HostId: mockHostID})
 			wg.Wait()
 			tc.expect(t, mockPeer, err)
@@ -4399,7 +4443,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *standard.Task) (*standard.Task, bool) { return task, false }).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
 				)
@@ -4413,6 +4457,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.Equal(download.GetUrl(), task.URL)
 				assert.EqualValues(download.GetFilteredQueryParams(), task.FilteredQueryParams)
 				assert.EqualValues(download.RequestHeader, task.Header)
+			},
+		},
+		{
+			name: "task is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.LoadOrStore(gomock.Any()).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, task, _, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockTask, task)
 			},
 		},
 		{
@@ -4491,7 +4562,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Store(gomock.Any()).Return().Times(1),
+					mp.LoadOrStore(gomock.Any()).DoAndReturn(func(peer *standard.Peer) (*standard.Peer, bool) { return peer, false }).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -4510,6 +4581,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.NotNil(peer.AnnouncePeerStream)
 				assert.EqualValues(mockHost, peer.Host)
 				assert.EqualValues(mockTask, peer.Task)
+			},
+		},
+		{
+			name: "peer is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.LoadOrStore(gomock.Any()).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, _, peer, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockPeer, peer)
 			},
 		},
 	}
@@ -8880,6 +8978,34 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
 		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:                 "https://example.com/v2/image/manifesat/latest",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+
+				assert.Error(svc.PreheatImage(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
+		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.PreheatImageRequest{
 				Url:              "https://example.com/v2/image/manifesat/latest",
@@ -8911,7 +9037,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				assert := assert.New(t)
 				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 
-				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Errorf(codes.InvalidArgument, "expected exactly one layer, got 0"))
+				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Error(codes.InvalidArgument, "expected at least one layer, got 0"))
 			},
 		},
 		{
@@ -8938,9 +9064,36 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat with the renewed authorization",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{
+						URLs:    []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+						Headers: map[string]string{"Authorization": "Bearer foo"},
+					}}, nil).Times(1),
+					mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("Bearer bar", nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal("Bearer bar", preheatRequest.Headers["Authorization"])
+						wg.Done()
+					}).Return(nil, nil).Times(1),
 				)
 
 				assert.NoError(svc.PreheatImage(context.Background(), req))
@@ -8958,6 +9111,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
@@ -8979,10 +9133,85 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
 						assert.True(preheatRequest.EnableTaskIDBasedBlobDigest)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer with platform",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:      "https://example.com/v2/image/manifesat/latest",
+				Scope:    managertypes.SingleSeedPeerScope,
+				Platform: &mockImagePlatform,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Equal(&mockImagePlatform, manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{{
+						URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+						Image: &commonv2.Image{Reference: "example.com/image:latest", Platform: &mockImagePlatform},
+					}}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Equal(mockImagePlatform, preheatRequest.Image.GetPlatform())
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat single_seed_peer with all platforms",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:   "https://example.com/v2/image/manifesat/latest",
+				Scope: managertypes.SingleSeedPeerScope,
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Nil(manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{
+						{
+							URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+							Image: &commonv2.Image{Reference: "example.com/image:latest", Platform: &mockImagePlatform},
+						},
+						{
+							URLs:  []string{"https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"},
+							Image: &commonv2.Image{Reference: "example.com/image:latest"},
+						},
+					}, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}, preheatRequest.URLs)
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Equal(&mockImagePlatform, preheatRequest.Image.Platform)
+						wg.Done()
+					}).Return(nil, nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal([]string{"https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}, preheatRequest.URLs)
+						assert.Equal("example.com/image:latest", preheatRequest.Image.GetReference())
+						assert.Nil(preheatRequest.Image.Platform)
 						wg.Done()
 					}).Return(nil, nil).Times(1),
 				)
@@ -9002,6 +9231,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9022,6 +9252,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9042,6 +9273,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9062,6 +9294,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9082,6 +9315,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9117,6 +9351,38 @@ func TestServiceV2_StatImage(t *testing.T) {
 		req  *schedulerv2.StatImageRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.StatImageRequest{
+				Url:                  "https://example.com/v2/image/manifests/latest",
+				ConcurrentLayerCount: proto.Int64(0),
+				ConcurrentPeerCount:  proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentLayerCount), req.GetConcurrentLayerCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.StatImageRequest{
@@ -9156,7 +9422,7 @@ func TestServiceV2_StatImage(t *testing.T) {
 				resp, err := svc.StatImage(context.Background(), req)
 				assert := assert.New(t)
 				assert.Nil(resp)
-				assert.ErrorIs(err, status.Errorf(codes.InvalidArgument, "expected exactly one layer, got 0"))
+				assert.ErrorIs(err, status.Error(codes.InvalidArgument, "expected at least one layer, got 0"))
 			},
 		},
 		{
@@ -9377,6 +9643,35 @@ func TestServiceV2_StatImage(t *testing.T) {
 			},
 		},
 		{
+			name: "stat layers of all platforms",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(2)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
+						assert.Nil(manifestRequest.Platform)
+					}).Return([]*internaljob.PreheatRequest{
+						{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d", "https://example.com/v2/image/latest/blobs/sha256:150b7321c0794448817b19fab51e415ff406ac8663c4f53d64c3590454dee201"}},
+						{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}},
+					}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+					mj.GetTask(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.GetTaskRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.GetTaskResponse{Peers: []*internaljob.Peer{{IP: "127.0.0.1", Hostname: "peer-1"}}}, nil).Times(1),
+				)
+
+				resp, err := svc.StatImage(context.Background(), req)
+				assert.NoError(err)
+				assert.Len(resp.Image.Layers, 2)
+				assert.Len(resp.Peers, 1)
+				assert.Len(resp.Peers[0].CachedLayers, 2)
+			},
+		},
+		{
 			name: "stat multi layers by peers, but one of the get task failed",
 			req: &schedulerv2.StatImageRequest{
 				Url: "https://example.com/v2/image/manifests/latest",
@@ -9509,6 +9804,33 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 		req  *schedulerv2.PreheatFileRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatFile(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:                 "https://example.com/file.txt",
+				Scope:               "invalid-scope",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				assert.Error(svc.PreheatFile(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "unsupported preheat scope",
 			req: &schedulerv2.PreheatFileRequest{
@@ -9729,6 +10051,36 @@ func TestServiceV2_StatFile(t *testing.T) {
 		req  *schedulerv2.StatFileRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent peer count is zero",
+			req: &schedulerv2.StatFileRequest{
+				Url:                 "https://example.com/dir/",
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("list task entries failed")).Times(1)
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "list task entries failed",
 			req: &schedulerv2.StatFileRequest{

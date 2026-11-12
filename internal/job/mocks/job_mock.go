@@ -55,3 +55,18 @@ func (mr *MockImageMockRecorder) CreatePreheatRequestsByManifestURL(ctx, req any
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePreheatRequestsByManifestURL", reflect.TypeOf((*MockImage)(nil).CreatePreheatRequestsByManifestURL), ctx, req)
 }
+
+// GetAuthorizationByManifestURL mocks base method.
+func (m *MockImage) GetAuthorizationByManifestURL(ctx context.Context, req *job.ManifestRequest) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAuthorizationByManifestURL", ctx, req)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAuthorizationByManifestURL indicates an expected call of GetAuthorizationByManifestURL.
+func (mr *MockImageMockRecorder) GetAuthorizationByManifestURL(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthorizationByManifestURL", reflect.TypeOf((*MockImage)(nil).GetAuthorizationByManifestURL), ctx, req)
+}

@@ -540,8 +540,14 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 			types.ParseHostType(req.GetType()), options...,
 		)
 
-		v.resource.HostManager().Store(host)
+		host, _ = v.resource.HostManager().LoadOrStore(host)
 		host.Log.Infof("announce new host: %#v", req)
+
+		// Store the seed peer in the hashring by its announcement.
+		if host.Type == types.HostTypeSuperSeed {
+			v.resource.SeedPeer().Store(host)
+		}
+
 		return nil
 	}
 
@@ -624,6 +630,11 @@ func (v *V1) AnnounceHost(ctx context.Context, req *schedulerv1.AnnounceHostRequ
 		}
 	}
 
+	// Store the seed peer in the hashring by its announcement.
+	if host.Type == types.HostTypeSuperSeed {
+		v.resource.SeedPeer().Store(host)
+	}
+
 	return nil
 }
 
@@ -644,6 +655,12 @@ func (v *V1) LeaveHost(_ctx context.Context, req *schedulerv1.LeaveHostRequest) 
 
 	// Delete host in scheduler.
 	v.resource.HostManager().Delete(host.ID)
+
+	// Delete the seed peer from the hashring.
+	if host.Type == types.HostTypeSuperSeed {
+		v.resource.SeedPeer().Delete(host)
+	}
+
 	return nil
 }
 
@@ -705,7 +722,7 @@ func (v *V1) triggerTask(ctx context.Context, req *schedulerv1.PeerTaskRequest, 
 	// If the task triggers the TaskEventDownload failed and it has no available peer,
 	// let the peer do the scheduling.
 	if task.FSM.Can(resource.TaskEventDownload) {
-		if err := task.FSM.Event(ctx, resource.TaskEventDownload); err != nil {
+		if err := task.FSM.Event(ctx, resource.TaskEventDownload); err != nil && !task.FSM.Is(resource.TaskStateRunning) {
 			peer.Log.Errorf("task fsm event failed: %s", err.Error())
 			return err
 		}
@@ -798,7 +815,7 @@ func (v *V1) storeTask(_ context.Context, req *schedulerv1.PeerTaskRequest, typ 
 		// Piece length is not supported in Protocol V1, use default value 0.
 		task := resource.NewTask(req.GetTaskId(), req.GetUrl(), req.UrlMeta.GetTag(), req.UrlMeta.GetApplication(),
 			typ, filteredQueryParams, req.UrlMeta.GetHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
-		v.resource.TaskManager().Store(task)
+		task, _ = v.resource.TaskManager().LoadOrStore(task)
 		task.Log.Info("create new task")
 		return task
 	}
@@ -830,7 +847,7 @@ func (v *V1) storeHost(_ context.Context, peerHost *schedulerv1.PeerHost) *resou
 			options...,
 		)
 
-		v.resource.HostManager().Store(host)
+		host, _ = v.resource.HostManager().LoadOrStore(host)
 		host.Log.Info("create new host")
 		return host
 	}
@@ -863,7 +880,7 @@ func (v *V1) storePeer(_ context.Context, id string, priority commonv1.Priority,
 		}
 
 		peer := resource.NewPeer(id, task, host, options...)
-		v.resource.PeerManager().Store(peer)
+		peer, _ = v.resource.PeerManager().LoadOrStore(peer)
 		peer.Log.Info("create new peer")
 		return peer
 	}

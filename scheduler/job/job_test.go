@@ -44,11 +44,13 @@ import (
 )
 
 var (
-	mockAdvertiseIP = "127.0.0.1"
-	mockTaskURL     = "http://example.com/foo"
-	mockTaskID      = idgen.TaskIDV2ByURLBased(mockTaskURL, nil, "", "", idgen.ParseFilteredQueryParams(""), "")
-	mockGroupUUID   = "group"
-	mockTaskUUID    = "task"
+	mockAdvertiseIP   = "127.0.0.1"
+	mockTaskURL       = "http://example.com/foo"
+	mockTaskID        = idgen.TaskIDV2ByURLBased(mockTaskURL, nil, "", "", idgen.ParseFilteredQueryParams(""), "")
+	mockGroupUUID     = "group"
+	mockTaskUUID      = "task"
+	mockImagePlatform = "linux/amd64"
+	mockImage         = &commonv2.Image{Reference: "example.com/foo:latest", Platform: &mockImagePlatform}
 
 	mockConfig = &config.Config{
 		Server:  config.ServerConfig{AdvertiseIP: net.ParseIP(mockAdvertiseIP)},
@@ -235,7 +237,7 @@ func TestJob_PreheatSingleSeedPeer(t *testing.T) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				seedPeer.EXPECT().Select(gomock.Any(), mockTaskID).Return(seedHost, nil).Times(1)
 				pool.EXPECT().Get("127.0.0.1:8003").Return(client, nil).Times(1)
-				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(1)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Cond(func(req *dfdaemonv2.DownloadTaskRequest) bool { return req.GetDownload().GetImage() == mockImage })).Return(stream, nil).Times(1)
 				gomock.InOrder(
 					stream.EXPECT().Recv().Return(&dfdaemonv2.DownloadTaskResponse{HostId: seedHost.ID}, nil).Times(1),
 					stream.EXPECT().Recv().Return(nil, io.EOF).Times(1),
@@ -312,6 +314,7 @@ func TestJob_PreheatSingleSeedPeer(t *testing.T) {
 				ConcurrentTaskCount: 1,
 				GroupUUID:           mockGroupUUID,
 				TaskUUID:            mockTaskUUID,
+				Image:               mockImage,
 			}, logger.WithPreheatJob(mockGroupUUID, mockTaskUUID, tc.urls))
 			tc.expect(t, seedHost, resp, err)
 		})
@@ -343,7 +346,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 				seedPeer.EXPECT().HasAvailable().Return(true).Times(1)
 				hostManager.EXPECT().LoadAllSeeds().Return(mockHosts(2, pkgtypes.HostTypeSuperSeed)).Times(1)
 				pool.EXPECT().Get(gomock.Any()).Return(client, nil).Times(2)
-				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(2)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Cond(func(req *dfdaemonv2.DownloadTaskRequest) bool { return req.GetDownload().GetImage() == mockImage })).Return(stream, nil).Times(2)
 				stream.EXPECT().Recv().Return(nil, io.EOF).Times(2)
 			},
 			expect: func(t *testing.T, resp *internaljob.PreheatResponse, err error) {
@@ -448,6 +451,7 @@ func TestJob_PreheatAllSeedPeers(t *testing.T) {
 				ConcurrentPeerCount: 2,
 				GroupUUID:           mockGroupUUID,
 				TaskUUID:            mockTaskUUID,
+				Image:               mockImage,
 			}, logger.WithPreheatJob(mockGroupUUID, mockTaskUUID, tc.urls))
 			tc.expect(t, resp, err)
 		})
@@ -475,7 +479,7 @@ func TestJob_PreheatAllPeers(t *testing.T) {
 			mock: func(hostManager *resource.MockHostManager, pool *dfdaemonclientmocks.MockPool, client *dfdaemonclientmocks.MockClient, stream *dfdaemonv2mocks.MockDfdaemonUpload_DownloadTaskClient) {
 				hostManager.EXPECT().LoadAllNormals().Return(mockHosts(2, pkgtypes.HostTypeNormal)).Times(1)
 				pool.EXPECT().Get(gomock.Any()).Return(client, nil).Times(2)
-				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Any()).Return(stream, nil).Times(2)
+				client.EXPECT().DownloadTask(gomock.Any(), mockTaskID, gomock.Cond(func(req *dfdaemonv2.DownloadTaskRequest) bool { return req.GetDownload().GetImage() == mockImage })).Return(stream, nil).Times(2)
 				stream.EXPECT().Recv().Return(nil, io.EOF).Times(2)
 			},
 			expect: func(t *testing.T, resp *internaljob.PreheatResponse, err error) {
@@ -542,6 +546,7 @@ func TestJob_PreheatAllPeers(t *testing.T) {
 				ConcurrentPeerCount: 2,
 				GroupUUID:           mockGroupUUID,
 				TaskUUID:            mockTaskUUID,
+				Image:               mockImage,
 			}, logger.WithPreheatJob(mockGroupUUID, mockTaskUUID, []string{mockTaskURL}))
 			tc.expect(t, resp, err)
 		})

@@ -97,7 +97,6 @@ var _ = Describe("Download Using Dfget", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -105,9 +104,9 @@ var _ = Describe("Download Using Dfget", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			}, 60*time.Second, time.Second).Should(Equal(testFile.GetSha256()))
 		})
 	})
 
@@ -145,7 +144,6 @@ var _ = Describe("Download Using Dfget", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -153,9 +151,9 @@ var _ = Describe("Download Using Dfget", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			}, 60*time.Second, time.Second).Should(Equal(testFile.GetSha256()))
 		})
 	})
 
@@ -193,7 +191,6 @@ var _ = Describe("Download Using Dfget", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -201,9 +198,9 @@ var _ = Describe("Download Using Dfget", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			}, 60*time.Second, time.Second).Should(Equal(testFile.GetSha256()))
 		})
 	})
 
@@ -241,7 +238,6 @@ var _ = Describe("Download Using Dfget", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -249,9 +245,9 @@ var _ = Describe("Download Using Dfget", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			}, 60*time.Second, time.Second).Should(Equal(testFile.GetSha256()))
 		})
 	})
 
@@ -325,7 +321,6 @@ var _ = Describe("Download Using Dfget", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testFile.GetSha256()).To(Equal(sha256sum))
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -333,9 +328,9 @@ var _ = Describe("Download Using Dfget", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err = util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testFile.GetSha256()).To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, testFile.GetTaskID())
+			}, 60*time.Second, time.Second).Should(Equal(testFile.GetSha256()))
 		})
 	})
 

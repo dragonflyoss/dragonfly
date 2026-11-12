@@ -20,10 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net/url"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +33,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
+	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
 
 // tracer is a global tracer for job.
@@ -74,24 +72,10 @@ func New(cfg *Config, queue Queue) (*Job, error) {
 		return nil, err
 	}
 
-	var broker string
-	if cfg.Username != "" {
-		broker = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
-	} else {
-		broker = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BrokerDB)
-	}
-
-	var backend string
-	if cfg.Username != "" {
-		backend = fmt.Sprintf("redis://%s:%s@%s/%d", url.QueryEscape(cfg.Username), url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
-	} else {
-		backend = fmt.Sprintf("redis://%s@%s/%d", url.QueryEscape(cfg.Password), strings.Join(cfg.Addrs, ","), cfg.BackendDB)
-	}
-
 	server, err := machinery.NewServer(&machineryv1config.Config{
-		Broker:          broker,
+		Broker:          pkgredis.FormatURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BrokerDB),
 		DefaultQueue:    queue.String(),
-		ResultBackend:   backend,
+		ResultBackend:   pkgredis.FormatURL(cfg.Addrs, cfg.Username, cfg.Password, cfg.BackendDB),
 		ResultsExpireIn: DefaultResultsExpireIn,
 		Redis: &machineryv1config.RedisConfig{
 			MasterName:             cfg.MasterName,

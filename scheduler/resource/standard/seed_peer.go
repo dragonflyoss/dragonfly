@@ -27,9 +27,12 @@ import (
 	"sync"
 	"time"
 
+	"d7y.io/hashring"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"stathat.com/c/consistent"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	cdnsystemv1 "d7y.io/api/v2/pkg/apis/cdnsystem/v1"
 	commonv1 "d7y.io/api/v2/pkg/apis/common/v1"
@@ -53,8 +56,13 @@ const (
 	// Default value of seed peer failed timeout.
 	SeedPeerFailedTimeout = 30 * time.Minute
 
-	// SeedPeerRefreshInterval is the interval of refreshing seed peers.
+	// SeedPeerRefreshInterval is the interval of refreshing seed peers, which
+	// drops the seed peers whose announcements have stopped.
 	SeedPeerRefreshInterval = 30 * time.Second
+
+	// SeedPeerHealthCheckConcurrencyLimit is the number of seed peers checked
+	// for health concurrently by refresh.
+	SeedPeerHealthCheckConcurrencyLimit = 32
 )
 
 // SeedPeer is the interface used for seed peer.
@@ -69,6 +77,12 @@ type SeedPeer interface {
 
 	// Select selects a seed peer target by the task id.
 	Select(context.Context, string) (*Host, error)
+
+	// Store stores the announced seed peer in the hashring.
+	Store(*Host)
+
+	// Delete deletes the seed peer from the hashring.
+	Delete(*Host)
 
 	// HasAvailable returns whether there is any available seed peer.
 	HasAvailable() bool
@@ -94,14 +108,14 @@ type seedPeer struct {
 	// dialOpts is the options for grpc dial.
 	dialOptions []grpc.DialOption
 
-	// mu protects hosts and hashring, which are replaced together by refresh.
+	// mu protects hosts and hashring.
 	mu sync.RWMutex
 
-	// hosts is the list of seed peers.
-	hosts *sync.Map
+	// hosts is the seed peers keyed by name.
+	hosts map[string]*Host
 
-	// hashring is the hashring constructed from seed peers.
-	hashring *consistent.Consistent
+	// hashring is the hashring constructed from the names of seed peers.
+	hashring *hashring.VNodeHashRing
 
 	// done is the channel to stop the seed peer service.
 	done chan struct{}
@@ -114,8 +128,8 @@ func newSeedPeer(peerManager PeerManager, hostManager HostManager, clientPool df
 		hostManager: hostManager,
 		clientPool:  clientPool,
 		dialOptions: dialOptions,
-		hosts:       &sync.Map{},
-		hashring:    consistent.New(),
+		hosts:       map[string]*Host{},
+		hashring:    hashring.New(),
 		done:        make(chan struct{}),
 	}
 }
@@ -141,6 +155,7 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 
 	stream, err := client.DownloadTask(ctx, taskID, req)
 	if err != nil {
+		s.evict(selected, err)
 		return err
 	}
 
@@ -152,9 +167,22 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 				return nil
 			}
 
+			s.evict(selected, err)
 			return err
 		}
 	}
+}
+
+// evict deletes the seed peer from the hashring when the error reports it
+// unreachable, the seed peer is stored again by its next announcement, refer to
+// https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/outlier.
+func (s *seedPeer) evict(host *Host, err error) {
+	if status.Code(err) != codes.Unavailable {
+		return
+	}
+
+	host.Log.Warnf("evict unavailable seed peer from hashring: %s", err)
+	s.Delete(host)
 }
 
 // TriggerTask triggers the seed peer to download task.
@@ -291,21 +319,66 @@ func (s *seedPeer) Select(ctx context.Context, taskID string) (*Host, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if len(s.hashring.Members()) == 0 {
+	vnode, ok := s.hashring.Get(taskID)
+	if !ok {
 		return nil, fmt.Errorf("no available seed peer")
 	}
 
-	addr, err := s.hashring.Get(taskID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to select seed peer: %w", err)
-	}
-
-	host, ok := s.hosts.Load(addr)
+	host, ok := s.hosts[vnode.Name()]
 	if !ok {
-		return nil, fmt.Errorf("failed to load host: %s", addr)
+		return nil, fmt.Errorf("failed to load host: %s", vnode.Name())
 	}
 
-	return host.(*Host), nil
+	return host, nil
+}
+
+// Store stores the announced seed peer in the hashring. The hashring is keyed
+// by the name of the seed peer instead of the address, so that the seed peer
+// keeps its position in the hashring when its ip changes, refer to
+// https://github.com/grpc/proposal/blob/master/A76-ring-hash-improvements.md.
+func (s *seedPeer) Store(host *Host) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.hosts[host.Name]; !ok {
+		s.hashring.Add(host.Name)
+	}
+
+	// The most recently announced host of the seed peer wins, such as
+	// the new pod after a restart.
+	s.hosts[host.Name] = host
+}
+
+// Delete deletes the seed peer from the hashring.
+func (s *seedPeer) Delete(host *Host) {
+	s.deleteHosts([]*Host{host})
+}
+
+// deleteHosts deletes the hosts from the hashring at once, and keeps the
+// seed peer when a more recently announced host of the same name has
+// replaced the host.
+func (s *seedPeer) deleteHosts(hosts []*Host) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	changed := false
+	for _, host := range hosts {
+		if current, ok := s.hosts[host.Name]; !ok || current != host {
+			continue
+		}
+
+		delete(s.hosts, host.Name)
+		changed = true
+	}
+
+	if changed {
+		ring := hashring.New()
+		for name := range s.hosts {
+			ring.Add(name)
+		}
+
+		s.hashring = ring
+	}
 }
 
 // HasAvailable returns whether there is any available seed peer.
@@ -313,7 +386,7 @@ func (s *seedPeer) HasAvailable() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return len(s.hashring.Members()) > 0
+	return !s.hashring.IsEmpty()
 }
 
 // Initialize seed peer.
@@ -340,7 +413,9 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 
 	// New and store seed peer without range.
 	peer = NewPeer(peerID, task, host, options...)
-	s.peerManager.Store(peer)
+	if peer, loaded = s.peerManager.LoadOrStore(peer); loaded {
+		return peer, nil
+	}
 	peer.Log.Info("seed peer has been stored")
 
 	if err := peer.FSM.Event(ctx, PeerEventRegisterNormal); err != nil {
@@ -350,34 +425,70 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 	return peer, nil
 }
 
-// refresh refreshes the hosts and hashring of seed peers, and clears
-// them when no seed peer is found in host manager.
+// refresh drops the seed peers whose announcements have stopped, the one
+// missed an announcement is dropped when it fails the health check, refer to
+// https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf.
 func (s *seedPeer) refresh(ctx context.Context) {
-	hosts := s.hostManager.LoadAllSeeds()
-	if len(hosts) == 0 {
-		logger.Warnf("no seed peer found in host manager")
-	}
+	now := time.Now()
 
-	healthyHosts := &sync.Map{}
-	for _, host := range hosts {
-		addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
-		if err := healthclient.Check(ctx, addr, s.dialOptions...); err != nil {
-			logger.Errorf("failed to check the healthy for seed peer %s: %v", addr, err)
-		} else {
-			healthyHosts.Store(addr, host)
+	var expiredHosts, suspectedHosts []*Host
+	s.mu.RLock()
+	for _, host := range s.hosts {
+		if host.AnnounceInterval <= 0 {
+			continue
+		}
+
+		// If the host's elapsed exceeds twice the announcing interval,
+		// then delete the seed peer without health check.
+		elapsed := now.Sub(host.UpdatedAt.Load())
+		if elapsed > host.AnnounceInterval*2 {
+			expiredHosts = append(expiredHosts, host)
+			continue
+		}
+
+		// If the host's elapsed exceeds the announcing interval,
+		// then check the health of the seed peer.
+		if elapsed > host.AnnounceInterval {
+			suspectedHosts = append(suspectedHosts, host)
 		}
 	}
+	s.mu.RUnlock()
 
-	hashring := consistent.New()
-	healthyHosts.Range(func(addr, _ any) bool {
-		hashring.Add(addr.(string))
-		return true
-	})
+	// Check the health of the suspected seed peers concurrently, an unhealthy
+	// seed peer costs the health check timeout and must not delay the others.
+	unhealthyHosts := make([]*Host, len(suspectedHosts))
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(SeedPeerHealthCheckConcurrencyLimit)
+	for i, host := range suspectedHosts {
+		eg.Go(func() error {
+			addr := net.JoinHostPort(host.IP, strconv.Itoa(int(host.Port)))
+			if err := healthclient.Check(ctx, addr, s.dialOptions...); err != nil {
+				host.Log.Infof("host missed an announcement and failed to check the healthy: %s", err)
+				unhealthyHosts[i] = host
+			}
 
-	s.mu.Lock()
-	s.hosts = healthyHosts
-	s.hashring = hashring
-	s.mu.Unlock()
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		logger.Errorf("failed to check the healthy for seed peers: %v", err)
+	}
+
+	// Delete the seed peers, and keep the host which announced during the refresh.
+	var hosts []*Host
+	for _, host := range append(expiredHosts, unhealthyHosts...) {
+		if host == nil || host.UpdatedAt.Load().After(now) {
+			continue
+		}
+
+		host.Log.Info("seed peer has been deleted from hashring")
+		hosts = append(hosts, host)
+	}
+
+	if len(hosts) > 0 {
+		s.deleteHosts(hosts)
+	}
 }
 
 // Serve serves the seed peer service.

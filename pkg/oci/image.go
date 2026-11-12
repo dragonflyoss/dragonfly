@@ -122,7 +122,7 @@ func ParseImage(image string, opts ...ParseOption) (*Reference, error) {
 type resolveOptions struct {
 	username   string
 	password   string
-	platform   string
+	platform   *string
 	header     http.Header
 	httpClient *http.Client
 }
@@ -141,9 +141,10 @@ func WithAuth(username, password string) ResolveOption {
 
 // WithPlatform sets the target platform in the format "os/arch"
 // (e.g., "linux/amd64"), the current platform is used when it is empty.
+// All the platforms are resolved when the platform is not set.
 func WithPlatform(platform string) ResolveOption {
 	return func(o *resolveOptions) {
-		o.platform = platform
+		o.platform = &platform
 	}
 }
 
@@ -165,20 +166,25 @@ func WithHTTPClient(client *http.Client) ResolveOption {
 }
 
 // Resolve resolves the manifest of the reference (including multi-platform image indexes) from
-// the registry and returns the manifest urls referenced by the digests of the resolved manifests,
-// the blob urls (config and layers) and the authorization token for downloading them.
-func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (manifestURLs, blobURLs []string, token string, err error) {
+// the registry and returns the manifests resolved for the platform, or for all the platforms without
+// WithPlatform, and the authorization token for downloading them.
+func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (manifests []*Manifest, token string, err error) {
 	options := &resolveOptions{header: make(http.Header)}
 	for _, opt := range opts {
 		opt(options)
 	}
 
+	matcher := platforms.All
 	platform := platforms.DefaultSpec()
-	if options.platform != "" {
-		platform, err = platforms.Parse(options.platform)
-		if err != nil {
-			return nil, nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", options.platform, err)
+	if options.platform != nil {
+		if *options.platform != "" {
+			platform, err = platforms.Parse(*options.platform)
+			if err != nil {
+				return nil, "", fmt.Errorf("invalid platform format %q, expected \"os/arch\" (e.g., \"linux/amd64\"): %w", *options.platform, err)
+			}
 		}
+
+		matcher = platforms.OnlyStrict(platform)
 	}
 
 	if options.httpClient == nil {
@@ -192,23 +198,29 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (manife
 
 	client, err := NewAuthClient(ref, options.httpClient, options.username, options.password, authOpts...)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
+		return nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
 	}
 
-	manifests, manifestURLs, err := client.ResolveManifests(ctx, ref, options.header.Clone(), platform)
+	manifests, err = client.ResolveManifests(ctx, ref, options.header.Clone(), matcher)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to pull image manifest: %w", err)
+		return nil, "", fmt.Errorf("failed to pull image manifest: %w", err)
 	}
 
 	if len(manifests) == 0 {
-		return nil, nil, "", fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
+		return nil, "", fmt.Errorf("no matching manifest for platform %s", platforms.Format(platform))
 	}
 
-	for _, manifest := range manifests {
-		for _, desc := range manifest.References() {
-			blobURLs = append(blobURLs, ref.BlobURL(desc.Digest.String()))
+	// The manifests are resolved for the platform, unless all the platforms are resolved.
+	if options.platform != nil {
+		for _, manifest := range manifests {
+			manifest.Platform = fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
 		}
 	}
 
-	return manifestURLs, blobURLs, client.AuthToken(), nil
+	token, err = client.Authorization()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
+	}
+
+	return manifests, token, nil
 }

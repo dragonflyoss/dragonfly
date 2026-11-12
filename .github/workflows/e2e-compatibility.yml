@@ -35,11 +35,11 @@ jobs:
         include:
           - module: manager
             image: manager
-            image-tag: v2.5.1
+            image-tag: v2.5.4-rc.2
             chart-name: manager
           - module: scheduler
             image: scheduler
-            image-tag: v2.5.1
+            image-tag: v2.5.4-rc.2
             chart-name: scheduler
           - module: client
             image: client
@@ -51,10 +51,10 @@ jobs:
             chart-name: seedClient
           - mode: lightweight
             charts-config: test/testdata/charts/config.yaml
-            skip: 'Manager|Rate Limit|Dfcache'
+            skip: 'Manager|Rate Limit|Dfcache|Preheat and Delete Image Using Scheduler'
           - mode: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
-            skip: 'Rate Limit'
+            skip: 'Rate Limit|Preheat and Delete Image Using Scheduler'
 
     steps:
       - name: Free Disk Space (Ubuntu)
