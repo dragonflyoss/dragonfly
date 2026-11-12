@@ -204,5 +204,10 @@ func Resolve(ctx context.Context, ref *Reference, opts ...ResolveOption) (manife
 		}
 	}
 
-	return manifests, client.AuthToken(), nil
+	token, err = client.Authorization()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to authenticate with registry: %w", err)
+	}
+
+	return manifests, token, nil
 }

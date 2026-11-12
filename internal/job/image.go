@@ -119,6 +119,10 @@ type Image interface {
 	// manifest filtering, and layer extraction for preheating. Each preheat request preheats the layers
 	// of one platform of the image.
 	CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]*PreheatRequest, error)
+
+	// GetAuthorizationByManifestURL returns the authorization of the registry for a container image,
+	// the bearer token or the basic credentials. It is empty if the registry needs no authorization.
+	GetAuthorizationByManifestURL(ctx context.Context, req *ManifestRequest) (string, error)
 }
 
 // image is the implementation of the Image interface.
@@ -162,8 +166,11 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 		return nil, err
 	}
 
-	// Set authorization header
-	header.Set("Authorization", token)
+	// Set authorization header, the registry may need no authorization.
+	if token != "" {
+		header.Set("Authorization", token)
+	}
+
 	var certificateChain [][]byte
 	if req.RootCAs != nil {
 		certificateChain = req.RootCAs.Subjects() //nolint:staticcheck
@@ -220,4 +227,28 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 	}
 
 	return preheatRequests, nil
+}
+
+// GetAuthorizationByManifestURL returns the authorization of the registry for a container image,
+// the bearer token or the basic credentials. It is empty if the registry needs no authorization.
+func (i *image) GetAuthorizationByManifestURL(ctx context.Context, req *ManifestRequest) (string, error) {
+	// Parse image manifest url.
+	ref, err := pkgoci.ParseManifestURL(req.URL)
+	if err != nil {
+		return "", err
+	}
+
+	// Harbor uses the V1 preheat request and carries the auth info in the headers,
+	// which is used as the issued token.
+	var opts []pkgoci.Option
+	if issuedToken := nethttp.MapToHeader(req.Headers).Get("Authorization"); issuedToken != "" {
+		opts = append(opts, pkgoci.WithIssuedToken(issuedToken))
+	}
+
+	client, err := pkgoci.NewAuthClient(ref, pkgoci.DefaultHTTPClient(), req.Username, req.Password, opts...)
+	if err != nil {
+		return "", err
+	}
+
+	return client.Authorization()
 }

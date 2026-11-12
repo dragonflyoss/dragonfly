@@ -4522,7 +4522,7 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		return status.Error(codes.InvalidArgument, msg)
 	}
 
-	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+	manifestRequest := &internaljob.ManifestRequest{
 		URL:                         req.GetUrl(),
 		PieceLength:                 req.PieceLength,
 		Tag:                         req.GetTag(),
@@ -4542,7 +4542,9 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		RootCAs:                     certPool,
 		InsecureSkipVerify:          req.GetInsecureSkipVerify(),
 		EnableTaskIDBasedBlobDigest: req.GetEnableTaskIdBasedBlobDigest(),
-	})
+	}
+
+	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, manifestRequest)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
 	}
@@ -4584,6 +4586,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat single seed peer")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat single seed peer failed: %s", err.Error())
@@ -4600,6 +4612,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all seed peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all seed peers failed: %s", err.Error())
@@ -4616,6 +4638,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all peers failed: %s", err.Error())

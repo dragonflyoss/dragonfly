@@ -8984,9 +8984,36 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat with the renewed authorization",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{
+						URLs:    []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+						Headers: map[string]string{"Authorization": "Bearer foo"},
+					}}, nil).Times(1),
+					mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("Bearer bar", nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal("Bearer bar", preheatRequest.Headers["Authorization"])
+						wg.Done()
+					}).Return(nil, nil).Times(1),
 				)
 
 				assert.NoError(svc.PreheatImage(context.Background(), req))
@@ -9004,6 +9031,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
@@ -9025,6 +9053,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
@@ -9049,6 +9078,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
 						assert.Equal(&mockImagePlatform, manifestRequest.Platform)
@@ -9078,6 +9108,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(2)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
 						assert.Nil(manifestRequest.Platform)
@@ -9120,6 +9151,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9140,6 +9172,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9160,6 +9193,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9180,6 +9214,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9200,6 +9235,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
