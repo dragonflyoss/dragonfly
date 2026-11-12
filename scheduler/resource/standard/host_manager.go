@@ -42,9 +42,6 @@ type HostManager interface {
 	// Load returns host for a key.
 	Load(string) (*Host, bool)
 
-	// Store sets host.
-	Store(*Host)
-
 	// LoadOrStore returns host the key if present.
 	// Otherwise, it stores and returns the given host.
 	// The loaded result is true if the host was loaded, false if stored.
@@ -134,30 +131,20 @@ func (h *hostManager) Load(key string) (*Host, bool) {
 	return rawHost.(*Host), loaded
 }
 
-// Store sets host.
-func (h *hostManager) Store(host *Host) {
-	switch host.Type {
-	case types.HostTypeNormal:
-		h.normals.Store(host.ID, host)
-	case types.HostTypeSuperSeed:
-		h.seeds.Store(host.ID, host)
-	}
-
-	h.Map.Store(host.ID, host)
-}
-
 // LoadOrStore returns host the key if present.
 // Otherwise, it stores and returns the given host.
 // The loaded result is true if the host was loaded, false if stored.
 func (h *hostManager) LoadOrStore(host *Host) (*Host, bool) {
-	switch host.Type {
-	case types.HostTypeNormal:
-		h.normals.LoadOrStore(host.ID, host)
-	case types.HostTypeSuperSeed:
-		h.seeds.LoadOrStore(host.ID, host)
+	rawHost, loaded := h.Map.LoadOrStore(host.ID, host)
+	if !loaded {
+		switch host.Type {
+		case types.HostTypeNormal:
+			h.normals.Store(host.ID, host)
+		case types.HostTypeSuperSeed:
+			h.seeds.Store(host.ID, host)
+		}
 	}
 
-	rawHost, loaded := h.Map.LoadOrStore(host.ID, host)
 	return rawHost.(*Host), loaded
 }
 

@@ -42,9 +42,6 @@ type PeerManager interface {
 	// Load returns peer for a key.
 	Load(string) (*Peer, bool)
 
-	// Store sets peer.
-	Store(*Peer)
-
 	// LoadOrStore returns peer the key if present.
 	// Otherwise, it stores and returns the given peer.
 	// The loaded result is true if the peer was loaded, false if stored.
@@ -112,16 +109,6 @@ func (p *peerManager) Load(key string) (*Peer, bool) {
 	}
 
 	return rawPeer.(*Peer), loaded
-}
-
-// Store sets peer.
-func (p *peerManager) Store(peer *Peer) {
-	p.mu.LockKey(peer.ID)
-	defer p.mu.UnlockKey(peer.ID) // nolint: errcheck
-
-	p.Map.Store(peer.ID, peer)
-	peer.Task.StorePeer(peer)
-	peer.Host.StorePeer(peer)
 }
 
 // LoadOrStore returns peer the key if present.

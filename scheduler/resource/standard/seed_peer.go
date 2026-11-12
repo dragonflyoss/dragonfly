@@ -413,7 +413,9 @@ func (s *seedPeer) initSeedPeer(ctx context.Context, rg *http.Range, task *Task,
 
 	// New and store seed peer without range.
 	peer = NewPeer(peerID, task, host, options...)
-	s.peerManager.Store(peer)
+	if peer, loaded = s.peerManager.LoadOrStore(peer); loaded {
+		return peer, nil
+	}
 	peer.Log.Info("seed peer has been stored")
 
 	if err := peer.FSM.Event(ctx, PeerEventRegisterNormal); err != nil {

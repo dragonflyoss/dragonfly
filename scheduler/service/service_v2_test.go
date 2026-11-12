@@ -1177,7 +1177,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1204,7 +1204,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1338,7 +1339,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1365,7 +1366,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1819,7 +1821,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1846,7 +1848,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -2022,9 +2025,9 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Cond(func(host *standard.Host) bool {
+					mh.LoadOrStore(gomock.Cond(func(host *standard.Host) bool {
 						return host.Type == pkgtypes.HostTypeSuperSeed && host.ConcurrentUploadLimit.Load() == 20
-					})).Return().Times(1),
+					})).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) { return host, false }).Times(1),
 					mr.SeedPeer().Return(seedPeer).Times(1),
 					msp.Store(gomock.Cond(func(host *standard.Host) bool { return host.Type == pkgtypes.HostTypeSuperSeed })).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -4417,7 +4420,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *standard.Task) (*standard.Task, bool) { return task, false }).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
 				)
@@ -4431,6 +4434,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.Equal(download.GetUrl(), task.URL)
 				assert.EqualValues(download.GetFilteredQueryParams(), task.FilteredQueryParams)
 				assert.EqualValues(download.RequestHeader, task.Header)
+			},
+		},
+		{
+			name: "task is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.LoadOrStore(gomock.Any()).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, task, _, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockTask, task)
 			},
 		},
 		{
@@ -4509,7 +4539,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Store(gomock.Any()).Return().Times(1),
+					mp.LoadOrStore(gomock.Any()).DoAndReturn(func(peer *standard.Peer) (*standard.Peer, bool) { return peer, false }).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -4528,6 +4558,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.NotNil(peer.AnnouncePeerStream)
 				assert.EqualValues(mockHost, peer.Host)
 				assert.EqualValues(mockTask, peer.Task)
+			},
+		},
+		{
+			name: "peer is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.LoadOrStore(gomock.Any()).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, _, peer, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockPeer, peer)
 			},
 		},
 	}
