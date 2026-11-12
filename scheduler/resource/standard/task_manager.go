@@ -36,9 +36,6 @@ type TaskManager interface {
 	// Load returns task for a key.
 	Load(string) (*Task, bool)
 
-	// Store sets task.
-	Store(*Task)
-
 	// LoadOrStore returns task the key if present.
 	// Otherwise, it stores and returns the given task.
 	// The loaded result is true if the task was loaded, false if stored.
@@ -87,11 +84,6 @@ func (t *taskManager) Load(key string) (*Task, bool) {
 	}
 
 	return rawTask.(*Task), loaded
-}
-
-// Store sets task.
-func (t *taskManager) Store(task *Task) {
-	t.Map.Store(task.ID, task)
 }
 
 // LoadOrStore returns task the key if present.

@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/containerd/platforms"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -123,6 +124,11 @@ func TestResolve(t *testing.T) {
 				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
 				"size": 32654,
 				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
+			},
+			{
+				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+				"size": 32654,
+				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
 			}
 		]
 	}`
@@ -164,25 +170,30 @@ func TestResolve(t *testing.T) {
 	issuedHeader.Set("Authorization", "Bearer test-token")
 
 	manifestDigest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(manifest)))
+	platform := fmt.Sprintf("%s/%s", platforms.DefaultSpec().OS, platforms.DefaultSpec().Architecture)
 
 	tests := []struct {
 		name   string
 		opts   []ResolveOption
-		expect func(t *testing.T, manifestURLs, blobURLs []string, token string, err error)
+		expect func(t *testing.T, manifests []*Manifest, token string, err error)
 	}{
 		{
 			name: "resolve with token challenge",
-			opts: []ResolveOption{WithHTTPClient(&http.Client{Transport: http.DefaultTransport})},
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			opts: []ResolveOption{
+				WithHTTPClient(&http.Client{Transport: http.DefaultTransport}),
+				WithPlatform(""),
+			},
+			expect: func(t *testing.T, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
-				}, manifestURLs)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
-				}, blobURLs)
+				assert.Equal([]*Manifest{{
+					URL:      fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
+					Platform: platform,
+					BlobURLs: []string{
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+					},
+				}}, manifests)
 				assert.Equal("Bearer test-token", token)
 			},
 		},
@@ -192,16 +203,16 @@ func TestResolve(t *testing.T) {
 				WithHTTPClient(&http.Client{Transport: http.DefaultTransport}),
 				WithHeader(issuedHeader),
 			},
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			expect: func(t *testing.T, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
-				}, manifestURLs)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
-				}, blobURLs)
+				assert.Equal([]*Manifest{{
+					URL: fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
+					BlobURLs: []string{
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+					},
+				}}, manifests)
 				assert.Equal("Bearer test-token", token)
 			},
 		},
@@ -211,7 +222,7 @@ func TestResolve(t *testing.T) {
 				WithHTTPClient(&http.Client{Transport: http.DefaultTransport}),
 				WithPlatform("linux-amd64"),
 			},
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			expect: func(t *testing.T, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
 				assert.Error(err)
@@ -225,8 +236,8 @@ func TestResolve(t *testing.T) {
 			ref, err := ParseImage(serverURL.Host+"/library/nginx:latest", WithPlainHTTP(true))
 			assert.NoError(err)
 
-			manifestURLs, blobURLs, token, err := Resolve(context.Background(), ref, tc.opts...)
-			tc.expect(t, manifestURLs, blobURLs, token, err)
+			manifests, token, err := Resolve(context.Background(), ref, tc.opts...)
+			tc.expect(t, manifests, token, err)
 		})
 	}
 }
@@ -259,6 +270,15 @@ func TestResolveManifestList(t *testing.T) {
 				"digest": "%s",
 				"platform": {
 					"architecture": "amd64",
+					"os": "linux"
+				}
+			},
+			{
+				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+				"size": 7143,
+				"digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				"platform": {
+					"architecture": "386",
 					"os": "linux"
 				}
 			},
@@ -308,28 +328,30 @@ func TestResolveManifestList(t *testing.T) {
 	tests := []struct {
 		name     string
 		platform string
-		expect   func(t *testing.T, manifestURLs, blobURLs []string, token string, err error)
+		expect   func(t *testing.T, ref *Reference, manifests []*Manifest, token string, err error)
 	}{
 		{
 			name:     "resolve matched platform manifest from manifest list",
 			platform: "linux/amd64",
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			expect: func(t *testing.T, ref *Reference, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
-				}, manifestURLs)
-				assert.Equal([]string{
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
-					fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
-				}, blobURLs)
+				assert.Equal([]*Manifest{{
+					URL:      fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, manifestDigest),
+					Platform: "linux/amd64",
+					BlobURLs: []string{
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+						fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+					},
+				}}, manifests)
 				assert.Equal("Bearer test-token", token)
+				assert.Equal("latest", ref.Reference)
 			},
 		},
 		{
 			name:     "no matching manifest for platform",
 			platform: "linux/riscv64",
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			expect: func(t *testing.T, ref *Reference, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
 				assert.Error(err)
@@ -338,7 +360,7 @@ func TestResolveManifestList(t *testing.T) {
 		{
 			name:     "matched platform manifest is not served by the registry",
 			platform: "linux/arm64",
-			expect: func(t *testing.T, manifestURLs, blobURLs []string, token string, err error) {
+			expect: func(t *testing.T, ref *Reference, manifests []*Manifest, token string, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
 			},
@@ -351,11 +373,173 @@ func TestResolveManifestList(t *testing.T) {
 			ref, err := ParseImage(serverURL.Host+"/library/nginx:latest", WithPlainHTTP(true))
 			assert.NoError(err)
 
-			manifestURLs, blobURLs, token, err := Resolve(context.Background(), ref,
+			manifests, token, err := Resolve(context.Background(), ref,
 				WithHTTPClient(&http.Client{Transport: http.DefaultTransport}),
 				WithPlatform(tc.platform),
 			)
-			tc.expect(t, manifestURLs, blobURLs, token, err)
+			tc.expect(t, ref, manifests, token, err)
+		})
+	}
+}
+
+func TestResolveAllPlatforms(t *testing.T) {
+	amd64Manifest := `{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		"config": {
+			"mediaType": "application/vnd.docker.container.image.v1+json",
+			"size": 7023,
+			"digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+		},
+		"layers": [
+			{
+				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+				"size": 32654,
+				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
+			}
+		]
+	}`
+	arm64Manifest := `{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		"config": {
+			"mediaType": "application/vnd.docker.container.image.v1+json",
+			"size": 7023,
+			"digest": "sha256:c5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+		},
+		"layers": [
+			{
+				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+				"size": 32654,
+				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
+			}
+		]
+	}`
+	amd64ManifestDigest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(amd64Manifest)))
+	arm64ManifestDigest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(arm64Manifest)))
+	manifestList := fmt.Sprintf(`{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+		"manifests": [
+			{
+				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+				"size": %d,
+				"digest": "%s",
+				"platform": {
+					"architecture": "amd64",
+					"os": "linux"
+				}
+			},
+			{
+				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+				"size": %d,
+				"digest": "%s",
+				"platform": {
+					"architecture": "aarch64",
+					"os": "linux",
+					"variant": "v8"
+				}
+			}
+		]
+	}`, len(amd64Manifest), amd64ManifestDigest, len(arm64Manifest), arm64ManifestDigest)
+
+	var server *httptest.Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf("Bearer realm=%q,service=\"registry\"", server.URL+"/token"))
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"token":"test-token"}`)
+	})
+	mux.HandleFunc("/v2/library/nginx/manifests/latest", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.distribution.manifest.list.v2+json")
+		fmt.Fprint(w, manifestList)
+	})
+	mux.HandleFunc("/v2/library/nginx/manifests/"+amd64ManifestDigest, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+		fmt.Fprint(w, amd64Manifest)
+	})
+	mux.HandleFunc("/v2/library/nginx/manifests/"+arm64ManifestDigest, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+		fmt.Fprint(w, arm64Manifest)
+	})
+	mux.HandleFunc("/v2/library/busybox/manifests/latest", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+		fmt.Fprint(w, amd64Manifest)
+	})
+	server = httptest.NewServer(mux)
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name   string
+		image  string
+		expect func(t *testing.T, manifests []*Manifest, token string, err error)
+	}{
+		{
+			name:  "resolve all platforms from manifest list",
+			image: "/library/nginx:latest",
+			expect: func(t *testing.T, manifests []*Manifest, token string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]*Manifest{
+					{
+						URL:      fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, amd64ManifestDigest),
+						Platform: "linux/amd64",
+						BlobURLs: []string{
+							fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+							fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+						},
+					},
+					{
+						URL:      fmt.Sprintf("http://%s/v2/library/nginx/manifests/%s", serverURL.Host, arm64ManifestDigest),
+						Platform: "linux/arm64",
+						BlobURLs: []string{
+							fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:c5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+							fmt.Sprintf("http://%s/v2/library/nginx/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+						},
+					},
+				}, manifests)
+				assert.Equal("Bearer test-token", token)
+			},
+		},
+		{
+			name:  "resolve all platforms from manifest",
+			image: "/library/busybox:latest",
+			expect: func(t *testing.T, manifests []*Manifest, token string, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]*Manifest{{
+					URL: fmt.Sprintf("http://%s/v2/library/busybox/manifests/%s", serverURL.Host, amd64ManifestDigest),
+					BlobURLs: []string{
+						fmt.Sprintf("http://%s/v2/library/busybox/blobs/sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", serverURL.Host),
+						fmt.Sprintf("http://%s/v2/library/busybox/blobs/sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f", serverURL.Host),
+					},
+				}}, manifests)
+				assert.Equal("Bearer test-token", token)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			ref, err := ParseImage(serverURL.Host+tc.image, WithPlainHTTP(true))
+			assert.NoError(err)
+
+			manifests, token, err := Resolve(context.Background(), ref, WithHTTPClient(&http.Client{Transport: http.DefaultTransport}))
+			tc.expect(t, manifests, token, err)
 		})
 	}
 }

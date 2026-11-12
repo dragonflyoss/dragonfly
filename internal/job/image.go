@@ -21,10 +21,14 @@ package job
 import (
 	"context"
 	"crypto/x509"
+	"slices"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
+	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
+
+	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/config"
 	nethttp "d7y.io/dragonfly/v2/pkg/net/http"
 	pkgoci "d7y.io/dragonfly/v2/pkg/oci"
@@ -59,7 +63,9 @@ type ManifestRequest struct {
 	Password string
 
 	// The image type preheating task can specify the image architecture type. eg: linux/amd64.
-	Platform string
+	// If it is nil, all the platforms of the image are preheated. If it is empty, the default
+	// platform is preheated.
+	Platform *string
 
 	// Scope is the scope for preheating, default is single_seed_peer.
 	Scope string
@@ -110,8 +116,13 @@ type ManifestRequest struct {
 type Image interface {
 	// CreatePreheatRequestsByManifestURL generates a list of preheat requests for a container image
 	// by fetching and parsing its manifest from a registry. It handles authentication, platform-specific
-	// manifest filtering, and layer extraction for preheating.
+	// manifest filtering, and layer extraction for preheating. Each preheat request preheats the layers
+	// of one platform of the image.
 	CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]*PreheatRequest, error)
+
+	// GetAuthorizationByManifestURL returns the authorization of the registry for a container image,
+	// the bearer token or the basic credentials. It is empty if the registry needs no authorization.
+	GetAuthorizationByManifestURL(ctx context.Context, req *ManifestRequest) (string, error)
 }
 
 // image is the implementation of the Image interface.
@@ -124,7 +135,8 @@ func NewImage() Image {
 
 // CreatePreheatRequestsByManifestURL generates a list of preheat requests for a container image
 // by fetching and parsing its manifest from a registry. It handles authentication, platform-specific
-// manifest filtering, and layer extraction for preheating.
+// manifest filtering, and layer extraction for preheating. Each preheat request preheats the layers
+// of one platform of the image.
 func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *ManifestRequest) ([]*PreheatRequest, error) {
 	ctx, span := tracer.Start(ctx, config.SpanGetLayers, trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
@@ -135,43 +147,108 @@ func (i *image) CreatePreheatRequestsByManifestURL(ctx context.Context, req *Man
 		return nil, err
 	}
 
-	// Resolve the blob urls and the authorization token. Harbor uses the V1
+	// Resolve the manifests and the authorization token. Harbor uses the V1
 	// preheat request and carries the auth info in the headers, which is used
-	// as the issued token by the resolver.
+	// as the issued token by the resolver. All the platforms of the image are
+	// resolved if the platform is not specified.
 	header := nethttp.MapToHeader(req.Headers)
-	_, blobURLs, token, err := pkgoci.Resolve(ctx, ref,
+	opts := []pkgoci.ResolveOption{
 		pkgoci.WithAuth(req.Username, req.Password),
-		pkgoci.WithPlatform(req.Platform),
 		pkgoci.WithHeader(header.Clone()),
-	)
+	}
+
+	if req.Platform != nil {
+		opts = append(opts, pkgoci.WithPlatform(*req.Platform))
+	}
+
+	manifests, token, err := pkgoci.Resolve(ctx, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Set authorization header
-	header.Set("Authorization", token)
+	// Set authorization header, the registry may need no authorization.
+	if token != "" {
+		header.Set("Authorization", token)
+	}
+
 	var certificateChain [][]byte
 	if req.RootCAs != nil {
 		certificateChain = req.RootCAs.Subjects() //nolint:staticcheck
 	}
 
-	return []*PreheatRequest{{
-		URLs:                blobURLs,
-		PieceLength:         req.PieceLength,
-		Tag:                 req.Tag,
-		Application:         req.Application,
-		FilteredQueryParams: req.FilteredQueryParams,
-		Headers:             nethttp.HeaderToMap(header),
-		Scope:               req.Scope,
-		IPs:                 req.IPs,
-		Percentage:          req.Percentage,
-		Count:               req.Count,
-		ConcurrentTaskCount: req.ConcurrentTaskCount,
-		ConcurrentPeerCount: req.ConcurrentPeerCount,
-		CertificateChain:    certificateChain,
-		InsecureSkipVerify:  req.InsecureSkipVerify,
-		Timeout:             req.Timeout,
+	// Create one preheat request for each platform, so the peers record the layers by the
+	// image and the platform to delete the image.
+	var preheatRequests []*PreheatRequest
+	for _, manifest := range manifests {
+		if index := slices.IndexFunc(preheatRequests, func(preheatRequest *PreheatRequest) bool {
+			return preheatRequest.Image.GetPlatform() == manifest.Platform
+		}); index >= 0 {
+			for _, url := range manifest.BlobURLs {
+				if !slices.Contains(preheatRequests[index].URLs, url) {
+					preheatRequests[index].URLs = append(preheatRequests[index].URLs, url)
+				}
+			}
 
-		EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
-	}}, nil
+			continue
+		}
+
+		preheatRequest := &PreheatRequest{
+			URLs:                        manifest.BlobURLs,
+			PieceLength:                 req.PieceLength,
+			Tag:                         req.Tag,
+			Application:                 req.Application,
+			FilteredQueryParams:         req.FilteredQueryParams,
+			Headers:                     nethttp.HeaderToMap(header),
+			Scope:                       req.Scope,
+			IPs:                         req.IPs,
+			Percentage:                  req.Percentage,
+			Count:                       req.Count,
+			ConcurrentTaskCount:         req.ConcurrentTaskCount,
+			ConcurrentPeerCount:         req.ConcurrentPeerCount,
+			CertificateChain:            certificateChain,
+			InsecureSkipVerify:          req.InsecureSkipVerify,
+			Timeout:                     req.Timeout,
+			EnableTaskIDBasedBlobDigest: req.EnableTaskIDBasedBlobDigest,
+			Image:                       &commonv2.Image{Reference: ref.String()},
+		}
+
+		if manifest.Platform != "" {
+			preheatRequest.Image.Platform = &manifest.Platform
+		}
+
+		preheatRequests = append(preheatRequests, preheatRequest)
+	}
+
+	if err := ref.Validate(); err != nil {
+		logger.Warnf("preheat without the image, the image reference %s is invalid: %s", ref.String(), err.Error())
+		for _, preheatRequest := range preheatRequests {
+			preheatRequest.Image = nil
+		}
+	}
+
+	return preheatRequests, nil
+}
+
+// GetAuthorizationByManifestURL returns the authorization of the registry for a container image,
+// the bearer token or the basic credentials. It is empty if the registry needs no authorization.
+func (i *image) GetAuthorizationByManifestURL(ctx context.Context, req *ManifestRequest) (string, error) {
+	// Parse image manifest url.
+	ref, err := pkgoci.ParseManifestURL(req.URL)
+	if err != nil {
+		return "", err
+	}
+
+	// Harbor uses the V1 preheat request and carries the auth info in the headers,
+	// which is used as the issued token.
+	var opts []pkgoci.Option
+	if issuedToken := nethttp.MapToHeader(req.Headers).Get("Authorization"); issuedToken != "" {
+		opts = append(opts, pkgoci.WithIssuedToken(issuedToken))
+	}
+
+	client, err := pkgoci.NewAuthClient(ref, pkgoci.DefaultHTTPClient(), req.Username, req.Password, opts...)
+	if err != nil {
+		return "", err
+	}
+
+	return client.Authorization()
 }

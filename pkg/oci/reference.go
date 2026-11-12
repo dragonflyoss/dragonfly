@@ -22,10 +22,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
+
+	"github.com/distribution/reference"
 )
 
 // manifestURLRegexp is the regular expression for parsing manifest urls.
-var manifestURLRegexp = regexp.MustCompile("^(.*)://(.*)/v2/(.*)/manifests/(.*)")
+var manifestURLRegexp = regexp.MustCompile("^(.*)://(.*?)/v2/(.*)/manifests/(.*)")
 
 // Reference is the set of registry coordinates of an image, following the
 // naming of the OCI distribution spec.
@@ -51,6 +54,23 @@ func (r *Reference) ManifestURL() string {
 // BlobURL returns the blob url of the reference for the given digest.
 func (r *Reference) BlobURL(digest string) string {
 	return fmt.Sprintf("%s://%s/v2/%s/blobs/%s", r.Scheme, r.Registry, r.Repository, digest)
+}
+
+// String returns the image reference, for example docker.io/library/nginx:latest
+// or docker.io/library/nginx@sha256:xxx.
+func (r *Reference) String() string {
+	identifier, _, _ := strings.Cut(r.Reference, "?")
+	if strings.Contains(identifier, ":") {
+		return fmt.Sprintf("%s/%s@%s", r.Registry, r.Repository, identifier)
+	}
+
+	return fmt.Sprintf("%s/%s:%s", r.Registry, r.Repository, identifier)
+}
+
+// Validate validates the image reference.
+func (r *Reference) Validate() error {
+	_, err := reference.ParseNormalizedNamed(r.String())
+	return err
 }
 
 // ParseManifestURL parses a container image manifest URL into a reference.

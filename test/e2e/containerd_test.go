@@ -73,7 +73,6 @@ var _ = Describe("Containerd with CRI support", func() {
 				Expect(taskMetadata.Sha256).To(Equal(sha256sum))
 			}
 
-			time.Sleep(1 * time.Second)
 			seedClientPods := make([]*util.PodExec, 3)
 			for i := range 3 {
 				seedClientPods[i], err = util.SeedClientExec(i)
@@ -81,9 +80,9 @@ var _ = Describe("Containerd with CRI support", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			sha256sum, err := util.CalculateSha256ByTaskID(seedClientPods, "99f960a3d990bc51293c661d50aa89af1467e4dbc17525812e3c85cc98a3ed46")
-			Expect(err).NotTo(HaveOccurred())
-			Expect("99f960a3d990bc51293c661d50aa89af1467e4dbc17525812e3c85cc98a3ed46").To(Equal(sha256sum))
+			Eventually(func() (string, error) {
+				return util.CalculateSha256ByTaskID(seedClientPods, "99f960a3d990bc51293c661d50aa89af1467e4dbc17525812e3c85cc98a3ed46")
+			}, 60*time.Second, time.Second).Should(Equal("99f960a3d990bc51293c661d50aa89af1467e4dbc17525812e3c85cc98a3ed46"))
 		})
 
 		It("rmi should be ok", Label("containerd", "rmi"), func() {
