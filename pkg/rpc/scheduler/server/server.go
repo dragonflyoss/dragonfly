@@ -70,25 +70,30 @@ func New(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedu
 func NewWithAuth(schedulerServerV1 schedulerv1.SchedulerServer, schedulerServerV2 schedulerv2.SchedulerServer, requestRateLimit float64, tm *auth.TokenManager, skippedMethods []string, opts ...grpc.ServerOption) *grpc.Server {
 	limiter := rpc.NewRateLimiterInterceptor(requestRateLimit, int64(requestRateLimit))
 
-	unaryInterceptors := make([]grpc.UnaryServerInterceptor, 0, 7)
-	streamInterceptors := make([]grpc.StreamServerInterceptor, 0, 7)
+	// Meter requests before authentication so rejected calls are rate limited
+	// and visible in Prometheus metrics. Authentication stays ahead of error
+	// conversion because it returns gRPC status errors directly.
+	unaryInterceptors := []grpc.UnaryServerInterceptor{
+		selector.UnaryServerInterceptor(grpc_ratelimit.UnaryServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
+		grpc_prometheus.UnaryServerInterceptor,
+	}
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		selector.StreamServerInterceptor(grpc_ratelimit.StreamServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
+		grpc_prometheus.StreamServerInterceptor,
+	}
 	if tm != nil {
 		methods := append(append([]string{}, skippedMethods...), HealthCheckServicePrefix)
 		unaryInterceptors = append(unaryInterceptors, auth.UnaryServerInterceptor(tm, methods...))
 		streamInterceptors = append(streamInterceptors, auth.StreamServerInterceptor(tm, methods...))
 	}
 	unaryInterceptors = append(unaryInterceptors,
-		selector.UnaryServerInterceptor(grpc_ratelimit.UnaryServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
 		rpc.ConvertErrorUnaryServerInterceptor,
-		grpc_prometheus.UnaryServerInterceptor,
 		grpc_zap.UnaryServerInterceptor(logger.GrpcLogger.Desugar()),
 		grpc_validator.UnaryServerInterceptor(),
 		grpc_recovery.UnaryServerInterceptor(),
 	)
 	streamInterceptors = append(streamInterceptors,
-		selector.StreamServerInterceptor(grpc_ratelimit.StreamServerInterceptor(limiter), selector.MatchFunc(rpc.AllButHealth)),
 		rpc.ConvertErrorStreamServerInterceptor,
-		grpc_prometheus.StreamServerInterceptor,
 		grpc_zap.StreamServerInterceptor(logger.GrpcLogger.Desugar()),
 		grpc_validator.StreamServerInterceptor(),
 		grpc_recovery.StreamServerInterceptor(),

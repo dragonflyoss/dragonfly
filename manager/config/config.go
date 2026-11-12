@@ -26,6 +26,7 @@ import (
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -571,6 +572,10 @@ func (cfg *Config) Validate() error {
 
 		if cfg.Server.GRPC.Auth.TokenTTL <= 0 {
 			return errors.New("grpc auth requires parameter tokenTTL")
+		}
+
+		if err := auth.ValidateSkippedMethods(cfg.Server.GRPC.Auth.SkippedMethods); err != nil {
+			return err
 		}
 	}
 

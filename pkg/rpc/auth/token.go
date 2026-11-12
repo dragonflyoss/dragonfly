@@ -32,7 +32,8 @@ const (
 	// MetadataKey is the gRPC metadata key that carries the bearer token.
 	MetadataKey = "authorization"
 
-	// BearerPrefix is the scheme prefix of the authorization metadata value.
+	// BearerPrefix is normalized to lowercase; extraction uses strings.EqualFold
+	// so the standard "Bearer " spelling and other casings are accepted.
 	BearerPrefix = "bearer "
 
 	// SigningAlgorithm is the only algorithm accepted by this package.

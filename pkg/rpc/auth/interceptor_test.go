@@ -272,3 +272,46 @@ func TestUnaryServerInterceptorClaimsInContext(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "manager", subject)
 }
+
+func TestValidateSkippedMethods(t *testing.T) {
+	tests := []struct {
+		name           string
+		skippedMethods []string
+		wantErr        bool
+	}{
+		{
+			name:           "root prefix is rejected",
+			skippedMethods: []string{"/"},
+			wantErr:        true,
+		},
+		{
+			name:           "partial prefix is rejected",
+			skippedMethods: []string{"/grpc."},
+			wantErr:        true,
+		},
+		{
+			name:           "missing leading slash is rejected",
+			skippedMethods: []string{"grpc.health.v1.Health/Check"},
+			wantErr:        true,
+		},
+		{
+			name:           "exact method is accepted",
+			skippedMethods: []string{"/grpc.health.v1.Health/Check"},
+		},
+		{
+			name:           "service prefix is accepted",
+			skippedMethods: []string{"/grpc.health.v1.Health/"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateSkippedMethods(tc.skippedMethods)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}

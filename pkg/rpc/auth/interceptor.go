@@ -18,6 +18,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -86,6 +87,34 @@ func authenticate(ctx context.Context, tm *TokenManager) (*Claims, error) {
 	}
 
 	return tm.ParseToken(token)
+}
+
+// ValidateSkippedMethods verifies that every entry is either an exact full
+// method ("/package.Service/Method") or a complete service prefix
+// ("/package.Service/"). In particular, global and partial prefixes are not
+// valid authentication exemptions.
+func ValidateSkippedMethods(skippedMethods []string) error {
+	for _, method := range skippedMethods {
+		if !strings.HasPrefix(method, "/") {
+			return fmt.Errorf("skipped method %q must start with '/'", method)
+		}
+
+		name := strings.TrimPrefix(method, "/")
+		if strings.HasSuffix(method, "/") {
+			service := strings.TrimSuffix(name, "/")
+			if service == "" || strings.Contains(service, "/") || strings.HasSuffix(service, ".") {
+				return fmt.Errorf("skipped method prefix %q must be a complete service prefix", method)
+			}
+			continue
+		}
+
+		parts := strings.Split(name, "/")
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" || strings.HasSuffix(parts[0], ".") {
+			return fmt.Errorf("skipped method %q must be an exact full method or a complete service prefix", method)
+		}
+	}
+
+	return nil
 }
 
 // isSkipped reports whether the method is exempt from authentication.

@@ -186,7 +186,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 			return nil, err
 		}
 	}
-	s.grpcServer, err = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
+	s.grpcServer, err = rpcserver.NewWithAuth(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
 	if err != nil {
 		return nil, err
 	}

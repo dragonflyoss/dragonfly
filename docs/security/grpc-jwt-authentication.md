@@ -34,7 +34,7 @@ server:
       enabled: true
       secret: <shared HS256 key>
       issuer: dragonfly
-      tokenTTL: 24h
+      tokenTTL: 15m
 ```
 
 **Scheduler** — under `server.auth`:
@@ -45,12 +45,17 @@ server:
     enabled: true
     secret: <shared HS256 key>
     issuer: dragonfly
-    tokenTTL: 24h
+    tokenTTL: 15m
 ```
 
 Both components perform the same validation when `enabled` is `true`: `secret`
-and `issuer` must be non-empty and `tokenTTL` must be positive. Defaults:
-issuer `dragonfly`, TTL `24h`.
+and `issuer` must be non-empty and `tokenTTL` must be positive. The default
+issuer is `dragonfly`. Both `DefaultServerGRPCAuthTokenTTL` (manager) and
+`DefaultServerAuthTokenTTL` (scheduler) default to `24h`. For production, use a
+shorter TTL (for example `15m`, allowing for clock skew) and reuse one
+`TokenProvider` per long-lived client connection. The provider caches the token
+and refreshes it at 80% of its lifetime, so a short TTL does not require signing
+on every RPC.
 
 > All components that talk to each other must share the same `secret` and
 > `issuer`. The secret should be provisioned like any other credential — e.g.
@@ -59,11 +64,11 @@ issuer `dragonfly`, TTL `24h`.
 
 `skippedMethods` (optional, on both) lists gRPC methods that bypass
 authentication: either an exact full method name
-(`/grpc.health.v1.Health/Check`) or a service prefix ending in `/`
-(`/grpc.health.v1.Health/`). The gRPC health checking service is always
-exempt, so Kubernetes liveness/readiness probes are unaffected. Keep this list
-empty unless you have a specific reason; a broad prefix such as `/` disables
-authentication for the entire server.
+(`/grpc.health.v1.Health/Check`) or a complete service prefix ending in `/`
+(`/grpc.health.v1.Health/`). Every entry must start with `/`; validation rejects
+`/` and partial or otherwise over-broad prefixes such as `/grpc.`. The gRPC
+health checking service is always exempt, so Kubernetes liveness/readiness
+probes are unaffected. Keep this list empty unless you have a specific reason.
 
 The `Audience` field of `auth.Config` exists at the Go API level but is not
 exposed in component configuration; when unset, the audience claim is neither
@@ -71,14 +76,21 @@ issued nor checked.
 
 ## How the components use it
 
-When enabled, `manager` and `scheduler` install the server interceptors in
-front of their existing interceptor chains (rate limiting, metrics, logging,
-recovery). The scheduler additionally attaches a client interceptor to its
-connection to the manager: `scheduler/scheduler.go` builds a `TokenProvider`
-with the same secret and issuer, and every outgoing call carries the cached
-token. Tokens are re-issued after 80% of the TTL has elapsed; the remaining
-20% is a safety margin for clock skew between components. Concurrent calls
-hitting the refresh point share a single new signature.
+When enabled, `manager` and `scheduler` deliberately order their server chains
+as rate limiting, Prometheus metrics, authentication, then the remaining
+interceptors. Metering first ensures unauthenticated requests are rate limited
+and visible in metrics instead of being rejected before either facility sees
+them. Authentication returns standard gRPC status errors directly. In the
+scheduler chain it remains ahead of `ConvertErrorUnaryServerInterceptor` and
+`ConvertErrorStreamServerInterceptor`, so `codes.Unauthenticated` does not pass
+through Dragonfly's custom error conversion.
+
+The scheduler additionally attaches a client interceptor to its connection to
+the manager: `scheduler/scheduler.go` builds a `TokenProvider` with the same
+secret and issuer, and every outgoing call carries the cached token. Tokens are
+re-issued after 80% of the TTL has elapsed; the remaining 20% is a safety margin
+for clock skew between components. Concurrent calls hitting the refresh point
+share a single new signature.
 
 Handlers can read the caller identity:
 
