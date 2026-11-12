@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/containerd/platforms"
 	"github.com/docker/distribution"
@@ -98,15 +99,29 @@ func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, heade
 		digestRef := *ref
 		digestRef.Reference = desc.Digest.String()
 
+		// A blob referenced more than once by the manifest is resolved once.
 		var blobURLs []string
 		for _, blob := range v.References() {
-			blobURLs = append(blobURLs, ref.BlobURL(blob.Digest.String()))
+			if blobURL := ref.BlobURL(blob.Digest.String()); !slices.Contains(blobURLs, blobURL) {
+				blobURLs = append(blobURLs, blobURL)
+			}
 		}
 
 		return []*Manifest{{URL: digestRef.ManifestURL(), BlobURLs: blobURLs}}, nil
 	case *manifestlist.DeserializedManifestList:
 		var manifests []*Manifest
-		for _, desc := range c.filterManifests(v.Manifests, matcher) {
+		for _, desc := range v.Manifests {
+			// Skip the manifest not matched by the platform matcher.
+			if !matcher.Match(specs.Platform{
+				Architecture: desc.Platform.Architecture,
+				OS:           desc.Platform.OS,
+				OSVersion:    desc.Platform.OSVersion,
+				OSFeatures:   desc.Platform.OSFeatures,
+				Variant:      desc.Platform.Variant,
+			}) {
+				continue
+			}
+
 			digestRef := *ref
 			digestRef.Reference = desc.Digest.String()
 			children, err := c.ResolveManifests(ctx, &digestRef, header.Clone(), matcher)
@@ -129,23 +144,4 @@ func (c *AuthClient) ResolveManifests(ctx context.Context, ref *Reference, heade
 	}
 
 	return nil, errors.New("unknown manifest type")
-}
-
-// filterManifests filters a list of manifest descriptors to return only those
-// matched by the containerd platform matcher.
-func (c *AuthClient) filterManifests(manifests []manifestlist.ManifestDescriptor, matcher platforms.Matcher) []manifestlist.ManifestDescriptor {
-	var matches []manifestlist.ManifestDescriptor
-	for _, desc := range manifests {
-		if matcher.Match(specs.Platform{
-			Architecture: desc.Platform.Architecture,
-			OS:           desc.Platform.OS,
-			OSVersion:    desc.Platform.OSVersion,
-			OSFeatures:   desc.Platform.OSFeatures,
-			Variant:      desc.Platform.Variant,
-		}) {
-			matches = append(matches, desc)
-		}
-	}
-
-	return matches
 }

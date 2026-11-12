@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -8897,6 +8898,34 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
 		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:                 "https://example.com/v2/image/manifesat/latest",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+
+				assert.Error(svc.PreheatImage(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
+		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.PreheatImageRequest{
 				Url:              "https://example.com/v2/image/manifesat/latest",
@@ -9206,6 +9235,38 @@ func TestServiceV2_StatImage(t *testing.T) {
 		req  *schedulerv2.StatImageRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.StatImageRequest{
+				Url:                  "https://example.com/v2/image/manifests/latest",
+				ConcurrentLayerCount: proto.Int64(0),
+				ConcurrentPeerCount:  proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentLayerCount), req.GetConcurrentLayerCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.StatImageRequest{
@@ -9628,6 +9689,33 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
 		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatFile(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:                 "https://example.com/file.txt",
+				Scope:               "invalid-scope",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				assert.Error(svc.PreheatFile(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
+		{
 			name: "unsupported preheat scope",
 			req: &schedulerv2.PreheatFileRequest{
 				Url:   "https://example.com/file.txt",
@@ -9847,6 +9935,36 @@ func TestServiceV2_StatFile(t *testing.T) {
 		req  *schedulerv2.StatFileRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent peer count is zero",
+			req: &schedulerv2.StatFileRequest{
+				Url:                 "https://example.com/dir/",
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("list task entries failed")).Times(1)
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "list task entries failed",
 			req: &schedulerv2.StatFileRequest{
