@@ -26,6 +26,7 @@ import (
 	"d7y.io/dragonfly/v2/manager/database"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/searcher"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	managerserver "d7y.io/dragonfly/v2/pkg/rpc/manager/server"
 )
 
@@ -59,10 +60,25 @@ func New(
 		searcher: searcher,
 	}
 
-	return s, managerserver.New(
+	// Initialize the token manager when gRPC token authentication is enabled.
+	var tokenManager *auth.TokenManager
+	if cfg.Server.GRPC.Auth.Enabled {
+		var err error
+		tokenManager, err = auth.NewTokenManager(auth.Config{
+			Key:    cfg.Server.GRPC.Auth.Secret,
+			Issuer: cfg.Server.GRPC.Auth.Issuer,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return s, managerserver.NewWithAuth(
 		newManagerServerV1(s.config, database, s.cache, s.searcher),
 		newManagerServerV2(s.config, database, s.cache, s.searcher),
 		cfg.Server.GRPC.RequestRateLimit,
+		tokenManager,
+		cfg.Server.GRPC.Auth.SkippedMethods,
 		opts...), nil
 }
 

@@ -19,6 +19,7 @@ package rpcserver
 import (
 	"google.golang.org/grpc"
 
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
@@ -28,7 +29,8 @@ import (
 	"d7y.io/dragonfly/v2/scheduler/scheduling"
 )
 
-// New returns a new scheduler server from the given options.
+// New returns a new scheduler server from the given options. Token
+// authentication is disabled; use NewWithAuth to enable it.
 func New(
 	cfg *config.Config,
 	resource standard.Resource,
@@ -44,4 +46,38 @@ func New(
 		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
 		cfg.Server.RequestRateLimit,
 		opts...)
+}
+
+// NewWithAuth returns a new scheduler server with token authentication enabled
+// when it is enabled in the configuration.
+func NewWithAuth(
+	cfg *config.Config,
+	resource standard.Resource,
+	persistentResource persistent.Resource,
+	persistentCacheResource persistentcache.Resource,
+	scheduling scheduling.Scheduling,
+	job job.Job,
+	dynconfig config.DynconfigInterface,
+	opts ...grpc.ServerOption,
+) (*grpc.Server, error) {
+	// Initialize the token manager when gRPC token authentication is enabled.
+	var tokenManager *auth.TokenManager
+	if cfg.Server.Auth.Enabled {
+		var err error
+		tokenManager, err = auth.NewTokenManager(auth.Config{
+			Key:    cfg.Server.Auth.Secret,
+			Issuer: cfg.Server.Auth.Issuer,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return server.NewWithAuth(
+		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
+		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
+		cfg.Server.RequestRateLimit,
+		tokenManager,
+		cfg.Server.Auth.SkippedMethods,
+		opts...), nil
 }
