@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +48,10 @@ func TestNewAuthClient(t *testing.T) {
 			expect: func(t *testing.T, client *AuthClient, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.Equal("Bearer issued-token", client.AuthToken())
+
+				authorization, err := client.Authorization()
+				assert.NoError(err)
+				assert.Equal("Bearer issued-token", authorization)
 			},
 		},
 		{
@@ -72,6 +76,7 @@ func TestNewAuthClient(t *testing.T) {
 func TestAuthClientTokenChallenge(t *testing.T) {
 	assert := assert.New(t)
 	var server *httptest.Server
+	var tokens atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer test-token" {
@@ -84,6 +89,7 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 	})
 	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(r.URL.Query().Get("scope"), "repository:library/nginx:pull")
+		tokens.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"token":"test-token"}`)
 	})
@@ -101,8 +107,10 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 		Reference:  "latest",
 	}
 
-	client, err := NewAuthClient(ref, &http.Client{Transport: http.DefaultTransport}, "", "")
+	httpClient := &http.Client{Transport: http.DefaultTransport}
+	client, err := NewAuthClient(ref, httpClient, "", "")
 	assert.NoError(err)
+	assert.Same(http.DefaultTransport, httpClient.Transport)
 
 	req, err := http.NewRequest(http.MethodGet, ref.ManifestURL(), nil)
 	assert.NoError(err)
@@ -112,19 +120,9 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 	defer resp.Body.Close()
 
 	assert.Equal(http.StatusOK, resp.StatusCode)
-	assert.Equal("Bearer test-token", client.AuthToken())
-}
 
-func TestTokenHandler(t *testing.T) {
-	assert := assert.New(t)
-
-	h := newTokenHandler()
-	assert.Equal("bearer", h.Scheme())
-
-	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	authorization, err := client.Authorization()
 	assert.NoError(err)
-	req.Header.Set("Authorization", "Bearer test-token")
-
-	assert.NoError(h.AuthorizeRequest(req, nil))
-	assert.Equal("Bearer test-token", h.token)
+	assert.Equal("Bearer test-token", authorization)
+	assert.Equal(int32(1), tokens.Load())
 }

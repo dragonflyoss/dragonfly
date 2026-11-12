@@ -113,7 +113,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			Timeout:                     json.Timeout,
 			RootCAs:                     p.rootCAs,
 			InsecureSkipVerify:          p.insecureSkipVerify,
-			EnableTaskIDBasedBlobDigest: json.EnableTaskIDBasedBlobDigest,
+			EnableTaskIDBasedBlobDigest: *json.EnableTaskIDBasedBlobDigest,
 		})
 		if err != nil {
 			return nil, err
@@ -151,7 +151,7 @@ func (p *preheat) CreatePreheat(ctx context.Context, schedulers []models.Schedul
 			Timeout:                     json.Timeout,
 			ObjectStorage:               json.ObjectStorage,
 			Hdfs:                        json.Hdfs,
-			EnableTaskIDBasedBlobDigest: json.EnableTaskIDBasedBlobDigest,
+			EnableTaskIDBasedBlobDigest: *json.EnableTaskIDBasedBlobDigest,
 		})
 
 	default:

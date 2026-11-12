@@ -131,6 +131,11 @@ func (s *service) CreatePreheatJob(ctx context.Context, json types.CreatePreheat
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
 	}
 
+	if json.Args.EnableTaskIDBasedBlobDigest == nil {
+		enableTaskIDBasedBlobDigest := types.DefaultEnableTaskIDBasedBlobDigest
+		json.Args.EnableTaskIDBasedBlobDigest = &enableTaskIDBasedBlobDigest
+	}
+
 	args, err := structure.StructToMap(json.Args)
 	if err != nil {
 		logger.Errorf("convert preheat args to map failed: %w", err)
@@ -184,6 +189,11 @@ func (s *service) CreateGetTaskJob(ctx context.Context, json types.CreateGetTask
 
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	}
+
+	if json.Args.EnableTaskIDBasedBlobDigest == nil {
+		enableTaskIDBasedBlobDigest := types.DefaultEnableTaskIDBasedBlobDigest
+		json.Args.EnableTaskIDBasedBlobDigest = &enableTaskIDBasedBlobDigest
 	}
 
 	args, err := structure.StructToMap(json.Args)
@@ -244,6 +254,11 @@ func (s *service) CreateGetImageDistributionJob(ctx context.Context, json types.
 
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	}
+
+	if json.Args.EnableTaskIDBasedBlobDigest == nil {
+		enableTaskIDBasedBlobDigest := types.DefaultEnableTaskIDBasedBlobDigest
+		json.Args.EnableTaskIDBasedBlobDigest = &enableTaskIDBasedBlobDigest
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, json.Args.Timeout)
@@ -346,13 +361,14 @@ func (s *service) createGetTaskJobsSync(ctx context.Context, layers []internaljo
 				BIO:  json.BIO,
 				Type: internaljob.GetTaskJob,
 				Args: types.GetTaskArgs{
-					URL:                 file.URL,
-					PieceLength:         file.PieceLength,
-					Tag:                 file.Tag,
-					Application:         file.Application,
-					FilteredQueryParams: file.FilteredQueryParams,
-					ConcurrentPeerCount: json.Args.ConcurrentPeerCount,
-					Timeout:             json.Args.Timeout,
+					URL:                         file.URL,
+					PieceLength:                 file.PieceLength,
+					Tag:                         file.Tag,
+					Application:                 file.Application,
+					FilteredQueryParams:         file.FilteredQueryParams,
+					ConcurrentPeerCount:         json.Args.ConcurrentPeerCount,
+					Timeout:                     json.Args.Timeout,
+					EnableTaskIDBasedBlobDigest: json.Args.EnableTaskIDBasedBlobDigest,
 				},
 				SchedulerClusterIDs: json.SchedulerClusterIDs,
 			}, schedulers)
@@ -537,6 +553,11 @@ func (s *service) CreateDeleteTaskJob(ctx context.Context, json types.CreateDele
 
 	if json.Args.FilteredQueryParams == "" {
 		json.Args.FilteredQueryParams = http.RawDefaultFilteredQueryParams
+	}
+
+	if json.Args.EnableTaskIDBasedBlobDigest == nil {
+		enableTaskIDBasedBlobDigest := types.DefaultEnableTaskIDBasedBlobDigest
+		json.Args.EnableTaskIDBasedBlobDigest = &enableTaskIDBasedBlobDigest
 	}
 
 	args, err := structure.StructToMap(json.Args)
