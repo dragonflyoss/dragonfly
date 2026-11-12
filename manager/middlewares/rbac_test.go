@@ -62,18 +62,25 @@ func mockRBACRouter(e *casbin.Enforcer, id float64) *gin.Engine {
 	return r
 }
 
-func newRBACEnforcer(t *testing.T, id uint) *casbin.Enforcer {
+func mockRBACEnforcer(t *testing.T, id uint) *casbin.Enforcer {
 	m, err := model.NewModelFromString(rbacModelText)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	e, err := casbin.NewEnforcer(m)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err = e.AddPermissionForUser(rbac.RootRole, "users", rbac.AllAction)
-	assert.NoError(t, err)
+	if _, err := e.AddPermissionForUser(rbac.RootRole, "users", rbac.AllAction); err != nil {
+		t.Fatal(err)
+	}
 
-	_, err = e.AddRoleForUser(fmt.Sprint(id), rbac.RootRole)
-	assert.NoError(t, err)
+	if _, err := e.AddRoleForUser(fmt.Sprint(id), rbac.RootRole); err != nil {
+		t.Fatal(err)
+	}
+
 	return e
 }
 
@@ -129,7 +136,7 @@ func TestRBAC(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			e := newRBACEnforcer(t, tc.id)
+			e := mockRBACEnforcer(t, tc.id)
 			router := mockRBACRouter(e, float64(tc.id))
 
 			w := httptest.NewRecorder()

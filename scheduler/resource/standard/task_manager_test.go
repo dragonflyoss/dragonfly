@@ -51,7 +51,8 @@ func TestTaskManager_newTaskManager(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, err error) {
 				assert := assert.New(t)
-				assert.Equal(reflect.TypeOf(taskManager).Elem().Name(), "taskManager")
+				assert.NoError(err)
+				assert.Equal("taskManager", reflect.TypeOf(taskManager).Elem().Name())
 			},
 		},
 		{
@@ -61,7 +62,7 @@ func TestTaskManager_newTaskManager(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "foo")
+				assert.Error(err)
 			},
 		},
 	}
@@ -92,10 +93,10 @@ func TestTaskManager_Load(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				task, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
+				assert.True(loaded)
+				assert.Equal(mockTask.ID, task.ID)
 			},
 		},
 		{
@@ -106,7 +107,7 @@ func TestTaskManager_Load(t *testing.T) {
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
 				_, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -117,63 +118,10 @@ func TestTaskManager_Load(t *testing.T) {
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
 				mockTask.ID = ""
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				task, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctl := gomock.NewController(t)
-			defer ctl.Finish()
-			gc := gc.NewMockGC(ctl)
-			tc.mock(gc.EXPECT())
-
-			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			taskManager, err := newTaskManager(mockTaskGCConfig, gc)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tc.expect(t, taskManager, mockTask)
-		})
-	}
-}
-
-func TestTaskManager_Store(t *testing.T) {
-	tests := []struct {
-		name   string
-		mock   func(m *gc.MockGCMockRecorder)
-		expect func(t *testing.T, taskManager TaskManager, mockTask *Task)
-	}{
-		{
-			name: "store task",
-			mock: func(m *gc.MockGCMockRecorder) {
-				m.Add(gomock.Any()).Return(nil).Times(1)
-			},
-			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
-				assert := assert.New(t)
-				taskManager.Store(mockTask)
-				task, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
-			},
-		},
-		{
-			name: "store key is empty",
-			mock: func(m *gc.MockGCMockRecorder) {
-				m.Add(gomock.Any()).Return(nil).Times(1)
-			},
-			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
-				assert := assert.New(t)
-				mockTask.ID = ""
-				taskManager.Store(mockTask)
-				task, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
+				assert.True(loaded)
+				assert.Equal(mockTask.ID, task.ID)
 			},
 		},
 	}
@@ -209,10 +157,10 @@ func TestTaskManager_LoadOrStore(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				task, loaded := taskManager.LoadOrStore(mockTask)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
+				assert.True(loaded)
+				assert.Equal(mockTask.ID, task.ID)
 			},
 		},
 		{
@@ -223,8 +171,8 @@ func TestTaskManager_LoadOrStore(t *testing.T) {
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
 				task, loaded := taskManager.LoadOrStore(mockTask)
-				assert.Equal(loaded, false)
-				assert.Equal(task.ID, mockTask.ID)
+				assert.False(loaded)
+				assert.Equal(mockTask.ID, task.ID)
 			},
 		},
 	}
@@ -260,10 +208,10 @@ func TestTaskManager_Delete(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				taskManager.Delete(mockTask.ID)
 				_, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -274,10 +222,10 @@ func TestTaskManager_Delete(t *testing.T) {
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task) {
 				assert := assert.New(t)
 				mockTask.ID = ""
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				taskManager.Delete(mockTask.ID)
 				_, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 	}
@@ -300,6 +248,64 @@ func TestTaskManager_Delete(t *testing.T) {
 	}
 }
 
+func TestTaskManager_Range(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect func(t *testing.T, taskManager TaskManager, mockTasks []*Task)
+	}{
+		{
+			name: "range visits every task",
+			expect: func(t *testing.T, taskManager TaskManager, mockTasks []*Task) {
+				assert := assert.New(t)
+				var ids []string
+				taskManager.Range(func(_, value any) bool {
+					ids = append(ids, value.(*Task).ID)
+					return true
+				})
+
+				assert.ElementsMatch([]string{mockTasks[0].ID, mockTasks[1].ID}, ids)
+			},
+		},
+		{
+			name: "range stops when f returns false",
+			expect: func(t *testing.T, taskManager TaskManager, mockTasks []*Task) {
+				assert := assert.New(t)
+				var ids []string
+				taskManager.Range(func(_, value any) bool {
+					ids = append(ids, value.(*Task).ID)
+					return false
+				})
+
+				assert.Len(ids, 1)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			gc := gc.NewMockGC(ctl)
+			gc.EXPECT().Add(gomock.Any()).Return(nil).Times(1)
+
+			mockTasks := []*Task{
+				NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest)),
+				NewTask(mockTaskID+"_bar", mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest)),
+			}
+			taskManager, err := newTaskManager(mockTaskGCConfig, gc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, mockTask := range mockTasks {
+				taskManager.LoadOrStore(mockTask)
+			}
+
+			tc.expect(t, taskManager, mockTasks)
+		})
+	}
+}
+
 func TestTaskManager_RunGC(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -313,11 +319,11 @@ func TestTaskManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				err := taskManager.RunGC(context.Background())
 				assert.NoError(err)
 				_, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, false)
+				assert.False(loaded)
 			},
 		},
 		{
@@ -327,15 +333,36 @@ func TestTaskManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				taskManager.Store(mockTask)
+				taskManager.LoadOrStore(mockTask)
 				mockTask.StorePeer(mockPeer)
 				err := taskManager.RunGC(context.Background())
 				assert.NoError(err)
 
 				task, loaded := taskManager.Load(mockTask.ID)
-				assert.Equal(loaded, true)
-				assert.Equal(task.ID, mockTask.ID)
-				assert.Equal(task.FSM.Current(), TaskStatePending)
+				assert.True(loaded)
+				assert.Equal(mockTask.ID, task.ID)
+				assert.Equal(TaskStatePending, task.FSM.Current())
+			},
+		},
+		{
+			name: "task is reclaimed after its last peer is deleted",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, taskManager TaskManager, mockTask *Task, mockPeer *Peer) {
+				assert := assert.New(t)
+				taskManager.LoadOrStore(mockTask)
+				mockTask.StorePeer(mockPeer)
+				err := taskManager.RunGC(context.Background())
+				assert.NoError(err)
+				_, loaded := taskManager.Load(mockTask.ID)
+				assert.True(loaded)
+
+				mockTask.DeletePeer(mockPeer.ID)
+				err = taskManager.RunGC(context.Background())
+				assert.NoError(err)
+				_, loaded = taskManager.Load(mockTask.ID)
+				assert.False(loaded)
 			},
 		},
 	}

@@ -21,13 +21,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewAuthClientWithIssuedToken(t *testing.T) {
-	assert := assert.New(t)
+func TestNewAuthClient(t *testing.T) {
 	ref := &Reference{
 		Scheme:     "http",
 		Registry:   "127.0.0.1:1",
@@ -35,27 +35,48 @@ func TestNewAuthClientWithIssuedToken(t *testing.T) {
 		Reference:  "latest",
 	}
 
-	client, err := NewAuthClient(ref, &http.Client{}, "", "", WithIssuedToken("Bearer issued-token"))
-	assert.NoError(err)
-	assert.Equal("Bearer issued-token", client.AuthToken())
-}
+	tests := []struct {
+		name       string
+		httpClient *http.Client
+		opts       []Option
+		expect     func(t *testing.T, client *AuthClient, err error)
+	}{
+		{
+			name:       "issued token skips registry ping",
+			httpClient: &http.Client{},
+			opts:       []Option{WithIssuedToken("Bearer issued-token")},
+			expect: func(t *testing.T, client *AuthClient, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
 
-func TestNewAuthClientUnreachableRegistry(t *testing.T) {
-	assert := assert.New(t)
-	ref := &Reference{
-		Scheme:     "http",
-		Registry:   "127.0.0.1:1",
-		Repository: "library/nginx",
-		Reference:  "latest",
+				authorization, err := client.Authorization()
+				assert.NoError(err)
+				assert.Equal("Bearer issued-token", authorization)
+			},
+		},
+		{
+			name:       "unreachable registry",
+			httpClient: &http.Client{Transport: http.DefaultTransport},
+			expect: func(t *testing.T, client *AuthClient, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Nil(client)
+			},
+		},
 	}
 
-	_, err := NewAuthClient(ref, &http.Client{Transport: http.DefaultTransport}, "", "")
-	assert.Error(err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client, err := NewAuthClient(ref, tc.httpClient, "", "", tc.opts...)
+			tc.expect(t, client, err)
+		})
+	}
 }
 
 func TestAuthClientTokenChallenge(t *testing.T) {
 	assert := assert.New(t)
 	var server *httptest.Server
+	var tokens atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer test-token" {
@@ -68,6 +89,7 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 	})
 	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(r.URL.Query().Get("scope"), "repository:library/nginx:pull")
+		tokens.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"token":"test-token"}`)
 	})
@@ -85,8 +107,10 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 		Reference:  "latest",
 	}
 
-	client, err := NewAuthClient(ref, &http.Client{Transport: http.DefaultTransport}, "", "")
+	httpClient := &http.Client{Transport: http.DefaultTransport}
+	client, err := NewAuthClient(ref, httpClient, "", "")
 	assert.NoError(err)
+	assert.Same(http.DefaultTransport, httpClient.Transport)
 
 	req, err := http.NewRequest(http.MethodGet, ref.ManifestURL(), nil)
 	assert.NoError(err)
@@ -96,19 +120,9 @@ func TestAuthClientTokenChallenge(t *testing.T) {
 	defer resp.Body.Close()
 
 	assert.Equal(http.StatusOK, resp.StatusCode)
-	assert.Equal("Bearer test-token", client.AuthToken())
-}
 
-func TestTokenHandler(t *testing.T) {
-	assert := assert.New(t)
-
-	h := newTokenHandler()
-	assert.Equal("bearer", h.Scheme())
-
-	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	authorization, err := client.Authorization()
 	assert.NoError(err)
-	req.Header.Set("Authorization", "Bearer test-token")
-
-	assert.NoError(h.AuthorizeRequest(req, nil))
-	assert.Equal("Bearer test-token", h.token)
+	assert.Equal("Bearer test-token", authorization)
+	assert.Equal(int32(1), tokens.Load())
 }

@@ -23,7 +23,8 @@ import (
 )
 
 func TestExternalIPv4(t *testing.T) {
+	assert := assert.New(t)
 	ip, err := externalIPv4()
-	assert.Nil(t, err)
-	assert.NotEmpty(t, ip)
+	assert.NoError(err)
+	assert.NotEmpty(ip)
 }

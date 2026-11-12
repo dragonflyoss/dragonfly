@@ -51,7 +51,9 @@ var (
 		   "url": "http://example.com/foo",
 		   "user_id": 4
 		}`
-	mockPriorityValue            = 20
+
+	mockPriorityValue = 20
+
 	mockCreateApplicationRequest = types.CreateApplicationRequest{
 		Name:   "foo",
 		URL:    "http://example.com/foo",
@@ -67,6 +69,7 @@ var (
 			},
 		},
 	}
+
 	mockUpdateApplicationRequest = types.UpdateApplicationRequest{
 		Name:   "foo",
 		URL:    "http://example.com/foo",
@@ -82,12 +85,14 @@ var (
 			},
 		},
 	}
+
 	mockBaseModel = models.BaseModel{
 		ID:        2,
 		CreatedAt: time.Date(2024, 4, 17, 18, 0, 21, 580470900, time.UTC),
 		UpdatedAt: time.Date(2024, 4, 17, 18, 0, 21, 580470900, time.UTC),
 		IsDel:     soft_delete.DeletedAt(soft_delete.FlagActived),
 	}
+
 	mockApplicationModel = &models.Application{
 		BaseModel: mockBaseModel,
 		Name:      "foo",
@@ -96,14 +101,14 @@ var (
 		UserID:    4,
 		Priority:  models.JSONMap{"value": 20, "urls": []any{map[string]any{"regex": "regex", "value": 20}}},
 	}
+
 	mockUnmarshalApplicationModel = models.Application{
 		BaseModel: mockBaseModel,
 		Name:      "foo",
 		URL:       "http://example.com/foo",
 		BIO:       "bio",
 		UserID:    4,
-		// when w.Body.Bytes() is unmarshal to models.Application, the value of Priority will be float64
-		Priority: models.JSONMap{"value": float64(20), "urls": []any{map[string]any{"regex": "regex", "value": float64(20)}}},
+		Priority:  models.JSONMap{"value": float64(20), "urls": []any{map[string]any{"regex": "regex", "value": float64(20)}}},
 	}
 )
 
@@ -151,6 +156,7 @@ func TestHandlers_CreateApplication(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -195,6 +201,7 @@ func TestHandlers_DestroyApplication(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -252,6 +259,7 @@ func TestHandlers_UpdateApplication(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -300,6 +308,7 @@ func TestHandlers_GetApplication(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -346,14 +355,13 @@ func TestHandlers_GetApplications(t *testing.T) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
 				application := models.Application{}
-				// Remove the first and last character "[]" of the response body,
-				// because the response body is a list of models.Application.
 				err := json.Unmarshal(w.Body.Bytes()[1:w.Body.Len()-1], &application)
 				assert.NoError(err)
 				assert.Equal(mockUnmarshalApplicationModel, application)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

@@ -28,11 +28,11 @@ import (
 	"d7y.io/dragonfly/v2/internal/dynconfig/mocks"
 )
 
-type TestDynconfig struct {
-	Scheduler SchedulerOption
+type mockDynconfig struct {
+	Scheduler mockSchedulerOption
 }
 
-type SchedulerOption struct {
+type mockSchedulerOption struct {
 	Name string
 }
 
@@ -44,7 +44,7 @@ func TestDynconfig_Get(t *testing.T) {
 		expire time.Duration
 		sleep  func()
 		mock   func(m *mocks.MockClientMockRecorder)
-		run    func(t *testing.T, d Dynconfig[TestDynconfig])
+		expect func(t *testing.T, d Dynconfig[mockDynconfig])
 	}{
 		{
 			name:   "get config success",
@@ -52,8 +52,8 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep:  func() {},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &d); err != nil {
@@ -62,15 +62,15 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).AnyTimes()
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -81,8 +81,8 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: "foo",
 					},
 				}, &d); err != nil {
@@ -91,15 +91,15 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).Times(2)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: "foo",
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -110,8 +110,8 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &d); err != nil {
@@ -123,15 +123,15 @@ func TestDynconfig_Get(t *testing.T) {
 					m.Get().Return(nil, errors.New("manager service error")).Times(1),
 				)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -140,8 +140,8 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep:  func() {},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var d map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &d); err != nil {
@@ -150,23 +150,23 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(d, nil).Times(1)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -177,8 +177,8 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &df); err != nil {
@@ -186,8 +186,8 @@ func TestDynconfig_Get(t *testing.T) {
 				}
 
 				var ds map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: "foo",
 					},
 				}, &ds); err != nil {
@@ -199,32 +199,32 @@ func TestDynconfig_Get(t *testing.T) {
 					m.Get().Return(ds, nil).Times(1),
 				)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				time.Sleep(30 * time.Millisecond)
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: "foo",
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -235,8 +235,8 @@ func TestDynconfig_Get(t *testing.T) {
 			},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &df); err != nil {
@@ -245,24 +245,24 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(df, nil).Times(3)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				time.Sleep(30 * time.Millisecond)
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 		{
@@ -271,8 +271,8 @@ func TestDynconfig_Get(t *testing.T) {
 			sleep:  func() {},
 			mock: func(m *mocks.MockClientMockRecorder) {
 				var df map[string]any
-				if err := mapstructure.Decode(TestDynconfig{
-					Scheduler: SchedulerOption{
+				if err := mapstructure.Decode(mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
 				}, &df); err != nil {
@@ -281,23 +281,23 @@ func TestDynconfig_Get(t *testing.T) {
 
 				m.Get().Return(df, nil).Times(1)
 			},
-			run: func(t *testing.T, d Dynconfig[TestDynconfig]) {
+			expect: func(t *testing.T, d Dynconfig[mockDynconfig]) {
 				assert := assert.New(t)
 				data, err := d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 
 				data, err = d.Get()
 				assert.NoError(err)
-				assert.EqualValues(data, &TestDynconfig{
-					Scheduler: SchedulerOption{
+				assert.EqualValues(&mockDynconfig{
+					Scheduler: mockSchedulerOption{
 						Name: schedulerName,
 					},
-				})
+				}, data)
 			},
 		},
 	}
@@ -309,13 +309,13 @@ func TestDynconfig_Get(t *testing.T) {
 			mockClient := mocks.NewMockClient(ctl)
 			tc.mock(mockClient.EXPECT())
 
-			d, err := New[TestDynconfig](mockClient, tc.expire)
+			d, err := New[mockDynconfig](mockClient, tc.expire)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			tc.sleep()
-			tc.run(t, d)
+			tc.expect(t, d)
 		})
 	}
 }

@@ -19,8 +19,10 @@ package rpc
 import (
 	"context"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"d7y.io/dragonfly/v2/internal/dferrors"
 )
@@ -41,6 +43,12 @@ func NewRateLimiterInterceptor(qps float64, burst int64) *RateLimiterInterceptor
 // Limit is the predicate which limits the requests.
 func (r *RateLimiterInterceptor) Limit() bool {
 	return !r.limiter.Allow()
+}
+
+// AllButHealth is a selector matcher that matches every call except the gRPC health checking service,
+// so that liveness and readiness probes are not affected by the selected interceptor.
+func AllButHealth(_ context.Context, callMeta interceptors.CallMeta) bool {
+	return callMeta.Service != healthpb.Health_ServiceDesc.ServiceName
 }
 
 // ConvertErrorUnaryServerInterceptor returns a new unary server interceptor that convert error when trigger custom error.

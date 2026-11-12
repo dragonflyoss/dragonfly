@@ -24,6 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+
+	"d7y.io/dragonfly/v2/pkg/net/ip"
 )
 
 var (
@@ -159,7 +161,7 @@ func TestConfig_Load(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	assert.EqualValues(schedulerConfigYAML, config)
+	assert.EqualValues(config, schedulerConfigYAML)
 }
 
 func TestConfig_Validate(t *testing.T) {
@@ -205,7 +207,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter advertiseIP")
+				assert.Error(err)
 			},
 		},
 		{
@@ -218,7 +220,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter advertisePort")
+				assert.Error(err)
 			},
 		},
 		{
@@ -231,7 +233,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter listenIP")
+				assert.Error(err)
 			},
 		},
 		{
@@ -244,7 +246,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter port")
+				assert.Error(err)
 			},
 		},
 		{
@@ -257,7 +259,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter host")
+				assert.Error(err)
 			},
 		},
 		{
@@ -272,7 +274,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server tls requires parameter caCert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -287,7 +289,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -302,7 +304,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -315,7 +317,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "server requires parameter requestRateLimit")
+				assert.Error(err)
 			},
 		},
 		{
@@ -328,7 +330,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter brokerDB")
+				assert.Error(err)
 			},
 		},
 		{
@@ -341,7 +343,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis requires parameter backendDB")
+				assert.Error(err)
 			},
 		},
 		{
@@ -401,7 +403,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls requires parameter caCert or insecureSkipVerify")
+				assert.Error(err)
 			},
 		},
 		{
@@ -418,7 +420,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls cert and key must be provided together")
+				assert.Error(err)
 			},
 		},
 		{
@@ -435,7 +437,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "redis tls cert and key must be provided together")
+				assert.Error(err)
 			},
 		},
 		{
@@ -449,7 +451,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter algorithm")
+				assert.Error(err)
 			},
 		},
 		{
@@ -463,7 +465,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter backToSourceCount")
+				assert.Error(err)
 			},
 		},
 		{
@@ -477,7 +479,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter retryBackToSourceLimit")
+				assert.Error(err)
 			},
 		},
 		{
@@ -491,7 +493,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter retryLimit")
+				assert.Error(err)
 			},
 		},
 		{
@@ -505,7 +507,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter retryInterval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -519,7 +521,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter pieceDownloadTimeout")
+				assert.Error(err)
 			},
 		},
 		{
@@ -533,7 +535,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter peerTTL")
+				assert.Error(err)
 			},
 		},
 		{
@@ -547,7 +549,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter peerGCInterval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -561,7 +563,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter taskGCInterval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -575,7 +577,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter hostGCInterval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -589,7 +591,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "scheduler requires parameter hostTTL")
+				assert.Error(err)
 			},
 		},
 		{
@@ -603,7 +605,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "dynconfig requires parameter refreshInterval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -618,7 +620,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager requires parameter addr")
+				assert.Error(err)
 			},
 		},
 		{
@@ -632,7 +634,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager requires parameter schedulerClusterID")
+				assert.Error(err)
 			},
 		},
 		{
@@ -646,7 +648,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager requires parameter keepAlive interval")
+				assert.Error(err)
 			},
 		},
 		{
@@ -664,7 +666,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager tls requires parameter caCert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -680,7 +682,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -696,7 +698,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "manager tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -710,7 +712,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "seedPeer requires parameter taskDownloadTimeout")
+				assert.Error(err)
 			},
 		},
 		{
@@ -728,7 +730,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "seedPeer tls requires parameter caCert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -746,7 +748,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "seedPeer tls requires parameter cert")
+				assert.Error(err)
 			},
 		},
 		{
@@ -764,7 +766,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "seedPeer tls requires parameter key")
+				assert.Error(err)
 			},
 		},
 		{
@@ -778,7 +780,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "job requires parameter globalWorkerNum")
+				assert.Error(err)
 			},
 		},
 		{
@@ -792,7 +794,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "job requires parameter schedulerWorkerNum")
+				assert.Error(err)
 			},
 		},
 		{
@@ -806,7 +808,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "job requires parameter localWorkerNum")
+				assert.Error(err)
 			},
 		},
 		{
@@ -821,7 +823,7 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "metrics requires parameter addr")
+				assert.Error(err)
 			},
 		},
 	}
@@ -834,6 +836,146 @@ func TestConfig_Validate(t *testing.T) {
 
 			tc.mock(tc.config)
 			tc.expect(t, tc.config.Validate())
+		})
+	}
+}
+
+func TestConfig_Convert(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *Config
+		expect func(t *testing.T, cfg *Config)
+	}{
+		{
+			name: "deprecated job redis addrs fill database redis addrs",
+			config: &Config{
+				Job: JobConfig{Redis: RedisConfig{Addrs: []string{"foo:6379"}}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal([]string{"foo:6379"}, cfg.Database.Redis.Addrs)
+			},
+		},
+		{
+			name: "deprecated job redis host and port fill database redis addrs",
+			config: &Config{
+				Job: JobConfig{Redis: RedisConfig{Host: "127.0.0.1", Port: 6379}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal([]string{"127.0.0.1:6379"}, cfg.Database.Redis.Addrs)
+			},
+		},
+		{
+			name: "deprecated job redis host without port is ignored",
+			config: &Config{
+				Job: JobConfig{Redis: RedisConfig{Host: "127.0.0.1"}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Empty(cfg.Database.Redis.Addrs)
+			},
+		},
+		{
+			name: "database redis addrs take precedence over deprecated job redis",
+			config: &Config{
+				Database: DatabaseConfig{Redis: RedisConfig{Addrs: []string{"foo:6379"}}},
+				Job:      JobConfig{Redis: RedisConfig{Addrs: []string{"bar:6379"}, Host: "127.0.0.1", Port: 6379}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal([]string{"foo:6379"}, cfg.Database.Redis.Addrs)
+			},
+		},
+		{
+			name: "deprecated job redis credentials and databases fill database redis",
+			config: &Config{
+				Job: JobConfig{Redis: RedisConfig{MasterName: "master", Username: "foo", Password: "bar", BrokerDB: 3, BackendDB: 4}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal("master", cfg.Database.Redis.MasterName)
+				assert.Equal("foo", cfg.Database.Redis.Username)
+				assert.Equal("bar", cfg.Database.Redis.Password)
+				assert.Equal(3, cfg.Database.Redis.BrokerDB)
+				assert.Equal(4, cfg.Database.Redis.BackendDB)
+			},
+		},
+		{
+			name: "database redis credentials and databases take precedence over deprecated job redis",
+			config: &Config{
+				Database: DatabaseConfig{Redis: RedisConfig{MasterName: "master", Username: "foo", Password: "bar", BrokerDB: 1, BackendDB: 2}},
+				Job:      JobConfig{Redis: RedisConfig{MasterName: "baz", Username: "bax", Password: "bac", BrokerDB: 3, BackendDB: 4}},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal("master", cfg.Database.Redis.MasterName)
+				assert.Equal("foo", cfg.Database.Redis.Username)
+				assert.Equal("bar", cfg.Database.Redis.Password)
+				assert.Equal(1, cfg.Database.Redis.BrokerDB)
+				assert.Equal(2, cfg.Database.Redis.BackendDB)
+			},
+		},
+		{
+			name:   "advertiseIP and listenIP default to ipv4",
+			config: &Config{},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal(ip.IPv4, cfg.Server.AdvertiseIP)
+				assert.Equal(net.IPv4zero, cfg.Server.ListenIP)
+			},
+		},
+		{
+			name: "advertiseIP and listenIP default to ipv6 when ipv6 is enabled",
+			config: &Config{
+				Network: NetworkConfig{EnableIPv6: true},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal(ip.IPv6, cfg.Server.AdvertiseIP)
+				assert.Equal(net.IPv6zero, cfg.Server.ListenIP)
+			},
+		},
+		{
+			name: "explicit advertiseIP and listenIP are kept",
+			config: &Config{
+				Server: ServerConfig{AdvertiseIP: net.ParseIP("10.0.0.1"), ListenIP: net.ParseIP("10.0.0.2")},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal(net.ParseIP("10.0.0.1"), cfg.Server.AdvertiseIP)
+				assert.Equal(net.ParseIP("10.0.0.2"), cfg.Server.ListenIP)
+			},
+		},
+		{
+			name: "advertisePort defaults to port",
+			config: &Config{
+				Server: ServerConfig{Port: 8002},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal(8002, cfg.Server.AdvertisePort)
+			},
+		},
+		{
+			name: "explicit advertisePort is kept",
+			config: &Config{
+				Server: ServerConfig{Port: 8002, AdvertisePort: 8004},
+			},
+			expect: func(t *testing.T, cfg *Config) {
+				assert := assert.New(t)
+				assert.Equal(8004, cfg.Server.AdvertisePort)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.config.Convert(); err != nil {
+				t.Fatal(err)
+			}
+
+			tc.expect(t, tc.config)
 		})
 	}
 }

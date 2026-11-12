@@ -160,5 +160,9 @@ func (j *job) getTTL() (time.Duration, error) {
 		return 0, err
 	}
 
+	if gcConfig.Job == nil {
+		return models.DefaultGCJobTTL, nil
+	}
+
 	return gcConfig.Job.TTL, nil
 }

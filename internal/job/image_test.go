@@ -25,6 +25,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	mockPlatform = "linux/amd64"
+)
+
 func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 	username := os.Getenv("DOCKER_USERNAME")
 	password := os.Getenv("DOCKER_PASSWORD")
@@ -35,7 +39,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 	tests := []struct {
 		name   string
 		req    *ManifestRequest
-		expect func(t *testing.T, layers []*PreheatRequest)
+		expect func(t *testing.T, layers []*PreheatRequest, err error)
 	}{
 		{
 			name: "get image layers with manifest url",
@@ -46,24 +50,53 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 				Timeout:            30 * time.Second,
 				InsecureSkipVerify: true,
 			},
-			expect: func(t *testing.T, layers []*PreheatRequest) {
+			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
 				assert := assert.New(t)
-				assert.Equal(2, len(layers[0].URLs))
+				assert.NoError(err)
+				assert.Len(layers, 1)
+				assert.Len(layers[0].URLs, 2)
+				assert.Equal("registry-1.docker.io/dragonflyoss/busybox:1.35.0", layers[0].Image.GetReference())
+				assert.Nil(layers[0].Image.Platform)
 			},
 		},
 		{
 			name: "get image layers with multi arch image layers",
 			req: &ManifestRequest{
 				URL:                "https://registry-1.docker.io/v2/dragonflyoss/scheduler/manifests/v2.1.0",
-				Platform:           "linux/amd64",
+				Platform:           &mockPlatform,
 				Username:           username,
 				Password:           password,
 				Timeout:            30 * time.Second,
 				InsecureSkipVerify: true,
 			},
-			expect: func(t *testing.T, layers []*PreheatRequest) {
+			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
 				assert := assert.New(t)
-				assert.Equal(5, len(layers[0].URLs))
+				assert.NoError(err)
+				assert.Len(layers, 1)
+				assert.Len(layers[0].URLs, 5)
+				assert.Equal("registry-1.docker.io/dragonflyoss/scheduler:v2.1.0", layers[0].Image.GetReference())
+				assert.Equal(mockPlatform, layers[0].Image.GetPlatform())
+			},
+		},
+		{
+			name: "get image layers of all platforms",
+			req: &ManifestRequest{
+				URL:                "https://registry-1.docker.io/v2/dragonflyoss/client/manifests/v1.5.12",
+				Username:           username,
+				Password:           password,
+				Timeout:            30 * time.Second,
+				InsecureSkipVerify: true,
+			},
+			expect: func(t *testing.T, layers []*PreheatRequest, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(layers, 3)
+				assert.Len(layers[0].URLs, 9)
+				assert.Equal("linux/amd64", layers[0].Image.GetPlatform())
+				assert.Len(layers[1].URLs, 9)
+				assert.Equal("linux/arm64", layers[1].Image.GetPlatform())
+				assert.Len(layers[2].URLs, 3)
+				assert.Equal("unknown/unknown", layers[2].Image.GetPlatform())
 			},
 		},
 	}
@@ -71,11 +104,7 @@ func TestPreheat_CreatePreheatRequestsByManifestURL(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			layers, err := NewImage().CreatePreheatRequestsByManifestURL(context.Background(), tc.req)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tc.expect(t, layers)
+			tc.expect(t, layers, err)
 		})
 	}
 }

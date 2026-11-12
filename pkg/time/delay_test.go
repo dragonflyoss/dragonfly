@@ -20,209 +20,358 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
+
+const iterations = 3
 
 func TestExponentialDelayWithJitter(t *testing.T) {
 	tests := []struct {
-		name        string
-		attempt     uint
-		baseDelay   time.Duration
-		maxDelay    time.Duration
-		expectedMin time.Duration
-		expectedMax time.Duration
+		name      string
+		attempt   uint
+		baseDelay time.Duration
+		maxDelay  time.Duration
+		expect    func(t *testing.T, durations []time.Duration)
 	}{
 		{
-			name:        "attempt zero with jitter",
-			attempt:     0,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    5 * time.Second,
-			expectedMin: 15 * time.Millisecond,
-			expectedMax: 250 * time.Millisecond,
+			name:      "attempt zero with jitter",
+			attempt:   0,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  5 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 15*time.Millisecond && duration <= 250*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "attempt one with jitter",
-			attempt:     1,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    5 * time.Second,
-			expectedMin: 45 * time.Millisecond,
-			expectedMax: 350 * time.Millisecond,
+			name:      "attempt one with jitter",
+			attempt:   1,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  5 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 45*time.Millisecond && duration <= 350*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "attempt two with jitter",
-			attempt:     2,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    5 * time.Second,
-			expectedMin: 100 * time.Millisecond,
-			expectedMax: 900 * time.Millisecond,
+			name:      "attempt two with jitter",
+			attempt:   2,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  5 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 100*time.Millisecond && duration <= 900*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "attempt three with jitter",
-			attempt:     3,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    5 * time.Second,
-			expectedMin: 280 * time.Millisecond,
-			expectedMax: 1300 * time.Millisecond,
+			name:      "attempt three with jitter",
+			attempt:   3,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  5 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 280*time.Millisecond && duration <= 1300*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "capped at maxDelay with jitter",
-			attempt:     10,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    1 * time.Second,
-			expectedMin: 380 * time.Millisecond,
-			expectedMax: 1500 * time.Millisecond,
+			name:      "capped at maxDelay with jitter",
+			attempt:   10,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 380*time.Millisecond && duration <= 1500*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "large attempt capped at maxDelay",
-			attempt:     20,
-			baseDelay:   50 * time.Millisecond,
-			maxDelay:    2 * time.Second,
-			expectedMin: 650 * time.Millisecond,
-			expectedMax: 3000 * time.Millisecond,
+			name:      "large attempt capped at maxDelay",
+			attempt:   20,
+			baseDelay: 50 * time.Millisecond,
+			maxDelay:  2 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 650*time.Millisecond && duration <= 3000*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "overflow attempt stays capped at maxDelay",
-			attempt:     39,
-			baseDelay:   30 * time.Millisecond,
-			maxDelay:    1 * time.Second,
-			expectedMin: 380 * time.Millisecond,
-			expectedMax: 1500 * time.Millisecond,
+			name:      "overflow attempt stays capped at maxDelay",
+			attempt:   39,
+			baseDelay: 30 * time.Millisecond,
+			maxDelay:  1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 380*time.Millisecond && duration <= 1500*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "shift overflow attempt stays capped at maxDelay",
-			attempt:     62,
-			baseDelay:   30 * time.Millisecond,
-			maxDelay:    1 * time.Second,
-			expectedMin: 380 * time.Millisecond,
-			expectedMax: 1500 * time.Millisecond,
+			name:      "shift overflow attempt stays capped at maxDelay",
+			attempt:   62,
+			baseDelay: 30 * time.Millisecond,
+			maxDelay:  1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 380*time.Millisecond && duration <= 1500*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "huge attempt stays capped at maxDelay",
-			attempt:     100,
-			baseDelay:   30 * time.Millisecond,
-			maxDelay:    1 * time.Second,
-			expectedMin: 380 * time.Millisecond,
-			expectedMax: 1500 * time.Millisecond,
+			name:      "huge attempt stays capped at maxDelay",
+			attempt:   100,
+			baseDelay: 30 * time.Millisecond,
+			maxDelay:  1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 380*time.Millisecond && duration <= 1500*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "zero baseDelay with jitter",
-			attempt:     5,
-			baseDelay:   0,
-			maxDelay:    1 * time.Second,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
+			name:      "zero baseDelay returns without sleeping",
+			attempt:   5,
+			baseDelay: 0,
+			maxDelay:  1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 0 && duration <= 100*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "zero maxDelay caps at zero",
-			attempt:     5,
-			baseDelay:   100 * time.Millisecond,
-			maxDelay:    0,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
+			name:      "zero maxDelay caps at zero",
+			attempt:   5,
+			baseDelay: 100 * time.Millisecond,
+			maxDelay:  0,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 0 && duration <= 100*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "small baseDelay with exponential growth",
-			attempt:     4,
-			baseDelay:   10 * time.Millisecond,
-			maxDelay:    5 * time.Second,
-			expectedMin: 20 * time.Millisecond,
-			expectedMax: 280 * time.Millisecond,
+			name:      "small baseDelay with exponential growth",
+			attempt:   4,
+			baseDelay: 10 * time.Millisecond,
+			maxDelay:  5 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 20*time.Millisecond && duration <= 280*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Run multiple times to account for jitter randomness
-			const iterations = 3
-			successCount := 0
-
-			for i := range iterations {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			durations := make([]time.Duration, 0, iterations)
+			for range iterations {
 				start := time.Now()
-				ExponentialDelayWithJitter(context.TODO(), tt.attempt, tt.baseDelay, tt.maxDelay)
-
-				// Allow some failures due to system scheduling
-				duration := time.Since(start)
-				if duration >= tt.expectedMin && duration <= tt.expectedMax {
-					successCount++
-				} else {
-					t.Logf("Iteration %d out of range: got %v, want [%v, %v]", i+1, duration, tt.expectedMin, tt.expectedMax)
-				}
+				ExponentialDelayWithJitter(context.TODO(), tc.attempt, tc.baseDelay, tc.maxDelay)
+				durations = append(durations, time.Since(start))
 			}
 
-			// At least 2 out of 3 iterations should be in range
-			if successCount < 2 {
-				t.Errorf("Too many iterations out of range: %d/%d successful", successCount, iterations)
-			}
+			tc.expect(t, durations)
 		})
 	}
 }
 
 func TestRandomDelayWithJitter(t *testing.T) {
 	tests := []struct {
-		name        string
-		baseDelay   time.Duration
-		expectedMin time.Duration
-		expectedMax time.Duration
+		name      string
+		baseDelay time.Duration
+		expect    func(t *testing.T, durations []time.Duration)
 	}{
 		{
-			name:        "1 second base delay",
-			baseDelay:   1 * time.Second,
-			expectedMin: 500 * time.Millisecond,
-			expectedMax: 1500 * time.Millisecond,
+			name:      "1 second base delay",
+			baseDelay: 1 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 500*time.Millisecond && duration <= 1500*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "2 seconds base delay",
-			baseDelay:   2 * time.Second,
-			expectedMin: 1000 * time.Millisecond,
-			expectedMax: 3000 * time.Millisecond,
+			name:      "2 seconds base delay",
+			baseDelay: 2 * time.Second,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 1000*time.Millisecond && duration <= 3000*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "zero base delay",
-			baseDelay:   0,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
+			name:      "zero base delay returns without sleeping",
+			baseDelay: 0,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 0 && duration <= 100*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 		{
-			name:        "one nanosecond base delay",
-			baseDelay:   time.Nanosecond,
-			expectedMin: 0,
-			expectedMax: 100 * time.Millisecond,
+			name:      "one nanosecond base delay has no jitter range",
+			baseDelay: time.Nanosecond,
+			expect: func(t *testing.T, durations []time.Duration) {
+				assert := assert.New(t)
+				inRange := 0
+				for _, duration := range durations {
+					if duration >= 0 && duration <= 100*time.Millisecond {
+						inRange++
+					}
+				}
+
+				assert.GreaterOrEqual(inRange, 2)
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Run multiple times to account for jitter randomness
-			const iterations = 3
-			successCount := 0
-
-			for i := range iterations {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			durations := make([]time.Duration, 0, iterations)
+			for range iterations {
 				start := time.Now()
-				RandomDelayWithJitter(context.Background(), tt.baseDelay)
-				duration := time.Since(start)
-
-				// Allow some failures due to system scheduling
-				if duration >= tt.expectedMin && duration <= tt.expectedMax {
-					successCount++
-				} else {
-					t.Logf("Iteration %d out of range: got %v, want [%v, %v]", i+1, duration, tt.expectedMin, tt.expectedMax)
-				}
+				RandomDelayWithJitter(context.Background(), tc.baseDelay)
+				durations = append(durations, time.Since(start))
 			}
 
-			// At least 2 out of 3 iterations should be in range
-			if successCount < 2 {
-				t.Errorf("Too many iterations out of range: %d/%d successful", successCount, iterations)
-			}
+			tc.expect(t, durations)
 		})
 	}
 }
 
-func TestRandomDelayWithJitter_ContextCanceled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+func TestDelayWithJitter_ContextCanceled(t *testing.T) {
+	tests := []struct {
+		name   string
+		delay  func(ctx context.Context)
+		expect func(t *testing.T, duration time.Duration)
+	}{
+		{
+			name: "exponential delay",
+			delay: func(ctx context.Context) {
+				ExponentialDelayWithJitter(ctx, 0, time.Minute, time.Minute)
+			},
+			expect: func(t *testing.T, duration time.Duration) {
+				assert := assert.New(t)
+				assert.LessOrEqual(duration, time.Second)
+			},
+		},
+		{
+			name: "random delay",
+			delay: func(ctx context.Context) {
+				RandomDelayWithJitter(ctx, time.Minute)
+			},
+			expect: func(t *testing.T, duration time.Duration) {
+				assert := assert.New(t)
+				assert.LessOrEqual(duration, time.Second)
+			},
+		},
+	}
 
-	start := time.Now()
-	RandomDelayWithJitter(ctx, time.Minute)
-	if duration := time.Since(start); duration > time.Second {
-		t.Errorf("RandomDelayWithJitter did not return early on canceled context: took %v", duration)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			start := time.Now()
+			tc.delay(ctx)
+			tc.expect(t, time.Since(start))
+		})
 	}
 }

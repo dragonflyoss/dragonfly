@@ -69,7 +69,7 @@ func (t *task) CreateGetTask(ctx context.Context, schedulers []models.Scheduler,
 		}
 
 		var err error
-		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, false)
+		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, *json.EnableTaskIDBasedBlobDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +145,7 @@ func (t *task) CreateDeleteTask(ctx context.Context, schedulers []models.Schedul
 		}
 
 		var err error
-		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, false)
+		taskID, err = idgen.TaskIDV2(json.URL, json.PieceLength, json.Tag, json.Application, idgen.ParseFilteredQueryParams(json.FilteredQueryParams), content, *json.EnableTaskIDBasedBlobDigest)
 		if err != nil {
 			return nil, err
 		}

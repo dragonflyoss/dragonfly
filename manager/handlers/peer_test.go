@@ -43,6 +43,7 @@ var (
 			"scheduler_cluster_id": 2,
 			"type": "super"
 		}`
+
 	mockCreatePeerRequest = types.CreatePeerRequest{
 		Hostname:           "foo",
 		Type:               "super",
@@ -52,6 +53,7 @@ var (
 		ProxyPort:          8004,
 		SchedulerClusterID: 2,
 	}
+
 	mockPeerModel = &models.Peer{
 		BaseModel:          mockBaseModel,
 		Hostname:           "foo",
@@ -107,6 +109,7 @@ func TestHandlers_CreatePeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -151,6 +154,7 @@ func TestHandlers_DestroyPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -199,6 +203,7 @@ func TestHandlers_GetPeer(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -251,6 +256,7 @@ func TestHandlers_GetPeers(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

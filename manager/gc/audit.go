@@ -124,5 +124,9 @@ func (a *audit) getTTL() (time.Duration, error) {
 		return 0, err
 	}
 
+	if gcConfig.Audit == nil {
+		return models.DefaultGCAuditTTL, nil
+	}
+
 	return gcConfig.Audit.TTL, nil
 }

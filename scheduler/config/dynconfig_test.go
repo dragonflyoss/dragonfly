@@ -1,5 +1,5 @@
 /*
- *     Copyright 2026 The Dragonfly Authors
+ *     Copyright 2022 The Dragonfly Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,42 +26,75 @@ import (
 
 	managerv2 "d7y.io/api/v2/pkg/apis/manager/v2"
 
+	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/pkg/rpc/manager/client/mocks"
 )
 
 func TestNewDynconfig(t *testing.T) {
-	assert := assert.New(t)
-
-	d, err := NewDynconfig(nil, filepath.Join(t.TempDir(), "dynconfig.yaml"), &Config{
-		DynConfig: DynConfig{
-			RefreshInterval: 10 * time.Second,
+	tests := []struct {
+		name          string
+		dynconfigPath func(t *testing.T) string
+		config        *Config
+		client        func(ctl *gomock.Controller) managerclient.V2
+		expect        func(t *testing.T, d DynconfigInterface, err error)
+	}{
+		{
+			name: "nil manager client returns local dynconfig",
+			dynconfigPath: func(t *testing.T) string {
+				return filepath.Join(t.TempDir(), "dynconfig.yaml")
+			},
+			config: &Config{
+				DynConfig: DynConfig{
+					RefreshInterval: 10 * time.Second,
+				},
+			},
+			client: func(ctl *gomock.Controller) managerclient.V2 {
+				return nil
+			},
+			expect: func(t *testing.T, d DynconfigInterface, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.IsType(&localDynconfig{}, d)
+			},
 		},
-	})
-	assert.NoError(err)
-	_, ok := d.(*localDynconfig)
-	assert.True(ok)
-
-	ctl := gomock.NewController(t)
-	defer ctl.Finish()
-	mockManagerClient := mocks.NewMockV2(ctl)
-	mockManagerClient.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&managerv2.Scheduler{}, nil).Times(1)
-	mockManagerClient.EXPECT().ListApplications(gomock.Any(), gomock.Any()).Return(&managerv2.ListApplicationsResponse{}, nil).Times(1)
-
-	mockManagerAddr := "localhost"
-	d, err = NewDynconfig(mockManagerClient, "", &Config{
-		Server: ServerConfig{
-			Host: "localhost",
+		{
+			name: "manager client returns remote dynconfig",
+			dynconfigPath: func(t *testing.T) string {
+				return ""
+			},
+			config: &Config{
+				Server: ServerConfig{
+					Host: "localhost",
+				},
+				DynConfig: DynConfig{
+					RefreshInterval: 10 * time.Second,
+				},
+				Manager: ManagerConfig{
+					Addr:               &mockManagerAddr,
+					SchedulerClusterID: 1,
+				},
+			},
+			client: func(ctl *gomock.Controller) managerclient.V2 {
+				mockManagerClient := mocks.NewMockV2(ctl)
+				mockManagerClient.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&managerv2.Scheduler{}, nil).Times(1)
+				mockManagerClient.EXPECT().ListApplications(gomock.Any(), gomock.Any()).Return(&managerv2.ListApplicationsResponse{}, nil).Times(1)
+				return mockManagerClient
+			},
+			expect: func(t *testing.T, d DynconfigInterface, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.IsType(&remoteDynconfig{}, d)
+			},
 		},
-		DynConfig: DynConfig{
-			RefreshInterval: 10 * time.Second,
-		},
-		Manager: ManagerConfig{
-			Addr:               &mockManagerAddr,
-			SchedulerClusterID: 1,
-		},
-	})
-	assert.NoError(err)
+	}
 
-	_, ok = d.(*remoteDynconfig)
-	assert.True(ok)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+
+			d, err := NewDynconfig(tc.client(ctl), tc.dynconfigPath(t), tc.config)
+			tc.expect(t, d, err)
+		})
+	}
 }

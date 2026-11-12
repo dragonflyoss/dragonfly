@@ -463,39 +463,39 @@ func (s *service) loadHost(ctx context.Context, schedulerClusterID uint, id stri
 	host.Memory.Free = memoryFree
 
 	// Parse Network information.
-	tcpConnectionCount, err := strconv.ParseUint(rawHost["tcp_connection_count"], 10, 32)
+	tcpConnectionCount, err := strconv.ParseUint(rawHost["network_tcp_connection_count"], 10, 32)
 	if err != nil {
 		return nil, err
 	}
 	host.Network.TCPConnectionCount = uint32(tcpConnectionCount)
 
-	uploadTCPConnectionCount, err := strconv.ParseUint(rawHost["upload_tcp_connection_count"], 10, 32)
+	uploadTCPConnectionCount, err := strconv.ParseUint(rawHost["network_upload_tcp_connection_count"], 10, 32)
 	if err != nil {
 		return nil, err
 	}
 	host.Network.UploadTCPConnectionCount = uint32(uploadTCPConnectionCount)
-	host.Network.Location = rawHost["location"]
-	host.Network.IDC = rawHost["idc"]
+	host.Network.Location = rawHost["network_location"]
+	host.Network.IDC = rawHost["network_idc"]
 
-	rxBandwidth, err := strconv.ParseUint(rawHost["rx_bandwidth"], 10, 64)
+	rxBandwidth, err := strconv.ParseUint(rawHost["network_rx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 	host.Network.RxBandwidth = rxBandwidth
 
-	maxRxBandwidth, err := strconv.ParseUint(rawHost["max_rx_bandwidth"], 10, 64)
+	maxRxBandwidth, err := strconv.ParseUint(rawHost["network_max_rx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 	host.Network.MaxRxBandwidth = maxRxBandwidth
 
-	txBandwidth, err := strconv.ParseUint(rawHost["tx_bandwidth"], 10, 64)
+	txBandwidth, err := strconv.ParseUint(rawHost["network_tx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 	host.Network.TxBandwidth = txBandwidth
 
-	maxTxBandwidth, err := strconv.ParseUint(rawHost["max_tx_bandwidth"], 10, 64)
+	maxTxBandwidth, err := strconv.ParseUint(rawHost["network_max_tx_bandwidth"], 10, 64)
 	if err != nil {
 		return nil, err
 	}

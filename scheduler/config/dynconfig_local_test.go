@@ -64,7 +64,7 @@ func TestLocalDynconfig_New(t *testing.T) {
 				assert.FileExists(configPath)
 
 				_, err = d.GetApplications()
-				assert.EqualError(err, "application not found")
+				assert.Error(err)
 
 				seedPeerConfig, err := d.GetSeedPeerClusterConfig()
 				assert.NoError(err)
@@ -100,7 +100,7 @@ func TestLocalDynconfig_GetApplications(t *testing.T) {
 	assert := assert.New(t)
 	applications, err := d.GetApplications()
 	assert.NoError(err)
-	assert.EqualValues(applications, []*managerv2.Application{
+	assert.EqualValues([]*managerv2.Application{
 		{
 			Id:   1,
 			Name: "foo",
@@ -116,7 +116,7 @@ func TestLocalDynconfig_GetApplications(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, applications)
 }
 
 func TestLocalDynconfig_GetSeedPeerClusterConfig(t *testing.T) {

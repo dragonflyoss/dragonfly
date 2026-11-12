@@ -30,12 +30,10 @@ func TestGeneratePersonalAccessToken(t *testing.T) {
 	token := GeneratePersonalAccessToken()
 	assert.NotEmpty(token)
 
-	// Token must be url-safe base64 wrapping a valid UUID.
 	raw, err := base64.RawURLEncoding.DecodeString(token)
 	assert.NoError(err)
 	_, err = uuid.Parse(string(raw))
 	assert.NoError(err)
 
-	// Tokens must be unique.
 	assert.NotEqual(token, GeneratePersonalAccessToken())
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
 )
@@ -41,15 +42,18 @@ var (
 			"type": "image",
 			"url": "http://example.com/foo"
 		}`
+
 	mockCreateV1PreheatRequest = types.CreateV1PreheatRequest{
 		Type:                "image",
 		URL:                 "http://example.com/foo",
 		FilteredQueryParams: "bar",
 		Headers:             map[string]string{"Content-Length": "100", "Range": "bytes=0-99"},
 	}
+
 	mockCreateV1PreheatResponse = &types.CreateV1PreheatResponse{
 		ID: "2",
 	}
+
 	mockGetV1PreheatResponse = &types.GetV1PreheatResponse{
 		ID: "2",
 	}
@@ -57,6 +61,7 @@ var (
 
 func mockPreheatRouter(h *Handlers) *gin.Engine {
 	r := gin.Default()
+	r.Use(middlewares.Error())
 	pv1 := r.Group("/preheats")
 	pv1.POST("", h.CreateV1Preheat)
 	pv1.GET(":id", h.GetV1Preheat)
@@ -88,10 +93,11 @@ func TestHandlers_CreateV1Preheat(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `{"id":"2"}`)
+				assert.Equal(`{"id":"2"}`, w.Body.String())
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -124,10 +130,22 @@ func TestHandlers_GetV1Preheat(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `{"id":"2","status":""}`)
+				assert.Equal(`{"id":"2","status":""}`, w.Body.String())
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodGet, "/preheats/2", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.GetV1Preheat(gomock.Any(), gomock.Eq("2")).Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

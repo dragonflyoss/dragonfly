@@ -37,7 +37,7 @@ func TestHostID(t *testing.T) {
 			isSeedPeer: false,
 			expect: func(t *testing.T, d string) {
 				assert := assert.New(t)
-				assert.Equal(d, "127.0.0.1-foo")
+				assert.Equal("127.0.0.1-foo", d)
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func TestHostID(t *testing.T) {
 			isSeedPeer: true,
 			expect: func(t *testing.T, d string) {
 				assert := assert.New(t)
-				assert.Equal(d, "127.0.0.1-foo-seed")
+				assert.Equal("127.0.0.1-foo-seed", d)
 			},
 		},
 		{
@@ -57,7 +57,7 @@ func TestHostID(t *testing.T) {
 			isSeedPeer: true,
 			expect: func(t *testing.T, d string) {
 				assert := assert.New(t)
-				assert.Equal(d, "-foo-seed")
+				assert.Equal("-foo-seed", d)
 			},
 		},
 		{
@@ -67,7 +67,7 @@ func TestHostID(t *testing.T) {
 			isSeedPeer: true,
 			expect: func(t *testing.T, d string) {
 				assert := assert.New(t)
-				assert.Equal(d, "127.0.0.1--seed")
+				assert.Equal("127.0.0.1--seed", d)
 			},
 		},
 	}

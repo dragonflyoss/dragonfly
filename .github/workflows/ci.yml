@@ -17,7 +17,7 @@ jobs:
   test:
     name: Test
     timeout-minutes: 60
-    runs-on: oracle-vm-16cpu-64gb-x86-64
+    runs-on: cncf-ubuntu-16-64-x86
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -48,7 +48,7 @@ jobs:
           sudo make test-coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt
@@ -57,7 +57,7 @@ jobs:
   build:
     name: Build
     timeout-minutes: 20
-    runs-on: oracle-vm-24cpu-96gb-x86-64
+    runs-on: cncf-ubuntu-24-96-x86
     needs: [test]
     steps:
       - name: Check out code
@@ -71,7 +71,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e

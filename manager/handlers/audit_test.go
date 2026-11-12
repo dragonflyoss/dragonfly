@@ -93,11 +93,10 @@ func TestHandlers_GetAudits(t *testing.T) {
 				assert.Len(audits, 1)
 				assert.Equal(mockAuditModel, &audits[0])
 
-				// Check pagination header
 				linkHeader := w.Header().Get("Link")
 				assert.NotEmpty(linkHeader)
 				links := strings.Split(linkHeader, ",")
-				assert.Len(links, 4) // prev, next, first, last
+				assert.Len(links, 4)
 				assert.Contains(linkHeader, `rel=first`)
 				assert.Contains(linkHeader, `rel=last`)
 				assert.Contains(linkHeader, `rel=prev`)
@@ -145,6 +144,7 @@ func TestHandlers_GetAudits(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

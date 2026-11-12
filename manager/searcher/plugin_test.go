@@ -32,41 +32,21 @@ func TestLoadPlugin(t *testing.T) {
 		os.Remove("./testdata/test")
 	}()
 
-	var (
-		cmd    *exec.Cmd
-		output []byte
-		wd     string
-		err    error
-	)
-
-	// build plugin
-	cmd = exec.Command("go", "build", "-buildmode=plugin", "-o=./testdata/d7y-manager-plugin-searcher.so", "testdata/plugin/searcher.go")
-	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	output, err := exec.Command("go", "build", "-buildmode=plugin", "-o=./testdata/d7y-manager-plugin-searcher.so", "testdata/plugin/searcher.go").CombinedOutput()
 	if err != nil {
-		t.Fatalf("command failed: %s", string(output))
-		return
+		t.Fatal(string(output))
 	}
 
-	// build test binary
-	cmd = exec.Command("go", "build", "-o=./testdata/test", "testdata/main.go")
-	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	output, err = exec.Command("go", "build", "-o=./testdata/test", "testdata/main.go").CombinedOutput()
 	if err != nil {
-		t.Fatalf("command failed: %s", string(output))
-		return
+		t.Fatal(string(output))
 	}
 
-	wd, err = os.Getwd()
-	assert.Nil(err)
-	wd = path.Join(wd, "testdata")
+	wd, err := os.Getwd()
+	assert.NoError(err)
 
-	// execute test binary
-	cmd = exec.Command("./testdata/test", "-plugin-dir", wd)
-	output, err = cmd.CombinedOutput()
-	assert.Nil(err)
+	output, err = exec.Command("./testdata/test", "-plugin-dir", path.Join(wd, "testdata")).CombinedOutput()
 	if err != nil {
-		t.Fatalf("command failed: %s", string(output))
-		return
+		t.Fatal(string(output))
 	}
 }

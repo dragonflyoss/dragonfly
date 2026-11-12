@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/permission/rbac"
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
@@ -42,11 +43,13 @@ var (
 			],
 			"role": "maintainer"
 		}`
+
 	mockPermissionForRoleReqBody = `
 		{
 			"action": "read",
 			"object": "object"
 		}`
+
 	mockCreateRoleRequest = types.CreateRoleRequest{
 		Role:        "maintainer",
 		Permissions: []rbac.Permission{{Object: "object", Action: "read"}},
@@ -55,6 +58,7 @@ var (
 
 func mockRoleRouter(h *Handlers) *gin.Engine {
 	r := gin.Default()
+	r.Use(middlewares.Error())
 	apiv1 := r.Group("/api/v1")
 	re := apiv1.Group("/roles")
 	re.POST("", h.CreateRole)
@@ -94,6 +98,7 @@ func TestHandlers_CreateRole(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -128,7 +133,30 @@ func TestHandlers_DestroyRole(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "not found",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DestroyRole(gomock.Any(), "maintainer").Return(false, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusNotFound, w.Code)
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DestroyRole(gomock.Any(), "maintainer").Return(false, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -161,10 +189,11 @@ func TestHandlers_GetRole(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `[["maintainer"]]`)
+				assert.Equal(`[["maintainer"]]`, w.Body.String())
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -197,10 +226,11 @@ func TestHandlers_GetRoles(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `["maintainer"]`)
+				assert.Equal(`["maintainer"]`, w.Body.String())
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -246,7 +276,30 @@ func TestHandlers_AddPermissionForRole(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "conflict",
+			req:  httptest.NewRequest(http.MethodPost, "/api/v1/roles/maintainer/permissions", strings.NewReader(mockPermissionForRoleReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.AddPermissionForRole(gomock.Any(), "maintainer", gomock.Any()).Return(false, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusConflict, w.Code)
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodPost, "/api/v1/roles/maintainer/permissions", strings.NewReader(mockPermissionForRoleReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.AddPermissionForRole(gomock.Any(), "maintainer", gomock.Any()).Return(false, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -292,7 +345,30 @@ func TestHandlers_DeletePermissionForRole(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "not found",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/roles/maintainer/permissions", strings.NewReader(mockPermissionForRoleReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DeletePermissionForRole(gomock.Any(), "maintainer", gomock.Any()).Return(false, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusNotFound, w.Code)
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/roles/maintainer/permissions", strings.NewReader(mockPermissionForRoleReqBody)),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DeletePermissionForRole(gomock.Any(), "maintainer", gomock.Any()).Return(false, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

@@ -41,12 +41,14 @@ var (
 			  "load_limit": 1
 		   }
 		}`
+
 	mockSeedPeerClusterModel = &models.SeedPeerCluster{
 		BaseModel: mockBaseModel,
 		Name:      "foo",
 		BIO:       "bio",
 		Config:    models.JSONMap{"LoadLimit": 1},
 	}
+
 	mockUnmarshalSeedPeerClusterModel = &models.SeedPeerCluster{
 		BaseModel: mockBaseModel,
 		Name:      "foo",
@@ -101,6 +103,7 @@ func TestHandlers_CreateSeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -145,6 +148,7 @@ func TestHandlers_DestroySeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -202,6 +206,7 @@ func TestHandlers_UpdateSeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -250,6 +255,7 @@ func TestHandlers_GetSeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -301,6 +307,7 @@ func TestHandlers_GetSeedPeerClusters(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -345,6 +352,7 @@ func TestHandlers_AddSeedPeerToSeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -389,6 +397,7 @@ func TestHandlers_AddSchedulerClusterToSeedPeerCluster(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

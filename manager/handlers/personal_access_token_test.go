@@ -42,18 +42,21 @@ var (
 			"state": "active",
 			"user_id": 4
 		}`
+
 	mockCreatePersonalAccessTokenRequest = types.CreatePersonalAccessTokenRequest{
 		Name:      "foo",
 		ExpiredAt: time.Date(2024, 4, 21, 16, 53, 21, 580470900, time.UTC),
 		UserID:    4,
 		BIO:       "bio",
 	}
+
 	mockUpdatePersonalAccessTokenRequest = types.UpdatePersonalAccessTokenRequest{
 		State:     "active",
 		ExpiredAt: time.Date(2024, 4, 21, 16, 53, 21, 580470900, time.UTC),
 		UserID:    4,
 		BIO:       "bio",
 	}
+
 	mockPersonalAccessTokenModel = &models.PersonalAccessToken{
 		Name:      "foo",
 		State:     "active",
@@ -107,6 +110,7 @@ func TestHandlers_CreatePersonalAccessToken(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -151,6 +155,7 @@ func TestHandlers_DestroyPersonalAccessToken(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -208,6 +213,7 @@ func TestHandlers_UpdatePersonalAccessToken(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -256,6 +262,7 @@ func TestHandlers_GetPersonalAccessToken(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -308,6 +315,7 @@ func TestHandlers_GetPersonalAccessTokens(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)

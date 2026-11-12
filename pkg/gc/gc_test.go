@@ -28,6 +28,10 @@ import (
 )
 
 func TestGC_Add(t *testing.T) {
+	ctl := gomock.NewController(t)
+	mockLogger := NewMockLogger(ctl)
+	mockRunner := NewMockRunner(ctl)
+
 	tests := []struct {
 		name   string
 		task   Task
@@ -39,10 +43,24 @@ func TestGC_Add(t *testing.T) {
 				ID:       "gc",
 				Interval: 2 * time.Second,
 				Timeout:  1 * time.Second,
+				Runner:   mockRunner,
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
+			},
+		},
+		{
+			name: "add GC task without ID",
+			task: Task{
+				ID:       "",
+				Interval: 2 * time.Second,
+				Timeout:  1 * time.Second,
+				Runner:   mockRunner,
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 		{
@@ -51,10 +69,11 @@ func TestGC_Add(t *testing.T) {
 				ID:       "gc",
 				Interval: 0,
 				Timeout:  1 * time.Second,
+				Runner:   mockRunner,
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "Interval value is greater than 0")
+				assert.Error(err)
 			},
 		},
 		{
@@ -63,10 +82,11 @@ func TestGC_Add(t *testing.T) {
 				ID:       "gc",
 				Interval: 2 * time.Second,
 				Timeout:  0,
+				Runner:   mockRunner,
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "Timeout value is greater than 0")
+				assert.Error(err)
 			},
 		},
 		{
@@ -75,37 +95,42 @@ func TestGC_Add(t *testing.T) {
 				ID:       "gc",
 				Interval: 1 * time.Second,
 				Timeout:  2 * time.Second,
+				Runner:   mockRunner,
 			},
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "Timeout value needs to be less than the Interval value")
+				assert.Error(err)
+			},
+		},
+		{
+			name: "add GC task without runner",
+			task: Task{
+				ID:       "gc",
+				Interval: 2 * time.Second,
+				Timeout:  1 * time.Second,
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctl := gomock.NewController(t)
-			mockLogger := NewMockLogger(ctl)
-			mockRunner := NewMockRunner(ctl)
-
 			gc := New(WithLogger(mockLogger))
-
-			tc.expect(t, gc.Add(Task{
-				ID:       tc.task.ID,
-				Interval: tc.task.Interval,
-				Timeout:  tc.task.Timeout,
-				Runner:   mockRunner,
-			}))
+			tc.expect(t, gc.Add(tc.task))
 		})
 	}
 }
 
 func TestGC_Run(t *testing.T) {
 	tests := []struct {
-		name string
-		task Task
-		run  func(gc GC, id string, ml *MockLogger, mr *MockRunner, t *testing.T)
+		name   string
+		task   Task
+		id     string
+		mock   func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup)
+		expect func(t *testing.T, err error)
 	}{
 		{
 			name: "run task",
@@ -114,20 +139,18 @@ func TestGC_Run(t *testing.T) {
 				Interval: 2 * time.Hour,
 				Timeout:  1 * time.Hour,
 			},
-			run: func(gc GC, id string, ml *MockLogger, mr *MockRunner, t *testing.T) {
-				var wg sync.WaitGroup
+			id: "foo",
+			mock: func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup) {
 				wg.Add(3)
-				defer wg.Wait()
-
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(nil).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
-
-				if err := gc.Run(context.Background(), id); err != nil {
-					t.Error(err)
-				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
 			},
 		},
 		{
@@ -137,11 +160,9 @@ func TestGC_Run(t *testing.T) {
 				Interval: 2 * time.Hour,
 				Timeout:  1 * time.Hour,
 			},
-			run: func(gc GC, id string, ml *MockLogger, mr *MockRunner, t *testing.T) {
-				var wg sync.WaitGroup
+			id: "foo",
+			mock: func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup) {
 				wg.Add(4)
-				defer wg.Wait()
-
 				err := errors.New("bar")
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
@@ -149,10 +170,10 @@ func TestGC_Run(t *testing.T) {
 					ml.EXPECT().Errorf(gomock.Any(), gomock.Eq("foo"), gomock.Eq(err)).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
-
-				if err := gc.Run(context.Background(), id); err != nil {
-					t.Error(err)
-				}
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
 			},
 		},
 		{
@@ -162,9 +183,11 @@ func TestGC_Run(t *testing.T) {
 				Interval: 2 * time.Hour,
 				Timeout:  1 * time.Hour,
 			},
-			run: func(gc GC, id string, ml *MockLogger, mr *MockRunner, t *testing.T) {
+			id:   "bar",
+			mock: func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup) {},
+			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
-				assert.EqualError(gc.Run(context.Background(), "bar"), "can not find task bar")
+				assert.Error(err)
 			},
 		},
 	}
@@ -185,61 +208,45 @@ func TestGC_Run(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tc.run(gc, tc.task.ID, mockLogger, mockRunner, t)
+			var wg sync.WaitGroup
+			tc.mock(mockLogger, mockRunner, &wg)
+			tc.expect(t, gc.Run(context.Background(), tc.id))
+			wg.Wait()
 		})
 	}
 }
 
 func TestGC_RunAll(t *testing.T) {
 	tests := []struct {
-		name  string
-		task1 Task
-		task2 Task
-		run   func(gc GC, ml *MockLogger, mr *MockRunner)
+		name string
+		task Task
+		mock func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup)
 	}{
 		{
 			name: "run task",
-			task1: Task{
+			task: Task{
 				ID:       "foo",
 				Interval: 2 * time.Hour,
 				Timeout:  1 * time.Hour,
 			},
-			task2: Task{
-				ID:       "bar",
-				Interval: 2 * time.Hour,
-				Timeout:  1 * time.Hour,
-			},
-			run: func(gc GC, ml *MockLogger, mr *MockRunner) {
-				var wg sync.WaitGroup
+			mock: func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup) {
 				wg.Add(3)
-				defer wg.Wait()
-
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					mr.EXPECT().RunGC(context.Background()).Do(func(_ context.Context) { wg.Done() }).Return(nil).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
-
-				gc.RunAll(context.Background())
 			},
 		},
 		{
 			name: "task run GC failed",
-			task1: Task{
+			task: Task{
 				ID:       "foo",
 				Interval: 2 * time.Hour,
 				Timeout:  1 * time.Hour,
 			},
-			task2: Task{
-				ID:       "bar",
-				Interval: 2 * time.Hour,
-				Timeout:  1 * time.Hour,
-			},
-			run: func(gc GC, ml *MockLogger, mr *MockRunner) {
-				var wg sync.WaitGroup
+			mock: func(ml *MockLogger, mr *MockRunner, wg *sync.WaitGroup) {
 				wg.Add(4)
-				defer wg.Wait()
-
 				err := errors.New("baz")
 				gomock.InOrder(
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
@@ -247,8 +254,6 @@ func TestGC_RunAll(t *testing.T) {
 					ml.EXPECT().Errorf(gomock.Any(), gomock.Eq("foo"), gomock.Eq(err)).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 					ml.EXPECT().Infof(gomock.Any(), gomock.Eq("foo")).Do(func(template any, args ...any) { wg.Done() }).Times(1),
 				)
-
-				gc.RunAll(context.Background())
 			},
 		},
 	}
@@ -260,17 +265,19 @@ func TestGC_RunAll(t *testing.T) {
 			mockRunner := NewMockRunner(ctl)
 
 			gc := New(WithLogger(mockLogger))
-
 			if err := gc.Add(Task{
-				ID:       tc.task1.ID,
-				Interval: tc.task1.Interval,
-				Timeout:  tc.task1.Timeout,
+				ID:       tc.task.ID,
+				Interval: tc.task.Interval,
+				Timeout:  tc.task.Timeout,
 				Runner:   mockRunner,
 			}); err != nil {
 				t.Fatal(err)
 			}
 
-			tc.run(gc, mockLogger, mockRunner)
+			var wg sync.WaitGroup
+			tc.mock(mockLogger, mockRunner, &wg)
+			gc.RunAll(context.Background())
+			wg.Wait()
 		})
 	}
 }

@@ -22,11 +22,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"d7y.io/dragonfly/v2/manager/config"
+	"d7y.io/dragonfly/v2/manager/middlewares"
 	"d7y.io/dragonfly/v2/manager/models"
 	"d7y.io/dragonfly/v2/manager/service/mocks"
 	"d7y.io/dragonfly/v2/manager/types"
@@ -39,6 +42,7 @@ var (
 		   "email": "test@test.com",
 		   "phone": "12345678900"
 		}`
+
 	mockUserSignupReqBody = `
 		{
 		   "bio": "bio",
@@ -47,16 +51,19 @@ var (
 		   "password": "987654321",
 		   "phone": "12345678900"
 		}`
+
 	mockResetPasswordReqBody = `
 		{
 		   "new_password": "123456789",
 		   "old_password": "987654321"
 		}`
+
 	mockUpdateUserRequest = types.UpdateUserRequest{
 		Email: "test@test.com",
 		Phone: "12345678900",
 		BIO:   "bio",
 	}
+
 	mockUserSignupRequest = types.SignUpRequest{
 		SignInRequest: types.SignInRequest{
 			Name:     "name",
@@ -66,10 +73,12 @@ var (
 		Phone: "12345678900",
 		BIO:   "bio",
 	}
+
 	mockResetPasswordRequest = types.ResetPasswordRequest{
 		OldPassword: "987654321",
 		NewPassword: "123456789",
 	}
+
 	mockUserModel = &models.User{
 		BaseModel: mockBaseModel,
 		Email:     "test@test.com",
@@ -77,10 +86,23 @@ var (
 		Phone:     "1234567890",
 		BIO:       "bio",
 	}
+
+	mockJWTConfig = config.JWTConfig{
+		Realm:      "Dragonfly",
+		Key:        "secret",
+		Timeout:    time.Hour,
+		MaxRefresh: time.Hour,
+	}
 )
 
-func mockUserRouter(h *Handlers) *gin.Engine {
+func mockUserRouter(t *testing.T, h *Handlers) *gin.Engine {
+	jwt, err := middlewares.Jwt(mockJWTConfig, h.service)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	r := gin.Default()
+	r.Use(middlewares.Error())
 	apiv1 := r.Group("/api/v1")
 	u := apiv1.Group("/users")
 	u.PATCH(":id", h.UpdateUser)
@@ -88,7 +110,7 @@ func mockUserRouter(h *Handlers) *gin.Engine {
 	u.GET("", h.GetUsers)
 	u.POST("signup", h.SignUp)
 	u.GET("signin/:name", h.OauthSignin)
-	u.GET("signin/:name/callback", h.OauthSigninCallback(nil))
+	u.GET("signin/:name/callback", h.OauthSigninCallback(jwt))
 	u.POST(":id/reset_password", h.ResetPassword)
 	u.GET(":id/roles", h.GetRolesForUser)
 	u.PUT(":id/roles/:role", h.AddRoleToUser)
@@ -137,6 +159,7 @@ func TestHandlers_UpdateUser(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -144,7 +167,7 @@ func TestHandlers_UpdateUser(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -185,6 +208,7 @@ func TestHandlers_GetUser(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -192,7 +216,7 @@ func TestHandlers_GetUser(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -237,6 +261,7 @@ func TestHandlers_GetUsers(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -244,7 +269,7 @@ func TestHandlers_GetUsers(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -285,6 +310,7 @@ func TestHandlers_SignUp(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -292,7 +318,7 @@ func TestHandlers_SignUp(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -338,6 +364,7 @@ func TestHandlers_ResetPassword(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -345,7 +372,7 @@ func TestHandlers_ResetPassword(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -365,14 +392,27 @@ func TestHandlers_OauthSignin(t *testing.T) {
 			name: "success",
 			req:  httptest.NewRequest(http.MethodGet, "/api/v1/users/signin/name", nil),
 			mock: func(ms *mocks.MockServiceMockRecorder) {
-				ms.OauthSignin(gomock.Any(), "name").Return("", nil).Times(1)
+				ms.OauthSignin(gomock.Any(), "name").Return("https://example.com/oauth/authorize", nil).Times(1)
 			},
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusFound, w.Code)
+				assert.Equal("https://example.com/oauth/authorize", w.Header().Get("Location"))
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/users/signin/name", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.OauthSignin(gomock.Any(), "name").Return("", errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -380,7 +420,65 @@ func TestHandlers_OauthSignin(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
+
+			tc.mock(svc.EXPECT())
+			mockRouter.ServeHTTP(w, tc.req)
+			tc.expect(t, w)
+		})
+	}
+}
+
+func TestHandlers_OauthSigninCallback(t *testing.T) {
+	tests := []struct {
+		name   string
+		req    *http.Request
+		mock   func(ms *mocks.MockServiceMockRecorder)
+		expect func(t *testing.T, w *httptest.ResponseRecorder)
+	}{
+		{
+			name: "unprocessable entity caused by query",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/users/signin/name/callback", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusUnprocessableEntity, w.Code)
+			},
+		},
+		{
+			name: "success",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/users/signin/name/callback?code=code", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.OauthSigninCallback(gomock.Any(), "name", "code").Return(mockUserModel, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusFound, w.Code)
+				assert.Equal("/", w.Header().Get("Location"))
+				assert.Contains(w.Header().Get("Set-Cookie"), "jwt=")
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodGet, "/api/v1/users/signin/name/callback?code=code", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.OauthSigninCallback(gomock.Any(), "name", "code").Return(nil, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctl := gomock.NewController(t)
+			defer ctl.Finish()
+			svc := mocks.NewMockService(ctl)
+			w := httptest.NewRecorder()
+			h := New(svc)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -414,10 +512,11 @@ func TestHandlers_GetRolesForUser(t *testing.T) {
 			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
 				assert := assert.New(t)
 				assert.Equal(http.StatusOK, w.Code)
-				assert.Equal(w.Body.String(), `["maintainer"]`)
+				assert.Equal(`["maintainer"]`, w.Body.String())
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -425,7 +524,7 @@ func TestHandlers_GetRolesForUser(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -464,7 +563,30 @@ func TestHandlers_AddRoleToUser(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "conflict",
+			req:  httptest.NewRequest(http.MethodPut, "/api/v1/users/2/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.AddRoleForUser(gomock.Any(), gomock.Any()).Return(false, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusConflict, w.Code)
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodPut, "/api/v1/users/2/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.AddRoleForUser(gomock.Any(), gomock.Any()).Return(false, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -472,7 +594,7 @@ func TestHandlers_AddRoleToUser(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)
@@ -511,7 +633,30 @@ func TestHandlers_DeleteRoleForUser(t *testing.T) {
 				assert.Equal(http.StatusOK, w.Code)
 			},
 		},
+		{
+			name: "not found",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/users/2/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DeleteRoleForUser(gomock.Any(), gomock.Any()).Return(false, nil).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusNotFound, w.Code)
+			},
+		},
+		{
+			name: "internal server error",
+			req:  httptest.NewRequest(http.MethodDelete, "/api/v1/users/2/roles/maintainer", nil),
+			mock: func(ms *mocks.MockServiceMockRecorder) {
+				ms.DeleteRoleForUser(gomock.Any(), gomock.Any()).Return(false, errMockService).Times(1)
+			},
+			expect: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert := assert.New(t)
+				assert.Equal(http.StatusInternalServerError, w.Code)
+			},
+		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctl := gomock.NewController(t)
@@ -519,7 +664,7 @@ func TestHandlers_DeleteRoleForUser(t *testing.T) {
 			svc := mocks.NewMockService(ctl)
 			w := httptest.NewRecorder()
 			h := New(svc)
-			mockRouter := mockUserRouter(h)
+			mockRouter := mockUserRouter(t, h)
 
 			tc.mock(svc.EXPECT())
 			mockRouter.ServeHTTP(w, tc.req)

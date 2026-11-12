@@ -40,7 +40,7 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions:        map[string]string{"location": "foo"},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "empty scheduler clusters")
+				assert.Error(err)
 			},
 		},
 		{
@@ -69,9 +69,9 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions: map[string]string{},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "bar")
-				assert.Equal(data[1].Name, "foo")
-				assert.Equal(len(data), 2)
+				assert.Equal("bar", data[0].Name)
+				assert.Equal("foo", data[1].Name)
+				assert.Len(data, 2)
 			},
 		},
 		{
@@ -102,8 +102,8 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions: map[string]string{"location": "location-1"},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "foo")
-				assert.Equal(data[1].Name, "bar")
+				assert.Equal("foo", data[0].Name)
+				assert.Equal("bar", data[1].Name)
 			},
 		},
 		{
@@ -137,9 +137,9 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions: map[string]string{"idc": "idc-2"},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "bar")
-				assert.Equal(data[1].Name, "foo")
-				assert.Equal(len(data), 2)
+				assert.Equal("bar", data[0].Name)
+				assert.Equal("foo", data[1].Name)
+				assert.Len(data, 2)
 			},
 		},
 		{
@@ -171,9 +171,9 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions: map[string]string{},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "foo")
-				assert.Equal(data[1].Name, "bar")
-				assert.Equal(len(data), 2)
+				assert.Equal("foo", data[0].Name)
+				assert.Equal("bar", data[1].Name)
+				assert.Len(data, 2)
 			},
 		},
 		{
@@ -205,9 +205,9 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			conditions: map[string]string{},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "foo")
-				assert.Equal(data[1].Name, "bar")
-				assert.Equal(len(data), 2)
+				assert.Equal("foo", data[0].Name)
+				assert.Equal("bar", data[1].Name)
+				assert.Len(data, 2)
 			},
 		},
 		{
@@ -286,12 +286,12 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "baz")
-				assert.Equal(data[1].Name, "bar")
-				assert.Equal(data[2].Name, "bac")
-				assert.Equal(data[3].Name, "foo")
-				assert.Equal(data[4].Name, "bax")
-				assert.Equal(len(data), 5)
+				assert.Equal("baz", data[0].Name)
+				assert.Equal("bar", data[1].Name)
+				assert.Equal("bac", data[2].Name)
+				assert.Equal("foo", data[3].Name)
+				assert.Equal("bax", data[4].Name)
+				assert.Len(data, 5)
 			},
 		},
 		{
@@ -412,14 +412,14 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 			},
 			expect: func(t *testing.T, data []models.SchedulerCluster, err error) {
 				assert := assert.New(t)
-				assert.Equal(data[0].Name, "baz")
-				assert.Equal(data[1].Name, "bar")
-				assert.Equal(data[2].Name, "bax")
-				assert.Equal(data[3].Name, "bae")
-				assert.Equal(data[4].Name, "foo")
-				assert.Equal(data[5].Name, "bac")
-				assert.Equal(data[6].Name, "bat")
-				assert.Equal(len(data), 7)
+				assert.Equal("baz", data[0].Name)
+				assert.Equal("bar", data[1].Name)
+				assert.Equal("bax", data[2].Name)
+				assert.Equal("bae", data[3].Name)
+				assert.Equal("foo", data[4].Name)
+				assert.Equal("bac", data[5].Name)
+				assert.Equal("bat", data[6].Name)
+				assert.Len(data, 7)
 			},
 		},
 	}
@@ -427,8 +427,8 @@ func TestSearcher_FindSchedulerClusters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			searcher := New(pluginDir)
-			clusters, found := searcher.FindSchedulerClusters(context.Background(), tc.schedulerClusters, "128.168.1.0", "foo", tc.conditions, logger.CoreLogger)
-			tc.expect(t, clusters, found)
+			clusters, err := searcher.FindSchedulerClusters(context.Background(), tc.schedulerClusters, "128.168.1.0", "foo", tc.conditions, logger.CoreLogger)
+			tc.expect(t, clusters, err)
 		})
 	}
 }

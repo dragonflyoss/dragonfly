@@ -25,58 +25,46 @@ import (
 
 func TestRange_String(t *testing.T) {
 	tests := []struct {
-		s      string
+		name   string
 		rg     Range
 		expect func(t *testing.T, s string)
 	}{
 		{
-			s: "bytes=0-9",
-			rg: Range{
-				Start:  0,
-				Length: 10,
-			},
+			name: "bytes=0-9",
+			rg:   Range{Start: 0, Length: 10},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "bytes=0-9")
+				assert.Equal("bytes=0-9", s)
 			},
 		},
 		{
-			s: "bytes=1-10",
-			rg: Range{
-				Start:  1,
-				Length: 10,
-			},
+			name: "bytes=1-10",
+			rg:   Range{Start: 1, Length: 10},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "bytes=1-10")
+				assert.Equal("bytes=1-10", s)
 			},
 		},
 		{
-			s: "bytes=1-0",
-			rg: Range{
-				Start:  1,
-				Length: 0,
-			},
+			name: "bytes=1-0",
+			rg:   Range{Start: 1, Length: 0},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "bytes=1-0")
+				assert.Equal("bytes=1-0", s)
 			},
 		},
 		{
-			s: "bytes=1-1",
-			rg: Range{
-				Start:  1,
-				Length: 1,
-			},
+			name: "bytes=1-1",
+			rg:   Range{Start: 1, Length: 1},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "bytes=1-1")
+				assert.Equal("bytes=1-1", s)
 			},
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.s, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, tc.rg.String())
 		})
 	}
@@ -84,58 +72,46 @@ func TestRange_String(t *testing.T) {
 
 func TestRange_URLMetaString(t *testing.T) {
 	tests := []struct {
-		s      string
+		name   string
 		rg     Range
 		expect func(t *testing.T, s string)
 	}{
 		{
-			s: "0-9",
-			rg: Range{
-				Start:  0,
-				Length: 10,
-			},
+			name: "0-9",
+			rg:   Range{Start: 0, Length: 10},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "0-9")
+				assert.Equal("0-9", s)
 			},
 		},
 		{
-			s: "1-10",
-			rg: Range{
-				Start:  1,
-				Length: 10,
-			},
+			name: "1-10",
+			rg:   Range{Start: 1, Length: 10},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "1-10")
+				assert.Equal("1-10", s)
 			},
 		},
 		{
-			s: "1-0",
-			rg: Range{
-				Start:  1,
-				Length: 0,
-			},
+			name: "1-0",
+			rg:   Range{Start: 1, Length: 0},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "1-0")
+				assert.Equal("1-0", s)
 			},
 		},
 		{
-			s: "1-1",
-			rg: Range{
-				Start:  1,
-				Length: 1,
-			},
+			name: "1-1",
+			rg:   Range{Start: 1, Length: 1},
 			expect: func(t *testing.T, s string) {
 				assert := assert.New(t)
-				assert.Equal(s, "1-1")
+				assert.Equal("1-1", s)
 			},
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.s, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			tc.expect(t, tc.rg.URLMetaString())
 		})
 	}
@@ -143,187 +119,542 @@ func TestRange_URLMetaString(t *testing.T) {
 
 func TestParseRange(t *testing.T) {
 	tests := []struct {
-		s    string
-		size int64
-		rg   []Range
-	}{
-		{"", 0, nil},
-		{"", 1000, nil},
-		{"foo", 0, nil},
-		{"bytes=", 0, nil},
-		{"bytes=7", 10, nil},
-		{"bytes= 7 ", 10, nil},
-		{"bytes=1-", 0, nil},
-		{"bytes=5-4", 10, nil},
-		{"bytes=0-2,5-4", 10, nil},
-		{"bytes=2-5,4-3", 10, nil},
-		{"bytes=--5,4--3", 10, nil},
-		{"bytes=--5", 10, nil},
-		{"bytes=--1", 10, nil},
-		{"bytes=--5", math.MaxInt64, nil},
-		{"bytes=-", 10, nil},
-		{"bytes=A-", 10, nil},
-		{"bytes=A- ", 10, nil},
-		{"bytes=A-Z", 10, nil},
-		{"bytes= -Z", 10, nil},
-		{"bytes=5-Z", 10, nil},
-		{"bytes=Ran-dom, garbage", 10, nil},
-		{"bytes=0x01-0x02", 10, nil},
-		{"bytes=         ", 10, nil},
-		{"bytes= , , ,   ", 10, nil},
-
-		{"bytes=0-9", 10, []Range{{0, 10}}},
-		{"bytes=0-", 10, []Range{{0, 10}}},
-		{"bytes=5-", 10, []Range{{5, 5}}},
-		{"bytes=0-20", 10, []Range{{0, 10}}},
-		{"bytes=15-,0-5", 10, []Range{{0, 6}}},
-		{"bytes=1-2,5-", 10, []Range{{1, 2}, {5, 5}}},
-		{"bytes=-2 , 7-", 11, []Range{{9, 2}, {7, 4}}},
-		{"bytes=0-0 ,2-2, 7-", 11, []Range{{0, 1}, {2, 1}, {7, 4}}},
-		{"bytes=-5", 10, []Range{{5, 5}}},
-		{"bytes=-15", 10, []Range{{0, 10}}},
-		{"bytes=0-499", 10000, []Range{{0, 500}}},
-		{"bytes=500-999", 10000, []Range{{500, 500}}},
-		{"bytes=-500", 10000, []Range{{9500, 500}}},
-		{"bytes=9500-", 10000, []Range{{9500, 500}}},
-		{"bytes=0-0,-1", 10000, []Range{{0, 1}, {9999, 1}}},
-		{"bytes=500-600,601-999", 10000, []Range{{500, 101}, {601, 399}}},
-		{"bytes=500-700,601-999", 10000, []Range{{500, 201}, {601, 399}}},
-
-		// Match Apache laxity:
-		{"bytes=   1 -2   ,  4- 5, 7 - 8 , ,,", 11, []Range{{1, 2}, {4, 2}, {7, 2}}},
-	}
-
-	for _, tc := range tests {
-		rg := tc.rg
-		ranges, err := ParseRange(tc.s, tc.size)
-		if err != nil && rg != nil {
-			t.Errorf("ParseRange(%q) returned error %q", tc.s, err)
-		}
-
-		if len(ranges) != len(rg) {
-			t.Errorf("len(ParseRange(%q)) = %d, want %d", tc.s, len(ranges), len(rg))
-			continue
-		}
-
-		for i := range rg {
-			if ranges[i].Start != rg[i].Start {
-				t.Errorf("ParseRange(%q)[%d].Serve = %d, want %d", tc.s, i, ranges[i].Start, rg[i].Start)
-			}
-
-			if ranges[i].Length != rg[i].Length {
-				t.Errorf("ParseRange(%q)[%d].Length = %d, want %d", tc.s, i, ranges[i].Length, rg[i].Length)
-			}
-		}
-	}
-}
-
-func TestParseURLMetaRange(t *testing.T) {
-	tests := []struct {
+		name   string
 		s      string
 		size   int64
 		expect func(t *testing.T, rg []Range, err error)
 	}{
 		{
-			s:    "0-65575",
-			size: 65576,
+			name: "empty header with zero size",
+			s:    "",
+			size: 0,
 			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
 				assert.NoError(err)
-				assert.EqualValues(rg[0], Range{
-					Start:  0,
-					Length: 65576,
-				})
-			},
-		},
-		{
-			s:    "2-2",
-			size: 65576,
-			expect: func(t *testing.T, rg []Range, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.EqualValues(rg[0], Range{
-					Start:  2,
-					Length: 1,
-				})
-			},
-		},
-		{
-			s:    "2-",
-			size: 65576,
-			expect: func(t *testing.T, rg []Range, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.EqualValues(rg[0], Range{
-					Start:  2,
-					Length: 65574,
-				})
-			},
-		},
-		{
-			s:    "-100",
-			size: 65576,
-			expect: func(t *testing.T, rg []Range, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.EqualValues(rg[0], Range{
-					Start:  65476,
-					Length: 100,
-				})
-			},
-		},
-		{
-			s:    "0-66575",
-			size: 65576,
-			expect: func(t *testing.T, rg []Range, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.EqualValues(rg[0], Range{
-					Start:  0,
-					Length: 65576,
-				})
-			},
-		},
-		{
-			s:    "0-65-575",
-			size: 65576,
-			expect: func(t *testing.T, rg []Range, err error) {
-				assert := assert.New(t)
 				assert.Empty(rg)
-				assert.Error(err)
 			},
 		},
 		{
-			s:    "0-hello",
-			size: 65576,
+			name: "empty header",
+			s:    "",
+			size: 1000,
 			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.NoError(err)
 				assert.Empty(rg)
-				assert.Error(err)
 			},
 		},
 		{
-			s:    "65575-0",
-			size: 65576,
+			name: "missing bytes prefix",
+			s:    "foo",
+			size: 0,
 			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
-				assert.Empty(rg)
 				assert.Error(err)
+				assert.Empty(rg)
 			},
 		},
 		{
-			s:    "-1-8",
-			size: 65576,
+			name: "prefix only",
+			s:    "bytes=",
+			size: 0,
 			expect: func(t *testing.T, rg []Range, err error) {
 				assert := assert.New(t)
+				assert.NoError(err)
 				assert.Empty(rg)
+			},
+		},
+		{
+			name: "missing separator",
+			s:    "bytes=7",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
 				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "missing separator with spaces",
+			s:    "bytes= 7 ",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "start beyond zero size",
+			s:    "bytes=1-",
+			size: 0,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.ErrorIs(err, ErrNoOverlap)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "end before start",
+			s:    "bytes=5-4",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "second range end before start",
+			s:    "bytes=0-2,5-4",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "overlapping range end before start",
+			s:    "bytes=2-5,4-3",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "negative suffix in list",
+			s:    "bytes=--5,4--3",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "negative suffix",
+			s:    "bytes=--5",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "negative suffix of one",
+			s:    "bytes=--1",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "negative suffix with max size",
+			s:    "bytes=--5",
+			size: math.MaxInt64,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "separator only",
+			s:    "bytes=-",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric start",
+			s:    "bytes=A-",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric start with space",
+			s:    "bytes=A- ",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric start and end",
+			s:    "bytes=A-Z",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric suffix",
+			s:    "bytes= -Z",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric end",
+			s:    "bytes=5-Z",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "garbage",
+			s:    "bytes=Ran-dom, garbage",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "hex numbers",
+			s:    "bytes=0x01-0x02",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "whitespace only",
+			s:    "bytes=         ",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "commas and whitespace only",
+			s:    "bytes= , , ,   ",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "full range",
+			s:    "bytes=0-9",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 10}}, rg)
+			},
+		},
+		{
+			name: "open ended from start",
+			s:    "bytes=0-",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 10}}, rg)
+			},
+		},
+		{
+			name: "open ended from middle",
+			s:    "bytes=5-",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{5, 5}}, rg)
+			},
+		},
+		{
+			name: "end clamped to size",
+			s:    "bytes=0-20",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 10}}, rg)
+			},
+		},
+		{
+			name: "non overlapping range is skipped",
+			s:    "bytes=15-,0-5",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 6}}, rg)
+			},
+		},
+		{
+			name: "two ranges",
+			s:    "bytes=1-2,5-",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{1, 2}, {5, 5}}, rg)
+			},
+		},
+		{
+			name: "suffix and open ended",
+			s:    "bytes=-2 , 7-",
+			size: 11,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{9, 2}, {7, 4}}, rg)
+			},
+		},
+		{
+			name: "three ranges",
+			s:    "bytes=0-0 ,2-2, 7-",
+			size: 11,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 1}, {2, 1}, {7, 4}}, rg)
+			},
+		},
+		{
+			name: "suffix",
+			s:    "bytes=-5",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{5, 5}}, rg)
+			},
+		},
+		{
+			name: "suffix larger than size",
+			s:    "bytes=-15",
+			size: 10,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 10}}, rg)
+			},
+		},
+		{
+			name: "first 500 bytes",
+			s:    "bytes=0-499",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 500}}, rg)
+			},
+		},
+		{
+			name: "second 500 bytes",
+			s:    "bytes=500-999",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{500, 500}}, rg)
+			},
+		},
+		{
+			name: "last 500 bytes",
+			s:    "bytes=-500",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{9500, 500}}, rg)
+			},
+		},
+		{
+			name: "open ended last 500 bytes",
+			s:    "bytes=9500-",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{9500, 500}}, rg)
+			},
+		},
+		{
+			name: "first and last byte",
+			s:    "bytes=0-0,-1",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{0, 1}, {9999, 1}}, rg)
+			},
+		},
+		{
+			name: "adjacent ranges",
+			s:    "bytes=500-600,601-999",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{500, 101}, {601, 399}}, rg)
+			},
+		},
+		{
+			name: "overlapping ranges",
+			s:    "bytes=500-700,601-999",
+			size: 10000,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{500, 201}, {601, 399}}, rg)
+			},
+		},
+		{
+			name: "apache laxity",
+			s:    "bytes=   1 -2   ,  4- 5, 7 - 8 , ,,",
+			size: 11,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{1, 2}, {4, 2}, {7, 2}}, rg)
 			},
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.s, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
+			rg, err := ParseRange(tc.s, tc.size)
+			tc.expect(t, rg, err)
+		})
+	}
+}
+
+func TestParseURLMetaRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		s      string
+		size   int64
+		expect func(t *testing.T, rg []Range, err error)
+	}{
+		{
+			name: "full range",
+			s:    "0-65575",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{Start: 0, Length: 65576}}, rg)
+			},
+		},
+		{
+			name: "single byte",
+			s:    "2-2",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{Start: 2, Length: 1}}, rg)
+			},
+		},
+		{
+			name: "open ended",
+			s:    "2-",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{Start: 2, Length: 65574}}, rg)
+			},
+		},
+		{
+			name: "suffix",
+			s:    "-100",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{Start: 65476, Length: 100}}, rg)
+			},
+		},
+		{
+			name: "end clamped to size",
+			s:    "0-66575",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal([]Range{{Start: 0, Length: 65576}}, rg)
+			},
+		},
+		{
+			name: "too many separators",
+			s:    "0-65-575",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "non numeric end",
+			s:    "0-hello",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "end before start",
+			s:    "65575-0",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+		{
+			name: "negative start",
+			s:    "-1-8",
+			size: 65576,
+			expect: func(t *testing.T, rg []Range, err error) {
+				assert := assert.New(t)
+				assert.Error(err)
+				assert.Empty(rg)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			rg, err := ParseURLMetaRange(tc.s, tc.size)
 			tc.expect(t, rg, err)
 		})

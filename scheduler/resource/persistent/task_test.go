@@ -17,154 +17,276 @@
 package persistent
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/looplab/fsm"
 	"github.com/stretchr/testify/assert"
 
 	commonv2 "d7y.io/api/v2/pkg/apis/common/v2"
-
-	logger "d7y.io/dragonfly/v2/internal/dflog"
 )
 
 func TestNewTask(t *testing.T) {
 	tests := []struct {
-		name                   string
-		id                     string
-		url                    string
-		objectStorageRegion    string
-		objectStorageEndpoint  string
-		state                  string
-		persistentReplicaCount uint64
-		contentLength          uint64
-		totalPieceCount        uint32
-		ttl                    time.Duration
-		createdAt              time.Time
-		updatedAt              time.Time
-		log                    *logger.SugaredLoggerOnWith
-		expectedState          string
+		name   string
+		state  string
+		expect func(t *testing.T, task *Task)
 	}{
 		{
-			name:                   "new task with pending state",
-			id:                     "task-1",
-			url:                    "url",
-			objectStorageRegion:    "region",
-			objectStorageEndpoint:  "endpoint",
-			state:                  TaskStatePending,
-			persistentReplicaCount: 3,
-			contentLength:          1024 * 1024 * 10,
-			totalPieceCount:        10,
-			ttl:                    time.Hour,
-			createdAt:              time.Now(),
-			updatedAt:              time.Now(),
-			expectedState:          TaskStatePending,
+			name:  "new task with pending state",
+			state: TaskStatePending,
+			expect: func(t *testing.T, task *Task) {
+				assert := assert.New(t)
+				assert.Equal("task-1", task.ID)
+				assert.Equal("url", task.URL)
+				assert.Equal("region", task.ObjectStorageRegion)
+				assert.Equal("endpoint", task.ObjectStorageEndpoint)
+				assert.Equal(uint64(3), task.PersistentReplicaCount)
+				assert.Equal(uint64(1024*1024*10), task.ContentLength)
+				assert.Equal(uint32(10), task.TotalPieceCount)
+				assert.Equal(time.Hour, task.TTL)
+				assert.Equal(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), task.CreatedAt)
+				assert.Equal(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), task.UpdatedAt)
+				assert.Equal(TaskStatePending, task.FSM.Current())
+				assert.NotNil(task.Log)
+			},
 		},
 		{
-			name:                   "new task with uploading state",
-			id:                     "task-2",
-			url:                    "url",
-			objectStorageRegion:    "region",
-			objectStorageEndpoint:  "endpoint",
-			state:                  TaskStateUploading,
-			persistentReplicaCount: 5,
-			contentLength:          1024 * 1024 * 20,
-			totalPieceCount:        20,
-			ttl:                    2 * time.Hour,
-			createdAt:              time.Now(),
-			updatedAt:              time.Now(),
-			expectedState:          TaskStateUploading,
+			name:  "new task with uploading state",
+			state: TaskStateUploading,
+			expect: func(t *testing.T, task *Task) {
+				assert := assert.New(t)
+				assert.Equal("task-1", task.ID)
+				assert.Equal("url", task.URL)
+				assert.Equal("region", task.ObjectStorageRegion)
+				assert.Equal("endpoint", task.ObjectStorageEndpoint)
+				assert.Equal(uint64(3), task.PersistentReplicaCount)
+				assert.Equal(uint64(1024*1024*10), task.ContentLength)
+				assert.Equal(uint32(10), task.TotalPieceCount)
+				assert.Equal(time.Hour, task.TTL)
+				assert.Equal(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), task.CreatedAt)
+				assert.Equal(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), task.UpdatedAt)
+				assert.Equal(TaskStateUploading, task.FSM.Current())
+				assert.NotNil(task.Log)
+			},
 		},
 		{
-			name:                   "new task with tiny file",
-			id:                     "task-3",
-			url:                    "url",
-			objectStorageRegion:    "region",
-			objectStorageEndpoint:  "endpoint",
-			state:                  TaskStateSucceeded,
-			persistentReplicaCount: 2,
-			contentLength:          TinyFileSize,
-			totalPieceCount:        1,
-			ttl:                    30 * time.Minute,
-			createdAt:              time.Now(),
-			updatedAt:              time.Now(),
-			expectedState:          TaskStateSucceeded,
+			name:  "new task with succeeded state",
+			state: TaskStateSucceeded,
+			expect: func(t *testing.T, task *Task) {
+				assert := assert.New(t)
+				assert.Equal("task-1", task.ID)
+				assert.Equal("url", task.URL)
+				assert.Equal("region", task.ObjectStorageRegion)
+				assert.Equal("endpoint", task.ObjectStorageEndpoint)
+				assert.Equal(uint64(3), task.PersistentReplicaCount)
+				assert.Equal(uint64(1024*1024*10), task.ContentLength)
+				assert.Equal(uint32(10), task.TotalPieceCount)
+				assert.Equal(time.Hour, task.TTL)
+				assert.Equal(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), task.CreatedAt)
+				assert.Equal(time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), task.UpdatedAt)
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+				assert.NotNil(task.Log)
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := NewTask(
-				tc.id,
-				tc.url,
-				tc.objectStorageRegion,
-				tc.objectStorageEndpoint,
+			tc.expect(t, NewTask(
+				"task-1",
+				"url",
+				"region",
+				"endpoint",
 				tc.state,
-				tc.persistentReplicaCount,
-				tc.contentLength,
-				tc.totalPieceCount,
-				tc.ttl,
-				tc.createdAt,
-				tc.updatedAt,
-				tc.log,
-			)
+				3,
+				1024*1024*10,
+				10,
+				time.Hour,
+				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+				nil,
+			))
+		})
+	}
+}
 
-			assert.Equal(t, tc.id, task.ID)
-			assert.Equal(t, tc.url, task.URL)
-			assert.Equal(t, tc.objectStorageRegion, task.ObjectStorageRegion)
-			assert.Equal(t, tc.objectStorageEndpoint, task.ObjectStorageEndpoint)
-			assert.Equal(t, tc.persistentReplicaCount, task.PersistentReplicaCount)
-			assert.Equal(t, tc.contentLength, task.ContentLength)
-			assert.Equal(t, tc.totalPieceCount, task.TotalPieceCount)
-			assert.Equal(t, tc.ttl, task.TTL)
-			assert.Equal(t, tc.createdAt, task.CreatedAt)
-			assert.Equal(t, tc.updatedAt, task.UpdatedAt)
-			assert.Equal(t, tc.expectedState, task.FSM.Current())
-			assert.NotNil(t, task.Log)
+func TestTask_FSM(t *testing.T) {
+	tests := []struct {
+		name   string
+		state  string
+		event  string
+		expect func(t *testing.T, task *Task, err error)
+	}{
+		{
+			name:  "upload from pending",
+			state: TaskStatePending,
+			event: TaskEventUpload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateUploading, task.FSM.Current())
+			},
+		},
+		{
+			name:  "upload from failed",
+			state: TaskStateFailed,
+			event: TaskEventUpload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateUploading, task.FSM.Current())
+			},
+		},
+		{
+			name:  "upload from uploading is rejected",
+			state: TaskStateUploading,
+			event: TaskEventUpload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateUploading, task.FSM.Current())
+			},
+		},
+		{
+			name:  "upload from succeeded is rejected",
+			state: TaskStateSucceeded,
+			event: TaskEventUpload,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+		{
+			name:  "succeeded from uploading",
+			state: TaskStateUploading,
+			event: TaskEventSucceeded,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+		{
+			name:  "succeeded from pending is rejected",
+			state: TaskStatePending,
+			event: TaskEventSucceeded,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStatePending, task.FSM.Current())
+			},
+		},
+		{
+			name:  "failed from uploading",
+			state: TaskStateUploading,
+			event: TaskEventFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal(TaskStateFailed, task.FSM.Current())
+			},
+		},
+		{
+			name:  "failed from pending is rejected",
+			state: TaskStatePending,
+			event: TaskEventFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStatePending, task.FSM.Current())
+			},
+		},
+		{
+			name:  "failed from succeeded is rejected",
+			state: TaskStateSucceeded,
+			event: TaskEventFailed,
+			expect: func(t *testing.T, task *Task, err error) {
+				assert := assert.New(t)
+				assert.ErrorAs(err, new(fsm.InvalidEventError))
+				assert.Equal(TaskStateSucceeded, task.FSM.Current())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := NewTask("task-1", "url", "region", "endpoint", tc.state, 1, 1024, 1, time.Hour, time.Now(), time.Now(), nil)
+			err := task.FSM.Event(context.Background(), tc.event)
+			tc.expect(t, task, err)
 		})
 	}
 }
 
 func TestTask_SizeScope(t *testing.T) {
 	tests := []struct {
-		name              string
-		contentLength     uint64
-		totalPieceCount   uint32
-		expectedSizeScope commonv2.SizeScope
+		name            string
+		contentLength   uint64
+		totalPieceCount uint32
+		expect          func(t *testing.T, sizeScope commonv2.SizeScope)
 	}{
 		{
-			name:              "empty file",
-			contentLength:     EmptyFileSize,
-			totalPieceCount:   0,
-			expectedSizeScope: commonv2.SizeScope_EMPTY,
+			name:            "empty file",
+			contentLength:   EmptyFileSize,
+			totalPieceCount: 0,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_EMPTY, sizeScope)
+			},
 		},
 		{
-			name:              "tiny file",
-			contentLength:     TinyFileSize,
-			totalPieceCount:   1,
-			expectedSizeScope: commonv2.SizeScope_TINY,
+			name:            "empty file ignores piece count",
+			contentLength:   EmptyFileSize,
+			totalPieceCount: 5,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_EMPTY, sizeScope)
+			},
 		},
 		{
-			name:              "small file",
-			contentLength:     TinyFileSize + 1,
-			totalPieceCount:   1,
-			expectedSizeScope: commonv2.SizeScope_SMALL,
+			name:            "tiny file",
+			contentLength:   TinyFileSize,
+			totalPieceCount: 1,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_TINY, sizeScope)
+			},
 		},
 		{
-			name:              "normal file",
-			contentLength:     1024 * 1024,
-			totalPieceCount:   10,
-			expectedSizeScope: commonv2.SizeScope_NORMAL,
+			name:            "tiny file ignores piece count",
+			contentLength:   TinyFileSize,
+			totalPieceCount: 3,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_TINY, sizeScope)
+			},
+		},
+		{
+			name:            "small file",
+			contentLength:   TinyFileSize + 1,
+			totalPieceCount: 1,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_SMALL, sizeScope)
+			},
+		},
+		{
+			name:            "normal file",
+			contentLength:   1024 * 1024,
+			totalPieceCount: 10,
+			expect: func(t *testing.T, sizeScope commonv2.SizeScope) {
+				assert := assert.New(t)
+				assert.Equal(commonv2.SizeScope_NORMAL, sizeScope)
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &Task{
-				ContentLength:   tc.contentLength,
-				TotalPieceCount: tc.totalPieceCount,
-			}
-			got := task.SizeScope()
-			assert.Equal(t, tc.expectedSizeScope, got)
+			task := &Task{ContentLength: tc.contentLength, TotalPieceCount: tc.totalPieceCount}
+			tc.expect(t, task.SizeScope())
 		})
 	}
 }

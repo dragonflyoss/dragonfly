@@ -815,7 +815,8 @@ func TestDatasetReconciler_ImageSource(t *testing.T) {
 	assert.Equal(t, "image", req.Args.Type)
 	assert.Equal(t, ds.Spec.Sources[0].URL, req.Args.URL)
 	assert.Equal(t, "linux/amd64", req.Args.Platform)
-	assert.True(t, req.Args.EnableTaskIDBasedBlobDigest)
+	require.NotNil(t, req.Args.EnableTaskIDBasedBlobDigest)
+	assert.True(t, *req.Args.EnableTaskIDBasedBlobDigest)
 
 	layers := []string{
 		"https://registry.example.com/v2/library/nginx/blobs/sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

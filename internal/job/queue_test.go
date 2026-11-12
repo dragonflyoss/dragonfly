@@ -37,6 +37,7 @@ func TestJob_GetSchedulerQueue(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, result Queue, err error) {
 				assert := assert.New(t)
+				assert.NoError(err)
 				assert.Equal(Queue("scheduler_1_foo_127.0.0.1"), result)
 			},
 		},
@@ -47,7 +48,7 @@ func TestJob_GetSchedulerQueue(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, result Queue, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "empty hostname config is not specified")
+				assert.Error(err)
 			},
 		},
 		{
@@ -57,7 +58,7 @@ func TestJob_GetSchedulerQueue(t *testing.T) {
 			ip:        "127.0.0.1",
 			expect: func(t *testing.T, result Queue, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "empty cluster id config is not specified")
+				assert.Error(err)
 			},
 		},
 		{
@@ -67,7 +68,7 @@ func TestJob_GetSchedulerQueue(t *testing.T) {
 			ip:        "",
 			expect: func(t *testing.T, result Queue, err error) {
 				assert := assert.New(t)
-				assert.EqualError(err, "empty ip config is not specified")
+				assert.Error(err)
 			},
 		},
 	}

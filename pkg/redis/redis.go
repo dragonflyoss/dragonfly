@@ -19,6 +19,9 @@ package redis
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 
@@ -94,6 +97,21 @@ func NewRedis(cfg *redis.UniversalOptions) (redis.UniversalClient, error) {
 	}
 
 	return client, nil
+}
+
+// FormatURL formats the redis connection URL, encoding credentials as URL
+// userinfo so that parsers built on net/url decode them.
+func FormatURL(addrs []string, username, password string, db int) string {
+	u := url.URL{
+		Scheme: "redis",
+		Host:   strings.Join(addrs, ","),
+		Path:   "/" + strconv.Itoa(db),
+	}
+	if username != "" || password != "" {
+		u.User = url.UserPassword(username, password)
+	}
+
+	return u.String()
 }
 
 // IsEnabled check redis is enabled.

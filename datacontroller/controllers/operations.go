@@ -193,7 +193,7 @@ func buildPreheatRequest(ctx context.Context, secrets *secretReader, dataset *v1
 		IPs:                         distribution.IPs,
 		Percentage:                  distribution.Percentage,
 		Count:                       distribution.Count,
-		EnableTaskIDBasedBlobDigest: source.EnableTaskIDBasedBlobDigest,
+		EnableTaskIDBasedBlobDigest: &source.EnableTaskIDBasedBlobDigest,
 	}
 
 	if args.Type == "" {

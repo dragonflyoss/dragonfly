@@ -30,68 +30,68 @@ const (
 func TestVertex_New(t *testing.T) {
 	v := NewVertex(mockVertexID, mockVertexValue)
 	assert := assert.New(t)
-	assert.Equal(v.ID, mockVertexID)
-	assert.Equal(v.Value, mockVertexValue)
-	assert.Equal(v.Parents.Len(), uint(0))
-	assert.Equal(v.Children.Len(), uint(0))
+	assert.Equal(mockVertexID, v.ID)
+	assert.Equal(mockVertexValue, v.Value)
+	assert.Equal(uint(0), v.Parents.Len())
+	assert.Equal(uint(0), v.Children.Len())
 }
 
 func TestVertex_Degree(t *testing.T) {
 	v := NewVertex(mockVertexID, mockVertexValue)
 	assert := assert.New(t)
-	assert.Equal(v.ID, mockVertexID)
-	assert.Equal(v.Value, mockVertexValue)
-	assert.Equal(v.Degree(), 0)
+	assert.Equal(mockVertexID, v.ID)
+	assert.Equal(mockVertexValue, v.Value)
+	assert.Equal(0, v.Degree())
 
 	v.Parents.Add(v)
-	assert.Equal(v.Degree(), 1)
+	assert.Equal(1, v.Degree())
 
 	v.Children.Add(v)
-	assert.Equal(v.Degree(), 2)
+	assert.Equal(2, v.Degree())
 
 	v.Parents.Delete(v)
-	assert.Equal(v.Degree(), 1)
+	assert.Equal(1, v.Degree())
 
 	v.Children.Delete(v)
-	assert.Equal(v.Degree(), 0)
+	assert.Equal(0, v.Degree())
 }
 
 func TestVertex_InDegree(t *testing.T) {
 	v := NewVertex(mockVertexID, mockVertexValue)
 	assert := assert.New(t)
-	assert.Equal(v.ID, mockVertexID)
-	assert.Equal(v.Value, mockVertexValue)
-	assert.Equal(v.InDegree(), 0)
+	assert.Equal(mockVertexID, v.ID)
+	assert.Equal(mockVertexValue, v.Value)
+	assert.Equal(0, v.InDegree())
 
 	v.Parents.Add(v)
-	assert.Equal(v.InDegree(), 1)
+	assert.Equal(1, v.InDegree())
 
 	v.Children.Add(v)
-	assert.Equal(v.InDegree(), 1)
+	assert.Equal(1, v.InDegree())
 
 	v.Parents.Delete(v)
-	assert.Equal(v.InDegree(), 0)
+	assert.Equal(0, v.InDegree())
 
 	v.Children.Delete(v)
-	assert.Equal(v.InDegree(), 0)
+	assert.Equal(0, v.InDegree())
 }
 
 func TestVertex_OutDegree(t *testing.T) {
 	v := NewVertex(mockVertexID, mockVertexValue)
 	assert := assert.New(t)
-	assert.Equal(v.ID, mockVertexID)
-	assert.Equal(v.Value, mockVertexValue)
-	assert.Equal(v.OutDegree(), 0)
+	assert.Equal(mockVertexID, v.ID)
+	assert.Equal(mockVertexValue, v.Value)
+	assert.Equal(0, v.OutDegree())
 
 	v.Parents.Add(v)
-	assert.Equal(v.OutDegree(), 0)
+	assert.Equal(0, v.OutDegree())
 
 	v.Children.Add(v)
-	assert.Equal(v.OutDegree(), 1)
+	assert.Equal(1, v.OutDegree())
 
 	v.Parents.Delete(v)
-	assert.Equal(v.OutDegree(), 1)
+	assert.Equal(1, v.OutDegree())
 
 	v.Children.Delete(v)
-	assert.Equal(v.OutDegree(), 0)
+	assert.Equal(0, v.OutDegree())
 }

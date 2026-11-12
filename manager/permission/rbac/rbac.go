@@ -151,7 +151,7 @@ func InitRBAC(e *casbin.Enforcer, g *gin.Engine, db *gorm.DB) error {
 			logger.Warnf("seed the root user with the default password, set %s to override it", DragonflyInitialRootPasswordEnvName)
 		}
 
-		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+		encryptedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
