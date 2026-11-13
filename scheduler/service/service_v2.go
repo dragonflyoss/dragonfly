@@ -1873,8 +1873,14 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 
 		task = standard.NewTask(taskID, download.GetUrl(), download.GetTag(), download.GetApplication(), download.GetType(),
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
-		task.ContentLength.Store(int64(download.GetActualContentLength()))
-		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
+
+		// A peer that registers without the content length leaves it unknown instead
+		// of zero, so that the task is not scheduled as an empty task.
+		if download.ActualContentLength != nil {
+			task.ContentLength.Store(int64(download.GetActualContentLength()))
+			task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
+		}
+
 		task, _ = v.resource.TaskManager().LoadOrStore(task)
 	} else {
 		task.URL = download.GetUrl()

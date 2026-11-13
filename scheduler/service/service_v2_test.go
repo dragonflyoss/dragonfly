@@ -4434,6 +4434,8 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.Equal(download.GetUrl(), task.URL)
 				assert.EqualValues(download.GetFilteredQueryParams(), task.FilteredQueryParams)
 				assert.EqualValues(download.RequestHeader, task.Header)
+				assert.Equal(int64(-1), task.ContentLength.Load())
+				assert.Equal(commonv2.SizeScope_UNKNOW, task.SizeScope())
 			},
 		},
 		{
@@ -4442,6 +4444,8 @@ func TestServiceV2_handleResource(t *testing.T) {
 				Url:                 "foo",
 				FilteredQueryParams: []string{"bar"},
 				RequestHeader:       map[string]string{"baz": "bas"},
+				ActualContentLength: proto.Uint64(1024),
+				ActualPieceCount:    proto.Uint64(2),
 			},
 			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
 				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
@@ -4452,7 +4456,9 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.LoadOrStore(gomock.Any()).Return(mockTask, true).Times(1),
+					mt.LoadOrStore(gomock.Cond(func(task *standard.Task) bool {
+						return task.ContentLength.Load() == 1024 && task.TotalPieceCount.Load() == 2
+					})).Return(mockTask, true).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
 				)
