@@ -2115,7 +2115,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 func TestServiceV2_ListHosts(t *testing.T) {
 	tests := []struct {
 		name      string
-		pageToken *string
+		pageToken string
 		mock      func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder)
 		expect    func(t *testing.T, host *standard.Host, resp []*commonv2.Host, err error)
 	}{
@@ -2233,7 +2233,7 @@ func TestServiceV2_ListHosts(t *testing.T) {
 		},
 		{
 			name:      "page token is invalid",
-			pageToken: proto.String("foo"),
+			pageToken: "foo",
 			mock: func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
@@ -2269,7 +2269,7 @@ func TestServiceV2_ListHosts(t *testing.T) {
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig, Metrics: config.MetricsConfig{EnableHost: true}}, resource, persistentResource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
 			tc.mock(host, hostManager, resource.EXPECT(), hostManager.EXPECT())
-			resp, err := svc.ListHosts(context.Background(), &schedulerv2.ListHostsRequest{PageToken: tc.pageToken})
+			resp, err := svc.ListHosts(context.Background(), &schedulerv2.ListHostsRequest{PageToken: &tc.pageToken})
 			tc.expect(t, host, resp.GetHosts(), err)
 		})
 	}
@@ -2279,8 +2279,8 @@ func TestServiceV2_ListPeers(t *testing.T) {
 	tests := []struct {
 		name      string
 		taskID    *string
-		pageSize  *int32
-		pageToken *string
+		pageSize  int32
+		pageToken string
 		mock      func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder)
 		expect    func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error)
 	}{
@@ -2315,7 +2315,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 		},
 		{
 			name:   "task not found",
-			taskID: proto.String(mockTaskID),
+			taskID: &mockTaskID,
 			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mr.TaskManager().Return(taskManager).Times(1),
@@ -2330,7 +2330,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 		},
 		{
 			name:   "task has succeeded peers",
-			taskID: proto.String(mockTaskID),
+			taskID: &mockTaskID,
 			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
 				peer := standard.NewPeer(mockPeerID, task, host)
 				peer.FSM.SetState(standard.PeerStateSucceeded)
@@ -2371,8 +2371,8 @@ func TestServiceV2_ListPeers(t *testing.T) {
 		},
 		{
 			name:     "page size is less than succeeded peers",
-			taskID:   proto.String(mockTaskID),
-			pageSize: proto.Int32(1),
+			taskID:   &mockTaskID,
+			pageSize: 1,
 			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
 				peer := standard.NewPeer(mockPeerID, task, host)
 				peer.FSM.SetState(standard.PeerStateSucceeded)
@@ -2397,8 +2397,8 @@ func TestServiceV2_ListPeers(t *testing.T) {
 		},
 		{
 			name:      "page token is invalid",
-			taskID:    proto.String(mockTaskID),
-			pageToken: proto.String("foo"),
+			taskID:    &mockTaskID,
+			pageToken: "foo",
 			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
 				gomock.InOrder(
 					mr.TaskManager().Return(taskManager).Times(1),
@@ -2437,7 +2437,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentResource, persistentCacheResource, scheduling, job, internalJobImage, dynconfig)
 
 			tc.mock(host, seedHost, task, taskManager, peerManager, resource.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT())
-			resp, err := svc.ListPeers(context.Background(), &schedulerv2.ListPeersRequest{TaskId: tc.taskID, PageSize: tc.pageSize, PageToken: tc.pageToken})
+			resp, err := svc.ListPeers(context.Background(), &schedulerv2.ListPeersRequest{TaskId: tc.taskID, PageSize: &tc.pageSize, PageToken: &tc.pageToken})
 			tc.expect(t, resp, err)
 		})
 	}

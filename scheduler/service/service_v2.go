@@ -67,15 +67,6 @@ const (
 
 	// maxDelayForRegisterPeer is the maximum delay for registering peer.
 	maxDelayForRegisterPeer = 1000 * time.Millisecond
-
-	// seedPeerKeyPrefix is the prefix of the key of the peer on the seed peer
-	// when listing peers, it orders the peers of the seed peers before the
-	// other peers.
-	seedPeerKeyPrefix = "0"
-
-	// normalPeerKeyPrefix is the prefix of the key of the peer on the normal
-	// peer when listing peers.
-	normalPeerKeyPrefix = "1"
 )
 
 // V2 is the interface for v2 version of the service.
@@ -1110,8 +1101,51 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 // ListHosts lists hosts in scheduler.
 func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
-	constructHost := func(host *standard.Host) *commonv2.Host {
-		return &commonv2.Host{
+	var hosts []*standard.Host
+	collectHost := func(_ any, value any) bool {
+		host, ok := value.(*standard.Host)
+		if !ok {
+			// Continue to next host.
+			logger.Warnf("invalid host %#v", value)
+			return true
+		}
+
+		hosts = append(hosts, host)
+		return true
+	}
+
+	// Collect all hosts if no type specified, otherwise filter hosts by type.
+	if req.Type == nil {
+		v.resource.HostManager().Range(collectHost)
+	} else {
+		switch types.HostType(*req.Type) {
+		case types.HostTypeNormal:
+			v.resource.HostManager().RangeNormals(collectHost)
+		case types.HostTypeSuperSeed:
+			v.resource.HostManager().RangeSeeds(collectHost)
+		}
+	}
+
+	// Paginate hosts in the order of the host id.
+	paginator, err := rpc.NewPaginator(req.GetPageSize(), req.GetPageToken(), func(host *standard.Host) string {
+		return host.ID
+	})
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	hosts, nextPageToken, err := paginator.Page(hosts)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &schedulerv2.ListHostsResponse{
+		Hosts:         make([]*commonv2.Host, 0, len(hosts)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, host := range hosts {
+		resp.Hosts = append(resp.Hosts, &commonv2.Host{
 			Id:              host.ID,
 			Type:            uint32(host.Type),
 			Name:            host.Name,
@@ -1181,49 +1215,7 @@ func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (
 			},
 			SchedulerClusterId: host.SchedulerClusterID,
 			DisableShared:      host.DisableShared,
-		}
-	}
-
-	hosts := []*standard.Host{}
-	collectHost := func(_ any, value any) bool {
-		host, ok := value.(*standard.Host)
-		if !ok {
-			// Continue to next host.
-			logger.Warnf("invalid host %#v", value)
-			return true
-		}
-
-		hosts = append(hosts, host)
-		return true
-	}
-
-	// Collect all hosts if no type specified, otherwise filter hosts by type.
-	if req.Type == nil {
-		v.resource.HostManager().Range(collectHost)
-	} else {
-		switch types.HostType(*req.Type) {
-		case types.HostTypeNormal:
-			v.resource.HostManager().RangeNormals(collectHost)
-		case types.HostTypeSuperSeed:
-			v.resource.HostManager().RangeSeeds(collectHost)
-		}
-	}
-
-	// Paginate hosts in the order of the host id.
-	hosts, nextPageToken, err := rpc.Paginate(hosts, func(host *standard.Host) string {
-		return host.ID
-	}, req.GetPageSize(), req.GetPageToken())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	resp := &schedulerv2.ListHostsResponse{
-		Hosts:         make([]*commonv2.Host, 0, len(hosts)),
-		NextPageToken: nextPageToken,
-	}
-
-	for _, host := range hosts {
-		resp.Hosts = append(resp.Hosts, constructHost(host))
+		})
 	}
 
 	return resp, nil
@@ -1231,8 +1223,73 @@ func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (
 
 // ListPeers lists peers in scheduler.
 func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (*schedulerv2.ListPeersResponse, error) {
-	constructPeer := func(peer *standard.Peer) *commonv2.Peer {
-		resp := &commonv2.Peer{
+	var (
+		seedPeers []*standard.Peer
+		peers     []*standard.Peer
+		tokenizer rpc.Tokenizer[*standard.Peer]
+	)
+
+	if req.TaskId == nil {
+		// List all peers in the order of the peer id if no task id specified.
+		v.resource.PeerManager().Range(func(_ any, value any) bool {
+			peer, ok := value.(*standard.Peer)
+			if !ok {
+				// Continue to next peer.
+				logger.Warnf("invalid peer %#v", value)
+				return true
+			}
+
+			peers = append(peers, peer)
+			return true
+		})
+
+		tokenizer = func(peer *standard.Peer) string {
+			return peer.ID
+		}
+	} else {
+		task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
+		if !loaded {
+			return &schedulerv2.ListPeersResponse{}, nil
+		}
+
+		// Filter peers by task id. List the peers that succeeded to download the
+		// task in the order of the host id, one peer for each host.
+		hostIDs := set.New[string]()
+		for _, peer := range task.LoadPeers() {
+			if !peer.FSM.Is(standard.PeerStateSucceeded) || !hostIDs.Add(peer.Host.ID) {
+				continue
+			}
+
+			if peer.Host.IsSeedPeer() {
+				seedPeers = append(seedPeers, peer)
+			} else {
+				peers = append(peers, peer)
+			}
+		}
+
+		tokenizer = func(peer *standard.Peer) string {
+			return peer.Host.ID
+		}
+	}
+
+	paginator, err := rpc.NewPaginator(req.GetPageSize(), req.GetPageToken(), tokenizer)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Paginate the peers on the seed peers before the peers on the normal peers.
+	peers, nextPageToken, err := paginator.Page(seedPeers, peers)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &schedulerv2.ListPeersResponse{
+		Peers:         make([]*commonv2.Peer, 0, len(peers)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, peer := range peers {
+		respPeer := &commonv2.Peer{
 			Id:                   peer.ID,
 			Priority:             peer.Priority,
 			ConcurrentPieceCount: peer.ConcurrentPieceCount,
@@ -1245,14 +1302,14 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 
 		// Set range to response.
 		if peer.Range != nil {
-			resp.Range = &commonv2.Range{
+			respPeer.Range = &commonv2.Range{
 				Start:  uint64(peer.Range.Start),
 				Length: uint64(peer.Range.Length),
 			}
 		}
 
 		// Set task to response.
-		resp.Task = &commonv2.Task{
+		respPeer.Task = &commonv2.Task{
 			Id:                  peer.Task.ID,
 			Type:                peer.Task.Type,
 			Url:                 peer.Task.URL,
@@ -1272,11 +1329,11 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 		// Set digest to task response.
 		if peer.Task.Digest != nil {
 			dgst := peer.Task.Digest.String()
-			resp.Task.Digest = &dgst
+			respPeer.Task.Digest = &dgst
 		}
 
 		// Set host to response.
-		resp.Host = &commonv2.Host{
+		respPeer.Host = &commonv2.Host{
 			Id:              peer.Host.ID,
 			Type:            uint32(peer.Host.Type),
 			Name:            peer.Host.Name,
@@ -1344,72 +1401,11 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 				GoVersion:  &peer.Host.Build.GoVersion,
 				Platform:   &peer.Host.Build.Platform,
 			},
+			SchedulerClusterId: peer.Host.SchedulerClusterID,
+			DisableShared:      peer.Host.DisableShared,
 		}
 
-		return resp
-	}
-
-	var (
-		peers []*standard.Peer
-		key   func(*standard.Peer) string
-	)
-
-	if req.TaskId == nil {
-		// List all peers in the order of the peer id if no task id specified.
-		v.resource.PeerManager().Range(func(_ any, value any) bool {
-			peer, ok := value.(*standard.Peer)
-			if !ok {
-				// Continue to next peer.
-				logger.Warnf("invalid peer %#v", value)
-				return true
-			}
-
-			peers = append(peers, peer)
-			return true
-		})
-
-		key = func(peer *standard.Peer) string {
-			return peer.ID
-		}
-	} else {
-		task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
-		if !loaded {
-			return &schedulerv2.ListPeersResponse{}, nil
-		}
-
-		// Filter peers by task id. List the peers that succeeded to download the
-		// task, one peer for each host.
-		hostIDs := set.New[string]()
-		for _, peer := range task.LoadPeers() {
-			if !peer.FSM.Is(standard.PeerStateSucceeded) || !hostIDs.Add(peer.Host.ID) {
-				continue
-			}
-
-			peers = append(peers, peer)
-		}
-
-		// Order the peers of the seed peers first, then by the host id.
-		key = func(peer *standard.Peer) string {
-			if peer.Host.IsSeedPeer() {
-				return seedPeerKeyPrefix + peer.Host.ID
-			}
-
-			return normalPeerKeyPrefix + peer.Host.ID
-		}
-	}
-
-	peers, nextPageToken, err := rpc.Paginate(peers, key, req.GetPageSize(), req.GetPageToken())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	resp := &schedulerv2.ListPeersResponse{
-		Peers:         make([]*commonv2.Peer, 0, len(peers)),
-		NextPageToken: nextPageToken,
-	}
-
-	for _, peer := range peers {
-		resp.Peers = append(resp.Peers, constructPeer(peer))
+		resp.Peers = append(resp.Peers, respPeer)
 	}
 
 	return resp, nil
