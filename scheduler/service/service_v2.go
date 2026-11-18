@@ -49,6 +49,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
+	"d7y.io/dragonfly/v2/pkg/rpc"
 	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -66,6 +67,15 @@ const (
 
 	// maxDelayForRegisterPeer is the maximum delay for registering peer.
 	maxDelayForRegisterPeer = 1000 * time.Millisecond
+
+	// seedPeerKeyPrefix is the prefix of the key of the peer on the seed peer
+	// when listing peers, it orders the peers of the seed peers before the
+	// other peers.
+	seedPeerKeyPrefix = "0"
+
+	// normalPeerKeyPrefix is the prefix of the key of the peer on the normal
+	// peer when listing peers.
+	normalPeerKeyPrefix = "1"
 )
 
 // V2 is the interface for v2 version of the service.
@@ -1100,16 +1110,8 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 // ListHosts lists hosts in scheduler.
 func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
-	hosts := []*commonv2.Host{}
-	constructHosts := func(value any) bool {
-		host, ok := value.(*standard.Host)
-		if !ok {
-			// Continue to next host.
-			logger.Warnf("invalid host %#v", value)
-			return true
-		}
-
-		hosts = append(hosts, &commonv2.Host{
+	constructHost := func(host *standard.Host) *commonv2.Host {
+		return &commonv2.Host{
 			Id:              host.ID,
 			Type:            uint32(host.Type),
 			Name:            host.Name,
@@ -1179,37 +1181,238 @@ func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (
 			},
 			SchedulerClusterId: host.SchedulerClusterID,
 			DisableShared:      host.DisableShared,
-		})
+		}
+	}
 
+	hosts := []*standard.Host{}
+	collectHost := func(_ any, value any) bool {
+		host, ok := value.(*standard.Host)
+		if !ok {
+			// Continue to next host.
+			logger.Warnf("invalid host %#v", value)
+			return true
+		}
+
+		hosts = append(hosts, host)
 		return true
 	}
 
-	// Return all hosts if no type specified.
+	// Collect all hosts if no type specified, otherwise filter hosts by type.
 	if req.Type == nil {
-		v.resource.HostManager().Range(func(_ any, value any) bool {
-			return constructHosts(value)
-		})
-
-		return &schedulerv2.ListHostsResponse{
-			Hosts: hosts,
-		}, nil
+		v.resource.HostManager().Range(collectHost)
+	} else {
+		switch types.HostType(*req.Type) {
+		case types.HostTypeNormal:
+			v.resource.HostManager().RangeNormals(collectHost)
+		case types.HostTypeSuperSeed:
+			v.resource.HostManager().RangeSeeds(collectHost)
+		}
 	}
 
-	// Filter hosts by type.
-	switch types.HostType(*req.Type) {
-	case types.HostTypeNormal:
-		v.resource.HostManager().RangeNormals(func(_ any, value any) bool {
-			return constructHosts(value)
-		})
-	case types.HostTypeSuperSeed:
-		v.resource.HostManager().RangeSeeds(func(_ any, value any) bool {
-			return constructHosts(value)
-		})
+	// Paginate hosts in the order of the host id.
+	hosts, nextPageToken, err := rpc.Paginate(hosts, func(host *standard.Host) string {
+		return host.ID
+	}, req.GetPageSize(), req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return &schedulerv2.ListHostsResponse{
-		Hosts: hosts,
-	}, nil
+	resp := &schedulerv2.ListHostsResponse{
+		Hosts:         make([]*commonv2.Host, 0, len(hosts)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, host := range hosts {
+		resp.Hosts = append(resp.Hosts, constructHost(host))
+	}
+
+	return resp, nil
+}
+
+// ListPeers lists peers in scheduler.
+func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (*schedulerv2.ListPeersResponse, error) {
+	constructPeer := func(peer *standard.Peer) *commonv2.Peer {
+		resp := &commonv2.Peer{
+			Id:                   peer.ID,
+			Priority:             peer.Priority,
+			ConcurrentPieceCount: peer.ConcurrentPieceCount,
+			Cost:                 durationpb.New(peer.Cost.Load()),
+			State:                peer.FSM.Current(),
+			NeedBackToSource:     peer.NeedBackToSource.Load(),
+			CreatedAt:            timestamppb.New(peer.CreatedAt.Load()),
+			UpdatedAt:            timestamppb.New(peer.UpdatedAt.Load()),
+		}
+
+		// Set range to response.
+		if peer.Range != nil {
+			resp.Range = &commonv2.Range{
+				Start:  uint64(peer.Range.Start),
+				Length: uint64(peer.Range.Length),
+			}
+		}
+
+		// Set task to response.
+		resp.Task = &commonv2.Task{
+			Id:                  peer.Task.ID,
+			Type:                peer.Task.Type,
+			Url:                 peer.Task.URL,
+			Tag:                 &peer.Task.Tag,
+			Application:         &peer.Task.Application,
+			FilteredQueryParams: peer.Task.FilteredQueryParams,
+			RequestHeader:       peer.Task.Header,
+			ContentLength:       uint64(peer.Task.ContentLength.Load()),
+			PieceCount:          uint32(peer.Task.TotalPieceCount.Load()),
+			SizeScope:           peer.Task.SizeScope(),
+			State:               peer.Task.FSM.Current(),
+			PeerCount:           uint32(peer.Task.PeerCount()),
+			CreatedAt:           timestamppb.New(peer.Task.CreatedAt.Load()),
+			UpdatedAt:           timestamppb.New(peer.Task.UpdatedAt.Load()),
+		}
+
+		// Set digest to task response.
+		if peer.Task.Digest != nil {
+			dgst := peer.Task.Digest.String()
+			resp.Task.Digest = &dgst
+		}
+
+		// Set host to response.
+		resp.Host = &commonv2.Host{
+			Id:              peer.Host.ID,
+			Type:            uint32(peer.Host.Type),
+			Name:            peer.Host.Name,
+			Hostname:        peer.Host.Hostname,
+			Ip:              peer.Host.IP,
+			Port:            peer.Host.Port,
+			DownloadPort:    peer.Host.DownloadPort,
+			ProxyPort:       peer.Host.ProxyPort,
+			Os:              peer.Host.OS,
+			Platform:        peer.Host.Platform,
+			PlatformFamily:  peer.Host.PlatformFamily,
+			PlatformVersion: peer.Host.PlatformVersion,
+			KernelVersion:   peer.Host.KernelVersion,
+			Cpu: &commonv2.CPU{
+				LogicalCount:   peer.Host.CPU.LogicalCount,
+				PhysicalCount:  peer.Host.CPU.PhysicalCount,
+				Percent:        peer.Host.CPU.Percent,
+				ProcessPercent: peer.Host.CPU.ProcessPercent,
+				Times: &commonv2.CPUTimes{
+					User:      peer.Host.CPU.Times.User,
+					System:    peer.Host.CPU.Times.System,
+					Idle:      peer.Host.CPU.Times.Idle,
+					Nice:      peer.Host.CPU.Times.Nice,
+					Iowait:    peer.Host.CPU.Times.Iowait,
+					Irq:       peer.Host.CPU.Times.Irq,
+					Softirq:   peer.Host.CPU.Times.Softirq,
+					Steal:     peer.Host.CPU.Times.Steal,
+					Guest:     peer.Host.CPU.Times.Guest,
+					GuestNice: peer.Host.CPU.Times.GuestNice,
+				},
+			},
+			Memory: &commonv2.Memory{
+				Total:              peer.Host.Memory.Total,
+				Available:          peer.Host.Memory.Available,
+				Used:               peer.Host.Memory.Used,
+				UsedPercent:        peer.Host.Memory.UsedPercent,
+				ProcessUsedPercent: peer.Host.Memory.ProcessUsedPercent,
+				Free:               peer.Host.Memory.Free,
+			},
+			Network: &commonv2.Network{
+				TcpConnectionCount:       peer.Host.Network.TCPConnectionCount,
+				UploadTcpConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
+				Location:                 &peer.Host.Network.Location,
+				Idc:                      &peer.Host.Network.IDC,
+				RxBandwidth:              &peer.Host.Network.RxBandwidth,
+				MaxRxBandwidth:           peer.Host.Network.MaxRxBandwidth,
+				TxBandwidth:              &peer.Host.Network.TxBandwidth,
+				MaxTxBandwidth:           peer.Host.Network.MaxTxBandwidth,
+			},
+			Disk: &commonv2.Disk{
+				Total:             peer.Host.Disk.Total,
+				Free:              peer.Host.Disk.Free,
+				Used:              peer.Host.Disk.Used,
+				UsedPercent:       peer.Host.Disk.UsedPercent,
+				InodesTotal:       peer.Host.Disk.InodesTotal,
+				InodesUsed:        peer.Host.Disk.InodesUsed,
+				InodesFree:        peer.Host.Disk.InodesFree,
+				InodesUsedPercent: peer.Host.Disk.InodesUsedPercent,
+				WriteBandwidth:    peer.Host.Disk.WriteBandwidth,
+				ReadBandwidth:     peer.Host.Disk.ReadBandwidth,
+			},
+			Build: &commonv2.Build{
+				GitVersion: peer.Host.Build.GitVersion,
+				GitCommit:  &peer.Host.Build.GitCommit,
+				GoVersion:  &peer.Host.Build.GoVersion,
+				Platform:   &peer.Host.Build.Platform,
+			},
+		}
+
+		return resp
+	}
+
+	var (
+		peers []*standard.Peer
+		key   func(*standard.Peer) string
+	)
+
+	if req.TaskId == nil {
+		// List all peers in the order of the peer id if no task id specified.
+		v.resource.PeerManager().Range(func(_ any, value any) bool {
+			peer, ok := value.(*standard.Peer)
+			if !ok {
+				// Continue to next peer.
+				logger.Warnf("invalid peer %#v", value)
+				return true
+			}
+
+			peers = append(peers, peer)
+			return true
+		})
+
+		key = func(peer *standard.Peer) string {
+			return peer.ID
+		}
+	} else {
+		task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
+		if !loaded {
+			return &schedulerv2.ListPeersResponse{}, nil
+		}
+
+		// Filter peers by task id. List the peers that succeeded to download the
+		// task, one peer for each host.
+		hostIDs := set.New[string]()
+		for _, peer := range task.LoadPeers() {
+			if !peer.FSM.Is(standard.PeerStateSucceeded) || !hostIDs.Add(peer.Host.ID) {
+				continue
+			}
+
+			peers = append(peers, peer)
+		}
+
+		// Order the peers of the seed peers first, then by the host id.
+		key = func(peer *standard.Peer) string {
+			if peer.Host.IsSeedPeer() {
+				return seedPeerKeyPrefix + peer.Host.ID
+			}
+
+			return normalPeerKeyPrefix + peer.Host.ID
+		}
+	}
+
+	peers, nextPageToken, err := rpc.Paginate(peers, key, req.GetPageSize(), req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	resp := &schedulerv2.ListPeersResponse{
+		Peers:         make([]*commonv2.Peer, 0, len(peers)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, peer := range peers {
+		resp.Peers = append(resp.Peers, constructPeer(peer))
+	}
+
+	return resp, nil
 }
 
 // DeleteHost releases host in scheduler.
