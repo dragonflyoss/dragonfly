@@ -89,7 +89,7 @@ func (s *service) CreateCluster(ctx context.Context, json types.CreateClusterReq
 		return nil, err
 	}
 
-	if tx.Commit().Error != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -246,7 +246,7 @@ func (s *service) UpdateCluster(ctx context.Context, id uint, json types.UpdateC
 		return nil, err
 	}
 
-	if tx.Commit().Error != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
