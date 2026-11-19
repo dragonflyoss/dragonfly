@@ -229,7 +229,7 @@ func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (fu
 			return nil, fmt.Errorf("could not create gRPC trace exporter: %w", err)
 		}
 	default:
-		panic(fmt.Sprintf("unsupported tracing protocol: %s", tracingConfig.Protocol))
+		return nil, fmt.Errorf("unsupported tracing protocol: %s", tracingConfig.Protocol)
 	}
 
 	provider := sdktrace.NewTracerProvider(

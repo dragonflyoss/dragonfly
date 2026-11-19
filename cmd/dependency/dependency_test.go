@@ -17,6 +17,7 @@
 package dependency
 
 import (
+	"context"
 	"net"
 	"strings"
 	"testing"
@@ -259,6 +260,67 @@ func TestInitDecoderConfig(t *testing.T) {
 
 			cfg := &mockDecoderConfig{}
 			tc.expect(t, cfg, viper.Unmarshal(cfg, initDecoderConfig))
+		})
+	}
+}
+
+func TestInitJaegerTracer(t *testing.T) {
+	tests := []struct {
+		name   string
+		cfg    base.TracingConfig
+		expect func(t *testing.T, shutdown func(), err error)
+	}{
+		{
+			name: "unsupported protocol returns an error",
+			cfg:  base.TracingConfig{Protocol: "jaeger", Endpoint: "localhost:4317"},
+			expect: func(t *testing.T, shutdown func(), err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "unsupported tracing protocol: jaeger")
+				assert.Nil(shutdown)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var (
+				shutdown func()
+				err      error
+			)
+			assert.NotPanics(t, func() {
+				shutdown, err = initJaegerTracer(context.Background(), tc.cfg)
+			})
+
+			tc.expect(t, shutdown, err)
+		})
+	}
+}
+
+func TestInitMonitor(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  base.TracingConfig
+	}{
+		{
+			name: "no tracing config",
+			cfg:  base.TracingConfig{},
+		},
+		{
+			name: "unsupported tracing protocol keeps the process running",
+			cfg:  base.TracingConfig{Protocol: "jaeger", Endpoint: "localhost:4317"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var shutdown func()
+			assert.NotPanics(t, func() {
+				shutdown = InitMonitor(context.Background(), -1, tc.cfg)
+			})
+
+			if assert.NotNil(t, shutdown) {
+				assert.NotPanics(t, shutdown)
+			}
 		})
 	}
 }
