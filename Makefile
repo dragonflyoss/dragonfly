@@ -47,6 +47,12 @@ docker-build-manager:
 	./hack/docker-build.sh manager
 .PHONY: docker-build-manager
 
+# Build injector image.
+docker-build-injector:
+	@echo "Begin to use docker build injector image."
+	./hack/docker-build.sh injector
+.PHONY: docker-build-injector
+
 # Push scheduler image.
 docker-push-scheduler: docker-build-scheduler
 	@echo "Begin to push scheduler docker image."
@@ -59,6 +65,12 @@ docker-push-manager: docker-build-manager
 	./hack/docker-push.sh manager
 .PHONY: docker-push-manager
 
+# Push injector image.
+docker-push-injector: docker-build-injector
+	@echo "Begin to push injector docker image."
+	./hack/docker-push.sh injector
+.PHONY: docker-push-injector
+
 # Build dragonfly.
 build: build-manager build-scheduler
 .PHONY: build
@@ -68,6 +80,12 @@ build-scheduler: build-dirs
 	@echo "Begin to build scheduler."
 	./hack/build.sh scheduler
 .PHONY: build-scheduler
+
+# Build injector.
+build-injector: build-dirs
+	@echo "Begin to build injector."
+	./hack/build.sh injector
+.PHONY: build-injector
 
 # Build manager.
 build-manager: build-dirs build-manager-console
@@ -185,10 +203,13 @@ help:
 	@echo "make docker-push                    push dragonfly image"
 	@echo "make docker-build-scheduler         build scheduler image"
 	@echo "make docker-build-manager           build manager image"
+	@echo "make docker-build-injector          build injector image"
 	@echo "make docker-push-scheduler          push scheduler image"
 	@echo "make docker-push-manager            push manager image"
+	@echo "make docker-push-injector           push injector image"
 	@echo "make build                          build dragonfly"
 	@echo "make build-scheduler                build scheduler"
+	@echo "make build-injector                 build injector"
 	@echo "make build-manager                  build manager"
 	@echo "make build-manager-server           build manager server"
 	@echo "make build-manager-console          build manager console"
