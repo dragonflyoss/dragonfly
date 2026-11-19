@@ -18,6 +18,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +47,40 @@ func mockCluster(t *testing.T, s *service, name string) *types.CreateClusterResp
 	assert.NoError(err)
 
 	return resp
+}
+
+// commitFailPool wraps the connection pool of the database, every transaction
+// that it begins fails to commit.
+type commitFailPool struct {
+	gorm.ConnPool
+}
+
+func (p commitFailPool) BeginTx(ctx context.Context, opts *sql.TxOptions) (gorm.ConnPool, error) {
+	tx, err := p.ConnPool.(gorm.TxBeginner).BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &commitFailTx{Tx: tx}, nil
+}
+
+type commitFailTx struct {
+	*sql.Tx
+}
+
+func (tx *commitFailTx) Commit() error {
+	if err := tx.Tx.Rollback(); err != nil {
+		return err
+	}
+
+	return errors.New("commit failed")
+}
+
+// failCommit makes every transaction of the service fail to commit.
+func failCommit(s *service) {
+	pool := commitFailPool{ConnPool: s.db.ConnPool}
+	s.db.ConnPool = pool
+	s.db.Statement.ConnPool = pool
 }
 
 func TestService_CreateCluster(t *testing.T) {
@@ -107,6 +143,22 @@ func TestService_CreateCluster(t *testing.T) {
 			expect: func(t *testing.T, s *service, resp *types.CreateClusterResponse, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+				assert.Nil(resp)
+
+				var count int64
+				assert.NoError(s.db.Model(&models.SchedulerCluster{}).Count(&count).Error)
+				assert.Equal(int64(0), count)
+			},
+		},
+		{
+			name: "commit failure returns the error",
+			setup: func(t *testing.T, s *service) {
+				failCommit(s)
+			},
+			req: mockCreateClusterRequest("foo"),
+			expect: func(t *testing.T, s *service, resp *types.CreateClusterResponse, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "commit failed")
 				assert.Nil(resp)
 
 				var count int64
@@ -277,6 +329,24 @@ func TestService_UpdateCluster(t *testing.T) {
 				schedulerCluster := models.SchedulerCluster{}
 				assert.NoError(s.db.First(&schedulerCluster, id).Error)
 				assert.Equal("baz", schedulerCluster.Name)
+			},
+		},
+		{
+			name: "commit failure returns the error",
+			setup: func(t *testing.T, s *service) uint {
+				id := mockCluster(t, s, "foo").SchedulerClusterID
+				failCommit(s)
+				return id
+			},
+			req: types.UpdateClusterRequest{Name: "bar"},
+			expect: func(t *testing.T, s *service, id uint, resp *types.UpdateClusterResponse, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "commit failed")
+				assert.Nil(resp)
+
+				schedulerCluster := models.SchedulerCluster{}
+				assert.NoError(s.db.First(&schedulerCluster, id).Error)
+				assert.Equal("foo", schedulerCluster.Name)
 			},
 		},
 	}
