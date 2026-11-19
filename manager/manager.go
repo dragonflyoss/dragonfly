@@ -243,7 +243,7 @@ func (s *Server) Serve() error {
 					return
 				}
 
-				logger.Fatalf("rest server closed unexpect: %v", err)
+				logger.Fatalf("rest server closed unexpectedly: %v", err)
 			}
 		} else {
 			if err := s.restServer.ListenAndServe(); err != nil {
@@ -251,7 +251,7 @@ func (s *Server) Serve() error {
 					return
 				}
 
-				logger.Fatalf("rest server closed unexpect: %v", err)
+				logger.Fatalf("rest server closed unexpectedly: %v", err)
 			}
 		}
 	}()
@@ -265,7 +265,7 @@ func (s *Server) Serve() error {
 					return
 				}
 
-				logger.Fatalf("metrics server closed unexpect: %v", err)
+				logger.Fatalf("metrics server closed unexpectedly: %v", err)
 			}
 		}()
 	}
@@ -275,7 +275,7 @@ func (s *Server) Serve() error {
 		go func() {
 			logger.Infof("started redis proxy server at %s", s.config.Database.Redis.Proxy.Addr)
 			if err := s.redisProxy.Serve(); err != nil {
-				logger.Fatalf("redis proxy server closed unexpect: %v", err)
+				logger.Fatalf("redis proxy server closed unexpectedly: %v", err)
 			}
 		}()
 	}
@@ -305,7 +305,7 @@ func (s *Server) Serve() error {
 	// Started GRPC server.
 	logger.Infof("started grpc server at %s://%s", listener.Addr().Network(), listener.Addr().String())
 	if err := s.grpcServer.Serve(listener); err != nil {
-		logger.Errorf("stoped grpc server: %+v", err)
+		logger.Errorf("stopped grpc server: %+v", err)
 		return err
 	}
 

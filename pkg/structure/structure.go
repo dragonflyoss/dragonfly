@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 )
 
-// StructToMap coverts struct to map.
+// StructToMap converts struct to map.
 func StructToMap(t any) (map[string]any, error) {
 	var m map[string]any
 	b, err := json.Marshal(t)

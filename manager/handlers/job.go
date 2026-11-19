@@ -147,7 +147,7 @@ func (h *Handlers) CreateJob(ctx *gin.Context) {
 
 		ctx.JSON(http.StatusOK, job)
 	default:
-		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "Unknow type"})
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{"errors": "Unknown type"})
 	}
 }
 
