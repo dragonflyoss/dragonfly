@@ -90,7 +90,7 @@ func newHostManager(cfg *config.Config, gc pkggc.GC, rdb redis.UniversalClient) 
 // Load returns host by a key.
 func (h *hostManager) Load(ctx context.Context, hostID string) (*Host, bool) {
 	log := logger.WithHostID(hostID)
-	rawHost, err := h.rdb.HGetAll(ctx, pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result()
+	rawHost, err := h.rdb.HGetAll(ctx, h.schedulerKey(pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID))).Result()
 	if err != nil {
 		log.Errorf("getting host failed from redis: %v", err)
 		return nil, false
@@ -585,8 +585,8 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID),
-		pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID),
+		h.schedulerKey(pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, host.ID)),
+		h.schedulerKey(pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)),
 	}
 
 	// Prepare arguments.
@@ -689,8 +689,8 @@ return true
 
 	// Prepare keys.
 	keys := []string{
-		pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID),
-		pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID),
+		h.schedulerKey(pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)),
+		h.schedulerKey(pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)),
 	}
 
 	// Prepare arguments.
@@ -720,7 +720,7 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 			err      error
 		)
 
-		hostKeys, cursor, err = h.rdb.SScan(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), cursor, "*", 10).Result()
+		hostKeys, cursor, err = h.rdb.SScan(ctx, h.schedulerKey(pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)), cursor, "*", 10).Result()
 		if err != nil {
 			logger.Error("scan hosts failed")
 			return nil, err
@@ -746,7 +746,7 @@ func (h *hostManager) LoadAll(ctx context.Context) ([]*Host, error) {
 
 // LoadRandom loads host randomly through the set of redis.
 func (h *hostManager) LoadRandom(ctx context.Context, n int, blocklist set.SafeSet[string]) ([]*Host, error) {
-	hostKeys, err := h.rdb.SMembers(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)).Result()
+	hostKeys, err := h.rdb.SMembers(ctx, h.schedulerKey(pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID))).Result()
 	if err != nil {
 		logger.Error("smembers hosts failed")
 		return nil, err
@@ -787,7 +787,7 @@ func (h *hostManager) RunGC(ctx context.Context) error {
 			err     error
 		)
 
-		hostIDs, cursor, err = h.rdb.SScan(ctx, pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID), cursor, "*", 10).Result()
+		hostIDs, cursor, err = h.rdb.SScan(ctx, h.schedulerKey(pkgredis.MakePersistentCacheHostsInScheduler(h.config.Manager.SchedulerClusterID)), cursor, "*", 10).Result()
 		if err != nil {
 			logger.Error("scan hosts failed")
 			return err
@@ -795,7 +795,7 @@ func (h *hostManager) RunGC(ctx context.Context) error {
 
 		for _, hostID := range hostIDs {
 			log := logger.WithHostID(hostID)
-			rawHost, err := h.rdb.HGetAll(ctx, pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID)).Result()
+			rawHost, err := h.rdb.HGetAll(ctx, h.schedulerKey(pkgredis.MakePersistentCacheHostKeyInScheduler(h.config.Manager.SchedulerClusterID, hostID))).Result()
 			if err != nil {
 				// Leave the host for the next run on transient redis errors.
 				log.Errorf("getting host failed from redis: %v", err)
@@ -831,4 +831,8 @@ func (h *hostManager) RunGC(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (h *hostManager) schedulerKey(key string) string {
+	return pkgredis.SchedulerKey(key, h.config.Database.Redis.ClusterKeyHashTag)
 }

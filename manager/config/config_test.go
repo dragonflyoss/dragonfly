@@ -1026,3 +1026,43 @@ func TestConfig_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestClusterKeyHashTagValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		addrs      []string
+		masterName string
+		enabled    bool
+		wantError  bool
+	}{
+		{"legacy standalone", []string{"localhost:6379"}, "", false, false},
+		{"legacy sentinel", []string{"localhost:26379", "localhost:26380"}, "primary", false, false},
+		{"legacy cluster", []string{"localhost:6379", "localhost:6380"}, "", false, false},
+		{"tagged cluster", []string{"localhost:6379", "localhost:6380"}, "", true, false},
+		{"tagged standalone", []string{"localhost:6379"}, "", true, true},
+		{"tagged sentinel", []string{"localhost:26379", "localhost:26380"}, "primary", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := New()
+			if err := cfg.Convert(); err != nil {
+				t.Fatal(err)
+			}
+			cfg.Server.GRPC.AdvertiseIP = net.ParseIP("127.0.0.1")
+			cfg.Auth.JWT = mockJWTConfig
+			cfg.Database.Mysql = mockMysqlConfig
+			cfg.Database.Redis = mockRedisConfig
+			cfg.Database.Redis.DB = 0
+			cfg.Database.Redis.BrokerDB = 0
+			cfg.Database.Redis.BackendDB = 0
+			cfg.Database.Redis.Addrs = tc.addrs
+			cfg.Database.Redis.MasterName = tc.masterName
+			cfg.Database.Redis.ClusterKeyHashTag = tc.enabled
+			err := cfg.Validate()
+			if tc.wantError {
+				assert.EqualError(t, err, "database.redis.clusterKeyHashTag requires Redis Cluster mode")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

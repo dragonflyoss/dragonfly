@@ -77,6 +77,9 @@ const (
 
 // NewRedis returns a new redis client.
 func NewRedis(cfg *redis.UniversalOptions) (redis.UniversalClient, error) {
+	if cfg.MasterName == "" && len(cfg.Addrs) > 1 && cfg.DB != 0 {
+		return nil, fmt.Errorf("redis cluster requires database 0, got %d", cfg.DB)
+	}
 	redis.SetLogger(&redisLogger{})
 	client := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs:            cfg.Addrs,
@@ -92,6 +95,7 @@ func NewRedis(cfg *redis.UniversalOptions) (redis.UniversalClient, error) {
 	})
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
+		_ = client.Close()
 		logger.Errorf("failed to ping redis: %v", err)
 		return nil, err
 	}
@@ -117,6 +121,19 @@ func FormatURL(addrs []string, username, password string, db int) string {
 // IsEnabled check redis is enabled.
 func IsEnabled(addrs []string) bool {
 	return len(addrs) != 0
+}
+
+// ScanSchedulerKeys scans the master owning the scheduler cluster hash tag.
+// ClusterClient.Scan otherwise selects an arbitrary node and can miss records.
+func ScanSchedulerKeys(ctx context.Context, client redis.UniversalClient, cursor uint64, pattern string, count int64) ([]string, uint64, error) {
+	if cluster, ok := client.(*redis.ClusterClient); ok && strings.HasPrefix(pattern, MakeNamespaceKeyInScheduler(SchedulerClustersNamespace)+":{") {
+		master, err := cluster.MasterForKey(ctx, pattern)
+		if err != nil {
+			return nil, 0, err
+		}
+		return master.Scan(ctx, cursor, pattern, count).Result()
+	}
+	return client.Scan(ctx, cursor, pattern, count).Result()
 }
 
 // MakeNamespaceKeyInManager make namespace key in manager.
@@ -167,6 +184,24 @@ func MakeNamespaceKeyInScheduler(namespace string) string {
 // MakeKeyInScheduler make key in scheduler.
 func MakeKeyInScheduler(namespace, id string) string {
 	return fmt.Sprintf("%s:%s", MakeNamespaceKeyInScheduler(namespace), id)
+}
+
+// SchedulerKey adds a shared hash tag only when the storage format is enabled.
+// Keeping it disabled preserves existing metadata and mixed-version upgrades.
+func SchedulerKey(key string, clusterKeyHashTag bool) string {
+	if !clusterKeyHashTag {
+		return key
+	}
+	prefix := MakeNamespaceKeyInScheduler(SchedulerClustersNamespace) + ":"
+	id, found := strings.CutPrefix(key, prefix)
+	if !found {
+		return key
+	}
+	clusterID, suffix, found := strings.Cut(id, ":")
+	if !found || strings.HasPrefix(clusterID, "{") {
+		return key
+	}
+	return fmt.Sprintf("%s{%s}:%s", prefix, clusterID, suffix)
 }
 
 // MakePersistentTaskKeyInScheduler make persistent task key in scheduler.

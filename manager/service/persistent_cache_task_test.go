@@ -27,6 +27,7 @@ import (
 	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 
+	"d7y.io/dragonfly/v2/manager/config"
 	"d7y.io/dragonfly/v2/manager/types"
 	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 )
@@ -166,7 +167,7 @@ func TestService_DestroyPersistentCacheTask(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
 			tc.mock(mock)
 
-			s := &service{rdb: rdb}
+			s := &service{rdb: rdb, config: config.New()}
 			tc.expect(t, s.DestroyPersistentCacheTask(context.Background(), 1, "task-1"))
 			assert.NoError(mock.ExpectationsWereMet())
 		})
@@ -365,7 +366,7 @@ func TestService_GetPersistentCacheTask(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
 			tc.mock(t, mock)
 
-			s := &service{rdb: rdb}
+			s := &service{rdb: rdb, config: config.New()}
 			task, err := s.GetPersistentCacheTask(context.Background(), 1, "task-1")
 			tc.expect(t, task, err)
 			assert.NoError(mock.ExpectationsWereMet())
@@ -468,10 +469,31 @@ func TestService_GetPersistentCacheTasks(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
 			tc.mock(mock)
 
-			s := &service{rdb: rdb}
+			s := &service{rdb: rdb, config: config.New()}
 			tasks, count, err := s.GetPersistentCacheTasks(context.Background(), types.GetPersistentCacheTasksQuery{SchedulerClusterID: 1, Page: 1, PerPage: 10})
 			tc.expect(t, tasks, count, err)
 			assert.NoError(mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestServicePersistentCacheKeyFormat(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		enabled bool
+		key     string
+	}{
+		{"legacy", false, "scheduler:scheduler-clusters:1:persistent-cache-tasks:task-1"},
+		{"tagged", true, "scheduler:scheduler-clusters:{1}:persistent-cache-tasks:task-1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rdb, mock := redismock.NewClientMock()
+			cfg := config.New()
+			cfg.Database.Redis.ClusterKeyHashTag = tc.enabled
+			s := &service{rdb: rdb, config: cfg}
+			mock.ExpectDel(tc.key).SetVal(1)
+			assert.NoError(t, s.DestroyPersistentCacheTask(context.Background(), 1, "task-1"))
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }

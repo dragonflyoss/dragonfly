@@ -270,6 +270,10 @@ type RedisConfig struct {
 	// Addrs is server addresses.
 	Addrs []string `yaml:"addrs" mapstructure:"addrs"`
 
+	// ClusterKeyHashTag enables the opt-in scheduler persistence key format.
+	// All Manager and Scheduler replicas sharing metadata must agree on it.
+	ClusterKeyHashTag bool `yaml:"clusterKeyHashTag" mapstructure:"clusterKeyHashTag"`
+
 	// MasterName is the sentinel master name.
 	MasterName string `yaml:"masterName" mapstructure:"masterName"`
 
@@ -488,6 +492,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.Scheduler.GC.HostTTL <= 0 {
 		return errors.New("scheduler requires parameter hostTTL")
+	}
+
+	if cfg.Database.Redis.ClusterKeyHashTag && (cfg.Database.Redis.MasterName != "" || len(cfg.Database.Redis.Addrs) < 2) {
+		return errors.New("database.redis.clusterKeyHashTag requires Redis Cluster mode")
 	}
 
 	if cfg.Database.Redis.BrokerDB < 0 {
