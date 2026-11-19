@@ -658,7 +658,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 			options...,
 		)
 
-		v.resource.HostManager().Store(host)
+		host, _ = v.resource.HostManager().LoadOrStore(host)
 		host.Log.Infof("announce new host: %#v", req)
 	} else {
 		// Host already exists and updates properties.
@@ -1328,7 +1328,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if req.GetDownload().GetMetadataOnly() {
 		// Handle task with peer register request.
 		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 				// Collect RegisterPeerFailureCount metrics.
 				metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 					peer.Host.Type.Name()).Inc()
@@ -1426,7 +1426,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 
 	// Handle task with peer register request.
 	if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 			// Collect RegisterPeerFailureCount metrics.
 			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 				peer.Host.Type.Name()).Inc()
@@ -1875,7 +1875,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		task.ContentLength.Store(int64(download.GetActualContentLength()))
 		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
-		v.resource.TaskManager().Store(task)
+		task, _ = v.resource.TaskManager().LoadOrStore(task)
 	} else {
 		task.URL = download.GetUrl()
 		task.FilteredQueryParams = download.GetFilteredQueryParams()
@@ -1895,7 +1895,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 		}
 
 		peer = standard.NewPeer(peerID, task, host, options...)
-		v.resource.PeerManager().Store(peer)
+		peer, _ = v.resource.PeerManager().LoadOrStore(peer)
 	}
 
 	return host, task, peer, nil
@@ -4484,18 +4484,22 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4518,7 +4522,7 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		return status.Error(codes.InvalidArgument, msg)
 	}
 
-	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+	manifestRequest := &internaljob.ManifestRequest{
 		URL:                         req.GetUrl(),
 		PieceLength:                 req.PieceLength,
 		Tag:                         req.GetTag(),
@@ -4538,7 +4542,9 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		RootCAs:                     certPool,
 		InsecureSkipVerify:          req.GetInsecureSkipVerify(),
 		EnableTaskIDBasedBlobDigest: req.GetEnableTaskIdBasedBlobDigest(),
-	})
+	}
+
+	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, manifestRequest)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
 	}
@@ -4580,6 +4586,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat single seed peer")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat single seed peer failed: %s", err.Error())
@@ -4596,6 +4612,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all seed peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all seed peers failed: %s", err.Error())
@@ -4612,6 +4638,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all peers failed: %s", err.Error())
@@ -4634,18 +4670,22 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 // all peers to collect the image's download state across the network.
 // The response includes both layer information and the status on each peer.
 func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.AllPeersScope
 	}
 
-	if req.ConcurrentLayerCount == nil {
+	if req.GetConcurrentLayerCount() == 0 {
 		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
 		req.ConcurrentLayerCount = &concurrentLayerCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4798,18 +4838,22 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatFile(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4938,9 +4982,13 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 // all peers to collect the file's download state across the network.
 // The response includes the file status on each peer.
 func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatFile(req.Url)
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}

@@ -202,15 +202,3 @@ func (mr *MockHostManagerMockRecorder) RunGC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockHostManager)(nil).RunGC), arg0)
 }
-
-// Store mocks base method.
-func (m *MockHostManager) Store(arg0 *Host) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Store", arg0)
-}
-
-// Store indicates an expected call of Store.
-func (mr *MockHostManagerMockRecorder) Store(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockHostManager)(nil).Store), arg0)
-}

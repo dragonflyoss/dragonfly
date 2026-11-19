@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -1176,7 +1177,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1203,7 +1204,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1337,7 +1339,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1364,7 +1366,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -1818,7 +1821,7 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *standard.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) {
 						assert.Equal(req.Host.Id, host.ID)
 						assert.Equal(pkgtypes.HostType(req.Host.Type), host.Type)
 						assert.Equal(req.Host.Hostname, host.Hostname)
@@ -1845,7 +1848,8 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
 					mph.Load(gomock.Any(), gomock.Any()).Return(nil, false).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -2021,9 +2025,9 @@ func TestServiceV2_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Cond(func(host *standard.Host) bool {
+					mh.LoadOrStore(gomock.Cond(func(host *standard.Host) bool {
 						return host.Type == pkgtypes.HostTypeSuperSeed && host.ConcurrentUploadLimit.Load() == 20
-					})).Return().Times(1),
+					})).DoAndReturn(func(host *standard.Host) (*standard.Host, bool) { return host, false }).Times(1),
 					mr.SeedPeer().Return(seedPeer).Times(1),
 					msp.Store(gomock.Cond(func(host *standard.Host) bool { return host.Type == pkgtypes.HostTypeSuperSeed })).Times(1),
 					mpr.HostManager().Return(persistentHostManager).Times(1),
@@ -4416,7 +4420,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *standard.Task) (*standard.Task, bool) { return task, false }).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
 				)
@@ -4430,6 +4434,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.Equal(download.GetUrl(), task.URL)
 				assert.EqualValues(download.GetFilteredQueryParams(), task.FilteredQueryParams)
 				assert.EqualValues(download.RequestHeader, task.Header)
+			},
+		},
+		{
+			name: "task is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(nil, false).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.LoadOrStore(gomock.Any()).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, task, _, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockTask, task)
 			},
 		},
 		{
@@ -4508,7 +4539,7 @@ func TestServiceV2_handleResource(t *testing.T) {
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Store(gomock.Any()).Return().Times(1),
+					mp.LoadOrStore(gomock.Any()).DoAndReturn(func(peer *standard.Peer) (*standard.Peer, bool) { return peer, false }).Times(1),
 				)
 
 				assert := assert.New(t)
@@ -4527,6 +4558,33 @@ func TestServiceV2_handleResource(t *testing.T) {
 				assert.NotNil(peer.AnnouncePeerStream)
 				assert.EqualValues(mockHost, peer.Host)
 				assert.EqualValues(mockTask, peer.Task)
+			},
+		},
+		{
+			name: "peer is stored by another request",
+			download: &commonv2.Download{
+				Url:                 "foo",
+				FilteredQueryParams: []string{"bar"},
+				RequestHeader:       map[string]string{"baz": "bas"},
+			},
+			run: func(t *testing.T, svc *V2, download *commonv2.Download, stream schedulerv2.Scheduler_AnnouncePeerServer, mockHost *standard.Host, mockTask *standard.Task, mockPeer *standard.Peer,
+				hostManager standard.HostManager, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder,
+				mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+				gomock.InOrder(
+					mr.HostManager().Return(hostManager).Times(1),
+					mh.Load(gomock.Eq(mockHost.ID)).Return(mockHost, true).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTask.ID)).Return(mockTask, true).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeer.ID)).Return(nil, false).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.LoadOrStore(gomock.Any()).Return(mockPeer, true).Times(1),
+				)
+
+				assert := assert.New(t)
+				_, _, peer, err := svc.handleResource(context.Background(), stream, mockHost.ID, mockTask.ID, mockPeer.ID, download)
+				assert.NoError(err)
+				assert.Same(mockPeer, peer)
 			},
 		},
 	}
@@ -8897,6 +8955,34 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
 		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatImage(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatImageRequest{
+				Url:                 "https://example.com/v2/image/manifesat/latest",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+
+				assert.Error(svc.PreheatImage(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
+		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.PreheatImageRequest{
 				Url:              "https://example.com/v2/image/manifesat/latest",
@@ -8955,9 +9041,36 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
+				)
+
+				assert.NoError(svc.PreheatImage(context.Background(), req))
+			},
+		},
+		{
+			name: "preheat with the renewed authorization",
+			req: &schedulerv2.PreheatImageRequest{
+				Url: "https://example.com/v2/image/manifesat/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				assert := assert.New(t)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				defer wg.Wait()
+
+				gomock.InOrder(
+					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{
+						URLs:    []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"},
+						Headers: map[string]string{"Authorization": "Bearer foo"},
+					}}, nil).Times(1),
+					mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("Bearer bar", nil).Times(1),
+					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
+						assert.Equal("Bearer bar", preheatRequest.Headers["Authorization"])
+						wg.Done()
+					}).Return(nil, nil).Times(1),
 				)
 
 				assert.NoError(svc.PreheatImage(context.Background(), req))
@@ -8975,6 +9088,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, nil).Times(1),
@@ -8996,6 +9110,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, preheatRequest *internaljob.PreheatRequest, _ *logger.SugaredLoggerOnWith) {
@@ -9020,6 +9135,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
 						assert.Equal(&mockImagePlatform, manifestRequest.Platform)
@@ -9049,6 +9165,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(2)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Do(func(_ context.Context, manifestRequest *internaljob.ManifestRequest) {
 						assert.Nil(manifestRequest.Platform)
@@ -9091,6 +9208,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatSingleSeedPeer(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9111,6 +9229,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9131,6 +9250,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllSeedPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9151,6 +9271,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(&internaljob.PreheatResponse{SuccessTasks: make([]*internaljob.PreheatSuccessTask, 0), FailureTasks: make([]*internaljob.PreheatFailureTask, 0)}, nil).Times(1),
@@ -9171,6 +9292,7 @@ func TestServiceV2_PreheatImage(t *testing.T) {
 				wg.Add(1)
 				defer wg.Wait()
 
+				mi.GetAuthorizationByManifestURL(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
 				gomock.InOrder(
 					mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return([]*internaljob.PreheatRequest{{URLs: []string{"https://example.com/v2/image/latest/blobs/sha256:b5f4dfca35398b36f61baa60e2bf2c242401c9d7db3de9168dcf780a2feedd2d"}}}, nil).Times(1),
 					mj.PreheatAllPeers(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(context.Context, *internaljob.PreheatRequest, *logger.SugaredLoggerOnWith) { wg.Done() }).Return(nil, errors.New("foo")).Times(1),
@@ -9206,6 +9328,38 @@ func TestServiceV2_StatImage(t *testing.T) {
 		req  *schedulerv2.StatImageRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatImageRequest{
+				Url: "https://example.com/v2/image/manifests/latest",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.StatImageRequest{
+				Url:                  "https://example.com/v2/image/manifests/latest",
+				ConcurrentLayerCount: proto.Int64(0),
+				ConcurrentPeerCount:  proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatImageRequest, mj *jobmocks.MockJobMockRecorder, mi *internaljobmocks.MockImageMockRecorder) {
+				mi.CreatePreheatRequestsByManifestURL(gomock.Any(), gomock.Any()).Return(nil, errors.New("foo")).Times(1)
+				resp, err := svc.StatImage(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentLayerCount), req.GetConcurrentLayerCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "invalid certificate chain",
 			req: &schedulerv2.StatImageRequest{
@@ -9628,6 +9782,33 @@ func TestServiceV2_PreheatFile(t *testing.T) {
 		run  func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
 		{
+			name: "job is not enabled",
+			req: &schedulerv2.PreheatFileRequest{
+				Url: "https://example.com/file.txt",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				svc.job = nil
+
+				assert.ErrorIs(svc.PreheatFile(context.Background(), req), status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent counts are zero",
+			req: &schedulerv2.PreheatFileRequest{
+				Url:                 "https://example.com/file.txt",
+				Scope:               "invalid-scope",
+				ConcurrentTaskCount: proto.Int64(0),
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.PreheatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				assert := assert.New(t)
+				assert.Error(svc.PreheatFile(context.Background(), req))
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentTaskCount), req.GetConcurrentTaskCount())
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
+		{
 			name: "unsupported preheat scope",
 			req: &schedulerv2.PreheatFileRequest{
 				Url:   "https://example.com/file.txt",
@@ -9847,6 +10028,36 @@ func TestServiceV2_StatFile(t *testing.T) {
 		req  *schedulerv2.StatFileRequest
 		run  func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder)
 	}{
+		{
+			name: "job is not enabled",
+			req: &schedulerv2.StatFileRequest{
+				Url: "https://example.com/dir/",
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				svc.job = nil
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.ErrorIs(err, status.Error(codes.FailedPrecondition, "job is not enabled"))
+			},
+		},
+		{
+			name: "concurrent peer count is zero",
+			req: &schedulerv2.StatFileRequest{
+				Url:                 "https://example.com/dir/",
+				ConcurrentPeerCount: proto.Int64(0),
+			},
+			run: func(t *testing.T, svc *V2, req *schedulerv2.StatFileRequest, mj *jobmocks.MockJobMockRecorder) {
+				mj.ListTaskEntries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("list task entries failed")).Times(1)
+				resp, err := svc.StatFile(context.Background(), req)
+
+				assert := assert.New(t)
+				assert.Nil(resp)
+				assert.Error(err)
+				assert.Equal(int64(managertypes.DefaultPreheatConcurrentPeerCount), req.GetConcurrentPeerCount())
+			},
+		},
 		{
 			name: "list task entries failed",
 			req: &schedulerv2.StatFileRequest{

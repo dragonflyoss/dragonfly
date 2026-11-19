@@ -956,13 +956,13 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 			})
 			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
 			if tc.hostStored {
-				hostManager.Store(mockHost)
+				hostManager.LoadOrStore(mockHost)
 			}
 
 			if tc.peerStored {
 				mockSeedPeer := NewPeer(mockSeedPeerID, mockTask, mockHost)
 				mockSeedPeer.FSM.SetState(PeerStateReceivedNormal)
-				peerManager.Store(mockSeedPeer)
+				peerManager.LoadOrStore(mockSeedPeer)
 			}
 
 			seedPeer := newSeedPeer(peerManager, hostManager, clientPool,

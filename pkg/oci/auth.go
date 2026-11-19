@@ -36,8 +36,7 @@ func WithIssuedToken(token string) Option {
 	}
 }
 
-// AuthClient is an HTTP client that negotiates registry v2 authentication and
-// intercepts the issued bearer token.
+// AuthClient is an HTTP client that negotiates registry v2 authentication.
 type AuthClient struct {
 	// issuedToken is the issued token specified in header from user request,
 	// there is no need to go through v2 authentication to get a new token
@@ -50,8 +49,11 @@ type AuthClient struct {
 	// authConfig is the auth config.
 	authConfig *typesregistry.AuthConfig
 
-	// tokenHandler is the token interceptor.
-	tokenHandler *tokenHandler
+	// authorizer sets the authorization of the registry on the request.
+	authorizer transport.RequestModifier
+
+	// ref is the reference of the image to authorize.
+	ref *Reference
 }
 
 // NewAuthClient creates a new AuthClient for the registry of the given
@@ -59,9 +61,9 @@ type AuthClient struct {
 // used.
 func NewAuthClient(ref *Reference, httpClient *http.Client, username, password string, opts ...Option) (*AuthClient, error) {
 	c := &AuthClient{
-		httpClient:   httpClient,
-		authConfig:   &typesregistry.AuthConfig{Username: username, Password: password},
-		tokenHandler: newTokenHandler(),
+		httpClient: httpClient,
+		authConfig: &typesregistry.AuthConfig{Username: username, Password: password},
+		ref:        ref,
 	}
 
 	for _, opt := range opts {
@@ -73,7 +75,7 @@ func NewAuthClient(ref *Reference, httpClient *http.Client, username, password s
 	}
 
 	// New a challenge manager for the supported authentication types.
-	challengeManager, err := registry.PingV2Registry(&url.URL{Scheme: ref.Scheme, Host: ref.Registry}, c.httpClient.Transport)
+	challengeManager, err := registry.PingV2Registry(&url.URL{Scheme: ref.Scheme, Host: ref.Registry}, httpClient.Transport)
 	if err != nil {
 		return nil, err
 	}
@@ -81,24 +83,26 @@ func NewAuthClient(ref *Reference, httpClient *http.Client, username, password s
 	// New a credential store which always returns the same credential values.
 	creds := registry.NewStaticCredentialStore(c.authConfig)
 
-	// Transport with authentication.
-	c.httpClient.Transport = transport.NewTransport(
-		c.httpClient.Transport,
-		auth.NewAuthorizer(
-			challengeManager,
-			auth.NewTokenHandlerWithOptions(auth.TokenHandlerOptions{
-				Transport:   c.httpClient.Transport,
-				Credentials: creds,
-				Scopes: []auth.Scope{auth.RepositoryScope{
-					Repository: ref.Repository,
-					Actions:    []string{"pull"},
-				}},
-				ClientID: registry.AuthClientID,
-			}),
-			c.tokenHandler,
-			auth.NewBasicHandler(creds),
-		),
+	// Authorizer with the bearer token and the basic credentials, the token is
+	// cached and renewed when it expires.
+	c.authorizer = auth.NewAuthorizer(
+		challengeManager,
+		auth.NewTokenHandlerWithOptions(auth.TokenHandlerOptions{
+			Transport:   httpClient.Transport,
+			Credentials: creds,
+			Scopes: []auth.Scope{auth.RepositoryScope{
+				Repository: ref.Repository,
+				Actions:    []string{"pull"},
+			}},
+			ClientID: registry.AuthClientID,
+		}),
+		auth.NewBasicHandler(creds),
 	)
+
+	// Copy the http client, so the transport of the given client is kept.
+	client := *httpClient
+	client.Transport = transport.NewTransport(httpClient.Transport, c.authorizer)
+	c.httpClient = &client
 
 	return c, nil
 }
@@ -108,33 +112,23 @@ func (c *AuthClient) Do(req *http.Request) (*http.Response, error) {
 	return c.httpClient.Do(req)
 }
 
-// AuthToken returns the bearer token.
-func (c *AuthClient) AuthToken() string {
+// Authorization returns the authorization of the registry, the bearer token or the
+// basic credentials. It is empty if the registry needs no authorization. The request
+// is authorized like the authorizer of containerd does, refer to
+// https://github.com/containerd/containerd/blob/main/core/remotes/docker/authorizer.go.
+func (c *AuthClient) Authorization() (string, error) {
 	if len(c.issuedToken) > 0 {
-		return c.issuedToken
+		return c.issuedToken, nil
 	}
 
-	return c.tokenHandler.token
-}
+	req, err := http.NewRequest(http.MethodGet, c.ref.ManifestURL(), nil)
+	if err != nil {
+		return "", err
+	}
 
-// tokenHandler is a token interceptor intercept bearer token from auth handler.
-type tokenHandler struct {
-	auth.AuthenticationHandler
-	token string
-}
+	if err := c.authorizer.ModifyRequest(req); err != nil {
+		return "", err
+	}
 
-// newTokenHandler returns a new tokenHandler.
-func newTokenHandler() *tokenHandler {
-	return &tokenHandler{}
-}
-
-// Scheme returns the authentication scheme.
-func (h *tokenHandler) Scheme() string {
-	return "bearer"
-}
-
-// AuthorizeRequest saves the Authorization header from the request.
-func (h *tokenHandler) AuthorizeRequest(req *http.Request, params map[string]string) error {
-	h.token = req.Header.Get("Authorization")
-	return nil
+	return req.Header.Get("Authorization"), nil
 }

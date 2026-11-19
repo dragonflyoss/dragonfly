@@ -124,6 +124,11 @@ func TestResolve(t *testing.T) {
 				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
 				"size": 32654,
 				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
+			},
+			{
+				"mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+				"size": 32654,
+				"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
 			}
 		]
 	}`

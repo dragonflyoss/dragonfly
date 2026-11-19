@@ -48,6 +48,9 @@ const (
 
 	// DefaultJobTimeout is the default timeout for executing job.
 	DefaultJobTimeout = 60 * time.Minute
+
+	// DefaultEnableTaskIDBasedBlobDigest is the default value of using the blob digest for task ID calculation.
+	DefaultEnableTaskIDBasedBlobDigest = true
 )
 
 type CreateJobRequest struct {
@@ -198,8 +201,8 @@ type PreheatArgs struct {
 	// when the layer url is an OCI blob url (e.g., /v2/<name>/blobs/sha256:<digest>). When enabled,
 	// the task ID is derived from the blob digest rather than the full URL, so the same blob from
 	// different registries shares one task ID. This enables deduplication across registries and
-	// eliminates redundant downloads and storage.
-	EnableTaskIDBasedBlobDigest bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
+	// eliminates redundant downloads and storage, default is true.
+	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 }
 
 type CreateSyncPeersJobRequest struct {
@@ -260,6 +263,11 @@ type GetTaskArgs struct {
 	// Otherwise, calculate the task ID based on url, piece_length, tag, application, and filtered_query_params.
 	ContentForCalculatingTaskID *string `json:"content_for_calculating_task_id" binding:"omitempty"`
 
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when the url is an OCI blob url, it should be consistent with the value used when the task
+	// was preheated, default is true.
+	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
+
 	// ConcurrentPeerCount specifies the maximum number of peers stat concurrently for a single task (e.g., an image layer).
 	// For example, if stat a layer with ConcurrentPeerCount set to 10, up to 10 peers process that layer simultaneously.
 	// Default is 500, maximum is 1000.
@@ -304,6 +312,11 @@ type GetImageDistributionArgs struct {
 
 	// FilteredQueryParams is the filtered query params of the task.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when the url is an OCI blob url, it should be consistent with the value used when the task
+	// was preheated, default is true.
+	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 
 	// Headers is the http headers for authentication.
 	Headers map[string]string `json:"headers" binding:"omitempty"`
@@ -403,6 +416,11 @@ type DeleteTaskArgs struct {
 
 	// FilteredQueryParams is the filtered query params of the task.
 	FilteredQueryParams string `json:"filtered_query_params" binding:"omitempty"`
+
+	// EnableTaskIDBasedBlobDigest indicates whether to use the blob digest for task ID calculation
+	// when the url is an OCI blob url, it should be consistent with the value used when the task
+	// was preheated, default is true.
+	EnableTaskIDBasedBlobDigest *bool `json:"enable_task_id_based_blob_digest" binding:"omitempty"`
 
 	// Timeout is the timeout for deleting, default is 60 minutes.
 	Timeout time.Duration `json:"timeout" binding:"omitempty"`
