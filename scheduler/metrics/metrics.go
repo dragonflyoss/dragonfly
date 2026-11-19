@@ -238,6 +238,20 @@ var (
 		Help:      "Counter of the number of failed of the list hosts.",
 	})
 
+	ListPeersCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "list_peers_total",
+		Help:      "Counter of the number of the list peers.",
+	})
+
+	ListPeersFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "list_peers_failure_total",
+		Help:      "Counter of the number of failed of the list peers.",
+	})
+
 	LeaveHostCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
