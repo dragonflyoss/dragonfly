@@ -1101,28 +1101,16 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 // ListHosts lists hosts in scheduler.
 func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
+	// Load all hosts if no type specified, otherwise filter hosts by type.
 	var hosts []*standard.Host
-	collectHost := func(_ any, value any) bool {
-		host, ok := value.(*standard.Host)
-		if !ok {
-			// Continue to next host.
-			logger.Warnf("invalid host %#v", value)
-			return true
-		}
-
-		hosts = append(hosts, host)
-		return true
-	}
-
-	// Collect all hosts if no type specified, otherwise filter hosts by type.
 	if req.Type == nil {
-		v.resource.HostManager().Range(collectHost)
+		hosts = v.resource.HostManager().LoadAll()
 	} else {
 		switch types.HostType(*req.Type) {
 		case types.HostTypeNormal:
-			v.resource.HostManager().RangeNormals(collectHost)
+			hosts = v.resource.HostManager().LoadAllNormals()
 		case types.HostTypeSuperSeed:
-			v.resource.HostManager().RangeSeeds(collectHost)
+			hosts = v.resource.HostManager().LoadAllSeeds()
 		}
 	}
 
@@ -1254,12 +1242,19 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 
 		// Filter peers by task id. List the peers that succeeded to download the
 		// task in the order of the host id, one peer for each host.
-		hostIDs := set.New[string]()
-		for _, peer := range task.LoadPeers() {
-			if !peer.FSM.Is(standard.PeerStateSucceeded) || !hostIDs.Add(peer.Host.ID) {
+		taskPeers := task.LoadPeers()
+		hostIDs := make(map[string]struct{}, len(taskPeers))
+		peers = make([]*standard.Peer, 0, len(taskPeers))
+		for _, peer := range taskPeers {
+			if !peer.FSM.Is(standard.PeerStateSucceeded) {
 				continue
 			}
 
+			if _, ok := hostIDs[peer.Host.ID]; ok {
+				continue
+			}
+
+			hostIDs[peer.Host.ID] = struct{}{}
 			if peer.Host.IsSeedPeer() {
 				seedPeers = append(seedPeers, peer)
 			} else {

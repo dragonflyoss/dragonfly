@@ -245,8 +245,9 @@ func (t *Task) LoadPeer(key string) (*Peer, bool) {
 
 // LoadRandomPeers return random peers.
 func (t *Task) LoadRandomPeers(n uint) []*Peer {
-	var peers []*Peer
-	for _, vertex := range t.DAG.GetRandomVertices(n) {
+	vertices := t.DAG.GetRandomVertices(n)
+	peers := make([]*Peer, 0, len(vertices))
+	for _, vertex := range vertices {
 		peers = append(peers, vertex.Value)
 	}
 
@@ -255,17 +256,18 @@ func (t *Task) LoadRandomPeers(n uint) []*Peer {
 
 // LoadPeers return all peers.
 func (t *Task) LoadPeers() []*Peer {
-	var peers []*Peer
-	for _, vertex := range t.DAG.GetVertices() {
+	peers := make([]*Peer, 0, t.PeerCount())
+	t.DAG.Range(func(_ string, vertex *dag.Vertex[*Peer]) bool {
 		peers = append(peers, vertex.Value)
-	}
+		return true
+	})
 
 	return peers
 }
 
 // LoadFinishedPeers return finished peers.
 func (t *Task) LoadFinishedPeers() []*Peer {
-	var finishedPeers []*Peer
+	finishedPeers := make([]*Peer, 0, t.PeerCount())
 	t.DAG.Range(func(_ string, vertex *dag.Vertex[*Peer]) bool {
 		peer := vertex.Value
 		switch peer.FSM.Current() {

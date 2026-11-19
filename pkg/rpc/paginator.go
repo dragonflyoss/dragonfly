@@ -18,11 +18,13 @@ package rpc
 
 import (
 	"cmp"
+	"container/heap"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 )
 
 const (
@@ -118,27 +120,48 @@ func (p *Paginator[T]) Page(groups ...[]T) ([]T, *string, error) {
 		count += len(items)
 	}
 
-	// Calculate the key once for each item, and skip the items in the previous pages.
-	keyedItems := make([]keyedItem[T], 0, count)
+	// Keep one more item than the page size to know if there are more items,
+	// and keep all the items if the page size is not specified.
+	limit := count
+	if p.pageSize > 0 {
+		limit = min(count, int(p.pageSize)+1)
+	}
+
+	start := keyedItem[T]{group: p.group, key: p.start}
+	keyedItems := &keyedItemHeap[T]{items: make([]keyedItem[T], 0, limit)}
 	for group, items := range groups {
 		for _, item := range items {
-			key := p.tokenizer(item)
-			if cmp.Or(cmp.Compare(group, p.group), cmp.Compare(key, p.start)) > 0 {
-				keyedItems = append(keyedItems, keyedItem[T]{group: group, key: key, item: item})
+			// Calculate the key once for each item, and skip the items in the previous pages.
+			keyed := keyedItem[T]{group: group, key: p.tokenizer(item), item: item}
+			if keyed.compare(&start) <= 0 {
+				continue
+			}
+
+			// Build a heap of up to limit items with the last item at the top, so the
+			// page costs the memory of the page size rather than the count of the items, refer to
+			// https://github.com/prometheus/prometheus/blob/main/promql/engine.go.
+			switch {
+			case p.pageSize == 0:
+				keyedItems.items = append(keyedItems.items, keyed)
+			case len(keyedItems.items) < limit:
+				heap.Push(keyedItems, keyed)
+			case keyed.compare(&keyedItems.items[0]) < 0:
+				keyedItems.items[0] = keyed
+				heap.Fix(keyedItems, 0)
 			}
 		}
 	}
 
-	slices.SortFunc(keyedItems, func(a, b keyedItem[T]) int {
-		return cmp.Or(cmp.Compare(a.group, b.group), cmp.Compare(a.key, b.key))
+	slices.SortFunc(keyedItems.items, func(a, b keyedItem[T]) int {
+		return a.compare(&b)
 	})
 
 	// Truncate the items to the page size and set the next page token if
 	// there are more items than the page size.
 	var nextPageToken *string
-	if p.pageSize > 0 && len(keyedItems) > int(p.pageSize) {
-		keyedItems = keyedItems[:p.pageSize]
-		last := keyedItems[p.pageSize-1]
+	if p.pageSize > 0 && len(keyedItems.items) > int(p.pageSize) {
+		keyedItems.items = keyedItems.items[:p.pageSize]
+		last := keyedItems.items[p.pageSize-1]
 		token, err := p.encodePageToken(last.group, last.key)
 		if err != nil {
 			return nil, nil, err
@@ -147,8 +170,8 @@ func (p *Paginator[T]) Page(groups ...[]T) ([]T, *string, error) {
 		nextPageToken = &token
 	}
 
-	page := make([]T, 0, len(keyedItems))
-	for _, keyed := range keyedItems {
+	page := make([]T, 0, len(keyedItems.items))
+	for _, keyed := range keyedItems.items {
 		page = append(page, keyed.item)
 	}
 
@@ -192,4 +215,50 @@ func (p *Paginator[T]) decodePageToken(token string) (int, string, error) {
 	}
 
 	return pt.Group, pt.Start, nil
+}
+
+// keyedItemHeap is the max-heap of the keyed items, the top of the heap is the
+// last item in the order of the page, refer to
+// https://github.com/pingcap/tidb/blob/master/pkg/executor/sortexec/topn_chunk_heap.go.
+type keyedItemHeap[T any] struct {
+	// items are the keyed items in the heap.
+	items []keyedItem[T]
+}
+
+// compare compares the item with the other item in the order of the page, the
+// group is compared before the key.
+func (k *keyedItem[T]) compare(other *keyedItem[T]) int {
+	if order := cmp.Compare(k.group, other.group); order != 0 {
+		return order
+	}
+
+	return strings.Compare(k.key, other.key)
+}
+
+// Len returns the length of the heap.
+func (h *keyedItemHeap[T]) Len() int {
+	return len(h.items)
+}
+
+// Less reports whether the item with index i is after the item with index j
+// in the order of the page.
+func (h *keyedItemHeap[T]) Less(i, j int) bool {
+	return h.items[i].compare(&h.items[j]) > 0
+}
+
+// Swap swaps the items with indexes i and j.
+func (h *keyedItemHeap[T]) Swap(i, j int) {
+	h.items[i], h.items[j] = h.items[j], h.items[i]
+}
+
+// Push pushes the item to the heap.
+func (h *keyedItemHeap[T]) Push(item any) {
+	h.items = append(h.items, item.(keyedItem[T]))
+}
+
+// Pop pops the last item from the heap.
+func (h *keyedItemHeap[T]) Pop() any {
+	item := h.items[len(h.items)-1]
+	h.items = h.items[:len(h.items)-1]
+	return item
 }

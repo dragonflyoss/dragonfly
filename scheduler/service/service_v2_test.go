@@ -2124,9 +2124,7 @@ func TestServiceV2_ListHosts(t *testing.T) {
 			mock: func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Range(gomock.Any()).Do(func(f func(key, value any) bool) {
-						f(nil, nil)
-					}).Return().Times(1),
+					mh.LoadAll().Return([]*standard.Host{}).Times(1),
 				)
 			},
 			expect: func(t *testing.T, host *standard.Host, resp []*commonv2.Host, err error) {
@@ -2140,9 +2138,7 @@ func TestServiceV2_ListHosts(t *testing.T) {
 			mock: func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Range(gomock.Any()).Do(func(f func(key, value any) bool) {
-						f(nil, host)
-					}).Return().Times(1),
+					mh.LoadAll().Return([]*standard.Host{host}).Times(1),
 				)
 			},
 			expect: func(t *testing.T, host *standard.Host, resp []*commonv2.Host, err error) {
@@ -2212,34 +2208,13 @@ func TestServiceV2_ListHosts(t *testing.T) {
 				}, resp[0])
 			},
 		},
-
-		{
-			name: "host manager contains an invalid value",
-			mock: func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder) {
-				gomock.InOrder(
-					mr.HostManager().Return(hostManager).Times(1),
-					mh.Range(gomock.Any()).Do(func(f func(key, value any) bool) {
-						f(nil, "foo")
-						f(nil, host)
-					}).Return().Times(1),
-				)
-			},
-			expect: func(t *testing.T, host *standard.Host, resp []*commonv2.Host, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-				assert.Len(resp, 1)
-				assert.Equal(mockHostID, resp[0].Id)
-			},
-		},
 		{
 			name:      "page token is invalid",
 			pageToken: "foo",
 			mock: func(host *standard.Host, hostManager standard.HostManager, mr *standard.MockResourceMockRecorder, mh *standard.MockHostManagerMockRecorder) {
 				gomock.InOrder(
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Range(gomock.Any()).Do(func(f func(key, value any) bool) {
-						f(nil, host)
-					}).Return().Times(1),
+					mh.LoadAll().Return([]*standard.Host{host}).Times(1),
 				)
 			},
 			expect: func(t *testing.T, host *standard.Host, resp []*commonv2.Host, err error) {

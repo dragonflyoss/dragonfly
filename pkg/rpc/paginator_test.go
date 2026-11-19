@@ -18,9 +18,12 @@ package rpc
 
 import (
 	"encoding/base64"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"d7y.io/dragonfly/v2/pkg/digest"
 )
 
 var (
@@ -336,6 +339,58 @@ func TestPaginator_decodePageToken(t *testing.T) {
 
 			group, start, err := paginator.decodePageToken(tc.token)
 			tc.expect(t, group, start, err)
+		})
+	}
+}
+
+func BenchmarkPaginator_Page(b *testing.B) {
+	tests := []struct {
+		name     string
+		count    int
+		pageSize int32
+	}{
+		{
+			name:     "page size is 10 in 10000 items",
+			count:    10000,
+			pageSize: 10,
+		},
+		{
+			name:     "page size is 100 in 100000 items",
+			count:    100000,
+			pageSize: 100,
+		},
+		{
+			name:     "page size is 100 in 1000000 items",
+			count:    1000000,
+			pageSize: 100,
+		},
+		{
+			name:  "page size is not specified in 100000 items",
+			count: 100000,
+		},
+	}
+
+	for _, tc := range tests {
+		b.Run(tc.name, func(b *testing.B) {
+			items := make([]string, 0, tc.count)
+			for i := range tc.count {
+				items = append(items, digest.SHA256FromStrings(strconv.Itoa(i)))
+			}
+
+			paginator, err := NewPaginator(tc.pageSize, "", func(item string) string {
+				return item
+			})
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for n := 0; n < b.N; n++ {
+				if _, _, err := paginator.Page(items); err != nil {
+					b.Fatal(err)
+				}
+			}
 		})
 	}
 }
