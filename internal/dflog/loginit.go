@@ -95,6 +95,23 @@ func InitScheduler(logLevel string, console bool, dir string, rotateConfig LogRo
 	return createFileLogger(logLevel, meta, logDir, rotateConfig)
 }
 
+// InitDataController initializes the loggers of the data controller.
+func InitDataController(logLevel string, console bool, dir string, rotateConfig LogRotateConfig) error {
+	if console {
+		return createConsoleLogger(logLevel)
+	}
+
+	logDir := filepath.Join(dir, types.DataControllerName)
+	var meta = []logInitMeta{
+		{
+			fileName:             CoreLogFileName,
+			setSugaredLoggerFunc: SetCoreLogger,
+		},
+	}
+
+	return createFileLogger(logLevel, meta, logDir, rotateConfig)
+}
+
 func createConsoleLogger(logLevel string) error {
 	levels = nil
 	config := zap.NewDevelopmentConfig()

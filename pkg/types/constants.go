@@ -22,6 +22,9 @@ const (
 
 	// SchedulerName is name of scheduler.
 	SchedulerName = "scheduler"
+
+	// DataControllerName is name of data controller.
+	DataControllerName = "datacontroller"
 )
 
 const (

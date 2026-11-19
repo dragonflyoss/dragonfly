@@ -1,0 +1,30 @@
+# Every Dataset labelled tier=hot in the namespace is refreshed nightly, verified every
+# 2 hours and purged from the peers when it is deleted. A Dataset can override any of
+# these fields in its own spec.lifecycle.
+apiVersion: data.d7y.io/v1alpha1
+kind: DataLifecyclePolicy
+metadata:
+  name: hot-data
+  namespace: default
+spec:
+  datasetSelector:
+    matchLabels:
+      tier: hot
+  priority: 10
+  lifecycle:
+    refreshSchedule: "0 2 * * *"
+    verifyInterval: 2h
+    deletionPolicy: Purge
+---
+# Everything else expires a week after distribution and is left on the peers.
+apiVersion: data.d7y.io/v1alpha1
+kind: DataLifecyclePolicy
+metadata:
+  name: default
+  namespace: default
+spec:
+  priority: 0
+  lifecycle:
+    ttl: 168h
+    expireAction: Retain
+    deletionPolicy: Retain

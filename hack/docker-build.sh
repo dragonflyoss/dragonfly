@@ -53,6 +53,10 @@ main() {
     manager)
         git-submodule
         docker-build manager
+        ;;
+    datacontroller)
+        docker-build datacontroller
+        ;;
     esac
 }
 

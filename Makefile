@@ -26,12 +26,12 @@ build-dirs:
 .PHONY: build-dirs
 
 # Build dragonfly.
-docker-build: docker-build-scheduler docker-build-manager
+docker-build: docker-build-scheduler docker-build-manager docker-build-datacontroller
 	@echo "Build image done."
 .PHONY: docker-build
 
 # Push dragonfly images.
-docker-push: docker-push-scheduler docker-push-manager
+docker-push: docker-push-scheduler docker-push-manager docker-push-datacontroller
 	@echo "Push image done."
 .PHONY: docker-push
 
@@ -47,6 +47,12 @@ docker-build-manager:
 	./hack/docker-build.sh manager
 .PHONY: docker-build-manager
 
+# Build data controller image.
+docker-build-datacontroller:
+	@echo "Begin to use docker build data controller image."
+	./hack/docker-build.sh datacontroller
+.PHONY: docker-build-datacontroller
+
 # Push scheduler image.
 docker-push-scheduler: docker-build-scheduler
 	@echo "Begin to push scheduler docker image."
@@ -59,8 +65,14 @@ docker-push-manager: docker-build-manager
 	./hack/docker-push.sh manager
 .PHONY: docker-push-manager
 
+# Push data controller image.
+docker-push-datacontroller: docker-build-datacontroller
+	@echo "Begin to push data controller docker image."
+	./hack/docker-push.sh datacontroller
+.PHONY: docker-push-datacontroller
+
 # Build dragonfly.
-build: build-manager build-scheduler
+build: build-manager build-scheduler build-datacontroller
 .PHONY: build
 
 # Build scheduler.
@@ -87,6 +99,12 @@ build-manager-console: build-dirs
 	./hack/build.sh manager-console
 .PHONY: build-manager-console
 
+# Build data controller.
+build-datacontroller: build-dirs
+	@echo "Begin to build data controller."
+	./hack/build.sh datacontroller
+.PHONY: build-datacontroller
+
 # Install scheduler.
 install-scheduler:
 	@echo "Begin to install scheduler."
@@ -98,6 +116,21 @@ install-manager:
 	@echo "Begin to install manager."
 	./hack/install.sh install manager
 .PHONY: install-manager
+
+# Install data controller.
+install-datacontroller:
+	@echo "Begin to install data controller."
+	./hack/install.sh install datacontroller
+.PHONY: install-datacontroller
+
+# Generate the data controller deepcopy functions, CRDs and RBAC.
+generate-datacontroller:
+	@echo "Begin to generate data controller code and manifests."
+	@go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.19.0 object:headerFile=/dev/null paths=./datacontroller/... \
+		crd rbac:roleName=dragonfly-datacontroller \
+		output:crd:artifacts:config=deploy/data-controller/crds \
+		output:rbac:artifacts:config=deploy/data-controller/rbac
+.PHONY: generate-datacontroller
 
 # Run unittests.
 test:
@@ -185,15 +218,19 @@ help:
 	@echo "make docker-push                    push dragonfly image"
 	@echo "make docker-build-scheduler         build scheduler image"
 	@echo "make docker-build-manager           build manager image"
+	@echo "make docker-build-datacontroller    build data controller image"
 	@echo "make docker-push-scheduler          push scheduler image"
 	@echo "make docker-push-manager            push manager image"
+	@echo "make docker-push-datacontroller     push data controller image"
 	@echo "make build                          build dragonfly"
 	@echo "make build-scheduler                build scheduler"
 	@echo "make build-manager                  build manager"
 	@echo "make build-manager-server           build manager server"
 	@echo "make build-manager-console          build manager console"
+	@echo "make build-datacontroller           build data controller"
 	@echo "make install-scheduler              install scheduler"
 	@echo "make install-manager                install manager"
+	@echo "make install-datacontroller         install data controller"
 	@echo "make test                           run unit tests"
 	@echo "make test-coverage                  run tests with coverage"
 	@echo "make actions-e2e-test-coverage      run github actons E2E tests with coverage"
@@ -203,6 +240,7 @@ help:
 	@echo "make lint                           run code lint"
 	@echo "make markdownlint                   run markdown lint"
 	@echo "make generate                       run go generate"
+	@echo "make generate-datacontroller        generate data controller code and manifests"
 	@echo "make swag                           generate swagger api docs"
 	@echo "make changelog                      generate CHANGELOG.md"
 	@echo "make clean                          clean"

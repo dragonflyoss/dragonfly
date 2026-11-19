@@ -1,0 +1,19 @@
+# Pre-pull an image onto a percentage of the peers and drop it after a day.
+apiVersion: data.d7y.io/v1alpha1
+kind: Dataset
+metadata:
+  name: nginx-image
+  namespace: default
+spec:
+  sources:
+    - name: nginx
+      type: image
+      url: https://index.docker.io/v2/library/nginx/manifests/1.27
+      platform: linux/amd64
+      enableTaskIDBasedBlobDigest: true
+  distribution:
+    scope: all_peers
+    percentage: 50
+  lifecycle:
+    ttl: 24h
+    expireAction: Purge

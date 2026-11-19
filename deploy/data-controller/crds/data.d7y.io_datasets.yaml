@@ -1,0 +1,580 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: datasets.data.d7y.io
+spec:
+  group: data.d7y.io
+  names:
+    categories:
+    - dragonfly
+    kind: Dataset
+    listKind: DatasetList
+    plural: datasets
+    shortNames:
+    - ds
+    - dset
+    singular: dataset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.appliedPolicy
+      name: Policy
+      type: string
+    - jsonPath: .status.lastDistributionTime
+      name: Distributed
+      type: date
+    - jsonPath: .status.expirationTime
+      name: Expires
+      type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Dataset declares data that must be present in the Dragonfly P2P network and how its
+          lifecycle is managed.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DatasetSpec is the desired state of a Dataset.
+            properties:
+              distribution:
+                description: Distribution controls how the data is pushed into the
+                  P2P network.
+                properties:
+                  concurrentPeerCount:
+                    description: ConcurrentPeerCount is the maximum number of peers
+                      a single task is distributed to concurrently.
+                    format: int64
+                    maximum: 1000
+                    minimum: 1
+                    type: integer
+                  concurrentTaskCount:
+                    description: ConcurrentTaskCount is the maximum number of tasks
+                      (for example image layers) distributed concurrently.
+                    format: int64
+                    maximum: 100
+                    minimum: 1
+                    type: integer
+                  count:
+                    description: Count is the number of peers to distribute to. It
+                      takes precedence over Percentage.
+                    format: int32
+                    maximum: 200
+                    minimum: 1
+                    type: integer
+                  ips:
+                    description: IPs restricts distribution to these peer IPs. It
+                      takes precedence over Count and Percentage.
+                    items:
+                      type: string
+                    maxItems: 100
+                    type: array
+                  percentage:
+                    description: Percentage is the percentage of available peers to
+                      distribute to.
+                    format: int32
+                    maximum: 100
+                    minimum: 1
+                    type: integer
+                  retryLimit:
+                    default: 3
+                    description: RetryLimit is the number of times a failed operation
+                      is retried before the source is marked failed.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  schedulerClusterIDs:
+                    description: SchedulerClusterIDs restricts the operation to these
+                      scheduler clusters. Empty means all clusters.
+                    items:
+                      type: integer
+                    type: array
+                  scope:
+                    default: single_seed_peer
+                    description: Scope is the set of peers the data is distributed
+                      to.
+                    enum:
+                    - single_seed_peer
+                    - all_seed_peers
+                    - all_peers
+                    type: string
+                  timeout:
+                    description: Timeout bounds the duration of every job created
+                      for the dataset. Defaults to the manager default.
+                    type: string
+                type: object
+              lifecycle:
+                description: |-
+                  Lifecycle controls what happens to the data over time. Fields set here override
+                  the matching DataLifecyclePolicy.
+                properties:
+                  deletionPolicy:
+                    description: DeletionPolicy is applied when the Dataset object
+                      is deleted.
+                    enum:
+                    - Purge
+                    - Retain
+                    type: string
+                  expireAction:
+                    description: ExpireAction is applied when the TTL elapses.
+                    enum:
+                    - Purge
+                    - Retain
+                    type: string
+                  refreshInterval:
+                    description: |-
+                      RefreshInterval re-distributes the data periodically after the last successful distribution,
+                      keeping it warm on the peers. Mutually exclusive with RefreshSchedule.
+                    type: string
+                  refreshSchedule:
+                    description: RefreshSchedule re-distributes the data on a cron
+                      schedule. Mutually exclusive with RefreshInterval.
+                    type: string
+                  ttl:
+                    description: |-
+                      TTL is how long the data is kept after its last successful distribution. When it elapses the
+                      ExpireAction is applied and the dataset is marked expired.
+                    type: string
+                  verifyInterval:
+                    description: VerifyInterval periodically checks which peers still
+                      hold the data and reports it in the status.
+                    type: string
+                type: object
+              managerRef:
+                description: ManagerRef overrides the manager configured on the controller.
+                properties:
+                  endpoint:
+                    description: Endpoint is the base URL of the manager REST API,
+                      for example http://dragonfly-manager.dragonfly-system.svc:8080.
+                    type: string
+                  insecureSkipTLSVerify:
+                    description: InsecureSkipTLSVerify disables TLS verification against
+                      the manager.
+                    type: boolean
+                  tokenSecretRef:
+                    description: |-
+                      TokenSecretRef references a Secret key in the same namespace holding a manager personal access
+                      token with the "job" scope. The key defaults to "token".
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+              sources:
+                description: Sources is the data that makes up the dataset.
+                items:
+                  description: DataSource describes one piece of data managed as part
+                    of a Dataset.
+                  properties:
+                    application:
+                      description: Application is the application name the tasks are
+                        attributed to.
+                      type: string
+                    authSecretRef:
+                      description: |-
+                        AuthSecretRef references a Secret in the same namespace holding "username" and "password" entries
+                        used for basic authentication against the origin.
+                      properties:
+                        name:
+                          default: ""
+                          description: |-
+                            Name of the referent.
+                            This field is effectively required, but due to backwards compatibility is
+                            allowed to be empty. Instances of this type with an empty value here are
+                            almost certainly wrong.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    enableTaskIDBasedBlobDigest:
+                      description: |-
+                        EnableTaskIDBasedBlobDigest derives task IDs of OCI blob URLs from the blob digest so the same
+                        blob pulled from different registries shares one task.
+                      type: boolean
+                    filteredQueryParams:
+                      description: FilteredQueryParams is the comma separated list
+                        of query parameters ignored when computing task IDs.
+                      type: string
+                    hdfs:
+                      description: HDFS configures access to HDFS backends.
+                      properties:
+                        delegationTokenSecretRef:
+                          description: DelegationTokenSecretRef references a Secret
+                            in the same namespace holding a "delegationToken" entry.
+                          properties:
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
+                    headers:
+                      additionalProperties:
+                        type: string
+                      description: Headers are HTTP headers sent when fetching the
+                        data.
+                      type: object
+                    headersSecretRef:
+                      description: |-
+                        HeadersSecretRef references a Secret in the same namespace whose data entries are all sent as HTTP headers.
+                        Headers from the Secret take precedence over Headers.
+                      properties:
+                        name:
+                          default: ""
+                          description: |-
+                            Name of the referent.
+                            This field is effectively required, but due to backwards compatibility is
+                            allowed to be empty. Instances of this type with an empty value here are
+                            almost certainly wrong.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      description: Name identifies the source within the dataset and
+                        is used to correlate status entries.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                    objectStorage:
+                      description: ObjectStorage configures access to object storage
+                        backends such as s3, gcs or oss.
+                      properties:
+                        credentialsSecretRef:
+                          description: |-
+                            CredentialsSecretRef references a Secret in the same namespace holding the "accessKeyID",
+                            "accessKeySecret" and optional "sessionToken", "securityToken" and "credentialPath" entries.
+                          properties:
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        endpoint:
+                          description: Endpoint of the object storage service.
+                          type: string
+                        insecureSkipVerify:
+                          description: InsecureSkipVerify disables TLS verification
+                            against the object storage service.
+                          type: boolean
+                        predefinedACL:
+                          description: PredefinedACL applied to the objects.
+                          type: string
+                        region:
+                          description: Region of the bucket.
+                          type: string
+                      type: object
+                    pieceLength:
+                      description: PieceLength is the piece length in bytes used to
+                        download the data. Must be between 4MiB and 64MiB.
+                      format: int64
+                      maximum: 67108864
+                      minimum: 4194304
+                      type: integer
+                    platform:
+                      description: Platform selects the image platform to distribute,
+                        for example linux/amd64. Image sources only.
+                      type: string
+                    tag:
+                      description: Tag distinguishes tasks with the same URL from
+                        each other.
+                      type: string
+                    type:
+                      default: file
+                      description: Type is the kind of source, "file" or "image".
+                      enum:
+                      - file
+                      - image
+                      type: string
+                    url:
+                      description: URL is the image manifest URL for image sources
+                        or a single file URL for file sources.
+                      type: string
+                    urls:
+                      description: URLs is the list of file URLs for file sources.
+                        It is ignored for image sources.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - name
+                  type: object
+                minItems: 1
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              suspend:
+                description: |-
+                  Suspend stops the controller from starting new operations for this dataset. In-flight
+                  operations keep being tracked.
+                type: boolean
+            required:
+            - sources
+            type: object
+          status:
+            description: DatasetStatus is the observed state of a Dataset.
+            properties:
+              appliedPolicy:
+                description: AppliedPolicy is the name of the DataLifecyclePolicy
+                  in effect, if any.
+                type: string
+              conditions:
+                description: Conditions describe the state in detail.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              expirationTime:
+                description: ExpirationTime is when the TTL elapses.
+                format: date-time
+                type: string
+              lastDistributionTime:
+                description: LastDistributionTime is when every source was last distributed
+                  successfully.
+                format: date-time
+                type: string
+              lastVerificationTime:
+                description: LastVerificationTime is when the data was last verified.
+                format: date-time
+                type: string
+              nextRefreshTime:
+                description: NextRefreshTime is when the data will be re-distributed.
+                format: date-time
+                type: string
+              nextVerificationTime:
+                description: NextVerificationTime is when the data will be verified
+                  next.
+                format: date-time
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation last reconciled.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is a coarse summary of the state.
+                type: string
+              sources:
+                description: Sources is the per-source state.
+                items:
+                  description: DataSourceStatus is the observed state of a source.
+                  properties:
+                    lastDistributionTime:
+                      description: LastDistributionTime is when the source was last
+                        distributed successfully.
+                      format: date-time
+                      type: string
+                    lastVerificationTime:
+                      description: LastVerificationTime is when the source was last
+                        verified.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Message is a human readable description of the
+                        state.
+                      type: string
+                    name:
+                      description: Name of the source.
+                      type: string
+                    nextRetryTime:
+                      description: NextRetryTime is when the failed operation is retried.
+                      format: date-time
+                      type: string
+                    operation:
+                      description: Operation in flight, if any.
+                      properties:
+                        jobs:
+                          description: Jobs created in the manager for the operation.
+                          items:
+                            description: JobReference points at a job in the Dragonfly
+                              manager.
+                            properties:
+                              id:
+                                description: ID is the job ID in the manager.
+                                type: integer
+                              state:
+                                description: State is the last observed job state.
+                                type: string
+                              type:
+                                description: Type is the manager job type, for example
+                                  preheat, get_task or delete_task.
+                                type: string
+                              url:
+                                description: URL is the task URL the job targets,
+                                  when it targets a single task.
+                                type: string
+                            required:
+                            - id
+                            - type
+                            type: object
+                          type: array
+                        startedAt:
+                          description: StartedAt is when the operation was started.
+                          format: date-time
+                          type: string
+                        type:
+                          description: Type of the operation.
+                          type: string
+                      required:
+                      - startedAt
+                      - type
+                      type: object
+                    reason:
+                      description: Reason is a machine readable reason for the state.
+                      type: string
+                    retries:
+                      description: Retries is the number of consecutive failed attempts
+                        of the current operation type.
+                      format: int32
+                      type: integer
+                    specHash:
+                      description: SpecHash is the hash of the source and distribution
+                        spec at the last distribution.
+                      type: string
+                    state:
+                      description: State of the source.
+                      type: string
+                    tasks:
+                      description: Tasks distributed for the source.
+                      items:
+                        description: TaskStatus is the observed state of one task
+                          (a file URL or an image layer) of a source.
+                        properties:
+                          id:
+                            description: ID is the task ID in the P2P network.
+                            type: string
+                          peerCount:
+                            description: PeerCount is the number of peers holding
+                              the task at the last verification.
+                            format: int32
+                            type: integer
+                          url:
+                            description: URL of the task.
+                            type: string
+                        required:
+                        - url
+                        type: object
+                      type: array
+                  required:
+                  - name
+                  - state
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
