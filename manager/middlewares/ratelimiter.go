@@ -30,7 +30,7 @@ func CreateJobRateLimiter(limiter ratelimiter.JobRateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json types.CreateJobRequest
 		if err := c.ShouldBindBodyWith(&json, binding.JSON); err != nil {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
 			return
 		}
 
