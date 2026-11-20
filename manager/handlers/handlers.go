@@ -52,6 +52,9 @@ func (h *Handlers) setPaginationLinkHeader(ctx *gin.Context, page, perPage, tota
 		totalPage++
 	}
 
+	// An empty list still has one (empty) page, so the last page is never page 0.
+	totalPage = max(totalPage, 1)
+
 	var prevPage int
 	if page == 1 {
 		prevPage = 1
@@ -59,8 +62,10 @@ func (h *Handlers) setPaginationLinkHeader(ctx *gin.Context, page, perPage, tota
 		prevPage = page - 1
 	}
 
+	// There is no page after the last one, so the next link stays on the
+	// current page, as it does on the last page.
 	var nextPage int
-	if page == totalPage {
+	if page >= totalPage {
 		nextPage = page
 	} else {
 		nextPage = page + 1

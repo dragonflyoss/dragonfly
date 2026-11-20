@@ -159,6 +159,38 @@ func TestHandlers_setPaginationLinkHeader(t *testing.T) {
 				assert.Equal("</test?page=10&per_page=10>;rel=last", links[3])
 			},
 		},
+		{
+			name:       "empty list",
+			page:       1,
+			perPage:    10,
+			totalCount: 0,
+			expect: func(t *testing.T, linkHeader []string) {
+				assert := assert.New(t)
+				assert.Len(linkHeader, 1)
+				links := strings.Split(linkHeader[0], ",")
+				assert.Len(links, 4)
+				assert.Equal("</test?page=1&per_page=10>;rel=prev", links[0])
+				assert.Equal("</test?page=1&per_page=10>;rel=next", links[1])
+				assert.Equal("</test?page=1&per_page=10>;rel=first", links[2])
+				assert.Equal("</test?page=1&per_page=10>;rel=last", links[3])
+			},
+		},
+		{
+			name:       "page after the last page",
+			page:       12,
+			perPage:    10,
+			totalCount: 95,
+			expect: func(t *testing.T, linkHeader []string) {
+				assert := assert.New(t)
+				assert.Len(linkHeader, 1)
+				links := strings.Split(linkHeader[0], ",")
+				assert.Len(links, 4)
+				assert.Equal("</test?page=11&per_page=10>;rel=prev", links[0])
+				assert.Equal("</test?page=12&per_page=10>;rel=next", links[1])
+				assert.Equal("</test?page=1&per_page=10>;rel=first", links[2])
+				assert.Equal("</test?page=10&per_page=10>;rel=last", links[3])
+			},
+		},
 	}
 
 	for _, tc := range tests {
