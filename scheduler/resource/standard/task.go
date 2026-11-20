@@ -148,6 +148,10 @@ type Task struct {
 	// Task state machine.
 	FSM *fsm.FSM
 
+	// DownloadStateMu 串行处理 v2 的成功、失败上报，将状态判断与更新放在同一临界区。
+	// 完整下载成功后，迟到的回源失败不得覆盖 Task 的成功状态。
+	DownloadStateMu sync.Mutex
+
 	// Piece sync map.
 	Pieces *sync.Map
 
