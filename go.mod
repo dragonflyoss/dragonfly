@@ -31,7 +31,7 @@ require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/go-github/v83 v83.0.0
 	github.com/google/uuid v1.6.0
