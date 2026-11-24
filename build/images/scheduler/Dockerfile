@@ -1,6 +1,6 @@
-ARG BASE_IMAGE=registry.ctyun.cn:30443/esx-k8s/alpine:3.21
+ARG BASE_IMAGE=alpine:3.23.7@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63
 
-FROM registry.ctyun.cn:30443/esx-k8s/golang:1.25.5-alpine3.21 AS builder
+FROM golang:1.25.5-alpine3.23@sha256:ac09a5f469f307e5da71e766b0bd59c9c49ea460a528cc3e6686513d64a6f1fb AS builder
 
 ARG GOPROXY
 ARG GOTAGS
