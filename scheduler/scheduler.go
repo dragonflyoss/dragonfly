@@ -37,6 +37,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	managerclient "d7y.io/dragonfly/v2/pkg/rpc/manager/client"
 	"d7y.io/dragonfly/v2/scheduler/announcer"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
@@ -75,6 +76,9 @@ type Server struct {
 
 	// Persistent cache resource interface.
 	persistentCacheResource persistentcache.Resource
+
+	// Cache instance.
+	cache *cache.Cache
 
 	// Dynamic config.
 	dynconfig config.DynconfigInterface
@@ -164,6 +168,9 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 		}
 	}
 
+	// Initialize cache, it only uses the local cache if redis is not enabled.
+	s.cache = cache.New(rdb)
+
 	// Initialize job service if job is enabled and redis is enabled.
 	if cfg.Job.Enable && rdb != nil {
 		s.job, err = job.New(cfg, resource,
@@ -185,7 +192,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 			return nil, err
 		}
 	}
-	s.grpcServer = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
+	s.grpcServer = rpcserver.New(cfg, resource, s.persistentResource, s.persistentCacheResource, s.cache, scheduling, s.job, dynconfig, grpc.Creds(serverTransportCredentials))
 
 	// Initialize metrics server if metrics is enabled.
 	if cfg.Metrics.Enable {

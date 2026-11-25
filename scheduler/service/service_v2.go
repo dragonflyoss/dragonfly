@@ -18,6 +18,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
+	cachev9 "github.com/go-redis/cache/v9"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -49,9 +51,11 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
+	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
@@ -80,6 +84,9 @@ type V2 struct {
 	// Persistent cache resource interface.
 	persistentCacheResource persistentcache.Resource
 
+	// Cache instance.
+	cache *cache.Cache
+
 	// Scheduling interface.
 	scheduling scheduling.Scheduling
 
@@ -102,6 +109,7 @@ func NewV2(
 	resource standard.Resource,
 	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
+	cache *cache.Cache,
 	scheduling scheduling.Scheduling,
 	job job.Job,
 	internalJobImage internaljob.Image,
@@ -111,6 +119,7 @@ func NewV2(
 		resource:                resource,
 		persistentResource:      persistentResource,
 		persistentCacheResource: persistentCacheResource,
+		cache:                   cache,
 		scheduling:              scheduling,
 		job:                     job,
 		internalJobImage:        internalJobImage,
@@ -5296,4 +5305,75 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	}
 
 	return resp, nil
+}
+
+// imageManifest is the image manifest stored in the cache. It carries its own expiration
+// time, because the local cache does not expire it by the ttl of the request.
+type imageManifest struct {
+	// Digest is the digest of the image manifest.
+	Digest string
+
+	// MediaType is the media type of the image manifest.
+	MediaType string
+
+	// ContentLength is the size(bytes) of the image manifest.
+	ContentLength uint64
+
+	// ExpiresAt is the time when the image manifest expires.
+	ExpiresAt time.Time
+}
+
+// StatImageManifest returns the image manifest that the tag of the image is resolved to.
+// The image manifest is announced by the peer that resolved the tag from the registry,
+// the scheduler does not access the registry.
+func (v *V2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageManifestRequest) (*schedulerv2.StatImageManifestResponse, error) {
+	key := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+
+	var manifest imageManifest
+	if err := v.cache.Get(ctx, key, &manifest); err != nil {
+		if errors.Is(err, cachev9.ErrCacheMiss) {
+			return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
+		}
+
+		logger.WithHostID(req.GetHostId()).Errorf("load image manifest %s failed %s", req.GetReference(), err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Remove the expired image manifest from the local cache, so the next request
+	// loads the image manifest from redis.
+	if time.Now().After(manifest.ExpiresAt) {
+		v.cache.DeleteFromLocalCache(key)
+		return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
+	}
+
+	return &schedulerv2.StatImageManifestResponse{
+		Digest:        manifest.Digest,
+		MediaType:     manifest.MediaType,
+		ContentLength: manifest.ContentLength,
+	}, nil
+}
+
+// AnnounceImageManifest announces the image manifest that the tag of the image is resolved to,
+// the scheduler keeps it until the ttl expires.
+func (v *V2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.AnnounceImageManifestRequest) error {
+	log := logger.WithHostID(req.GetHostId())
+	log.Infof("announce image manifest %s resolved to %s", req.GetReference(), req.GetDigest())
+
+	ttl := req.GetTtl().AsDuration()
+	if err := v.cache.Set(&cachev9.Item{
+		Ctx: ctx,
+		Key: pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference()),
+		Value: &imageManifest{
+			Digest:        req.GetDigest(),
+			MediaType:     req.GetMediaType(),
+			ContentLength: req.GetContentLength(),
+			ExpiresAt:     time.Now().Add(ttl),
+		},
+		TTL: ttl,
+	}); err != nil {
+		log.Errorf("store image manifest %s failed %s", req.GetReference(), err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
 }

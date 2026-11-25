@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 
 	"d7y.io/dragonfly/v2/pkg/rpc/scheduler/server"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/resource/persistent"
@@ -34,6 +35,7 @@ func New(
 	resource standard.Resource,
 	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
+	cache *cache.Cache,
 	scheduling scheduling.Scheduling,
 	job job.Job,
 	dynconfig config.DynconfigInterface,
@@ -41,7 +43,7 @@ func New(
 ) *grpc.Server {
 	return server.New(
 		newSchedulerServerV1(cfg, resource, scheduling, dynconfig),
-		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, dynconfig),
+		newSchedulerServerV2(cfg, resource, persistentResource, persistentCacheResource, cache, scheduling, job, dynconfig),
 		cfg.Server.RequestRateLimit,
 		opts...)
 }

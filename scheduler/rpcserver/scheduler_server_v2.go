@@ -25,6 +25,7 @@ import (
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	internaljob "d7y.io/dragonfly/v2/internal/job"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
@@ -47,11 +48,12 @@ func newSchedulerServerV2(
 	resource standard.Resource,
 	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
+	cache *cache.Cache,
 	scheduling scheduling.Scheduling,
 	job job.Job,
 	dynconfig config.DynconfigInterface,
 ) schedulerv2.SchedulerServer {
-	return &schedulerServerV2{service.NewV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, internaljob.NewImage(), dynconfig)}
+	return &schedulerServerV2{service.NewV2(cfg, resource, persistentResource, persistentCacheResource, cache, scheduling, job, internaljob.NewImage(), dynconfig)}
 }
 
 // AnnouncePeer announces peer to scheduler.
@@ -503,4 +505,34 @@ func (s *schedulerServerV2) StatFile(ctx context.Context, req *schedulerv2.StatF
 	}
 
 	return resp, nil
+}
+
+// StatImageManifest returns the image manifest that the tag of the image is resolved to.
+// The image manifest is announced by the peer that resolved the tag from the registry,
+// the scheduler does not access the registry.
+func (s *schedulerServerV2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageManifestRequest) (*schedulerv2.StatImageManifestResponse, error) {
+	// Collect StatImageManifestCount metrics.
+	metrics.StatImageManifestCount.Inc()
+	resp, err := s.service.StatImageManifest(ctx, req)
+	if err != nil {
+		// Collect StatImageManifestFailureCount metrics.
+		metrics.StatImageManifestFailureCount.Inc()
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// AnnounceImageManifest announces the image manifest that the tag of the image is resolved to,
+// the scheduler keeps it until the ttl expires.
+func (s *schedulerServerV2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.AnnounceImageManifestRequest) (*emptypb.Empty, error) {
+	// Collect AnnounceImageManifestCount metrics.
+	metrics.AnnounceImageManifestCount.Inc()
+	if err := s.service.AnnounceImageManifest(ctx, req); err != nil {
+		// Collect AnnounceImageManifestFailureCount metrics.
+		metrics.AnnounceImageManifestFailureCount.Inc()
+		return nil, err
+	}
+
+	return new(emptypb.Empty), nil
 }

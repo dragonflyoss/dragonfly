@@ -695,6 +695,34 @@ var (
 		Help:      "Counter of the number of failed of the stating file.",
 	})
 
+	StatImageManifestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_image_manifest_total",
+		Help:      "Counter of the number of the stating image manifest.",
+	})
+
+	StatImageManifestFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_image_manifest_failure_total",
+		Help:      "Counter of the number of failed of the stating image manifest.",
+	})
+
+	AnnounceImageManifestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_image_manifest_total",
+		Help:      "Counter of the number of the announcing image manifest.",
+	})
+
+	AnnounceImageManifestFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_image_manifest_failure_total",
+		Help:      "Counter of the number of failed of the announcing image manifest.",
+	})
+
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
