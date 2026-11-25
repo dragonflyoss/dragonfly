@@ -3,13 +3,13 @@ module d7y.io/dragonfly/v2
 go 1.25.0
 
 require (
-	d7y.io/api/v2 v2.3.10
+	d7y.io/api/v2 v2.3.12
 	d7y.io/hashring v0.3.0
 	github.com/Showmax/go-fqdn v1.0.0
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/appleboy/gin-jwt/v2 v2.10.3
 	github.com/avast/retry-go/v5 v5.1.1
-	github.com/bits-and-blooms/bitset v1.29.0
+	github.com/bits-and-blooms/bitset v1.30.0
 	github.com/casbin/casbin/v2 v2.81.0
 	github.com/casbin/gorm-adapter/v3 v3.5.0
 	github.com/cespare/xxhash/v2 v2.3.0
@@ -31,7 +31,7 @@ require (
 	github.com/go-redis/cache/v9 v9.0.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redis/redismock/v9 v9.2.0
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/go-github/v83 v83.0.0
 	github.com/google/uuid v1.6.0

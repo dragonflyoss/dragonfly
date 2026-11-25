@@ -154,6 +154,20 @@ func (s *schedulerServerV2) ListHosts(ctx context.Context, req *schedulerv2.List
 	return resp, nil
 }
 
+// ListPeers lists peers in scheduler.
+func (s *schedulerServerV2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (*schedulerv2.ListPeersResponse, error) {
+	// Collect ListPeersCount metrics.
+	metrics.ListPeersCount.Inc()
+	resp, err := s.service.ListPeers(ctx, req)
+	if err != nil {
+		// Collect ListPeersFailureCount metrics.
+		metrics.ListPeersFailureCount.Inc()
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 // DeleteHost releases host in scheduler.
 func (s *schedulerServerV2) DeleteHost(ctx context.Context, req *schedulerv2.DeleteHostRequest) (*emptypb.Empty, error) {
 	// Collect LeaveHostCount metrics.
