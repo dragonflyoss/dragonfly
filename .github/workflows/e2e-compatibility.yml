@@ -35,11 +35,11 @@ jobs:
         include:
           - module: manager
             image: manager
-            image-tag: v2.5.1
+            image-tag: v2.5.4-rc.2
             chart-name: manager
           - module: scheduler
             image: scheduler
-            image-tag: v2.5.1
+            image-tag: v2.5.4-rc.2
             chart-name: scheduler
           - module: client
             image: client
@@ -130,7 +130,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Setup Kind
-        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376
         with:
           version: ${{ env.KIND_VERSION }}
           config: ${{ env.KIND_CONFIG_PATH }}

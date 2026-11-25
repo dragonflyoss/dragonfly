@@ -314,11 +314,13 @@ var _ = Describe("Preheat and Delete Image Using Scheduler", func() {
 				}, 5*time.Minute, 5*time.Second).Should(Equal(taskMetadata.Sha256))
 			}
 
+			var errs []error
 			for _, seedClientPod := range seedClientPods {
 				out, err := seedClientPod.Command("dfctl", "task", "rm", "oci://ghcr.io/dragonflyoss/client:v1.5.12", "--platform", "linux/amd64").CombinedOutput()
 				fmt.Println(string(out))
-				Expect(err).NotTo(HaveOccurred())
+				errs = append(errs, err)
 			}
+			Expect(errs).To(ContainElement(BeNil()))
 
 			for _, taskMetadata := range amd64TaskMetadatas {
 				Expect(util.CheckFilesExist(seedClientPods, taskMetadata.ID)).To(BeFalse())
@@ -336,11 +338,13 @@ var _ = Describe("Preheat and Delete Image Using Scheduler", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Peers).To(BeEmpty())
 
+			errs = nil
 			for _, seedClientPod := range seedClientPods {
 				out, err := seedClientPod.Command("dfctl", "task", "rm", "oci://ghcr.io/dragonflyoss/client:v1.5.12").CombinedOutput()
 				fmt.Println(string(out))
-				Expect(err).NotTo(HaveOccurred())
+				errs = append(errs, err)
 			}
+			Expect(errs).To(ContainElement(BeNil()))
 
 			for _, taskMetadata := range slices.Concat(arm64TaskMetadatas, attestationTaskMetadatas) {
 				Expect(util.CheckFilesExist(seedClientPods, taskMetadata.ID)).To(BeFalse())
@@ -446,11 +450,13 @@ var _ = Describe("Preheat and Delete Image Using Scheduler", func() {
 				}, 5*time.Minute, 5*time.Second).Should(Equal(taskMetadata.Sha256))
 			}
 
+			var errs []error
 			for _, seedClientPod := range seedClientPods {
 				out, err := seedClientPod.Command("dfctl", "task", "rm", "oci://ghcr.io/dragonflyoss/client:v1.5.12").CombinedOutput()
 				fmt.Println(string(out))
-				Expect(err).NotTo(HaveOccurred())
+				errs = append(errs, err)
 			}
+			Expect(errs).To(ContainElement(BeNil()))
 
 			for _, taskMetadata := range amd64TaskMetadatas {
 				Expect(util.CheckFilesExist(seedClientPods, taskMetadata.ID)).To(BeTrue())
@@ -460,11 +466,13 @@ var _ = Describe("Preheat and Delete Image Using Scheduler", func() {
 				Expect(util.CheckFilesExist(seedClientPods, taskMetadata.ID)).To(BeFalse())
 			}
 
+			errs = nil
 			for _, seedClientPod := range seedClientPods {
 				out, err := seedClientPod.Command("dfctl", "task", "rm", "oci://ghcr.io/dragonflyoss/client@sha256:cf54d0f3bda39332435c109aed0689a3a0d31f0a00e570cf09aae10dfdf5da9b").CombinedOutput()
 				fmt.Println(string(out))
-				Expect(err).NotTo(HaveOccurred())
+				errs = append(errs, err)
 			}
+			Expect(errs).To(ContainElement(BeNil()))
 
 			for _, taskMetadata := range amd64TaskMetadatas {
 				Expect(util.CheckFilesExist(seedClientPods, taskMetadata.ID)).To(BeFalse())

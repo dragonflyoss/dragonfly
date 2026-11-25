@@ -95,7 +95,7 @@ func TestPeerManager_Load(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.True(loaded)
 				assert.Equal(mockPeer.ID, peer.ID)
@@ -120,70 +120,7 @@ func TestPeerManager_Load(t *testing.T) {
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
 				assert := assert.New(t)
 				mockPeer.ID = ""
-				peerManager.Store(mockPeer)
-				peer, loaded := peerManager.Load(mockPeer.ID)
-				assert.True(loaded)
-				assert.Equal(mockPeer.ID, peer.ID)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctl := gomock.NewController(t)
-			defer ctl.Finish()
-			gc := gc.NewMockGC(ctl)
-			tc.mock(gc.EXPECT())
-
-			mockHost := NewHost(
-				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
-				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
-			mockTask := NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, WithDigest(mockTaskDigest))
-			mockPeer := NewPeer(mockPeerID, mockTask, mockHost)
-			peerManager, err := newPeerManager(mockPeerGCConfig, gc)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tc.expect(t, peerManager, mockPeer)
-		})
-	}
-}
-
-func TestPeerManager_Store(t *testing.T) {
-	tests := []struct {
-		name   string
-		mock   func(m *gc.MockGCMockRecorder)
-		expect func(t *testing.T, peerManager PeerManager, mockPeer *Peer)
-	}{
-		{
-			name: "store peer",
-			mock: func(m *gc.MockGCMockRecorder) {
-				m.Add(gomock.Any()).Return(nil).Times(1)
-			},
-			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
-				assert := assert.New(t)
-				peerManager.Store(mockPeer)
-				peer, loaded := peerManager.Load(mockPeer.ID)
-				assert.True(loaded)
-				assert.Equal(mockPeer.ID, peer.ID)
-
-				_, loaded = mockPeer.Task.LoadPeer(mockPeer.ID)
-				assert.True(loaded)
-				_, loaded = mockPeer.Host.LoadPeer(mockPeer.ID)
-				assert.True(loaded)
-				assert.Equal(int32(1), mockPeer.Host.PeerCount.Load())
-			},
-		},
-		{
-			name: "store key is empty",
-			mock: func(m *gc.MockGCMockRecorder) {
-				m.Add(gomock.Any()).Return(nil).Times(1)
-			},
-			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
-				assert := assert.New(t)
-				mockPeer.ID = ""
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				peer, loaded := peerManager.Load(mockPeer.ID)
 				assert.True(loaded)
 				assert.Equal(mockPeer.ID, peer.ID)
@@ -226,7 +163,7 @@ func TestPeerManager_LoadOrStore(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				peer, loaded := peerManager.LoadOrStore(mockPeer)
 				assert.True(loaded)
 				assert.Equal(mockPeer.ID, peer.ID)
@@ -288,7 +225,7 @@ func TestPeerManager_Delete(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				peerManager.Delete(mockPeer.ID)
 				_, loaded := peerManager.Load(mockPeer.ID)
 				assert.False(loaded)
@@ -308,7 +245,7 @@ func TestPeerManager_Delete(t *testing.T) {
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
 				assert := assert.New(t)
 				mockPeer.ID = ""
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				peerManager.Delete(mockPeer.ID)
 				_, loaded := peerManager.Load(mockPeer.ID)
 				assert.False(loaded)
@@ -351,8 +288,8 @@ func TestPeerManager_DeleteAllByHostID(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer, mockSeedPeer *Peer, hostID string) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
-				peerManager.Store(mockSeedPeer)
+				peerManager.LoadOrStore(mockPeer)
+				peerManager.LoadOrStore(mockSeedPeer)
 				peerManager.DeleteAllByHostID(hostID)
 				_, loadedPeer := peerManager.Load(mockPeer.ID)
 				_, loadedSeedPeer := peerManager.Load(mockSeedPeer.ID)
@@ -367,8 +304,8 @@ func TestPeerManager_DeleteAllByHostID(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockPeer, mockSeedPeer *Peer, hostID string) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
-				peerManager.Store(mockSeedPeer)
+				peerManager.LoadOrStore(mockPeer)
+				peerManager.LoadOrStore(mockSeedPeer)
 				peerManager.DeleteAllByHostID("non-existent-host-id")
 				_, loadedPeer := peerManager.Load(mockPeer.ID)
 				_, loadedSeedPeer := peerManager.Load(mockSeedPeer.ID)
@@ -387,8 +324,8 @@ func TestPeerManager_DeleteAllByHostID(t *testing.T) {
 					mockRawSeedHost.ID, mockRawSeedHost.IP, mockRawSeedHost.Name, mockRawSeedHost.Hostname,
 					mockRawSeedHost.Port, mockRawSeedHost.DownloadPort, mockRawSeedHost.ProxyPort, mockRawSeedHost.Type)
 				mockSeedPeer.Host = mockSeedHost
-				peerManager.Store(mockPeer)
-				peerManager.Store(mockSeedPeer)
+				peerManager.LoadOrStore(mockPeer)
+				peerManager.LoadOrStore(mockSeedPeer)
 				peerManager.DeleteAllByHostID(hostID)
 				_, loadedPeer := peerManager.Load(mockPeer.ID)
 				_, loadedSeedPeer := peerManager.Load(mockSeedPeer.ID)
@@ -474,8 +411,8 @@ func TestPeerManager_Range(t *testing.T) {
 
 			mockPeer := NewPeer(mockPeerID, mockTask, mockHost)
 			mockSeedPeer := NewPeer(mockSeedPeerID, mockTask, mockHost)
-			peerManager.Store(mockPeer)
-			peerManager.Store(mockSeedPeer)
+			peerManager.LoadOrStore(mockPeer)
+			peerManager.LoadOrStore(mockSeedPeer)
 			tc.expect(t, peerManager, mockPeer, mockSeedPeer)
 		})
 	}
@@ -501,7 +438,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -524,7 +461,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.Host.DisableShared = true
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -553,7 +490,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateRunning)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -582,7 +519,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateBackToSource)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -611,7 +548,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -634,7 +571,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -663,7 +600,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -692,7 +629,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateRunning)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -715,7 +652,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateFailed)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -738,7 +675,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateFailed)
 				err := peerManager.RunGC(context.Background())
 				assert.NoError(err)
@@ -761,7 +698,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				mockPeer.Task.DeletePeer(mockPeer.ID)
 
@@ -785,7 +722,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				for range PeerCountLimitForTask + 1 {
 					peer := NewPeer(idgen.PeerID(), mockTask, mockHost)
@@ -812,7 +749,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateSucceeded)
 				mockChild := NewPeer(idgen.PeerID(), mockTask, mockHost)
 				mockTask.StorePeer(mockChild)
@@ -845,7 +782,7 @@ func TestPeerManager_RunGC(t *testing.T) {
 			},
 			expect: func(t *testing.T, peerManager PeerManager, mockHost *Host, mockTask *Task, mockPeer *Peer) {
 				assert := assert.New(t)
-				peerManager.Store(mockPeer)
+				peerManager.LoadOrStore(mockPeer)
 				mockPeer.FSM.SetState(PeerStateRunning)
 				for range PeerCountLimitForTask + 1 {
 					mockTask.StorePeer(NewPeer(idgen.PeerID(), mockTask, mockHost))

@@ -1918,7 +1918,7 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *resource.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *resource.Host) (*resource.Host, bool) {
 						assert.Equal(req.Id, host.ID)
 						assert.Equal(pkgtypes.ParseHostType(req.Type), host.Type)
 						assert.Equal(req.Hostname, host.Hostname)
@@ -1943,7 +1943,8 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 				)
 
 				assert.NoError(svc.AnnounceHost(context.Background(), req))
@@ -2019,7 +2020,7 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Do(func(host *resource.Host) {
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *resource.Host) (*resource.Host, bool) {
 						assert.Equal(req.Id, host.ID)
 						assert.Equal(pkgtypes.ParseHostType(req.Type), host.Type)
 						assert.Equal(req.Hostname, host.Hostname)
@@ -2044,7 +2045,8 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 						assert.NotEqual(0, host.CreatedAt.Load().Nanosecond())
 						assert.NotEqual(0, host.UpdatedAt.Load().Nanosecond())
 						assert.NotNil(host.Log)
-					}).Return().Times(1),
+						return host, false
+					}).Times(1),
 				)
 
 				assert.NoError(svc.AnnounceHost(context.Background(), req))
@@ -2262,7 +2264,7 @@ func TestServiceV1_AnnounceHost(t *testing.T) {
 					mr.HostManager().Return(hostManager).Times(1),
 					mh.Load(gomock.Any()).Return(nil, false).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Cond(func(host *resource.Host) bool { return host.Type == pkgtypes.HostTypeSuperSeed })).Return().Times(1),
+					mh.LoadOrStore(gomock.Cond(func(host *resource.Host) bool { return host.Type == pkgtypes.HostTypeSuperSeed })).DoAndReturn(func(host *resource.Host) (*resource.Host, bool) { return host, false }).Times(1),
 					mr.SeedPeer().Return(seedPeer).Times(1),
 					msp.Store(gomock.Cond(func(host *resource.Host) bool {
 						return host.ID == mockSeedHostID && host.Type == pkgtypes.HostTypeSuperSeed
@@ -3000,7 +3002,7 @@ func TestServiceV1_storeTask(t *testing.T) {
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
 					mr.TaskManager().Return(taskManager).Times(1),
-					mt.Store(gomock.Any()).Return().Times(1),
+					mt.LoadOrStore(gomock.Any()).DoAndReturn(func(task *resource.Task) (*resource.Task, bool) { return task, false }).Times(1),
 				)
 
 				task := svc.storeTask(context.Background(), &schedulerv1.PeerTaskRequest{
@@ -3037,6 +3039,33 @@ func TestServiceV1_storeTask(t *testing.T) {
 				assert.NotEqual(0, task.CreatedAt.Load())
 				assert.NotEqual(0, task.UpdatedAt.Load())
 				assert.NotNil(task.Log)
+			},
+		},
+		{
+			name: "task is stored by another request",
+			run: func(t *testing.T, svc *V1, taskManager resource.TaskManager, mr *resource.MockResourceMockRecorder, mt *resource.MockTaskManagerMockRecorder) {
+				assert := assert.New(t)
+				mockTask := resource.NewTask(mockTaskID, "", mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, nil, nil, mockTaskBackToSourceLimit)
+
+				gomock.InOrder(
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.LoadOrStore(gomock.Any()).Return(mockTask, true).Times(1),
+				)
+
+				task := svc.storeTask(context.Background(), &schedulerv1.PeerTaskRequest{
+					TaskId: mockTaskID,
+					Url:    mockTaskURL,
+					UrlMeta: &commonv1.UrlMeta{
+						Priority: commonv1.Priority_LEVEL0,
+						Filter:   idgen.FormatFilteredQueryParams(mockTaskFilteredQueryParams),
+						Header:   mockTaskHeader,
+					},
+					PeerHost: mockPeerHost,
+				}, commonv2.TaskType_STANDARD)
+
+				assert.Same(mockTask, task)
 			},
 		},
 	}
@@ -3091,7 +3120,7 @@ func TestServiceV1_storeHost(t *testing.T) {
 					mh.Load(gomock.Eq(mockRawHost.ID)).Return(nil, false).Times(1),
 					md.GetSchedulerClusterClientConfig().Return(types.SchedulerClusterClientConfig{LoadLimit: 10}, nil).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Return().Times(1),
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *resource.Host) (*resource.Host, bool) { return host, false }).Times(1),
 				)
 			},
 			expect: func(t *testing.T, host *resource.Host) {
@@ -3109,7 +3138,7 @@ func TestServiceV1_storeHost(t *testing.T) {
 					mh.Load(gomock.Eq(mockRawHost.ID)).Return(nil, false).Times(1),
 					md.GetSchedulerClusterClientConfig().Return(types.SchedulerClusterClientConfig{}, errors.New("foo")).Times(1),
 					mr.HostManager().Return(hostManager).Times(1),
-					mh.Store(gomock.Any()).Return().Times(1),
+					mh.LoadOrStore(gomock.Any()).DoAndReturn(func(host *resource.Host) (*resource.Host, bool) { return host, false }).Times(1),
 				)
 			},
 			expect: func(t *testing.T, host *resource.Host) {
@@ -3175,7 +3204,7 @@ func TestServiceV1_storePeer(t *testing.T) {
 					mr.PeerManager().Return(peerManager).Times(1),
 					mp.Load(gomock.Eq(mockPeerID)).Return(nil, false).Times(1),
 					mr.PeerManager().Return(peerManager).Times(1),
-					mp.Store(gomock.Any()).Return().Times(1),
+					mp.LoadOrStore(gomock.Any()).DoAndReturn(func(peer *resource.Peer) (*resource.Peer, bool) { return peer, false }).Times(1),
 				)
 
 				peer := svc.storePeer(context.Background(), mockPeerID, commonv1.Priority_LEVEL1, mockURLMetaRange, mockTask, mockHost)
@@ -3197,6 +3226,28 @@ func TestServiceV1_storePeer(t *testing.T) {
 				assert.NotEqual(0, peer.CreatedAt.Load())
 				assert.NotEqual(0, peer.UpdatedAt.Load())
 				assert.NotNil(peer.Log)
+			},
+		},
+		{
+			name: "peer is stored by another request",
+			run: func(t *testing.T, svc *V1, peerManager resource.PeerManager, mr *resource.MockResourceMockRecorder, mp *resource.MockPeerManagerMockRecorder) {
+				assert := assert.New(t)
+				mockHost := resource.NewHost(
+					mockRawHost.ID, mockRawHost.IP, mockRawHost.Hostname, mockRawHost.Hostname,
+					mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
+				mockTask := resource.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit, resource.WithDigest(mockTaskDigest))
+				mockPeer := resource.NewPeer(mockPeerID, mockTask, mockHost)
+
+				gomock.InOrder(
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.Load(gomock.Eq(mockPeerID)).Return(nil, false).Times(1),
+					mr.PeerManager().Return(peerManager).Times(1),
+					mp.LoadOrStore(gomock.Any()).Return(mockPeer, true).Times(1),
+				)
+
+				peer := svc.storePeer(context.Background(), mockPeerID, commonv1.Priority_LEVEL0, mockURLMetaRange, mockTask, mockHost)
+
+				assert.Same(mockPeer, peer)
 			},
 		},
 	}

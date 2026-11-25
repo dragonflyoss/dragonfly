@@ -49,6 +49,7 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
+	"d7y.io/dragonfly/v2/pkg/rpc"
 	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
 	"d7y.io/dragonfly/v2/scheduler/config"
@@ -658,7 +659,7 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 			options...,
 		)
 
-		v.resource.HostManager().Store(host)
+		host, _ = v.resource.HostManager().LoadOrStore(host)
 		host.Log.Infof("announce new host: %#v", req)
 	} else {
 		// Host already exists and updates properties.
@@ -1100,16 +1101,39 @@ func (v *V2) AnnounceHost(ctx context.Context, req *schedulerv2.AnnounceHostRequ
 
 // ListHosts lists hosts in scheduler.
 func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (*schedulerv2.ListHostsResponse, error) {
-	hosts := []*commonv2.Host{}
-	constructHosts := func(value any) bool {
-		host, ok := value.(*standard.Host)
-		if !ok {
-			// Continue to next host.
-			logger.Warnf("invalid host %#v", value)
-			return true
+	// Load all hosts if no type specified, otherwise filter hosts by type.
+	var hosts []*standard.Host
+	if req.Type == nil {
+		hosts = v.resource.HostManager().LoadAll()
+	} else {
+		switch types.HostType(*req.Type) {
+		case types.HostTypeNormal:
+			hosts = v.resource.HostManager().LoadAllNormals()
+		case types.HostTypeSuperSeed:
+			hosts = v.resource.HostManager().LoadAllSeeds()
 		}
+	}
 
-		hosts = append(hosts, &commonv2.Host{
+	// Paginate hosts in the order of the host id.
+	paginator, err := rpc.NewPaginator(req.GetPageSize(), req.GetPageToken(), func(host *standard.Host) string {
+		return host.ID
+	})
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	hosts, nextPageToken, err := paginator.Page(hosts)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &schedulerv2.ListHostsResponse{
+		Hosts:         make([]*commonv2.Host, 0, len(hosts)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, host := range hosts {
+		resp.Hosts = append(resp.Hosts, &commonv2.Host{
 			Id:              host.ID,
 			Type:            uint32(host.Type),
 			Name:            host.Name,
@@ -1180,36 +1204,206 @@ func (v *V2) ListHosts(ctx context.Context, req *schedulerv2.ListHostsRequest) (
 			SchedulerClusterId: host.SchedulerClusterID,
 			DisableShared:      host.DisableShared,
 		})
-
-		return true
 	}
 
-	// Return all hosts if no type specified.
-	if req.Type == nil {
-		v.resource.HostManager().Range(func(_ any, value any) bool {
-			return constructHosts(value)
+	return resp, nil
+}
+
+// ListPeers lists peers in scheduler.
+func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (*schedulerv2.ListPeersResponse, error) {
+	var (
+		seedPeers []*standard.Peer
+		peers     []*standard.Peer
+		tokenizer rpc.Tokenizer[*standard.Peer]
+	)
+
+	if req.TaskId == nil {
+		// List all peers in the order of the peer id if no task id specified.
+		v.resource.PeerManager().Range(func(_ any, value any) bool {
+			peer, ok := value.(*standard.Peer)
+			if !ok {
+				// Continue to next peer.
+				logger.Warnf("invalid peer %#v", value)
+				return true
+			}
+
+			peers = append(peers, peer)
+			return true
 		})
 
-		return &schedulerv2.ListHostsResponse{
-			Hosts: hosts,
-		}, nil
+		tokenizer = func(peer *standard.Peer) string {
+			return peer.ID
+		}
+	} else {
+		task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
+		if !loaded {
+			return &schedulerv2.ListPeersResponse{}, nil
+		}
+
+		// Filter peers by task id. List the peers that succeeded to download the
+		// task in the order of the host id, one peer for each host.
+		taskPeers := task.LoadPeers()
+		hostIDs := make(map[string]struct{}, len(taskPeers))
+		peers = make([]*standard.Peer, 0, len(taskPeers))
+		for _, peer := range taskPeers {
+			if !peer.FSM.Is(standard.PeerStateSucceeded) {
+				continue
+			}
+
+			if _, ok := hostIDs[peer.Host.ID]; ok {
+				continue
+			}
+
+			hostIDs[peer.Host.ID] = struct{}{}
+			if peer.Host.IsSeedPeer() {
+				seedPeers = append(seedPeers, peer)
+			} else {
+				peers = append(peers, peer)
+			}
+		}
+
+		tokenizer = func(peer *standard.Peer) string {
+			return peer.Host.ID
+		}
 	}
 
-	// Filter hosts by type.
-	switch types.HostType(*req.Type) {
-	case types.HostTypeNormal:
-		v.resource.HostManager().RangeNormals(func(_ any, value any) bool {
-			return constructHosts(value)
-		})
-	case types.HostTypeSuperSeed:
-		v.resource.HostManager().RangeSeeds(func(_ any, value any) bool {
-			return constructHosts(value)
-		})
+	paginator, err := rpc.NewPaginator(req.GetPageSize(), req.GetPageToken(), tokenizer)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return &schedulerv2.ListHostsResponse{
-		Hosts: hosts,
-	}, nil
+	// Paginate the peers on the seed peers before the peers on the normal peers.
+	peers, nextPageToken, err := paginator.Page(seedPeers, peers)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &schedulerv2.ListPeersResponse{
+		Peers:         make([]*commonv2.Peer, 0, len(peers)),
+		NextPageToken: nextPageToken,
+	}
+
+	for _, peer := range peers {
+		respPeer := &commonv2.Peer{
+			Id:                   peer.ID,
+			Priority:             peer.Priority,
+			ConcurrentPieceCount: peer.ConcurrentPieceCount,
+			Cost:                 durationpb.New(peer.Cost.Load()),
+			State:                peer.FSM.Current(),
+			NeedBackToSource:     peer.NeedBackToSource.Load(),
+			CreatedAt:            timestamppb.New(peer.CreatedAt.Load()),
+			UpdatedAt:            timestamppb.New(peer.UpdatedAt.Load()),
+		}
+
+		// Set range to response.
+		if peer.Range != nil {
+			respPeer.Range = &commonv2.Range{
+				Start:  uint64(peer.Range.Start),
+				Length: uint64(peer.Range.Length),
+			}
+		}
+
+		// Set task to response.
+		respPeer.Task = &commonv2.Task{
+			Id:                  peer.Task.ID,
+			Type:                peer.Task.Type,
+			Url:                 peer.Task.URL,
+			Tag:                 &peer.Task.Tag,
+			Application:         &peer.Task.Application,
+			FilteredQueryParams: peer.Task.FilteredQueryParams,
+			RequestHeader:       peer.Task.Header,
+			ContentLength:       uint64(peer.Task.ContentLength.Load()),
+			PieceCount:          uint32(peer.Task.TotalPieceCount.Load()),
+			SizeScope:           peer.Task.SizeScope(),
+			State:               peer.Task.FSM.Current(),
+			PeerCount:           uint32(peer.Task.PeerCount()),
+			CreatedAt:           timestamppb.New(peer.Task.CreatedAt.Load()),
+			UpdatedAt:           timestamppb.New(peer.Task.UpdatedAt.Load()),
+		}
+
+		// Set digest to task response.
+		if peer.Task.Digest != nil {
+			dgst := peer.Task.Digest.String()
+			respPeer.Task.Digest = &dgst
+		}
+
+		// Set host to response.
+		respPeer.Host = &commonv2.Host{
+			Id:              peer.Host.ID,
+			Type:            uint32(peer.Host.Type),
+			Name:            peer.Host.Name,
+			Hostname:        peer.Host.Hostname,
+			Ip:              peer.Host.IP,
+			Port:            peer.Host.Port,
+			DownloadPort:    peer.Host.DownloadPort,
+			ProxyPort:       peer.Host.ProxyPort,
+			Os:              peer.Host.OS,
+			Platform:        peer.Host.Platform,
+			PlatformFamily:  peer.Host.PlatformFamily,
+			PlatformVersion: peer.Host.PlatformVersion,
+			KernelVersion:   peer.Host.KernelVersion,
+			Cpu: &commonv2.CPU{
+				LogicalCount:   peer.Host.CPU.LogicalCount,
+				PhysicalCount:  peer.Host.CPU.PhysicalCount,
+				Percent:        peer.Host.CPU.Percent,
+				ProcessPercent: peer.Host.CPU.ProcessPercent,
+				Times: &commonv2.CPUTimes{
+					User:      peer.Host.CPU.Times.User,
+					System:    peer.Host.CPU.Times.System,
+					Idle:      peer.Host.CPU.Times.Idle,
+					Nice:      peer.Host.CPU.Times.Nice,
+					Iowait:    peer.Host.CPU.Times.Iowait,
+					Irq:       peer.Host.CPU.Times.Irq,
+					Softirq:   peer.Host.CPU.Times.Softirq,
+					Steal:     peer.Host.CPU.Times.Steal,
+					Guest:     peer.Host.CPU.Times.Guest,
+					GuestNice: peer.Host.CPU.Times.GuestNice,
+				},
+			},
+			Memory: &commonv2.Memory{
+				Total:              peer.Host.Memory.Total,
+				Available:          peer.Host.Memory.Available,
+				Used:               peer.Host.Memory.Used,
+				UsedPercent:        peer.Host.Memory.UsedPercent,
+				ProcessUsedPercent: peer.Host.Memory.ProcessUsedPercent,
+				Free:               peer.Host.Memory.Free,
+			},
+			Network: &commonv2.Network{
+				TcpConnectionCount:       peer.Host.Network.TCPConnectionCount,
+				UploadTcpConnectionCount: peer.Host.Network.UploadTCPConnectionCount,
+				Location:                 &peer.Host.Network.Location,
+				Idc:                      &peer.Host.Network.IDC,
+				RxBandwidth:              &peer.Host.Network.RxBandwidth,
+				MaxRxBandwidth:           peer.Host.Network.MaxRxBandwidth,
+				TxBandwidth:              &peer.Host.Network.TxBandwidth,
+				MaxTxBandwidth:           peer.Host.Network.MaxTxBandwidth,
+			},
+			Disk: &commonv2.Disk{
+				Total:             peer.Host.Disk.Total,
+				Free:              peer.Host.Disk.Free,
+				Used:              peer.Host.Disk.Used,
+				UsedPercent:       peer.Host.Disk.UsedPercent,
+				InodesTotal:       peer.Host.Disk.InodesTotal,
+				InodesUsed:        peer.Host.Disk.InodesUsed,
+				InodesFree:        peer.Host.Disk.InodesFree,
+				InodesUsedPercent: peer.Host.Disk.InodesUsedPercent,
+				WriteBandwidth:    peer.Host.Disk.WriteBandwidth,
+				ReadBandwidth:     peer.Host.Disk.ReadBandwidth,
+			},
+			Build: &commonv2.Build{
+				GitVersion: peer.Host.Build.GitVersion,
+				GitCommit:  &peer.Host.Build.GitCommit,
+				GoVersion:  &peer.Host.Build.GoVersion,
+				Platform:   &peer.Host.Build.Platform,
+			},
+			SchedulerClusterId: peer.Host.SchedulerClusterID,
+			DisableShared:      peer.Host.DisableShared,
+		}
+
+		resp.Peers = append(resp.Peers, respPeer)
+	}
+
+	return resp, nil
 }
 
 // DeleteHost releases host in scheduler.
@@ -1328,7 +1522,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	if req.GetDownload().GetMetadataOnly() {
 		// Handle task with peer register request.
 		if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+			if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 				// Collect RegisterPeerFailureCount metrics.
 				metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 					peer.Host.Type.Name()).Inc()
@@ -1426,7 +1620,7 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 
 	// Handle task with peer register request.
 	if !peer.Task.FSM.Is(standard.TaskStateRunning) {
-		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil {
+		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownload); err != nil && !peer.Task.FSM.Is(standard.TaskStateRunning) {
 			// Collect RegisterPeerFailureCount metrics.
 			metrics.RegisterPeerFailureCount.WithLabelValues(priority.String(), peer.Task.Type.String(),
 				peer.Host.Type.Name()).Inc()
@@ -1875,7 +2069,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 			download.GetFilteredQueryParams(), download.GetRequestHeader(), int32(v.config.Scheduler.BackToSourceCount), options...)
 		task.ContentLength.Store(int64(download.GetActualContentLength()))
 		task.TotalPieceCount.Store(int32(download.GetActualPieceCount()))
-		v.resource.TaskManager().Store(task)
+		task, _ = v.resource.TaskManager().LoadOrStore(task)
 	} else {
 		task.URL = download.GetUrl()
 		task.FilteredQueryParams = download.GetFilteredQueryParams()
@@ -1895,7 +2089,7 @@ func (v *V2) handleResource(_ context.Context, stream schedulerv2.Scheduler_Anno
 		}
 
 		peer = standard.NewPeer(peerID, task, host, options...)
-		v.resource.PeerManager().Store(peer)
+		peer, _ = v.resource.PeerManager().LoadOrStore(peer)
 	}
 
 	return host, task, peer, nil
@@ -4484,18 +4678,22 @@ func (v *V2) DeletePersistentCacheTask(_ctx context.Context, req *schedulerv2.De
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4518,7 +4716,7 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		return status.Error(codes.InvalidArgument, msg)
 	}
 
-	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, &internaljob.ManifestRequest{
+	manifestRequest := &internaljob.ManifestRequest{
 		URL:                         req.GetUrl(),
 		PieceLength:                 req.PieceLength,
 		Tag:                         req.GetTag(),
@@ -4538,7 +4736,9 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 		RootCAs:                     certPool,
 		InsecureSkipVerify:          req.GetInsecureSkipVerify(),
 		EnableTaskIDBasedBlobDigest: req.GetEnableTaskIdBasedBlobDigest(),
-	})
+	}
+
+	layers, err := v.internalJobImage.CreatePreheatRequestsByManifestURL(ctx, manifestRequest)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "failed to resolve manifests: %v", err)
 	}
@@ -4580,6 +4780,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat single seed peer")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatSingleSeedPeer(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat single seed peer failed: %s", err.Error())
@@ -4596,6 +4806,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all seed peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllSeedPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all seed peers failed: %s", err.Error())
@@ -4612,6 +4832,16 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 
 			log.Info("preheat all peers")
 			for _, preheatRequest := range preheatRequests {
+				authorization, err := v.internalJobImage.GetAuthorizationByManifestURL(ctx, manifestRequest)
+				if err != nil {
+					log.Errorf("get authorization failed: %s", err.Error())
+					continue
+				}
+
+				if authorization != "" {
+					preheatRequest.Headers["Authorization"] = authorization
+				}
+
 				resp, err := v.job.PreheatAllPeers(ctx, preheatRequest, log)
 				if err != nil {
 					log.Errorf("preheat all peers failed: %s", err.Error())
@@ -4634,18 +4864,22 @@ func (v *V2) PreheatImage(ctx context.Context, req *schedulerv2.PreheatImageRequ
 // all peers to collect the image's download state across the network.
 // The response includes both layer information and the status on each peer.
 func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (*schedulerv2.StatImageResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatImage(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.AllPeersScope
 	}
 
-	if req.ConcurrentLayerCount == nil {
+	if req.GetConcurrentLayerCount() == 0 {
 		concurrentLayerCount := int64(managertypes.DefaultPreheatConcurrentLayerCount)
 		req.ConcurrentLayerCount = &concurrentLayerCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4798,18 +5032,22 @@ func (v *V2) StatImage(ctx context.Context, req *schedulerv2.StatImageRequest) (
 // A successful response (google.protobuf.Empty) confirms that the preparation is complete
 // and the asynchronous download task has been scheduled.
 func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileRequest) error {
+	if v.job == nil {
+		return status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithPreheatFile(req.Url)
 
 	if req.Scope == "" {
 		req.Scope = managertypes.SingleSeedPeerScope
 	}
 
-	if req.ConcurrentTaskCount == nil {
+	if req.GetConcurrentTaskCount() == 0 {
 		concurrentTaskCount := int64(managertypes.DefaultPreheatConcurrentTaskCount)
 		req.ConcurrentTaskCount = &concurrentTaskCount
 	}
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}
@@ -4938,9 +5176,13 @@ func (v *V2) PreheatFile(ctx context.Context, req *schedulerv2.PreheatFileReques
 // all peers to collect the file's download state across the network.
 // The response includes the file status on each peer.
 func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*schedulerv2.StatFileResponse, error) {
+	if v.job == nil {
+		return nil, status.Error(codes.FailedPrecondition, "job is not enabled")
+	}
+
 	log := logger.WithStatFile(req.Url)
 
-	if req.ConcurrentPeerCount == nil {
+	if req.GetConcurrentPeerCount() == 0 {
 		concurrentPeerCount := int64(managertypes.DefaultPreheatConcurrentPeerCount)
 		req.ConcurrentPeerCount = &concurrentPeerCount
 	}

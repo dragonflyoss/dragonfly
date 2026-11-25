@@ -119,15 +119,3 @@ func (mr *MockPeerManagerMockRecorder) RunGC(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunGC", reflect.TypeOf((*MockPeerManager)(nil).RunGC), arg0)
 }
-
-// Store mocks base method.
-func (m *MockPeerManager) Store(arg0 *Peer) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Store", arg0)
-}
-
-// Store indicates an expected call of Store.
-func (mr *MockPeerManagerMockRecorder) Store(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockPeerManager)(nil).Store), arg0)
-}

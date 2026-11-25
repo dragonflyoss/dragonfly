@@ -53,6 +53,18 @@ func TestParseManifestURL(t *testing.T) {
 			},
 		},
 		{
+			name: "manifest url with v2 in repository",
+			url:  "https://ghcr.io/v2/org/v2/app/manifests/1.0",
+			expect: func(t *testing.T, ref *Reference, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Equal("https", ref.Scheme)
+				assert.Equal("ghcr.io", ref.Registry)
+				assert.Equal("org/v2/app", ref.Repository)
+				assert.Equal("1.0", ref.Reference)
+			},
+		},
+		{
 			name: "invalid manifest url",
 			url:  "https://registry.example.com/v2/library/nginx/blobs/sha256:b2c366cce7e68013d5441c6326d5a3e1b12aeb5ed58564d0fd3fa089bc29cb6e",
 			expect: func(t *testing.T, ref *Reference, err error) {
