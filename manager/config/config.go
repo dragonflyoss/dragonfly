@@ -26,6 +26,7 @@ import (
 
 	"d7y.io/dragonfly/v2/cmd/dependency/base"
 	"d7y.io/dragonfly/v2/pkg/net/ip"
+	"d7y.io/dragonfly/v2/pkg/rpc/auth"
 	"d7y.io/dragonfly/v2/pkg/types"
 )
 
@@ -343,9 +344,33 @@ type GRPCConfig struct {
 	// TLS server configuration.
 	TLS *GRPCTLSServerConfig `yaml:"tls" mapstructure:"tls"`
 
+	// Auth is the token authentication configuration of the gRPC server.
+	Auth GRPCAuthConfig `yaml:"auth" mapstructure:"auth"`
+
 	// RequestRateLimit is the maximum number of requests per second for the gRPC server.
 	// It limits both the rate of unary gRPC requests and the rate of new stream gRPC connection.
 	RequestRateLimit float64 `yaml:"requestRateLimit" mapstructure:"requestRateLimit"`
+}
+
+// GRPCAuthConfig is the token (JWT) authentication configuration of the gRPC
+// server. It is disabled by default so that existing deployments keep working.
+type GRPCAuthConfig struct {
+	// Enabled enables token authentication for gRPC requests.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+
+	// Secret is the HMAC signing key shared by all components. Authentication
+	// refuses to start when it is enabled and the secret is empty.
+	Secret string `yaml:"secret" mapstructure:"secret"`
+
+	// Issuer is the expected "iss" claim of tokens.
+	Issuer string `yaml:"issuer" mapstructure:"issuer"`
+
+	// TokenTTL is the time to live of tokens issued by clients.
+	TokenTTL time.Duration `yaml:"tokenTTL" mapstructure:"tokenTTL"`
+
+	// SkippedMethods are the fully-qualified gRPC methods that bypass
+	// authentication. The health checking service is always skipped.
+	SkippedMethods []string `yaml:"skippedMethods" mapstructure:"skippedMethods"`
 }
 
 type TCPListenPortRange struct {
@@ -423,6 +448,13 @@ func New() *Config {
 				Port: TCPListenPortRange{
 					Start: DefaultGRPCPort,
 					End:   DefaultGRPCPort,
+				},
+				Auth: GRPCAuthConfig{
+					Enabled:        false,
+					Issuer:         DefaultServerGRPCAuthIssuer,
+					TokenTTL:       DefaultServerGRPCAuthTokenTTL,
+					Secret:         "",
+					SkippedMethods: []string{},
 				},
 				RequestRateLimit: DefaultServerGRPCRequestRateLimit,
 			},
@@ -526,6 +558,24 @@ func (cfg *Config) Validate() error {
 
 		if cfg.Server.GRPC.TLS.Key == "" {
 			return errors.New("grpc tls requires parameter key")
+		}
+	}
+
+	if cfg.Server.GRPC.Auth.Enabled {
+		if cfg.Server.GRPC.Auth.Secret == "" {
+			return errors.New("grpc auth requires parameter secret")
+		}
+
+		if cfg.Server.GRPC.Auth.Issuer == "" {
+			return errors.New("grpc auth requires parameter issuer")
+		}
+
+		if cfg.Server.GRPC.Auth.TokenTTL <= 0 {
+			return errors.New("grpc auth requires parameter tokenTTL")
+		}
+
+		if err := auth.ValidateSkippedMethods(cfg.Server.GRPC.Auth.SkippedMethods); err != nil {
+			return err
 		}
 	}
 

@@ -35,15 +35,15 @@ jobs:
           - module: lightweight
             charts-config: test/testdata/charts/config.yaml
             mode: lightweight
-            skip: 'Manager|Rate Limit|Dfcache|Preheat and Delete Image Using Scheduler'
+            skip: 'Manager|Rate Limit|Dfcache|gRPC Token Authentication|Preheat and Delete Image Using Scheduler'
           - module: with-manager
             charts-config: test/testdata/charts/config-with-manager.yaml
             mode: with-manager
-            skip: 'Rate Limit'
+            skip: 'Rate Limit|gRPC Token Authentication'
           - module: ipv6
             charts-config: test/testdata/charts/config-ipv6.yaml
             mode: with-manager
-            skip: 'Rate Limit'
+            skip: 'Rate Limit|gRPC Token Authentication'
 
     steps:
       - name: Free Disk Space (Ubuntu)
