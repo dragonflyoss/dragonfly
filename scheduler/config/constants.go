@@ -67,11 +67,11 @@ const (
 	// DefaultLFUCacheTTL is default ttl for lfu cache. The lfu cache does not expire
 	// a record by the ttl of the record, so it is the longest time that a record
 	// is kept if redis is not enabled.
-	DefaultLFUCacheTTL = 7 * 24 * time.Hour
+	DefaultLFUCacheTTL = 168 * time.Hour
 
 	// DefaultLFUCacheSize is default size for lfu cache. A record of the image manifest
-	// takes about 456 bytes, so the lfu cache takes about 47MiB when it is full.
-	DefaultLFUCacheSize = 100000
+	// takes about 500 bytes, so the lfu cache takes about 47MiB when it is full.
+	DefaultLFUCacheSize = 100 * 1000
 )
 
 const (

@@ -5307,7 +5307,7 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	return resp, nil
 }
 
-// imageManifest is the image manifest stored in the cache. It carries its own expiration
+// imageManifest contains content for image manifest. It carries its own expiration
 // time, because the local cache does not expire it by the ttl of the request.
 type imageManifest struct {
 	// Digest is the digest of the image manifest.
@@ -5327,22 +5327,24 @@ type imageManifest struct {
 // The image manifest is announced by the peer that resolved the tag from the registry,
 // the scheduler does not access the registry.
 func (v *V2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageManifestRequest) (*schedulerv2.StatImageManifestResponse, error) {
-	key := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+	log := logger.WithHostID(req.GetHostId())
+	log.Infof("stat image manifest %s", req.GetReference())
 
+	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
 	var manifest imageManifest
-	if err := v.cache.Get(ctx, key, &manifest); err != nil {
+	if err := v.cache.Get(ctx, cacheKey, &manifest); err != nil {
 		if errors.Is(err, cachev9.ErrCacheMiss) {
 			return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
 		}
 
-		logger.WithHostID(req.GetHostId()).Errorf("load image manifest %s failed %s", req.GetReference(), err)
+		log.Errorf("load image manifest %s failed %s", req.GetReference(), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Remove the expired image manifest from the local cache, so the next request
 	// loads the image manifest from redis.
 	if time.Now().After(manifest.ExpiresAt) {
-		v.cache.DeleteFromLocalCache(key)
+		v.cache.DeleteFromLocalCache(cacheKey)
 		return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
 	}
 
@@ -5359,10 +5361,11 @@ func (v *V2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.Announc
 	log := logger.WithHostID(req.GetHostId())
 	log.Infof("announce image manifest %s resolved to %s", req.GetReference(), req.GetDigest())
 
+	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
 	ttl := req.GetTtl().AsDuration()
 	if err := v.cache.Set(&cachev9.Item{
 		Ctx: ctx,
-		Key: pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference()),
+		Key: cacheKey,
 		Value: &imageManifest{
 			Digest:        req.GetDigest(),
 			MediaType:     req.GetMediaType(),
