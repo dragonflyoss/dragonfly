@@ -507,30 +507,30 @@ func (s *schedulerServerV2) StatFile(ctx context.Context, req *schedulerv2.StatF
 	return resp, nil
 }
 
-// StatImageManifest returns the image manifest that the tag of the image is resolved to.
+// StatManifestTag returns the image manifest that the tag of the image is resolved to.
 // The image manifest is announced by the peer that resolved the tag from the registry,
 // the scheduler does not access the registry.
-func (s *schedulerServerV2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageManifestRequest) (*schedulerv2.StatImageManifestResponse, error) {
-	// Collect StatImageManifestCount metrics.
-	metrics.StatImageManifestCount.Inc()
-	resp, err := s.service.StatImageManifest(ctx, req)
+func (s *schedulerServerV2) StatManifestTag(ctx context.Context, req *schedulerv2.StatManifestTagRequest) (*schedulerv2.StatManifestTagResponse, error) {
+	// Collect StatManifestTagCount metrics.
+	metrics.StatManifestTagCount.Inc()
+	resp, err := s.service.StatManifestTag(ctx, req)
 	if err != nil {
-		// Collect StatImageManifestFailureCount metrics.
-		metrics.StatImageManifestFailureCount.Inc()
+		// Collect StatManifestTagFailureCount metrics.
+		metrics.StatManifestTagFailureCount.Inc()
 		return nil, err
 	}
 
 	return resp, nil
 }
 
-// AnnounceImageManifest announces the image manifest that the tag of the image is resolved to,
+// AnnounceManifestTag announces the image manifest that the tag of the image is resolved to,
 // the scheduler keeps it until the ttl expires.
-func (s *schedulerServerV2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.AnnounceImageManifestRequest) (*emptypb.Empty, error) {
-	// Collect AnnounceImageManifestCount metrics.
-	metrics.AnnounceImageManifestCount.Inc()
-	if err := s.service.AnnounceImageManifest(ctx, req); err != nil {
-		// Collect AnnounceImageManifestFailureCount metrics.
-		metrics.AnnounceImageManifestFailureCount.Inc()
+func (s *schedulerServerV2) AnnounceManifestTag(ctx context.Context, req *schedulerv2.AnnounceManifestTagRequest) (*emptypb.Empty, error) {
+	// Collect AnnounceManifestTagCount metrics.
+	metrics.AnnounceManifestTagCount.Inc()
+	if err := s.service.AnnounceManifestTag(ctx, req); err != nil {
+		// Collect AnnounceManifestTagFailureCount metrics.
+		metrics.AnnounceManifestTagFailureCount.Inc()
 		return nil, err
 	}
 

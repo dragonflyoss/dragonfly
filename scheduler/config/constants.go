@@ -70,7 +70,7 @@ const (
 	// DefaultLFUCacheTTL is default ttl for lfu cache.
 	DefaultLFUCacheTTL = 168 * time.Hour
 
-	// DefaultLFUCacheSize is default size for lfu cache. A record of the image manifest
+	// DefaultLFUCacheSize is default size for lfu cache. A record of the manifest tag
 	// takes about 500 bytes, so the lfu cache takes about 47MiB when it is full.
 	DefaultLFUCacheSize = 100 * 1000
 )

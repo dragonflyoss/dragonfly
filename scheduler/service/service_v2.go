@@ -5307,45 +5307,45 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	return resp, nil
 }
 
-// StatImageManifest returns the image manifest that the tag of the image is resolved to.
+// StatManifestTag returns the image manifest that the tag of the image is resolved to.
 // The image manifest is announced by the peer that resolved the tag from the registry,
 // the scheduler does not access the registry.
-func (v *V2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageManifestRequest) (*schedulerv2.StatImageManifestResponse, error) {
+func (v *V2) StatManifestTag(ctx context.Context, req *schedulerv2.StatManifestTagRequest) (*schedulerv2.StatManifestTagResponse, error) {
 	log := logger.WithHostID(req.GetHostId())
-	log.Infof("stat image manifest %s", req.GetReference())
+	log.Infof("stat manifest tag %s", req.GetReference())
 
-	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
-	var resp schedulerv2.StatImageManifestResponse
+	cacheKey := pkgredis.MakeManifestTagKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+	var resp schedulerv2.StatManifestTagResponse
 	if err := v.cache.Get(ctx, cacheKey, &resp); err != nil {
 		if errors.Is(err, cachev9.ErrCacheMiss) {
-			return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
+			return nil, status.Errorf(codes.NotFound, "manifest tag %s not found", req.GetReference())
 		}
 
-		log.Errorf("load image manifest %s failed %s", req.GetReference(), err)
+		log.Errorf("load manifest tag %s failed %s", req.GetReference(), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &resp, nil
 }
 
-// AnnounceImageManifest announces the image manifest that the tag of the image is resolved to,
+// AnnounceManifestTag announces the image manifest that the tag of the image is resolved to,
 // the scheduler keeps it until the ttl expires.
-func (v *V2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.AnnounceImageManifestRequest) error {
+func (v *V2) AnnounceManifestTag(ctx context.Context, req *schedulerv2.AnnounceManifestTagRequest) error {
 	log := logger.WithHostID(req.GetHostId())
-	log.Infof("announce image manifest %s resolved to %s", req.GetReference(), req.GetDigest())
+	log.Infof("announce manifest tag %s resolved to %s", req.GetReference(), req.GetDigest())
 
-	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+	cacheKey := pkgredis.MakeManifestTagKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
 	if err := v.cache.Set(&cachev9.Item{
 		Ctx: ctx,
 		Key: cacheKey,
-		Value: &schedulerv2.StatImageManifestResponse{
+		Value: &schedulerv2.StatManifestTagResponse{
 			Digest:        req.GetDigest(),
 			MediaType:     req.GetMediaType(),
 			ContentLength: req.GetContentLength(),
 		},
 		TTL: v.cache.TTL,
 	}); err != nil {
-		log.Errorf("store image manifest %s failed %s", req.GetReference(), err)
+		log.Errorf("store manifest tag %s failed %s", req.GetReference(), err)
 		return status.Error(codes.Internal, err.Error())
 	}
 

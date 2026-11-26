@@ -695,32 +695,32 @@ var (
 		Help:      "Counter of the number of failed of the stating file.",
 	})
 
-	StatImageManifestCount = promauto.NewCounter(prometheus.CounterOpts{
+	StatManifestTagCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
-		Name:      "stat_image_manifest_total",
-		Help:      "Counter of the number of the stating image manifest.",
+		Name:      "stat_manifest_tag_total",
+		Help:      "Counter of the number of the stating manifest tag.",
 	})
 
-	StatImageManifestFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+	StatManifestTagFailureCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
-		Name:      "stat_image_manifest_failure_total",
-		Help:      "Counter of the number of failed of the stating image manifest.",
+		Name:      "stat_manifest_tag_failure_total",
+		Help:      "Counter of the number of failed of the stating manifest tag.",
 	})
 
-	AnnounceImageManifestCount = promauto.NewCounter(prometheus.CounterOpts{
+	AnnounceManifestTagCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
-		Name:      "announce_image_manifest_total",
-		Help:      "Counter of the number of the announcing image manifest.",
+		Name:      "announce_manifest_tag_total",
+		Help:      "Counter of the number of the announcing manifest tag.",
 	})
 
-	AnnounceImageManifestFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+	AnnounceManifestTagFailureCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,
-		Name:      "announce_image_manifest_failure_total",
-		Help:      "Counter of the number of failed of the announcing image manifest.",
+		Name:      "announce_manifest_tag_failure_total",
+		Help:      "Counter of the number of failed of the announcing manifest tag.",
 	})
 
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
