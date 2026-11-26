@@ -333,46 +333,15 @@ func TestScheduler_RunGC(t *testing.T) {
 		expect func(t *testing.T, db *gorm.DB, err error)
 	}{
 		{
-			name: "stale inactive schedulers are swept and the rest kept",
+			name: "stale inactive schedulers are swept and stale active schedulers without config are marked inactive",
 			ctx:  context.Background(),
 			seed: func(t *testing.T, db *gorm.DB) {
 				if err := db.Create([]*models.Scheduler{
 					{BaseModel: models.BaseModel{UpdatedAt: now.Add(-time.Hour)}, Hostname: "stale-inactive", IP: "10.0.0.1", State: models.SchedulerStateInactive, SchedulerClusterID: 1},
 					{BaseModel: models.BaseModel{UpdatedAt: now.Add(-time.Minute)}, Hostname: "fresh-inactive", IP: "10.0.0.2", State: models.SchedulerStateInactive, SchedulerClusterID: 1},
 					{BaseModel: models.BaseModel{UpdatedAt: now.Add(-time.Hour)}, Hostname: "stale-active-without-config", IP: "10.0.0.3", State: models.SchedulerStateActive, LastKeepAliveAt: now.Add(-time.Hour), SchedulerClusterID: 1},
-				}).Error; err != nil {
-					t.Fatal(err)
-				}
-			},
-			expect: func(t *testing.T, db *gorm.DB, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-
-				var schedulers []models.Scheduler
-				assert.NoError(db.Order("id").Find(&schedulers).Error)
-				assert.Len(schedulers, 2)
-				assert.Equal("fresh-inactive", schedulers[0].Hostname)
-				assert.Equal(models.SchedulerStateInactive, schedulers[0].State)
-				assert.Equal("stale-active-without-config", schedulers[1].Hostname)
-				assert.Equal(models.SchedulerStateActive, schedulers[1].State)
-
-				var jobs []models.Job
-				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
-				assert.Len(jobs, 1)
-				assert.Equal(SchedulerGCTaskID, jobs[0].TaskID)
-				assert.Equal(GCStateSuccess, jobs[0].State)
-				assert.EqualValues(1, jobs[0].Result["purged"])
-			},
-		},
-		{
-			name: "active scheduler without keep alive for 3x interval is marked inactive",
-			ctx:  context.Background(),
-			seed: func(t *testing.T, db *gorm.DB) {
-				if err := db.Create([]*models.Scheduler{
-					{Hostname: "dead", IP: "10.0.0.1", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": keepAliveInterval}, LastKeepAliveAt: now.Add(-4 * time.Minute), SchedulerClusterID: 1},
-					{Hostname: "alive", IP: "10.0.0.2", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": keepAliveInterval}, LastKeepAliveAt: now.Add(-2 * time.Minute), SchedulerClusterID: 1},
-					{Hostname: "no-interval", IP: "10.0.0.3", State: models.SchedulerStateActive, Config: models.JSONMap{"foo": "bar"}, LastKeepAliveAt: now.Add(-time.Hour), SchedulerClusterID: 1},
-					{Hostname: "interval-not-a-number", IP: "10.0.0.4", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": "1m"}, LastKeepAliveAt: now.Add(-time.Hour), SchedulerClusterID: 1},
+					{BaseModel: models.BaseModel{UpdatedAt: now.Add(-time.Hour)}, Hostname: "legacy-v1-zero-keepalive", IP: "10.0.0.4", State: models.SchedulerStateActive, SchedulerClusterID: 1},
+					{BaseModel: models.BaseModel{UpdatedAt: now.Add(-time.Minute)}, Hostname: "fresh-active-without-config", IP: "10.0.0.5", State: models.SchedulerStateActive, LastKeepAliveAt: now.Add(-time.Minute), SchedulerClusterID: 1},
 				}).Error; err != nil {
 					t.Fatal(err)
 				}
@@ -384,10 +353,51 @@ func TestScheduler_RunGC(t *testing.T) {
 				var schedulers []models.Scheduler
 				assert.NoError(db.Order("id").Find(&schedulers).Error)
 				assert.Len(schedulers, 4)
+				assert.Equal("fresh-inactive", schedulers[0].Hostname)
+				assert.Equal(models.SchedulerStateInactive, schedulers[0].State)
+				assert.Equal("stale-active-without-config", schedulers[1].Hostname)
+				assert.Equal(models.SchedulerStateInactive, schedulers[1].State)
+				assert.Equal("legacy-v1-zero-keepalive", schedulers[2].Hostname)
+				assert.Equal(models.SchedulerStateInactive, schedulers[2].State)
+				assert.Equal("fresh-active-without-config", schedulers[3].Hostname)
+				assert.Equal(models.SchedulerStateActive, schedulers[3].State)
+
+				var jobs []models.Job
+				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
+				assert.Len(jobs, 1)
+				assert.Equal(SchedulerGCTaskID, jobs[0].TaskID)
+				assert.Equal(GCStateSuccess, jobs[0].State)
+				assert.EqualValues(1, jobs[0].Result["purged"])
+			},
+		},
+		{
+			name: "active scheduler without keep alive for 3x interval or fallback timeout is marked inactive",
+			ctx:  context.Background(),
+			seed: func(t *testing.T, db *gorm.DB) {
+				if err := db.Create([]*models.Scheduler{
+					{Hostname: "dead", IP: "10.0.0.1", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": keepAliveInterval}, LastKeepAliveAt: now.Add(-4 * time.Minute), SchedulerClusterID: 1},
+					{Hostname: "alive", IP: "10.0.0.2", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": keepAliveInterval}, LastKeepAliveAt: now.Add(-2 * time.Minute), SchedulerClusterID: 1},
+					{Hostname: "no-interval-stale", IP: "10.0.0.3", State: models.SchedulerStateActive, Config: models.JSONMap{"foo": "bar"}, LastKeepAliveAt: now.Add(-time.Hour), SchedulerClusterID: 1},
+					{Hostname: "interval-not-a-number-stale", IP: "10.0.0.4", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": "1m"}, LastKeepAliveAt: now.Add(-time.Hour), SchedulerClusterID: 1},
+					{Hostname: "no-interval-fresh", IP: "10.0.0.5", State: models.SchedulerStateActive, Config: models.JSONMap{"foo": "bar"}, LastKeepAliveAt: now.Add(-time.Minute), SchedulerClusterID: 1},
+					{Hostname: "non-positive-interval-fresh", IP: "10.0.0.6", State: models.SchedulerStateActive, Config: models.JSONMap{"manager_keep_alive_interval": float64(0)}, LastKeepAliveAt: now.Add(-time.Minute), SchedulerClusterID: 1},
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+			},
+			expect: func(t *testing.T, db *gorm.DB, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+
+				var schedulers []models.Scheduler
+				assert.NoError(db.Order("id").Find(&schedulers).Error)
+				assert.Len(schedulers, 6)
 				assert.Equal(models.SchedulerStateInactive, schedulers[0].State)
 				assert.Equal(models.SchedulerStateActive, schedulers[1].State)
-				assert.Equal(models.SchedulerStateActive, schedulers[2].State)
-				assert.Equal(models.SchedulerStateActive, schedulers[3].State)
+				assert.Equal(models.SchedulerStateInactive, schedulers[2].State)
+				assert.Equal(models.SchedulerStateInactive, schedulers[3].State)
+				assert.Equal(models.SchedulerStateActive, schedulers[4].State)
+				assert.Equal(models.SchedulerStateActive, schedulers[5].State)
 
 				var jobs []models.Job
 				assert.NoError(db.Session(&gorm.Session{SkipHooks: true}).Where("type = ?", GCJobType).Order("id").Find(&jobs).Error)
