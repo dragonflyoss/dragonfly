@@ -77,13 +77,13 @@ cache:
   # Redis cache configuration.
   redis:
     # Cache TTL.
-    ttl: 5m
+    ttl: 720h
   # Local cache configuration.
   local:
     # Size of LFU cache.
     size: 100000
     # Cache TTL.
-    ttl: 3m
+    ttl: 168h
 
 # Dynamic data configuration.
 dynConfig:
