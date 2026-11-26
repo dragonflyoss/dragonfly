@@ -17,6 +17,8 @@
 package cache
 
 import (
+	"time"
+
 	"github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
 
@@ -26,17 +28,18 @@ import (
 // Cache is cache client.
 type Cache struct {
 	*cache.Cache
+	TTL time.Duration
 }
 
 // New cache instance, it only uses the local cache if rdb is nil.
-func New(rdb redis.UniversalClient) *Cache {
-	// The attribute TTL of cache.Item(cache's instance) is the redis expiration time,
-	// config.DefaultLFUCacheTTL is the expiration time of TinyLFU. TinyLFU does not
-	// use the attribute TTL, so the value has to carry its own expiration time.
+func New(cfg *config.Config, rdb redis.UniversalClient) *Cache {
+	// If the attribute TTL of cache.Item(cache's instance) is 0, redis expiration time is 1 hour.
+	// cfg.Cache.Local.TTL sets the expiration time of TinyLFU.
 	return &Cache{
 		Cache: cache.New(&cache.Options{
 			Redis:      rdb,
-			LocalCache: cache.NewTinyLFU(config.DefaultLFUCacheSize, config.DefaultLFUCacheTTL),
+			LocalCache: cache.NewTinyLFU(cfg.Cache.Local.Size, cfg.Cache.Local.TTL),
 		}),
+		TTL: cfg.Cache.Redis.TTL,
 	}
 }

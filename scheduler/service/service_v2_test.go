@@ -325,17 +325,25 @@ var (
 
 	mockPersistentCacheInterval = durationpb.New(5 * time.Minute).AsDuration()
 
+	mockCacheConfig = config.CacheConfig{
+		Redis: config.RedisCacheConfig{
+			TTL: 10 * time.Minute,
+		},
+		Local: config.LocalCacheConfig{
+			Size: 10000,
+			TTL:  5 * time.Minute,
+		},
+	}
+
 	mockImageManifestReference = "docker.io/library/nginx:latest"
 
-	mockImageManifestTTL = 10 * time.Minute
-
-	mockImageManifest = imageManifest{
+	mockImageManifest = &schedulerv2.StatImageManifestResponse{
 		Digest:        "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
 		MediaType:     "application/vnd.oci.image.index.v1+json",
 		ContentLength: 855,
 	}
 
-	mockImageManifestConfig = &config.Config{Scheduler: mockSchedulerConfig, Manager: config.ManagerConfig{SchedulerClusterID: 1}}
+	mockImageManifestConfig = &config.Config{Scheduler: mockSchedulerConfig, Manager: config.ManagerConfig{SchedulerClusterID: 1}, Cache: mockCacheConfig}
 
 	mockImageManifestKey = pkgredis.MakeImageManifestKeyInScheduler(1, mockImageManifestReference)
 )
@@ -10457,13 +10465,13 @@ func TestServiceV2_StatImageManifest(t *testing.T) {
 	tests := []struct {
 		name         string
 		disableRedis bool
-		mock         func(mock redismock.ClientMock, value, expiredValue []byte)
+		mock         func(mock redismock.ClientMock, value []byte)
 		expect       func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error)
 	}{
 		{
 			name:         "image manifest not found without redis",
 			disableRedis: true,
-			mock: func(mock redismock.ClientMock, value, expiredValue []byte) {
+			mock: func(mock redismock.ClientMock, value []byte) {
 			},
 			expect: func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error) {
 				assert := assert.New(t)
@@ -10473,7 +10481,7 @@ func TestServiceV2_StatImageManifest(t *testing.T) {
 		},
 		{
 			name: "image manifest not found",
-			mock: func(mock redismock.ClientMock, value, expiredValue []byte) {
+			mock: func(mock redismock.ClientMock, value []byte) {
 				mock.ExpectGet(mockImageManifestKey).RedisNil()
 			},
 			expect: func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error) {
@@ -10484,7 +10492,7 @@ func TestServiceV2_StatImageManifest(t *testing.T) {
 		},
 		{
 			name: "load image manifest failed",
-			mock: func(mock redismock.ClientMock, value, expiredValue []byte) {
+			mock: func(mock redismock.ClientMock, value []byte) {
 				mock.ExpectGet(mockImageManifestKey).SetErr(errors.New("foo"))
 			},
 			expect: func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error) {
@@ -10494,24 +10502,8 @@ func TestServiceV2_StatImageManifest(t *testing.T) {
 			},
 		},
 		{
-			name: "image manifest is expired",
-			mock: func(mock redismock.ClientMock, value, expiredValue []byte) {
-				mock.ExpectGet(mockImageManifestKey).SetVal(string(expiredValue))
-				mock.ExpectGet(mockImageManifestKey).SetVal(string(value))
-			},
-			expect: func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error) {
-				assert := assert.New(t)
-				assert.Nil(resp)
-				assert.ErrorIs(err, status.Errorf(codes.NotFound, "image manifest %s not found", mockImageManifestReference))
-
-				resp, err = svc.StatImageManifest(context.Background(), &schedulerv2.StatImageManifestRequest{HostId: mockHostID, Reference: mockImageManifestReference})
-				assert.NoError(err)
-				assert.Equal(mockImageManifest.Digest, resp.Digest)
-			},
-		},
-		{
 			name: "stat image manifest",
-			mock: func(mock redismock.ClientMock, value, expiredValue []byte) {
+			mock: func(mock redismock.ClientMock, value []byte) {
 				mock.ExpectGet(mockImageManifestKey).SetVal(string(value))
 			},
 			expect: func(t *testing.T, svc *V2, resp *schedulerv2.StatImageManifestResponse, err error) {
@@ -10528,28 +10520,19 @@ func TestServiceV2_StatImageManifest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			imageManifestCache := cache.New(rdb)
+			imageManifestCache := cache.New(mockImageManifestConfig, rdb)
 			if tc.disableRedis {
-				imageManifestCache = cache.New(nil)
+				imageManifestCache = cache.New(mockImageManifestConfig, nil)
 			}
 
-			manifest := mockImageManifest
-			manifest.ExpiresAt = time.Now().Add(mockImageManifestTTL)
-			value, err := imageManifestCache.Marshal(&manifest)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			expiredManifest := mockImageManifest
-			expiredManifest.ExpiresAt = time.Now().Add(-mockImageManifestTTL)
-			expiredValue, err := imageManifestCache.Marshal(&expiredManifest)
+			value, err := imageManifestCache.Marshal(mockImageManifest)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			svc := NewV2(mockImageManifestConfig, nil, nil, nil, imageManifestCache, nil, nil, nil, nil)
 
-			tc.mock(mock, value, expiredValue)
+			tc.mock(mock, value)
 			resp, err := svc.StatImageManifest(context.Background(), &schedulerv2.StatImageManifestRequest{HostId: mockHostID, Reference: mockImageManifestReference})
 			tc.expect(t, svc, resp, err)
 			assert.NoError(mock.ExpectationsWereMet())
@@ -10561,14 +10544,12 @@ func TestServiceV2_AnnounceImageManifest(t *testing.T) {
 	tests := []struct {
 		name         string
 		disableRedis bool
-		ttl          time.Duration
 		mock         func(mock redismock.ClientMock)
 		expect       func(t *testing.T, svc *V2, err error)
 	}{
 		{
 			name:         "announce image manifest without redis",
 			disableRedis: true,
-			ttl:          mockImageManifestTTL,
 			mock: func(mock redismock.ClientMock) {
 			},
 			expect: func(t *testing.T, svc *V2, err error) {
@@ -10583,25 +10564,9 @@ func TestServiceV2_AnnounceImageManifest(t *testing.T) {
 			},
 		},
 		{
-			name:         "image manifest expires by the ttl without redis",
-			disableRedis: true,
-			ttl:          time.Nanosecond,
-			mock: func(mock redismock.ClientMock) {
-			},
-			expect: func(t *testing.T, svc *V2, err error) {
-				assert := assert.New(t)
-				assert.NoError(err)
-
-				resp, err := svc.StatImageManifest(context.Background(), &schedulerv2.StatImageManifestRequest{HostId: mockHostID, Reference: mockImageManifestReference})
-				assert.Nil(resp)
-				assert.ErrorIs(err, status.Errorf(codes.NotFound, "image manifest %s not found", mockImageManifestReference))
-			},
-		},
-		{
 			name: "store image manifest failed",
-			ttl:  mockImageManifestTTL,
 			mock: func(mock redismock.ClientMock) {
-				mock.Regexp().ExpectSet(mockImageManifestKey, ".+", mockImageManifestTTL).SetErr(errors.New("foo"))
+				mock.Regexp().ExpectSet(mockImageManifestKey, ".+", mockCacheConfig.Redis.TTL).SetErr(errors.New("foo"))
 			},
 			expect: func(t *testing.T, svc *V2, err error) {
 				assert := assert.New(t)
@@ -10610,9 +10575,8 @@ func TestServiceV2_AnnounceImageManifest(t *testing.T) {
 		},
 		{
 			name: "announce image manifest",
-			ttl:  mockImageManifestTTL,
 			mock: func(mock redismock.ClientMock) {
-				mock.Regexp().ExpectSet(mockImageManifestKey, ".+", mockImageManifestTTL).SetVal("OK")
+				mock.Regexp().ExpectSet(mockImageManifestKey, ".+", mockCacheConfig.Redis.TTL).SetVal("OK")
 			},
 			expect: func(t *testing.T, svc *V2, err error) {
 				assert := assert.New(t)
@@ -10631,9 +10595,9 @@ func TestServiceV2_AnnounceImageManifest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			rdb, mock := redismock.NewClientMock()
-			imageManifestCache := cache.New(rdb)
+			imageManifestCache := cache.New(mockImageManifestConfig, rdb)
 			if tc.disableRedis {
-				imageManifestCache = cache.New(nil)
+				imageManifestCache = cache.New(mockImageManifestConfig, nil)
 			}
 
 			svc := NewV2(mockImageManifestConfig, nil, nil, nil, imageManifestCache, nil, nil, nil, nil)
@@ -10645,7 +10609,6 @@ func TestServiceV2_AnnounceImageManifest(t *testing.T) {
 				Digest:        mockImageManifest.Digest,
 				MediaType:     mockImageManifest.MediaType,
 				ContentLength: mockImageManifest.ContentLength,
-				Ttl:           durationpb.New(tc.ttl),
 			})
 			tc.expect(t, svc, err)
 			assert.NoError(mock.ExpectationsWereMet())

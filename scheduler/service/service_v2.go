@@ -5307,22 +5307,6 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	return resp, nil
 }
 
-// imageManifest contains content for image manifest. It carries its own expiration
-// time, because the local cache does not expire it by the ttl of the request.
-type imageManifest struct {
-	// Digest is the digest of the image manifest.
-	Digest string
-
-	// MediaType is the media type of the image manifest.
-	MediaType string
-
-	// ContentLength is the size(bytes) of the image manifest.
-	ContentLength uint64
-
-	// ExpiresAt is the time when the image manifest expires.
-	ExpiresAt time.Time
-}
-
 // StatImageManifest returns the image manifest that the tag of the image is resolved to.
 // The image manifest is announced by the peer that resolved the tag from the registry,
 // the scheduler does not access the registry.
@@ -5331,8 +5315,8 @@ func (v *V2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageMa
 	log.Infof("stat image manifest %s", req.GetReference())
 
 	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
-	var manifest imageManifest
-	if err := v.cache.Get(ctx, cacheKey, &manifest); err != nil {
+	var resp schedulerv2.StatImageManifestResponse
+	if err := v.cache.Get(ctx, cacheKey, &resp); err != nil {
 		if errors.Is(err, cachev9.ErrCacheMiss) {
 			return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
 		}
@@ -5341,18 +5325,7 @@ func (v *V2) StatImageManifest(ctx context.Context, req *schedulerv2.StatImageMa
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Remove the expired image manifest from the local cache, so the next request
-	// loads the image manifest from redis.
-	if time.Now().After(manifest.ExpiresAt) {
-		v.cache.DeleteFromLocalCache(cacheKey)
-		return nil, status.Errorf(codes.NotFound, "image manifest %s not found", req.GetReference())
-	}
-
-	return &schedulerv2.StatImageManifestResponse{
-		Digest:        manifest.Digest,
-		MediaType:     manifest.MediaType,
-		ContentLength: manifest.ContentLength,
-	}, nil
+	return &resp, nil
 }
 
 // AnnounceImageManifest announces the image manifest that the tag of the image is resolved to,
@@ -5362,17 +5335,15 @@ func (v *V2) AnnounceImageManifest(ctx context.Context, req *schedulerv2.Announc
 	log.Infof("announce image manifest %s resolved to %s", req.GetReference(), req.GetDigest())
 
 	cacheKey := pkgredis.MakeImageManifestKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
-	ttl := req.GetTtl().AsDuration()
 	if err := v.cache.Set(&cachev9.Item{
 		Ctx: ctx,
 		Key: cacheKey,
-		Value: &imageManifest{
+		Value: &schedulerv2.StatImageManifestResponse{
 			Digest:        req.GetDigest(),
 			MediaType:     req.GetMediaType(),
 			ContentLength: req.GetContentLength(),
-			ExpiresAt:     time.Now().Add(ttl),
 		},
-		TTL: ttl,
+		TTL: v.cache.TTL,
 	}); err != nil {
 		log.Errorf("store image manifest %s failed %s", req.GetReference(), err)
 		return status.Error(codes.Internal, err.Error())

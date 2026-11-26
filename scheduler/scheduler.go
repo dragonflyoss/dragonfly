@@ -169,7 +169,7 @@ func New(ctx context.Context, cfg *config.Config, d dfpath.Dfpath, dynconfigPath
 	}
 
 	// Initialize cache, it only uses the local cache if redis is not enabled.
-	s.cache = cache.New(rdb)
+	s.cache = cache.New(cfg, rdb)
 
 	// Initialize job service if job is enabled and redis is enabled.
 	if cfg.Job.Enable && rdb != nil {
