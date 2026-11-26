@@ -65,10 +65,10 @@ const (
 
 const (
 	// DefaultRedisCacheTTL is default ttl for redis cache.
-	DefaultRedisCacheTTL = 5 * time.Minute
+	DefaultRedisCacheTTL = 720 * time.Hour
 
 	// DefaultLFUCacheTTL is default ttl for lfu cache.
-	DefaultLFUCacheTTL = 3 * time.Minute
+	DefaultLFUCacheTTL = 168 * time.Hour
 
 	// DefaultLFUCacheSize is default size for lfu cache. A record of the image manifest
 	// takes about 500 bytes, so the lfu cache takes about 47MiB when it is full.
