@@ -64,6 +64,18 @@ const (
 )
 
 const (
+	// DefaultRedisCacheTTL is default ttl for redis cache.
+	DefaultRedisCacheTTL = 720 * time.Hour
+
+	// DefaultLFUCacheTTL is default ttl for lfu cache.
+	DefaultLFUCacheTTL = 168 * time.Hour
+
+	// DefaultLFUCacheSize is default size for lfu cache. A record of the manifest tag
+	// takes about 500 bytes, so the lfu cache takes about 47MiB when it is full.
+	DefaultLFUCacheSize = 100 * 1000
+)
+
+const (
 	// DefaultSchedulerAlgorithm is default algorithm for scheduler.
 	DefaultSchedulerAlgorithm = "default"
 

@@ -695,6 +695,34 @@ var (
 		Help:      "Counter of the number of failed of the stating file.",
 	})
 
+	StatManifestTagCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_manifest_tag_total",
+		Help:      "Counter of the number of the stating manifest tag.",
+	})
+
+	StatManifestTagFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "stat_manifest_tag_failure_total",
+		Help:      "Counter of the number of failed of the stating manifest tag.",
+	})
+
+	AnnounceManifestTagCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_manifest_tag_total",
+		Help:      "Counter of the number of the announcing manifest tag.",
+	})
+
+	AnnounceManifestTagFailureCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: types.MetricsNamespace,
+		Subsystem: types.SchedulerMetricsName,
+		Name:      "announce_manifest_tag_failure_total",
+		Help:      "Counter of the number of failed of the announcing manifest tag.",
+	})
+
 	VersionGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: types.MetricsNamespace,
 		Subsystem: types.SchedulerMetricsName,

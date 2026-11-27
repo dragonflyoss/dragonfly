@@ -42,6 +42,13 @@ database:
     poolSize: 10
     poolTimeout: 1s
 
+cache:
+  redis:
+    ttl: 1s
+  local:
+    size: 10000
+    ttl: 1s
+
 dynConfig:
   refreshInterval: 10s
 

@@ -18,6 +18,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
+	cachev9 "github.com/go-redis/cache/v9"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -49,9 +51,11 @@ import (
 	"d7y.io/dragonfly/v2/pkg/idgen"
 	"d7y.io/dragonfly/v2/pkg/net/http"
 	nettls "d7y.io/dragonfly/v2/pkg/net/tls"
+	pkgredis "d7y.io/dragonfly/v2/pkg/redis"
 	"d7y.io/dragonfly/v2/pkg/rpc"
 	pkgtime "d7y.io/dragonfly/v2/pkg/time"
 	"d7y.io/dragonfly/v2/pkg/types"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
@@ -80,6 +84,9 @@ type V2 struct {
 	// Persistent cache resource interface.
 	persistentCacheResource persistentcache.Resource
 
+	// Cache instance.
+	cache *cache.Cache
+
 	// Scheduling interface.
 	scheduling scheduling.Scheduling
 
@@ -102,6 +109,7 @@ func NewV2(
 	resource standard.Resource,
 	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
+	cache *cache.Cache,
 	scheduling scheduling.Scheduling,
 	job job.Job,
 	internalJobImage internaljob.Image,
@@ -111,6 +119,7 @@ func NewV2(
 		resource:                resource,
 		persistentResource:      persistentResource,
 		persistentCacheResource: persistentCacheResource,
+		cache:                   cache,
 		scheduling:              scheduling,
 		job:                     job,
 		internalJobImage:        internalJobImage,
@@ -5296,4 +5305,49 @@ func (v *V2) StatFile(ctx context.Context, req *schedulerv2.StatFileRequest) (*s
 	}
 
 	return resp, nil
+}
+
+// StatManifestTag returns the image manifest that the tag of the image is resolved to.
+// The image manifest is announced by the peer that resolved the tag from the registry,
+// the scheduler does not access the registry.
+func (v *V2) StatManifestTag(ctx context.Context, req *schedulerv2.StatManifestTagRequest) (*schedulerv2.StatManifestTagResponse, error) {
+	log := logger.WithHostID(req.GetHostId())
+	log.Infof("stat manifest tag %s", req.GetReference())
+
+	cacheKey := pkgredis.MakeManifestTagKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+	var resp schedulerv2.StatManifestTagResponse
+	if err := v.cache.Get(ctx, cacheKey, &resp); err != nil {
+		if errors.Is(err, cachev9.ErrCacheMiss) {
+			return nil, status.Errorf(codes.NotFound, "manifest tag %s not found", req.GetReference())
+		}
+
+		log.Errorf("load manifest tag %s failed %s", req.GetReference(), err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &resp, nil
+}
+
+// AnnounceManifestTag announces the image manifest that the tag of the image is resolved to,
+// the scheduler keeps it until the ttl expires.
+func (v *V2) AnnounceManifestTag(ctx context.Context, req *schedulerv2.AnnounceManifestTagRequest) error {
+	log := logger.WithHostID(req.GetHostId())
+	log.Infof("announce manifest tag %s resolved to %s", req.GetReference(), req.GetDigest())
+
+	cacheKey := pkgredis.MakeManifestTagKeyInScheduler(v.config.Manager.SchedulerClusterID, req.GetReference())
+	if err := v.cache.Set(&cachev9.Item{
+		Ctx: ctx,
+		Key: cacheKey,
+		Value: &schedulerv2.StatManifestTagResponse{
+			Digest:        req.GetDigest(),
+			MediaType:     req.GetMediaType(),
+			ContentLength: req.GetContentLength(),
+		},
+		TTL: v.cache.TTL,
+	}); err != nil {
+		log.Errorf("store manifest tag %s failed %s", req.GetReference(), err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
 }

@@ -72,6 +72,19 @@ scheduler:
     # then HostTTl will be reset.
     hostTTL: 1h
 
+# Cache configuration.
+cache:
+  # Redis cache configuration.
+  redis:
+    # Cache TTL.
+    ttl: 720h
+  # Local cache configuration.
+  local:
+    # Size of LFU cache.
+    size: 100000
+    # Cache TTL.
+    ttl: 168h
+
 # Dynamic data configuration.
 dynConfig:
   # Dynamic config refresh interval.

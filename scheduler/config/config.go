@@ -41,6 +41,9 @@ type Config struct {
 	// Database configuration.
 	Database DatabaseConfig `yaml:"database" mapstructure:"database"`
 
+	// Cache configuration.
+	Cache CacheConfig `yaml:"cache" mapstructure:"cache"`
+
 	// Dynconfig configuration.
 	DynConfig DynConfig `yaml:"dynConfig" mapstructure:"dynConfig"`
 
@@ -144,6 +147,27 @@ type SchedulerConfig struct {
 type DatabaseConfig struct {
 	// Redis configuration.
 	Redis RedisConfig `yaml:"redis" mapstructure:"redis"`
+}
+
+type CacheConfig struct {
+	// Redis cache configuration.
+	Redis RedisCacheConfig `yaml:"redis" mapstructure:"redis"`
+
+	// Local cache configuration.
+	Local LocalCacheConfig `yaml:"local" mapstructure:"local"`
+}
+
+type RedisCacheConfig struct {
+	// Cache TTL.
+	TTL time.Duration `yaml:"ttl" mapstructure:"ttl"`
+}
+
+type LocalCacheConfig struct {
+	// Size of LFU cache.
+	Size int `yaml:"size" mapstructure:"size"`
+
+	// Cache TTL.
+	TTL time.Duration `yaml:"ttl" mapstructure:"ttl"`
 }
 
 type DownloadTinyConfig struct {
@@ -376,6 +400,15 @@ func New() *Config {
 				PoolTimeout: DefaultRedisPoolTimeout,
 			},
 		},
+		Cache: CacheConfig{
+			Redis: RedisCacheConfig{
+				TTL: DefaultRedisCacheTTL,
+			},
+			Local: LocalCacheConfig{
+				Size: DefaultLFUCacheSize,
+				TTL:  DefaultLFUCacheTTL,
+			},
+		},
 		DynConfig: DynConfig{
 			RefreshInterval: DefaultDynConfigRefreshInterval,
 		},
@@ -509,6 +542,18 @@ func (cfg *Config) Validate() error {
 				return errors.New("redis tls cert and key must be provided together")
 			}
 		}
+	}
+
+	if cfg.Cache.Redis.TTL <= 0 {
+		return errors.New("redis requires parameter ttl")
+	}
+
+	if cfg.Cache.Local.Size <= 0 {
+		return errors.New("local requires parameter size")
+	}
+
+	if cfg.Cache.Local.TTL <= 0 {
+		return errors.New("local requires parameter ttl")
 	}
 
 	if cfg.DynConfig.RefreshInterval <= 0 {

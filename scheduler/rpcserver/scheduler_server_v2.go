@@ -25,6 +25,7 @@ import (
 	schedulerv2 "d7y.io/api/v2/pkg/apis/scheduler/v2"
 
 	internaljob "d7y.io/dragonfly/v2/internal/job"
+	"d7y.io/dragonfly/v2/scheduler/cache"
 	"d7y.io/dragonfly/v2/scheduler/config"
 	"d7y.io/dragonfly/v2/scheduler/job"
 	"d7y.io/dragonfly/v2/scheduler/metrics"
@@ -47,11 +48,12 @@ func newSchedulerServerV2(
 	resource standard.Resource,
 	persistentResource persistent.Resource,
 	persistentCacheResource persistentcache.Resource,
+	cache *cache.Cache,
 	scheduling scheduling.Scheduling,
 	job job.Job,
 	dynconfig config.DynconfigInterface,
 ) schedulerv2.SchedulerServer {
-	return &schedulerServerV2{service.NewV2(cfg, resource, persistentResource, persistentCacheResource, scheduling, job, internaljob.NewImage(), dynconfig)}
+	return &schedulerServerV2{service.NewV2(cfg, resource, persistentResource, persistentCacheResource, cache, scheduling, job, internaljob.NewImage(), dynconfig)}
 }
 
 // AnnouncePeer announces peer to scheduler.
@@ -503,4 +505,34 @@ func (s *schedulerServerV2) StatFile(ctx context.Context, req *schedulerv2.StatF
 	}
 
 	return resp, nil
+}
+
+// StatManifestTag returns the image manifest that the tag of the image is resolved to.
+// The image manifest is announced by the peer that resolved the tag from the registry,
+// the scheduler does not access the registry.
+func (s *schedulerServerV2) StatManifestTag(ctx context.Context, req *schedulerv2.StatManifestTagRequest) (*schedulerv2.StatManifestTagResponse, error) {
+	// Collect StatManifestTagCount metrics.
+	metrics.StatManifestTagCount.Inc()
+	resp, err := s.service.StatManifestTag(ctx, req)
+	if err != nil {
+		// Collect StatManifestTagFailureCount metrics.
+		metrics.StatManifestTagFailureCount.Inc()
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// AnnounceManifestTag announces the image manifest that the tag of the image is resolved to,
+// the scheduler keeps it until the ttl expires.
+func (s *schedulerServerV2) AnnounceManifestTag(ctx context.Context, req *schedulerv2.AnnounceManifestTagRequest) (*emptypb.Empty, error) {
+	// Collect AnnounceManifestTagCount metrics.
+	metrics.AnnounceManifestTagCount.Inc()
+	if err := s.service.AnnounceManifestTag(ctx, req); err != nil {
+		// Collect AnnounceManifestTagFailureCount metrics.
+		metrics.AnnounceManifestTagFailureCount.Inc()
+		return nil, err
+	}
+
+	return new(emptypb.Empty), nil
 }

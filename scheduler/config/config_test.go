@@ -111,6 +111,15 @@ func TestConfig_Load(t *testing.T) {
 				PoolTimeout: 1 * time.Second,
 			},
 		},
+		Cache: CacheConfig{
+			Redis: RedisCacheConfig{
+				TTL: 1 * time.Second,
+			},
+			Local: LocalCacheConfig{
+				Size: 10000,
+				TTL:  1 * time.Second,
+			},
+		},
 		DynConfig: DynConfig{
 			RefreshInterval: 10 * time.Second,
 		},
@@ -344,6 +353,45 @@ func TestConfig_Validate(t *testing.T) {
 			expect: func(t *testing.T, err error) {
 				assert := assert.New(t)
 				assert.Error(err)
+			},
+		},
+		{
+			name:   "redis requires parameter ttl",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager = mockManagerConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Cache.Redis.TTL = 0
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "redis requires parameter ttl")
+			},
+		},
+		{
+			name:   "local requires parameter size",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager = mockManagerConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Cache.Local.Size = 0
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "local requires parameter size")
+			},
+		},
+		{
+			name:   "local requires parameter ttl",
+			config: New(),
+			mock: func(cfg *Config) {
+				cfg.Manager = mockManagerConfig
+				cfg.Database.Redis = mockRedisConfig
+				cfg.Cache.Local.TTL = 0
+			},
+			expect: func(t *testing.T, err error) {
+				assert := assert.New(t)
+				assert.EqualError(err, "local requires parameter ttl")
 			},
 		},
 		{

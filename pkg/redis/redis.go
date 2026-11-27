@@ -73,6 +73,9 @@ const (
 
 	// ApplicationsNamespace prefix of applications namespace cache key.
 	ApplicationsNamespace = "applications"
+
+	// ManifestTagsNamespace prefix of manifest tags namespace cache key.
+	ManifestTagsNamespace = "manifest-tags"
 )
 
 // NewRedis returns a new redis client.
@@ -257,4 +260,9 @@ func MakePersistentCacheHostsInScheduler(schedulerClusterID uint) string {
 // MakePersistentCachePeersOfPersistentCacheHostInScheduler make persistent cache peers of persistent cache host in scheduler.
 func MakePersistentCachePeersOfPersistentCacheHostInScheduler(schedulerClusterID uint, hostID string) string {
 	return MakeKeyInScheduler(SchedulerClustersNamespace, fmt.Sprintf("%d:%s:%s:%s", schedulerClusterID, PersistentCacheHostsNamespace, hostID, PersistentCachePeersForPersistentCacheTaskNamespace))
+}
+
+// MakeManifestTagKeyInScheduler make manifest tag key in scheduler.
+func MakeManifestTagKeyInScheduler(schedulerClusterID uint, reference string) string {
+	return MakeKeyInScheduler(SchedulerClustersNamespace, fmt.Sprintf("%d:%s:%s", schedulerClusterID, ManifestTagsNamespace, reference))
 }
