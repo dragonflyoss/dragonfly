@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/stretchr/testify/assert"
@@ -186,6 +187,7 @@ func TestManagerServerV1_UpdateScheduler(t *testing.T) {
 				assert.Equal(mockSchedulerClusterID, scheduler.SchedulerClusterID)
 				assert.Equal(models.Array(types.DefaultSchedulerFeatures), scheduler.Features)
 				assert.Equal(models.SchedulerStateInactive, scheduler.State)
+				assert.WithinDuration(time.Now(), scheduler.LastKeepAliveAt, time.Minute)
 				assert.JSONEq(mockDefaultFeaturesJSON, string(resp.GetFeatures()))
 			},
 		},
@@ -404,6 +406,10 @@ func TestManagerServerV1_KeepAlive(t *testing.T) {
 					t.Fatal(err)
 				}
 
+				if err := s.cache.Set(&cachev9.Item{Key: pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(mockSchedulerClusterID), Value: &managerv1.ListSchedulersResponse{}}); err != nil {
+					t.Fatal(err)
+				}
+
 				ms.Context().Return(context.Background()).AnyTimes()
 				gomock.InOrder(
 					ms.Recv().DoAndReturn(func() (*managerv1.KeepAliveRequest, error) {
@@ -436,8 +442,9 @@ func TestManagerServerV1_KeepAlive(t *testing.T) {
 				var scheduler models.Scheduler
 				assert.NoError(s.db.First(&scheduler, models.Scheduler{Hostname: mockInactiveSchedulerHostname}).Error)
 				assert.Equal(models.SchedulerStateInactive, scheduler.State)
-				assert.True(scheduler.LastKeepAliveAt.IsZero())
+				assert.WithinDuration(time.Now(), scheduler.LastKeepAliveAt, time.Minute)
 				assert.False(s.cache.Exists(context.Background(), pkgredis.MakeSchedulerKeyInManager(mockSchedulerClusterID, mockInactiveSchedulerHostname, mockInactiveSchedulerIP)))
+				assert.False(s.cache.Exists(context.Background(), pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(mockSchedulerClusterID)))
 			},
 		},
 		{

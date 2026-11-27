@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"slices"
+	"time"
 
 	cachev9 "github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
@@ -449,6 +450,7 @@ func (s *managerServerV1) UpdateScheduler(ctx context.Context, req *managerv1.Up
 		IP:                 req.GetIp(),
 		Port:               req.GetPort(),
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
+		LastKeepAliveAt:    time.Now(),
 	}).Error; err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -489,6 +491,7 @@ func (s *managerServerV1) createScheduler(ctx context.Context, req *managerv1.Up
 		Port:               req.GetPort(),
 		Features:           types.DefaultSchedulerFeatures,
 		SchedulerClusterID: uint(req.GetSchedulerClusterId()),
+		LastKeepAliveAt:    time.Now(),
 	}
 
 	if err := s.db.WithContext(ctx).Create(&scheduler).Error; err != nil {
@@ -736,7 +739,8 @@ func (s *managerServerV1) KeepAlive(stream managerv1.Manager_KeepAliveServer) er
 			IP:                 ip,
 			SchedulerClusterID: clusterID,
 		}).Updates(models.Scheduler{
-			State: models.SchedulerStateActive,
+			State:           models.SchedulerStateActive,
+			LastKeepAliveAt: time.Now(),
 		}).Error; err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
@@ -744,6 +748,13 @@ func (s *managerServerV1) KeepAlive(stream managerv1.Manager_KeepAliveServer) er
 		if err := s.cache.Delete(
 			stream.Context(),
 			pkgredis.MakeSchedulerKeyInManager(clusterID, hostname, ip),
+		); err != nil {
+			log.Warnf("refresh keepalive status failed: %s", err.Error())
+		}
+
+		if err := s.cache.Delete(
+			stream.Context(),
+			pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(clusterID),
 		); err != nil {
 			log.Warnf("refresh keepalive status failed: %s", err.Error())
 		}
@@ -796,6 +807,13 @@ func (s *managerServerV1) KeepAlive(stream managerv1.Manager_KeepAliveServer) er
 				); err != nil {
 					log.Warnf("refresh keepalive status failed: %s", err.Error())
 				}
+
+				if err := s.cache.Delete(
+					ctx,
+					pkgredis.MakeSchedulersByClusterIDKeyForPeerInManager(clusterID),
+				); err != nil {
+					log.Warnf("refresh keepalive status failed: %s", err.Error())
+				}
 			}
 
 			// Inactive seed peer.
@@ -826,6 +844,20 @@ func (s *managerServerV1) KeepAlive(stream managerv1.Manager_KeepAliveServer) er
 
 			log.Errorf("keepalive failed: %s", err.Error())
 			return status.Error(codes.Unknown, err.Error())
+		}
+
+		// Keepalive successful, update last heartbeat time.
+		if sourceType == managerv1.SourceType_SCHEDULER_SOURCE {
+			scheduler := models.Scheduler{}
+			if err := s.db.First(&scheduler, models.Scheduler{
+				Hostname:           hostname,
+				IP:                 ip,
+				SchedulerClusterID: clusterID,
+			}).Updates(models.Scheduler{
+				LastKeepAliveAt: time.Now(),
+			}).Error; err != nil {
+				log.Errorf("update scheduler last heartbeat failed: %s", err.Error())
+			}
 		}
 	}
 }

@@ -944,7 +944,8 @@ func (s *managerServerV2) KeepAlive(stream managerv2.Manager_KeepAliveServer) er
 			IP:                 ip,
 			SchedulerClusterID: clusterID,
 		}).Updates(models.Scheduler{
-			State: models.SchedulerStateActive,
+			State:           models.SchedulerStateActive,
+			LastKeepAliveAt: time.Now(),
 		}).Error; err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
