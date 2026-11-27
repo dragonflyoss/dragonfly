@@ -1590,18 +1590,17 @@ func (v *V2) handleRegisterPeerRequest(ctx context.Context, stream schedulerv2.S
 	blocklist := set.NewSafeSet[string]()
 	blocklist.Add(peer.ID)
 	download := proto.Clone(req.Download).(*commonv2.Download)
+	// Failed 只表示曾经回源失败，其他 Peer 仍可能持有有效缓存或正在下载。
+	// Failed 与 Succeeded 都先检查可用 Peer，避免跳过 P2P 而重复回源。
 	switch {
 	// If scheduler trigger seed peer download back-to-source,
 	// the needBackToSource flag should be true.
 	case download.GetNeedBackToSource():
 		peer.Log.Info("peer need back to source")
 		peer.NeedBackToSource.Store(true)
-	// If task is pending, failed, leave, or succeeded and has no available peer,
-	// scheduler trigger seed peer download back-to-source.
 	case task.FSM.Is(standard.TaskStatePending) ||
-		task.FSM.Is(standard.TaskStateFailed) ||
 		task.FSM.Is(standard.TaskStateLeave) ||
-		task.FSM.Is(standard.TaskStateSucceeded) &&
+		(task.FSM.Is(standard.TaskStateFailed) || task.FSM.Is(standard.TaskStateSucceeded)) &&
 			!task.HasAvailablePeer(hostID, blocklist):
 
 		// If HostType is normal, trigger seed peer download back-to-source.
@@ -1786,10 +1785,21 @@ func (v *V2) handleDownloadPeerFinishedRequest(ctx context.Context, peerID strin
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
 	}
 
+	peer.Task.DownloadStateMu.Lock()
+	defer peer.Task.DownloadStateMu.Unlock()
+
 	// Handle peer with peer finished request.
 	peer.Cost.Store(time.Since(peer.CreatedAt.Load()))
 	if err := peer.FSM.Event(ctx, standard.PeerEventDownloadSucceeded); err != nil {
 		return status.Error(codes.Internal, err.Error())
+	}
+
+	// 完整 P2P 下载成功同样证明任务已有完整缓存，需恢复回源失败留下的状态。
+	// Range 下载只证明局部数据可用；Pending 等不可转换的状态保持不变。
+	if peer.Range == nil && peer.Task.FSM.Can(standard.TaskEventDownloadSucceeded) {
+		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownloadSucceeded); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	// Collect DownloadPeerCount and DownloadPeerDuration metrics.
@@ -1808,6 +1818,9 @@ func (v *V2) handleDownloadPeerBackToSourceFinishedRequest(ctx context.Context, 
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
 	}
+
+	peer.Task.DownloadStateMu.Lock()
+	defer peer.Task.DownloadStateMu.Unlock()
 
 	// Handle peer with peer back-to-source finished request.
 	peer.Cost.Store(time.Since(peer.CreatedAt.Load()))
@@ -1862,17 +1875,20 @@ func (v *V2) handleDownloadPeerBackToSourceFailedRequest(ctx context.Context, pe
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
 	}
 
+	peer.Task.DownloadStateMu.Lock()
+	defer peer.Task.DownloadStateMu.Unlock()
+
 	// Handle peer with peer back-to-source failed request.
 	if err := peer.FSM.Event(ctx, standard.PeerEventDownloadFailed); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	// Handle task with peer back-to-source failed request.
-	peer.Task.ContentLength.Store(-1)
-	peer.Task.TotalPieceCount.Store(0)
-	peer.Task.DirectPiece = []byte{}
-	if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownloadFailed); err != nil {
-		return status.Error(codes.Internal, err.Error())
+	// 单个 Peer 回源失败不代表任务元数据失效，保留长度、分片数与有效缓存数据，
+	// 供其他 Peer 继续 P2P 下载。迟到的失败不能覆盖已成功的 Task。
+	if peer.Task.FSM.Can(standard.TaskEventDownloadFailed) {
+		if err := peer.Task.FSM.Event(ctx, standard.TaskEventDownloadFailed); err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	// Collect DownloadPeerCount and DownloadPeerBackToSourceFailureCount metrics.
