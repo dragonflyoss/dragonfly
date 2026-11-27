@@ -201,6 +201,10 @@ type Peer struct {
 	// Host is peer host.
 	Host *Host
 
+	// SeedCache identifies a peer recovered from a seed's completed local cache,
+	// rather than its AnnouncePeer stream. It is immutable after publication.
+	SeedCache bool
+
 	// BlockParents is bad parents ids.
 	BlockParents set.SafeSet[string]
 

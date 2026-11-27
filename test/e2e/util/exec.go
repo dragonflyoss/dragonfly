@@ -17,6 +17,7 @@
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -49,8 +50,13 @@ func CriCtlCommand(arg ...string) *exec.Cmd {
 }
 
 func KubeCtlCommand(arg ...string) *exec.Cmd {
+	return KubeCtlCommandContext(context.Background(), arg...)
+}
+
+// KubeCtlCommandContext creates a kubectl command whose lifetime is bounded by ctx.
+func KubeCtlCommandContext(ctx context.Context, arg ...string) *exec.Cmd {
 	fmt.Printf(`kubectl command: "kubectl" "%s"\n`, strings.Join(arg, `" "`))
-	return exec.Command("kubectl", arg...)
+	return exec.CommandContext(ctx, "kubectl", arg...)
 }
 
 func GitCommand(arg ...string) *exec.Cmd {
@@ -72,6 +78,11 @@ func NewPodExec(namespace string, name string, container string) *PodExec {
 }
 
 func (p *PodExec) Command(arg ...string) *exec.Cmd {
+	return p.CommandContext(context.Background(), arg...)
+}
+
+// CommandContext creates a pod exec command whose kubectl process is bounded by ctx.
+func (p *PodExec) CommandContext(ctx context.Context, arg ...string) *exec.Cmd {
 	extArgs := []string{"-n", p.namespace, "exec", p.name, "--"}
 	if p.container != "" {
 		extArgs = []string{"-n", p.namespace, "exec", "-c", p.container, p.name, "--"}
@@ -79,7 +90,7 @@ func (p *PodExec) Command(arg ...string) *exec.Cmd {
 
 	extArgs = append(extArgs, arg...)
 	fmt.Printf(`pod %s/%s exec: "%s"\n`, p.namespace, p.name, strings.Join(arg, `" "`))
-	return KubeCtlCommand(extArgs...)
+	return KubeCtlCommandContext(ctx, extArgs...)
 }
 
 func (p *PodExec) CurlCommand(method string, header map[string]string, data map[string]any, target string) *exec.Cmd {
