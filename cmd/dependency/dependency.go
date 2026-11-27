@@ -250,7 +250,7 @@ func initJaegerTracer(ctx context.Context, tracingConfig base.TracingConfig) (fu
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		logger.Info("stoped jaeger tracer")
+		logger.Info("stopped jaeger tracer")
 		if err := provider.Shutdown(ctx); err != nil {
 			logger.Errorf("shutdown jaeger tracer error: %v", err)
 		}

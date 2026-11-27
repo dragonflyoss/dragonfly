@@ -223,7 +223,7 @@ func (s *Server) Serve() error {
 					return
 				}
 
-				logger.Fatalf("metrics server closed unexpect: %s", err.Error())
+				logger.Fatalf("metrics server closed unexpectedly: %s", err.Error())
 			}
 		}()
 	}
@@ -254,7 +254,7 @@ func (s *Server) Serve() error {
 	// Started GRPC server.
 	logger.Infof("started grpc server at %s://%s", listener.Addr().Network(), listener.Addr().String())
 	if err := s.grpcServer.Serve(listener); err != nil {
-		logger.Errorf("stoped grpc server: %s", err.Error())
+		logger.Errorf("stopped grpc server: %s", err.Error())
 		return err
 	}
 

@@ -29,7 +29,7 @@ const (
 	DefaultDialTimeout = 30 * time.Second
 )
 
-// HeaderToMap coverts request headers to map[string]string.
+// HeaderToMap converts request headers to map[string]string.
 func HeaderToMap(header http.Header) map[string]string {
 	m := make(map[string]string)
 	for k, v := range header {
@@ -40,7 +40,7 @@ func HeaderToMap(header http.Header) map[string]string {
 	return m
 }
 
-// MapToHeader coverts map[string]string to request headers.
+// MapToHeader converts map[string]string to request headers.
 func MapToHeader(m map[string]string) http.Header {
 	var h = http.Header{}
 	for k, v := range m {
