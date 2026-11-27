@@ -27,6 +27,7 @@ import (
 	caches "github.com/go-gorm/caches/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	logger "d7y.io/dragonfly/v2/internal/dflog"
 	"d7y.io/dragonfly/v2/manager/config"
@@ -44,6 +45,9 @@ const (
 const (
 	// DragonflyPATEnvName is the environment variable name for generating personal access token.
 	DragonflyPATEnvName = "DRAGONFLY_PAT"
+
+	// DefaultPersonalAccessTokenName is the name of the personal access token created from DragonflyPATEnvName.
+	DefaultPersonalAccessTokenName = "default"
 )
 
 type Database struct {
@@ -275,16 +279,44 @@ func seed(db *gorm.DB) error {
 
 	// If DRAGONFLY_PAT is set, create a default personal access token for user ID 1(root user).
 	if pat := os.Getenv(DragonflyPATEnvName); pat != "" {
-		if err := db.Model(models.PersonalAccessToken{}).Create(&models.PersonalAccessToken{
-			Name:      "default",
-			Token:     pat,
-			Scopes:    types.DefaultPersonalAccessTokenScopes,
-			State:     models.PersonalAccessTokenStateActive,
-			ExpiredAt: time.Now().AddDate(10, 0, 0),
-			UserID:    1,
-		}).Error; err != nil {
+		if err := seedPersonalAccessToken(db, pat); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// seedPersonalAccessToken creates the default personal access token from DRAGONFLY_PAT.
+// Seed runs on every manager start, so the token is only created when neither its value
+// nor its name is taken. The unique indexes also cover soft-deleted rows, so the conflict
+// is resolved by the database instead of a scoped lookup. An existing token is left as is,
+// so restarting the manager never reactivates a token that was revoked, expired or deleted.
+func seedPersonalAccessToken(db *gorm.DB, pat string) error {
+	result := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.PersonalAccessToken{
+		Name:      DefaultPersonalAccessTokenName,
+		Token:     pat,
+		Scopes:    types.DefaultPersonalAccessTokenScopes,
+		State:     models.PersonalAccessTokenStateActive,
+		ExpiredAt: time.Now().AddDate(10, 0, 0),
+		UserID:    1,
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected > 0 {
+		logger.Infof("create personal access token %s from %s", DefaultPersonalAccessTokenName, DragonflyPATEnvName)
+		return nil
+	}
+
+	var count int64
+	if err := db.Unscoped().Model(models.PersonalAccessToken{}).Where("token = ?", pat).Count(&count).Error; err != nil {
+		return err
+	}
+
+	if count == 0 {
+		logger.Warnf("personal access token %s already exists with a different value, %s is not used", DefaultPersonalAccessTokenName, DragonflyPATEnvName)
 	}
 
 	return nil
