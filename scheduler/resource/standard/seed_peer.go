@@ -63,6 +63,9 @@ const (
 	// SeedPeerHealthCheckConcurrencyLimit is the number of seed peers checked
 	// for health concurrently by refresh.
 	SeedPeerHealthCheckConcurrencyLimit = 32
+
+	// Bound the local cache lookup after the seed's download completes.
+	seedPeerCacheStatTimeout = 5 * time.Second
 )
 
 // SeedPeer is the interface used for seed peer.
@@ -96,6 +99,9 @@ type SeedPeer interface {
 
 // seedPeer contains content for seed peer.
 type seedPeer struct {
+	// taskManager is TaskManager interface.
+	taskManager TaskManager
+
 	// peerManager is PeerManager interface.
 	peerManager PeerManager
 
@@ -122,8 +128,9 @@ type seedPeer struct {
 }
 
 // New SeedPeer interface.
-func newSeedPeer(peerManager PeerManager, hostManager HostManager, clientPool dfdaemonclient.Pool, dialOptions ...grpc.DialOption) SeedPeer {
+func newSeedPeer(taskManager TaskManager, peerManager PeerManager, hostManager HostManager, clientPool dfdaemonclient.Pool, dialOptions ...grpc.DialOption) SeedPeer {
 	return &seedPeer{
+		taskManager: taskManager,
 		peerManager: peerManager,
 		hostManager: hostManager,
 		clientPool:  clientPool,
@@ -164,13 +171,119 @@ func (s *seedPeer) TriggerDownloadTask(ctx context.Context, taskID string, req *
 		_, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				return nil
+				return s.restoreCachedPeer(ctx, selected, client, taskID, req)
 			}
 
 			s.evict(selected, err)
 			return err
 		}
 	}
+}
+
+// restoreCachedPeer makes a completed seed cache available to the scheduler that
+// triggered the download. Different client versions can hash the same task to
+// different schedulers, so the seed's normal announcement may reach another
+// scheduler. A cache hit can also return an empty DownloadTask stream.
+func (s *seedPeer) restoreCachedPeer(ctx context.Context, selected *Host, client dfdaemonclient.Client, taskID string, req *dfdaemonv2.DownloadTaskRequest) error {
+	if req.GetDownload() == nil || req.GetDownload().GetRange() != nil {
+		return nil
+	}
+
+	task, loaded := s.taskManager.Load(taskID)
+	if !loaded || task.FSM.Is(TaskStateLeave) || task.PieceLength == 0 ||
+		task.ContentLength.Load() <= 0 || task.TotalPieceCount.Load() <= 0 {
+		return nil
+	}
+	if host, loaded := s.hostManager.Load(selected.ID); !loaded || host != selected ||
+		!host.IsSeedPeer() || host.DisableShared {
+		return nil
+	}
+	if hasAnnouncedSeedCache(task, selected) {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, seedPeerCacheStatTimeout)
+	defer cancel()
+	// StatTask would consult the seed's own scheduler, reproducing the routing
+	// mismatch. StatLocalTask checks the selected seed's local storage directly.
+	cache, err := client.StatLocalTask(ctx, &dfdaemonv2.StatLocalTaskRequest{TaskId: taskID})
+	if err != nil {
+		return fmt.Errorf("stat completed seed cache for task %s: %w", taskID, err)
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := validateSeedCache(task, cache); err != nil {
+		return err
+	}
+
+	// The lookup may have raced with host replacement, task GC, or a regular
+	// announcement. Do not attach a cache peer to stale resource objects.
+	if current, loaded := s.taskManager.Load(taskID); !loaded || current != task || task.FSM.Is(TaskStateLeave) {
+		return nil
+	}
+	if current, loaded := s.hostManager.Load(selected.ID); !loaded || current != selected ||
+		!selected.IsSeedPeer() || selected.DisableShared {
+		return nil
+	}
+	if hasAnnouncedSeedCache(task, selected) {
+		return nil
+	}
+	if err := validateSeedCache(task, cache); err != nil {
+		return err
+	}
+
+	// Keep this identity separate from the seed's announced peers. In particular,
+	// never advance an announcement's FSM or mutate its shared piece bitmap.
+	peer := NewPeer("seed-cache-"+selected.ID+"-"+taskID, task, selected)
+	peer.SeedCache = true
+	pieceCount := (cache.GetContentLength()-1)/cache.GetPieceLength() + 1
+	peer.FinishedPieces.FlipRange(0, uint(pieceCount))
+	peer.FSM.SetState(PeerStateSucceeded)
+	stored, loaded := s.peerManager.LoadOrStore(peer)
+	if stored.Task != task || stored.Host != selected || !stored.SeedCache || !stored.FSM.Is(PeerStateSucceeded) {
+		return fmt.Errorf("completed seed cache peer for task %s is no longer available", taskID)
+	}
+	stored.UpdatedAt.Store(time.Now())
+	stored.PieceUpdatedAt.Store(time.Now())
+	task.UpdatedAt.Store(time.Now())
+	if !loaded {
+		stored.Log.Info("restored completed seed cache from local task metadata")
+	}
+	return nil
+}
+
+// hasAnnouncedSeedCache reports only full, completed peers announced to this
+// scheduler. A previously imported cache must be checked against the seed again.
+func hasAnnouncedSeedCache(task *Task, selected *Host) bool {
+	for _, peer := range task.LoadPeers() {
+		if peer.Host == selected && !peer.SeedCache && peer.Range == nil && peer.FSM.Is(PeerStateSucceeded) {
+			return true
+		}
+	}
+	return false
+}
+
+func validateSeedCache(task *Task, cache *dfdaemonv2.StatLocalTaskResponse) error {
+	if cache == nil || cache.GetTaskId() != task.ID {
+		return fmt.Errorf("seed cache task ID does not match %s", task.ID)
+	}
+	if cache.FinishedAt == nil || cache.FinishedAt.CheckValid() != nil {
+		return fmt.Errorf("seed cache task %s is not complete", task.ID)
+	}
+	if cache.FailedAt != nil {
+		return fmt.Errorf("seed cache task %s has failed", task.ID)
+	}
+	if cache.PieceLength == nil || cache.ContentLength == nil || cache.GetPieceLength() == 0 ||
+		cache.GetContentLength() == 0 || cache.GetPieceLength() != task.PieceLength ||
+		task.ContentLength.Load() <= 0 || cache.GetContentLength() != uint64(task.ContentLength.Load()) {
+		return fmt.Errorf("seed cache metadata does not match task %s", task.ID)
+	}
+	pieceCount := (cache.GetContentLength()-1)/cache.GetPieceLength() + 1
+	if task.TotalPieceCount.Load() <= 0 || pieceCount != uint64(task.TotalPieceCount.Load()) {
+		return fmt.Errorf("seed cache piece count does not match task %s", task.ID)
+	}
+	return nil
 }
 
 // evict deletes the seed peer from the hashring when the error reports it

@@ -140,7 +140,7 @@ func TestSeedPeer_newSeedPeer(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			tc.expect(t, newSeedPeer(peerManager, hostManager, clientPool))
+			tc.expect(t, newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool))
 		})
 	}
 }
@@ -213,7 +213,7 @@ func TestSeedPeer_Store(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			tc.expect(t, newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer))
+			tc.expect(t, newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool).(*seedPeer))
 		})
 	}
 }
@@ -292,7 +292,7 @@ func TestSeedPeer_Delete(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			tc.expect(t, newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer))
+			tc.expect(t, newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool).(*seedPeer))
 		})
 	}
 }
@@ -518,7 +518,7 @@ func TestSeedPeer_refresh(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool,
+			seedPeer := newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool,
 				grpc.WithTransportCredentials(insecure.NewCredentials())).(*seedPeer)
 			tc.expect(t, seedPeer)
 		})
@@ -571,7 +571,7 @@ func TestSeedPeer_Select(t *testing.T) {
 			peerManager := NewMockPeerManager(ctl)
 			clientPool := dfdaemonclientmocks.NewMockPool(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+			seedPeer := newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool).(*seedPeer)
 			tc.expect(t, seedPeer, mockSeedHost(mockRawSeedHost.Port))
 		})
 	}
@@ -689,7 +689,7 @@ func TestSeedPeer_TriggerDownloadTask(t *testing.T) {
 			client := dfdaemonclientmocks.NewMockClient(ctl)
 			stream := dfdaemonv2mocks.NewMockDfdaemonUpload_DownloadTaskClient(ctl)
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool).(*seedPeer)
+			seedPeer := newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool).(*seedPeer)
 			var addr string
 			if tc.available {
 				mockHost := mockSeedHost(mockRawSeedHost.Port)
@@ -965,7 +965,7 @@ func TestSeedPeer_TriggerTask(t *testing.T) {
 				peerManager.LoadOrStore(mockSeedPeer)
 			}
 
-			seedPeer := newSeedPeer(peerManager, hostManager, clientPool,
+			seedPeer := newSeedPeer(NewMockTaskManager(ctl), peerManager, hostManager, clientPool,
 				grpc.WithTransportCredentials(insecure.NewCredentials())).(*seedPeer)
 			if tc.available {
 				seedPeer.hosts[mockHost.Name] = mockHost

@@ -103,7 +103,7 @@ func New(cfg *config.Config, gc gc.GC, transportCredentials credentials.Transpor
 
 	// Initialize seed peer interface.
 	dialOptions := []grpc.DialOption{grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(transportCredentials)}
-	resource.seedPeer = newSeedPeer(peerManager, hostManager, resource.peerClientPool, dialOptions...)
+	resource.seedPeer = newSeedPeer(taskManager, peerManager, hostManager, resource.peerClientPool, dialOptions...)
 
 	return resource, nil
 }

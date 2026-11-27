@@ -1757,6 +1757,9 @@ func (v *V2) handleReschedulePeerRequest(ctx context.Context, peerID string, can
 	// Add candidate parent ids to block parents.
 	for _, candidateParent := range candidateParents {
 		peer.BlockParents.Add(candidateParent.GetId())
+		if parent, loaded := peer.Task.LoadPeer(candidateParent.GetId()); loaded {
+			v.invalidateSeedCachePeer(ctx, peer.Task, parent)
+		}
 	}
 
 	// Record the start time.
@@ -1768,6 +1771,21 @@ func (v *V2) handleReschedulePeerRequest(ctx context.Context, peerID string, can
 	// Collect SchedulingDuration metrics.
 	metrics.ScheduleDuration.Observe(float64(time.Since(start).Milliseconds()))
 	return nil
+}
+
+// invalidateSeedCachePeer drops recovered cache metadata when a client cannot
+// use it. A seed may report cache deletion to a different scheduler, so these
+// peers cannot rely solely on the seed's normal DeleteTask notification.
+func (v *V2) invalidateSeedCachePeer(ctx context.Context, task *standard.Task, parent *standard.Peer) {
+	if !parent.SeedCache || parent.Task != task {
+		return
+	}
+	if err := parent.FSM.Event(context.WithoutCancel(ctx), standard.PeerEventLeave); err != nil && !parent.FSM.Is(standard.PeerStateLeave) {
+		parent.Log.Errorf("invalidate recovered seed cache peer: %s", err)
+		return
+	}
+	v.resource.PeerManager().Delete(parent.ID)
+	parent.Log.Info("invalidated recovered seed cache peer")
 }
 
 // handleDownloadPeerFinishedRequest handles DownloadPeerFinishedRequest of AnnouncePeerRequest.
@@ -1990,7 +2008,7 @@ func (v *V2) handleDownloadPieceBackToSourceFinishedRequest(_ context.Context, p
 }
 
 // handleDownloadPieceFailedRequest handles DownloadPieceFailedRequest of AnnouncePeerRequest.
-func (v *V2) handleDownloadPieceFailedRequest(_ context.Context, peerID string, req *schedulerv2.DownloadPieceFailedRequest) error {
+func (v *V2) handleDownloadPieceFailedRequest(ctx context.Context, peerID string, req *schedulerv2.DownloadPieceFailedRequest) error {
 	peer, loaded := v.resource.PeerManager().Load(peerID)
 	if !loaded {
 		return status.Errorf(codes.NotFound, "peer %s not found", peerID)
@@ -2008,6 +2026,7 @@ func (v *V2) handleDownloadPieceFailedRequest(_ context.Context, peerID string, 
 		peer.BlockParents.Add(req.GetParentId())
 		if parent, loaded := v.resource.PeerManager().Load(req.GetParentId()); loaded {
 			parent.Host.UploadFailedCount.Add(1)
+			v.invalidateSeedCachePeer(ctx, peer.Task, parent)
 		}
 
 		// Handle task with piece temporary failed request.

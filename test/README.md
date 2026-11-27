@@ -51,6 +51,14 @@ piece bytes on the client and every seed. Metadata probes and failed source
 requests are not counted by these byte counters. Peer restarts and counter
 resets fail the test instead of being accepted as zero source traffic.
 
+The compatibility matrix also runs this regression with mixed client and seed
+versions. These versions may choose different Scheduler owners for the same
+task. After a seed download completes, the triggering Scheduler verifies the
+seed's local cache with `StatLocalTask` and restores a parent when its normal
+announcement reached another Scheduler. Incomplete or inconsistent caches are
+rejected, and failed recovered parents are invalidated on rescheduling or piece
+download failure.
+
 ### Running E2E tests with coverage reports
 
 ```bash
