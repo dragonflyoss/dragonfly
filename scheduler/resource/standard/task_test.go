@@ -577,6 +577,27 @@ func TestTask_DeletePeer(t *testing.T) {
 				_, loaded := task.LoadPeer(mockPeer.ID)
 				assert.False(loaded)
 				assert.Equal(0, task.PeerCount())
+				assert.True(task.FSM.Is(TaskStateLeave))
+			},
+		},
+		{
+			name: "delete the last peer of the running task",
+			expect: func(t *testing.T, task *Task, mockHost *Host, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), task, mockHost)
+				task.StorePeer(mockPeer)
+				task.StorePeer(mockPeerE)
+				assert.NoError(task.FSM.Event(context.Background(), TaskEventDownload))
+
+				task.DeletePeer(mockPeer.ID)
+				assert.True(task.FSM.Is(TaskStateRunning))
+
+				task.DeletePeer(mockPeerE.ID)
+				assert.True(task.FSM.Is(TaskStateLeave))
+
+				// The task can be downloaded again after it leaves.
+				assert.NoError(task.FSM.Event(context.Background(), TaskEventDownload))
+				assert.True(task.FSM.Is(TaskStateRunning))
 			},
 		},
 		{
