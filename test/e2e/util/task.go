@@ -17,6 +17,7 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -46,17 +47,24 @@ func CheckFilesExist(pods []*PodExec, taskID string) bool {
 }
 
 func CalculateSha256ByTaskID(pods []*PodExec, taskID string) (string, error) {
+	return CalculateSha256ByTaskIDContext(context.Background(), pods, taskID)
+}
+
+func CalculateSha256ByTaskIDContext(ctx context.Context, pods []*PodExec, taskID string) (string, error) {
 	var sha256sum string
 	for _, pod := range pods {
 		contentPath := fmt.Sprintf("%s/tasks/%s/%s", clientContentDir, taskID[:3], taskID)
-		if _, err := pod.Command("ls", contentPath).CombinedOutput(); err != nil {
+		if _, err := pod.CommandContext(ctx, "ls", contentPath).CombinedOutput(); err != nil {
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
 			// If the path does not exist, skip this client.
 			fmt.Printf("path %s does not exist: %s\n", contentPath, err.Error())
 			continue
 		}
 
 		// Calculate sha256sum of the task content.
-		out, err := pod.Command("sh", "-c", fmt.Sprintf("sha256sum %s", contentPath)).CombinedOutput()
+		out, err := pod.CommandContext(ctx, "sh", "-c", fmt.Sprintf("sha256sum %s", contentPath)).CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("calculate sha256sum of %s failed: %s", contentPath, err.Error())
 		}
@@ -102,16 +110,23 @@ func CalculateSha256ByPersistentCacheTaskID(pods []*PodExec, taskID string) (str
 }
 
 func CalculateSha256ByOutput(pods []*PodExec, output string) (string, error) {
+	return CalculateSha256ByOutputContext(context.Background(), pods, output)
+}
+
+func CalculateSha256ByOutputContext(ctx context.Context, pods []*PodExec, output string) (string, error) {
 	var sha256sum string
 	for _, pod := range pods {
-		if _, err := pod.Command("ls", output).CombinedOutput(); err != nil {
+		if _, err := pod.CommandContext(ctx, "ls", output).CombinedOutput(); err != nil {
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
 			// If the path does not exist, skip this client.
 			fmt.Printf("path %s does not exist: %s\n", output, err.Error())
 			continue
 		}
 
 		// Calculate sha256sum of the output content.
-		out, err := pod.Command("sh", "-c", fmt.Sprintf("sha256sum %s", output)).CombinedOutput()
+		out, err := pod.CommandContext(ctx, "sh", "-c", fmt.Sprintf("sha256sum %s", output)).CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("calculate sha256sum of %s failed: %s", output, err.Error())
 		}
