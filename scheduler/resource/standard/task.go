@@ -288,8 +288,7 @@ func (t *Task) StorePeer(peer *Peer) {
 	}
 }
 
-// DeletePeer deletes peer for a key. If the task has no peer after the deletion,
-// the task leaves, so that the next register triggers the seed peer again.
+// DeletePeer deletes peer for a key.
 func (t *Task) DeletePeer(key string) {
 	if err := t.DeletePeerInEdges(key); err != nil {
 		t.Log.Error(err)
@@ -300,12 +299,6 @@ func (t *Task) DeletePeer(key string) {
 	}
 
 	t.DAG.DeleteVertex(key)
-
-	if t.PeerCount() == 0 && t.FSM.Can(TaskEventLeave) {
-		if err := t.FSM.Event(context.Background(), TaskEventLeave); err != nil {
-			t.Log.Errorf("task fsm event failed: %s", err.Error())
-		}
-	}
 }
 
 // PeerCount returns count of peer.

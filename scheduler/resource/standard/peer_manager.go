@@ -136,6 +136,14 @@ func (p *peerManager) Delete(key string) {
 		p.Map.Delete(key)
 		peer.Task.DeletePeer(key)
 		peer.Host.DeletePeer(key)
+
+		// If the task has no peer, the task leaves and the next
+		// register triggers the seed peer again.
+		if peer.Task.PeerCount() == 0 && peer.Task.FSM.Can(TaskEventLeave) {
+			if err := peer.Task.FSM.Event(context.Background(), TaskEventLeave); err != nil {
+				peer.Task.Log.Errorf("task fsm event failed: %s", err.Error())
+			}
+		}
 	}
 }
 
