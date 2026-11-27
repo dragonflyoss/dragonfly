@@ -235,6 +235,29 @@ func TestPeerManager_Delete(t *testing.T) {
 				_, loaded = mockPeer.Host.LoadPeer(mockPeer.ID)
 				assert.False(loaded)
 				assert.Equal(int32(0), mockPeer.Host.PeerCount.Load())
+				assert.True(mockPeer.Task.FSM.Is(TaskStateLeave))
+			},
+		},
+		{
+			name: "delete the last peer of the running task",
+			mock: func(m *gc.MockGCMockRecorder) {
+				m.Add(gomock.Any()).Return(nil).Times(1)
+			},
+			expect: func(t *testing.T, peerManager PeerManager, mockPeer *Peer) {
+				assert := assert.New(t)
+				mockPeerE := NewPeer(idgen.PeerID(), mockPeer.Task, mockPeer.Host)
+				peerManager.LoadOrStore(mockPeer)
+				peerManager.LoadOrStore(mockPeerE)
+				assert.NoError(mockPeer.Task.FSM.Event(context.Background(), TaskEventDownload))
+
+				peerManager.Delete(mockPeer.ID)
+				assert.True(mockPeer.Task.FSM.Is(TaskStateRunning))
+
+				peerManager.Delete(mockPeerE.ID)
+				assert.True(mockPeer.Task.FSM.Is(TaskStateLeave))
+
+				assert.NoError(mockPeer.Task.FSM.Event(context.Background(), TaskEventDownload))
+				assert.True(mockPeer.Task.FSM.Is(TaskStateRunning))
 			},
 		},
 		{

@@ -1244,14 +1244,13 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 			return peer.ID
 		}
 	} else {
-		task, loaded := v.resource.TaskManager().Load(req.GetTaskId())
-		if !loaded {
-			return &schedulerv2.ListPeersResponse{}, nil
-		}
-
 		// Filter peers by task id. List the peers that succeeded to download the
 		// task in the order of the host id, one peer for each host.
-		taskPeers := task.LoadPeers()
+		var taskPeers []*standard.Peer
+		if task, loaded := v.resource.TaskManager().Load(req.GetTaskId()); loaded {
+			taskPeers = task.LoadPeers()
+		}
+
 		hostIDs := make(map[string]struct{}, len(taskPeers))
 		peers = make([]*standard.Peer, 0, len(taskPeers))
 		for _, peer := range taskPeers {
@@ -1269,6 +1268,96 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 			} else {
 				peers = append(peers, peer)
 			}
+		}
+
+		// If the scheduler has no succeeded peer of the task, list the seed peer
+		// selected by the task id, which may not have the task.
+		if len(seedPeers) == 0 && len(peers) == 0 {
+			host, err := v.resource.SeedPeer().Select(ctx, req.GetTaskId())
+			if err != nil {
+				return nil, status.Error(codes.NotFound, err.Error())
+			}
+
+			return &schedulerv2.ListPeersResponse{
+				Peers: []*commonv2.Peer{
+					{
+						Task: &commonv2.Task{
+							Id: req.GetTaskId(),
+						},
+						Host: &commonv2.Host{
+							Id:              host.ID,
+							Type:            uint32(host.Type),
+							Name:            host.Name,
+							Hostname:        host.Hostname,
+							Ip:              host.IP,
+							Port:            host.Port,
+							DownloadPort:    host.DownloadPort,
+							ProxyPort:       host.ProxyPort,
+							Os:              host.OS,
+							Platform:        host.Platform,
+							PlatformFamily:  host.PlatformFamily,
+							PlatformVersion: host.PlatformVersion,
+							KernelVersion:   host.KernelVersion,
+							Cpu: &commonv2.CPU{
+								LogicalCount:   host.CPU.LogicalCount,
+								PhysicalCount:  host.CPU.PhysicalCount,
+								Percent:        host.CPU.Percent,
+								ProcessPercent: host.CPU.ProcessPercent,
+								Times: &commonv2.CPUTimes{
+									User:      host.CPU.Times.User,
+									System:    host.CPU.Times.System,
+									Idle:      host.CPU.Times.Idle,
+									Nice:      host.CPU.Times.Nice,
+									Iowait:    host.CPU.Times.Iowait,
+									Irq:       host.CPU.Times.Irq,
+									Softirq:   host.CPU.Times.Softirq,
+									Steal:     host.CPU.Times.Steal,
+									Guest:     host.CPU.Times.Guest,
+									GuestNice: host.CPU.Times.GuestNice,
+								},
+							},
+							Memory: &commonv2.Memory{
+								Total:              host.Memory.Total,
+								Available:          host.Memory.Available,
+								Used:               host.Memory.Used,
+								UsedPercent:        host.Memory.UsedPercent,
+								ProcessUsedPercent: host.Memory.ProcessUsedPercent,
+								Free:               host.Memory.Free,
+							},
+							Network: &commonv2.Network{
+								TcpConnectionCount:       host.Network.TCPConnectionCount,
+								UploadTcpConnectionCount: host.Network.UploadTCPConnectionCount,
+								Location:                 &host.Network.Location,
+								Idc:                      &host.Network.IDC,
+								RxBandwidth:              &host.Network.RxBandwidth,
+								MaxRxBandwidth:           host.Network.MaxRxBandwidth,
+								TxBandwidth:              &host.Network.TxBandwidth,
+								MaxTxBandwidth:           host.Network.MaxTxBandwidth,
+							},
+							Disk: &commonv2.Disk{
+								Total:             host.Disk.Total,
+								Free:              host.Disk.Free,
+								Used:              host.Disk.Used,
+								UsedPercent:       host.Disk.UsedPercent,
+								InodesTotal:       host.Disk.InodesTotal,
+								InodesUsed:        host.Disk.InodesUsed,
+								InodesFree:        host.Disk.InodesFree,
+								InodesUsedPercent: host.Disk.InodesUsedPercent,
+								WriteBandwidth:    host.Disk.WriteBandwidth,
+								ReadBandwidth:     host.Disk.ReadBandwidth,
+							},
+							Build: &commonv2.Build{
+								GitVersion: host.Build.GitVersion,
+								GitCommit:  &host.Build.GitCommit,
+								GoVersion:  &host.Build.GoVersion,
+								Platform:   &host.Build.Platform,
+							},
+							SchedulerClusterId: host.SchedulerClusterID,
+							DisableShared:      host.DisableShared,
+						},
+					},
+				},
+			}, nil
 		}
 
 		tokenizer = func(peer *standard.Peer) string {
