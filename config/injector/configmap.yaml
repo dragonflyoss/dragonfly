@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dragonfly-injector-config
+  namespace: dragonfly-system
+data:
+  injector.yaml: |
+    initContainerImage:
+      registry: docker.io
+      repository: dragonflyoss/client
+      tag: v1.3.0
+      digest: ""
+      pullPolicy: IfNotPresent
+      pullSecrets: []
