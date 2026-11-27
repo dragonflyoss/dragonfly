@@ -98,22 +98,6 @@ func (mr *MockSeedPeerMockRecorder) Serve() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockSeedPeer)(nil).Serve))
 }
 
-// StatLocalTask mocks base method.
-func (m *MockSeedPeer) StatLocalTask(arg0 context.Context, arg1 string) (*Host, *dfdaemon.StatLocalTaskResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StatLocalTask", arg0, arg1)
-	ret0, _ := ret[0].(*Host)
-	ret1, _ := ret[1].(*dfdaemon.StatLocalTaskResponse)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// StatLocalTask indicates an expected call of StatLocalTask.
-func (mr *MockSeedPeerMockRecorder) StatLocalTask(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatLocalTask", reflect.TypeOf((*MockSeedPeer)(nil).StatLocalTask), arg0, arg1)
-}
-
 // Stop mocks base method.
 func (m *MockSeedPeer) Stop() {
 	m.ctrl.T.Helper()

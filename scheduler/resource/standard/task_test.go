@@ -595,7 +595,6 @@ func TestTask_DeletePeer(t *testing.T) {
 				task.DeletePeer(mockPeerE.ID)
 				assert.True(task.FSM.Is(TaskStateLeave))
 
-				// The task can be downloaded again after it leaves.
 				assert.NoError(task.FSM.Event(context.Background(), TaskEventDownload))
 				assert.True(task.FSM.Is(TaskStateRunning))
 			},

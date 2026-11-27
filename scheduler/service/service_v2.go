@@ -1270,43 +1270,19 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 			}
 		}
 
-		// If the scheduler has no peer that succeeded to download the task, such as
-		// the scheduler restarted or the peers expired, list the peer from the seed
-		// peer selected by the task id, if the seed peer has the complete task in its
-		// local storage. The peer and the task in the response are not the resources
-		// in the scheduler, so the id of the peer and the url of the task are unknown.
-		if len(seedPeers) == 0 && len(peers) == 0 && req.GetPageToken() == "" {
-			log := logger.WithTaskID(req.GetTaskId())
-
-			host, task, err := v.resource.SeedPeer().StatLocalTask(ctx, req.GetTaskId())
+		// If the scheduler has no succeeded peer of the task, list the seed peer
+		// selected by the task id, which may not have the task.
+		if len(seedPeers) == 0 && len(peers) == 0 {
+			host, err := v.resource.SeedPeer().Select(ctx, req.GetTaskId())
 			if err != nil {
-				log.Infof("stat task from seed peer failed: %s", err)
-				return &schedulerv2.ListPeersResponse{}, nil
+				return nil, status.Error(codes.NotFound, err.Error())
 			}
 
-			if task.GetFinishedAt() == nil || task.ContentLength == nil || task.PieceLength == nil {
-				log.Infof("seed peer %s has not finished the task", host.ID)
-				return &schedulerv2.ListPeersResponse{}, nil
-			}
-
-			var pieceCount uint64
-			if task.GetPieceLength() > 0 {
-				pieceCount = (task.GetContentLength() + task.GetPieceLength() - 1) / task.GetPieceLength()
-			}
-
-			log.Infof("list peer from seed peer %s", host.ID)
 			return &schedulerv2.ListPeersResponse{
 				Peers: []*commonv2.Peer{
 					{
-						Cost:  durationpb.New(0),
-						State: standard.PeerStateSucceeded,
 						Task: &commonv2.Task{
-							Id:            req.GetTaskId(),
-							ContentLength: task.GetContentLength(),
-							PieceCount:    uint32(pieceCount),
-							State:         standard.TaskStateSucceeded,
-							CreatedAt:     task.GetCreatedAt(),
-							UpdatedAt:     task.GetUpdatedAt(),
+							Id: req.GetTaskId(),
 						},
 						Host: &commonv2.Host{
 							Id:              host.ID,
@@ -1379,8 +1355,6 @@ func (v *V2) ListPeers(ctx context.Context, req *schedulerv2.ListPeersRequest) (
 							SchedulerClusterId: host.SchedulerClusterID,
 							DisableShared:      host.DisableShared,
 						},
-						CreatedAt: task.GetCreatedAt(),
-						UpdatedAt: task.GetUpdatedAt(),
 					},
 				},
 			}, nil
