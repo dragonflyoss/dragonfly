@@ -78,6 +78,10 @@ type SeedPeer interface {
 	// Select selects a seed peer target by the task id.
 	Select(context.Context, string) (*Host, error)
 
+	// StatLocalTask stats the task in the local storage of the seed peer selected
+	// by the task id, and returns the seed peer with the task.
+	StatLocalTask(context.Context, string) (*Host, *dfdaemonv2.StatLocalTaskResponse, error)
+
 	// Store stores the announced seed peer in the hashring.
 	Store(*Host)
 
@@ -183,6 +187,29 @@ func (s *seedPeer) evict(host *Host, err error) {
 
 	host.Log.Warnf("evict unavailable seed peer from hashring: %s", err)
 	s.Delete(host)
+}
+
+// StatLocalTask stats the task in the local storage of the seed peer selected
+// by the task id, and returns the seed peer with the task.
+func (s *seedPeer) StatLocalTask(ctx context.Context, taskID string) (*Host, *dfdaemonv2.StatLocalTaskResponse, error) {
+	selected, err := s.Select(ctx, taskID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	addr := net.JoinHostPort(selected.IP, strconv.Itoa(int(selected.Port)))
+	client, err := s.clientPool.Get(addr, s.dialOptions...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := client.StatLocalTask(ctx, &dfdaemonv2.StatLocalTaskRequest{TaskId: taskID})
+	if err != nil {
+		s.evict(selected, err)
+		return nil, nil, err
+	}
+
+	return selected, resp, nil
 }
 
 // TriggerTask triggers the seed peer to download task.

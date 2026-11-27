@@ -2281,12 +2281,12 @@ func TestServiceV2_ListPeers(t *testing.T) {
 		taskID    *string
 		pageSize  int32
 		pageToken string
-		mock      func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder)
+		mock      func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder)
 		expect    func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error)
 	}{
 		{
 			name: "task id is not specified",
-			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer := standard.NewPeer("foo", task, host)
 				peer.FSM.SetState(standard.PeerStateRunning)
 				seedPeer := standard.NewPeer("bar", task, seedHost)
@@ -2314,12 +2314,14 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			},
 		},
 		{
-			name:   "task not found",
+			name:   "task not found and seed peer does not have the task",
 			taskID: &mockTaskID,
-			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					ms.StatLocalTask(gomock.Any(), gomock.Eq(mockTaskID)).Return(nil, nil, status.Error(codes.NotFound, "foo")).Times(1),
 				)
 			},
 			expect: func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error) {
@@ -2329,9 +2331,95 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			},
 		},
 		{
+			name:   "task not found and seed peer has not finished the task",
+			taskID: &mockTaskID,
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
+				gomock.InOrder(
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					ms.StatLocalTask(gomock.Any(), gomock.Eq(mockTaskID)).Return(seedHost, &dfdaemonv2.StatLocalTaskResponse{
+						TaskId:        mockTaskID,
+						PieceLength:   &mockTaskPieceLength,
+						ContentLength: &mockTaskPieceLength,
+					}, nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Empty(resp.Peers)
+			},
+		},
+		{
+			name:   "task not found and seed peer has the task",
+			taskID: &mockTaskID,
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
+				contentLength := 2*mockTaskPieceLength + 1
+				gomock.InOrder(
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTaskID)).Return(nil, false).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					ms.StatLocalTask(gomock.Any(), gomock.Eq(mockTaskID)).Return(seedHost, &dfdaemonv2.StatLocalTaskResponse{
+						TaskId:        mockTaskID,
+						PieceLength:   &mockTaskPieceLength,
+						ContentLength: &contentLength,
+						CreatedAt:     timestamppb.Now(),
+						UpdatedAt:     timestamppb.Now(),
+						FinishedAt:    timestamppb.Now(),
+					}, nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(resp.Peers, 1)
+				assert.Nil(resp.NextPageToken)
+				assert.Empty(resp.Peers[0].Id)
+				assert.Equal(standard.PeerStateSucceeded, resp.Peers[0].State)
+				assert.Equal(mockTaskID, resp.Peers[0].Task.Id)
+				assert.Empty(resp.Peers[0].Task.Url)
+				assert.Equal(2*mockTaskPieceLength+1, resp.Peers[0].Task.ContentLength)
+				assert.Equal(uint32(3), resp.Peers[0].Task.PieceCount)
+				assert.Equal(mockRawSeedHost.ID, resp.Peers[0].Host.Id)
+				assert.Equal(mockRawSeedHost.IP, resp.Peers[0].Host.Ip)
+				assert.Equal(mockRawSeedHost.Port, resp.Peers[0].Host.Port)
+			},
+		},
+		{
+			name:   "task has no succeeded peer and seed peer has the task",
+			taskID: &mockTaskID,
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
+				runningPeer := standard.NewPeer(mockPeerID, task, host)
+				runningPeer.FSM.SetState(standard.PeerStateRunning)
+				task.StorePeer(runningPeer)
+
+				gomock.InOrder(
+					mr.TaskManager().Return(taskManager).Times(1),
+					mt.Load(gomock.Eq(mockTaskID)).Return(task, true).Times(1),
+					mr.SeedPeer().Return(seedPeerManager).Times(1),
+					ms.StatLocalTask(gomock.Any(), gomock.Eq(mockTaskID)).Return(seedHost, &dfdaemonv2.StatLocalTaskResponse{
+						TaskId:        mockTaskID,
+						PieceLength:   &mockTaskPieceLength,
+						ContentLength: &mockTaskPieceLength,
+						CreatedAt:     timestamppb.Now(),
+						UpdatedAt:     timestamppb.Now(),
+						FinishedAt:    timestamppb.Now(),
+					}, nil).Times(1),
+				)
+			},
+			expect: func(t *testing.T, resp *schedulerv2.ListPeersResponse, err error) {
+				assert := assert.New(t)
+				assert.NoError(err)
+				assert.Len(resp.Peers, 1)
+				assert.Equal(mockRawSeedHost.ID, resp.Peers[0].Host.Id)
+				assert.Equal(uint32(1), resp.Peers[0].Task.PieceCount)
+			},
+		},
+		{
 			name:   "task has succeeded peers",
 			taskID: &mockTaskID,
-			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer := standard.NewPeer(mockPeerID, task, host)
 				peer.FSM.SetState(standard.PeerStateSucceeded)
 				task.StorePeer(peer)
@@ -2373,7 +2461,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			name:     "page size is less than succeeded peers",
 			taskID:   &mockTaskID,
 			pageSize: 1,
-			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				peer := standard.NewPeer(mockPeerID, task, host)
 				peer.FSM.SetState(standard.PeerStateSucceeded)
 				task.StorePeer(peer)
@@ -2399,7 +2487,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			name:      "page token is invalid",
 			taskID:    &mockTaskID,
 			pageToken: "foo",
-			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder) {
+			mock: func(host *standard.Host, seedHost *standard.Host, task *standard.Task, taskManager standard.TaskManager, peerManager standard.PeerManager, seedPeerManager standard.SeedPeer, mr *standard.MockResourceMockRecorder, mt *standard.MockTaskManagerMockRecorder, mp *standard.MockPeerManagerMockRecorder, ms *standard.MockSeedPeerMockRecorder) {
 				gomock.InOrder(
 					mr.TaskManager().Return(taskManager).Times(1),
 					mt.Load(gomock.Eq(mockTaskID)).Return(task, true).Times(1),
@@ -2427,6 +2515,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 
 			taskManager := standard.NewMockTaskManager(ctl)
 			peerManager := standard.NewMockPeerManager(ctl)
+			seedPeerManager := standard.NewMockSeedPeer(ctl)
 			host := standard.NewHost(
 				mockRawHost.ID, mockRawHost.IP, mockRawHost.Name, mockRawHost.Hostname,
 				mockRawHost.Port, mockRawHost.DownloadPort, mockRawHost.ProxyPort, mockRawHost.Type)
@@ -2436,7 +2525,7 @@ func TestServiceV2_ListPeers(t *testing.T) {
 			task := standard.NewTask(mockTaskID, mockTaskURL, mockTaskTag, mockTaskApplication, commonv2.TaskType_STANDARD, mockTaskFilteredQueryParams, mockTaskHeader, mockTaskBackToSourceLimit)
 			svc := NewV2(&config.Config{Scheduler: mockSchedulerConfig}, resource, persistentResource, persistentCacheResource, nil, scheduling, job, internalJobImage, dynconfig)
 
-			tc.mock(host, seedHost, task, taskManager, peerManager, resource.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT())
+			tc.mock(host, seedHost, task, taskManager, peerManager, seedPeerManager, resource.EXPECT(), taskManager.EXPECT(), peerManager.EXPECT(), seedPeerManager.EXPECT())
 			resp, err := svc.ListPeers(context.Background(), &schedulerv2.ListPeersRequest{TaskId: tc.taskID, PageSize: &tc.pageSize, PageToken: &tc.pageToken})
 			tc.expect(t, resp, err)
 		})
